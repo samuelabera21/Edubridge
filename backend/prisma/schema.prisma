@@ -145,7 +145,8 @@ model OrganizationUnit {
   parent   OrganizationUnit?  @relation("OrganizationHierarchy", fields: [parentId], references: [id])
   children OrganizationUnit[] @relation("OrganizationHierarchy")
 
-  assignments RoleAssignment[]
+  assignments   RoleAssignment[]
+  schoolProfile SchoolProfile?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -160,4 +161,24 @@ enum OrganizationUnitType {
   ZONE
   WOREDA
   SCHOOL
+}
+
+// ============================================================
+// SCHOOL DOMAIN
+// ============================================================
+
+model SchoolProfile {
+  id              String  @id @default(cuid())
+  organizationId  String  @unique
+  establishedYear Int?
+  contactEmail    String?
+  phoneNumber     String?
+  address         String?
+
+  organization OrganizationUnit @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("school_profile")
 }
