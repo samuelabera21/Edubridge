@@ -1,3 +1,8 @@
+#school support staff features 
+
+```text
+
+
 SCHOOL SUPPORT STAFF
 │
 ├── 1. ASSIGNED TASKS

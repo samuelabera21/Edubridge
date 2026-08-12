@@ -1,3 +1,8 @@
+# School Administrator / Principal
+
+## Responsibilities and System Functions
+
+```text
 SCHOOL ADMINISTRATOR / PRINCIPAL
 │
 ├── 1. SCHOOL DASHBOARD

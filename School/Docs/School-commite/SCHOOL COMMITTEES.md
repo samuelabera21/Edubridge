@@ -1,3 +1,8 @@
+#School commite features
+
+```text
+
+
 SCHOOL COMMITTEE / REPRESENTATIVE
 │
 ├── 1. COMMITTEE DASHBOARD
