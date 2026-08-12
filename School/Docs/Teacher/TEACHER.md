@@ -1,3 +1,8 @@
+#TEacher features
+
+```text
+
+
 TEACHER
 │
 ├── 1. TEACHER DASHBOARD

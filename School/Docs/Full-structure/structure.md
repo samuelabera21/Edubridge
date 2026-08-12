@@ -1,3 +1,7 @@
+#over all structure
+
+```text
+
 SCHOOL
 │
 ├── 1. SCHOOL DASHBOARD
