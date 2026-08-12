@@ -67,13 +67,43 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     </Link>
 
                     {roleName === "SCHOOL_ADMIN" && (
-                        <Link 
-                            href="/dashboard/profile" 
-                            className={`flex items-center space-x-3 px-3 py-2.5 rounded transition-all duration-200 ${pathname === "/dashboard/profile" ? "bg-[#4085b3] text-white shadow-sm" : "text-gray-300 hover:bg-white/10 hover:text-white"}`}
-                        >
-                            <Building className="h-5 w-5" />
-                            <span className="font-medium text-sm">School Profile</span>
-                        </Link>
+                        <>
+                            <Link 
+                                href="/dashboard/profile" 
+                                className={`flex items-center space-x-3 px-3 py-2.5 rounded transition-all duration-200 ${pathname === "/dashboard/profile" ? "bg-[#4085b3] text-white shadow-sm" : "text-gray-300 hover:bg-white/10 hover:text-white"}`}
+                            >
+                                <Building className="h-5 w-5" />
+                                <span className="font-medium text-sm">School Profile</span>
+                            </Link>
+                            
+                            <div className="pt-4 pb-1">
+                                <p className="px-3 text-[10px] text-gray-400 uppercase font-bold tracking-wider">Academic Structure</p>
+                            </div>
+                            
+                            <Link 
+                                href="/dashboard/academic/years" 
+                                className={`flex items-center space-x-3 px-3 py-2 rounded transition-all duration-200 ${pathname.includes("/dashboard/academic/years") ? "text-white bg-white/5" : "text-gray-400 hover:text-gray-200"}`}
+                            >
+                                <div className={`w-1.5 h-1.5 rounded-full ${pathname.includes("/dashboard/academic/years") ? "bg-[#4085b3]" : "bg-gray-600"}`}></div>
+                                <span className="font-medium text-sm">Academic Years</span>
+                            </Link>
+
+                            <Link 
+                                href="/dashboard/academic/grades" 
+                                className={`flex items-center space-x-3 px-3 py-2 rounded transition-all duration-200 ${pathname.includes("/dashboard/academic/grades") ? "text-white bg-white/5" : "text-gray-400 hover:text-gray-200"}`}
+                            >
+                                <div className={`w-1.5 h-1.5 rounded-full ${pathname.includes("/dashboard/academic/grades") ? "bg-[#4085b3]" : "bg-gray-600"}`}></div>
+                                <span className="font-medium text-sm">Grades & Sections</span>
+                            </Link>
+
+                            <Link 
+                                href="/dashboard/academic/subjects" 
+                                className={`flex items-center space-x-3 px-3 py-2 rounded transition-all duration-200 ${pathname.includes("/dashboard/academic/subjects") ? "text-white bg-white/5" : "text-gray-400 hover:text-gray-200"}`}
+                            >
+                                <div className={`w-1.5 h-1.5 rounded-full ${pathname.includes("/dashboard/academic/subjects") ? "bg-[#4085b3]" : "bg-gray-600"}`}></div>
+                                <span className="font-medium text-sm">Subjects</span>
+                            </Link>
+                        </>
                     )}
                 </nav>
 

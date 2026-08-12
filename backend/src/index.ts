@@ -4,6 +4,7 @@ import { toNodeHandler } from "better-auth/node";
 import { auth } from "./modules/authentication/auth.js";
 import authorizationRoutes from "./modules/authentication/authorization.routes.js";
 import schoolRoutes from "./modules/school/school.routes.js";
+import academicRoutes from "./modules/academic/academic.routes.js";
 
 const app = express();
 const PORT = 5000;
@@ -20,6 +21,7 @@ app.use(express.json());
 
 app.use("/api/authorization", authorizationRoutes);
 app.use("/api/school", schoolRoutes);
+app.use("/api/academic", academicRoutes);
 
 app.get("/", (_req, res) => {
     res.json({

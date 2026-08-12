@@ -148,8 +148,11 @@ model OrganizationUnit {
   assignments   RoleAssignment[]
   schoolProfile SchoolProfile?
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  academicYears AcademicYear[]
+  grades        Grade[]
+  subjects      Subject[]
 
   @@index([parentId])
   @@index([type])
@@ -181,4 +184,113 @@ model SchoolProfile {
   updatedAt DateTime @updatedAt
 
   @@map("school_profile")
+}
+
+// ============================================================
+// ACADEMIC FOUNDATION
+// ============================================================
+
+model AcademicYear {
+  id             String             @id @default(cuid())
+  organizationId String
+  name           String
+  startDate      DateTime
+  endDate        DateTime
+  status         AcademicYearStatus @default(PLANNED)
+
+  organization   OrganizationUnit @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  schoolGrades   SchoolGrade[]
+  schoolSubjects SchoolSubject[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([organizationId, name])
+  @@map("academic_year")
+}
+
+enum AcademicYearStatus {
+  PLANNED
+  ACTIVE
+  COMPLETED
+  ARCHIVED
+}
+
+model Grade {
+  id             String @id @default(cuid())
+  organizationId String
+  name           String
+  level          Int
+
+  organization OrganizationUnit @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  schoolGrades SchoolGrade[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([organizationId, level])
+  @@unique([organizationId, name])
+  @@map("grade")
+}
+
+model SchoolGrade {
+  id             String @id @default(cuid())
+  academicYearId String
+  gradeId        String
+
+  academicYear AcademicYear @relation(fields: [academicYearId], references: [id], onDelete: Cascade)
+  grade        Grade        @relation(fields: [gradeId], references: [id], onDelete: Cascade)
+  sections     Section[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([academicYearId, gradeId])
+  @@map("school_grade")
+}
+
+model Section {
+  id            String @id @default(cuid())
+  schoolGradeId String
+  name          String
+  capacity      Int?
+
+  schoolGrade SchoolGrade @relation(fields: [schoolGradeId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([schoolGradeId, name])
+  @@map("section")
+}
+
+model Subject {
+  id             String  @id @default(cuid())
+  organizationId String
+  name           String
+  code           String?
+
+  organization   OrganizationUnit @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  schoolSubjects SchoolSubject[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([organizationId, name])
+  @@map("subject")
+}
+
+model SchoolSubject {
+  id             String @id @default(cuid())
+  academicYearId String
+  subjectId      String
+
+  academicYear AcademicYear @relation(fields: [academicYearId], references: [id], onDelete: Cascade)
+  subject      Subject      @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([academicYearId, subjectId])
+  @@map("school_subject")
 }
