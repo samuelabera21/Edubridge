@@ -1,4 +1,4 @@
-#School commite features
+# School commite features
 
 ```text
 
