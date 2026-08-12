@@ -7,3 +7,157 @@ datasource db {
   provider = "postgresql"
 }
 
+// ============================================================
+// BETTER AUTH — Authentication
+// ============================================================
+
+model User {
+  id            String   @id
+  name          String
+  email         String
+  emailVerified Boolean  @default(false)
+  image         String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  sessions Session[]
+  accounts Account[]
+
+  roleAssignments RoleAssignment[]
+
+  @@unique([email])
+  @@map("user")
+}
+
+model Session {
+  id        String   @id
+  expiresAt DateTime
+  token     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  ipAddress String?
+  userAgent String?
+  userId    String
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([token])
+  @@index([userId])
+  @@map("session")
+}
+
+model Account {
+  id         String @id
+  accountId  String
+  providerId String
+  userId     String
+  user       User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@map("account")
+}
+
+model Verification {
+  id         String   @id
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([identifier])
+  @@map("verification")
+}
+
+// ============================================================
+// EDUBRIDGE — Authorization Foundation
+// ============================================================
+
+model Role {
+  id          String  @id @default(cuid())
+  name        String  @unique
+  description String?
+
+  permissions RolePermission[]
+  assignments RoleAssignment[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Permission {
+  id          String  @id @default(cuid())
+  name        String  @unique
+  description String?
+
+  roles RolePermission[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model RolePermission {
+  roleId       String
+  permissionId String
+
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+}
+
+model RoleAssignment {
+  id      String @id @default(cuid())
+  userId  String
+  roleId  String
+  scopeId String
+
+  user  User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role  Role             @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  scope OrganizationUnit @relation(fields: [scopeId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, roleId, scopeId])
+  @@index([userId])
+  @@index([roleId])
+  @@index([scopeId])
+}
+
+model OrganizationUnit {
+  id       String               @id @default(cuid())
+  name     String
+  type     OrganizationUnitType
+  parentId String?
+
+  parent   OrganizationUnit?  @relation("OrganizationHierarchy", fields: [parentId], references: [id])
+  children OrganizationUnit[] @relation("OrganizationHierarchy")
+
+  assignments RoleAssignment[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([parentId])
+  @@index([type])
+}
+
+enum OrganizationUnitType {
+  FEDERAL
+  REGION
+  ZONE
+  WOREDA
+  SCHOOL
+}
