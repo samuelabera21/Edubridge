@@ -1,3 +1,5 @@
+```text
+
 SCHOOL
 │
 ├── 1. School Administrator / Principal
