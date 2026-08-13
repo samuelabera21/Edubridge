@@ -1,0 +1,54 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: edubridge_postgres
+    environment:
+      POSTGRES_USER: edubridge_user
+      POSTGRES_PASSWORD: edubridge_password
+      POSTGRES_DB: edubridge
+    ports:
+      - "5434:5432"
+    volumes:
+      - edubridge_pgdata:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev
+    container_name: edubridge_backend
+    ports:
+      - "5001:5000"
+    environment:
+      - DATABASE_URL=postgresql://edubridge_user:edubridge_password@db:5432/edubridge
+      - BETTER_AUTH_SECRET=development_secret_key_12345
+      - BETTER_AUTH_URL=http://localhost:5001
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+    depends_on:
+      - db
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    container_name: edubridge_frontend
+    ports:
+      - "3001:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:5001/api
+      - BACKEND_URL=http://backend:5000
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+      - /app/.next
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  edubridge_pgdata:
