@@ -32,6 +32,10 @@ async function run() {
         // Ensure the role has the correct permissions
         await assignPermissionToRole("SCHOOL_ADMIN", "SCHOOL:VIEW", "View school profile");
         await assignPermissionToRole("SCHOOL_ADMIN", "SCHOOL:UPDATE", "Update school profile");
+        await assignPermissionToRole("SCHOOL_ADMIN", "ACADEMIC:VIEW", "View academic structure");
+        await assignPermissionToRole("SCHOOL_ADMIN", "ACADEMIC:CREATE", "Create academic structure");
+        await assignPermissionToRole("SCHOOL_ADMIN", "ACADEMIC:UPDATE", "Update academic structure");
+        await assignPermissionToRole("SCHOOL_ADMIN", "ACADEMIC:DELETE", "Delete academic structure");
 
         console.log(`\nSuccess! ${email} is now a School Administrator.`);
         console.log("You can now go to http://localhost:3000/dashboard, and you will see the full School Profile access!");
