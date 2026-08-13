@@ -103,6 +103,258 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                                 <div className={`w-1.5 h-1.5 rounded-full ${pathname.includes("/dashboard/academic/subjects") ? "bg-[#4085b3]" : "bg-gray-600"}`}></div>
                                 <span className="font-medium text-sm">Subjects</span>
                             </Link>
+                            
+                            <div className="pt-4 pb-1">
+                                <p className="px-3 text-[10px] text-gray-400 uppercase font-bold tracking-wider">People & Identities</p>
+                            </div>
+
+                            <Link 
+                                href="/dashboard/students" 
+                                className={`flex items-center space-x-3 px-3 py-2 rounded transition-all duration-200 ${pathname.includes("/dashboard/students") ? "text-white bg-white/5" : "text-gray-400 hover:text-gray-200"}`}
+                            >
+                                <div className={`w-1.5 h-1.5 rounded-full ${pathname.includes("/dashboard/students") ? "bg-[#4085b3]" : "bg-gray-600"}`}></div>
+                                <span className="font-medium text-sm">Students (Foundation)</span>
+                            </Link>
+
+                            <Link 
+                                href="/dashboard/teachers" 
+                                className={`flex items-center space-x-3 px-3 py-2 rounded transition-all duration-200 ${pathname.includes("/dashboard/teachers") ? "text-white bg-white/5" : "text-gray-400 hover:text-gray-200"}`}
+                            >
+                                <div className={`w-1.5 h-1.5 rounded-full ${pathname.includes("/dashboard/teachers") ? "bg-[#4085b3]" : "bg-gray-600"}`}></div>
+                                <span className="font-medium text-sm">Teachers (Foundation)</span>
+                            </Link>
+                        </>
+                    )}
+
+                    {roleName === "STUDENT" && (
+                        <>
+                            <div className="pt-4 pb-1">
+                                <p className="px-3 text-[10px] text-gray-400 uppercase font-bold tracking-wider">My Academics</p>
+                            </div>
+                            
+                            <Link 
+                                href="/dashboard/student" 
+                                className={`flex items-center space-x-3 px-3 py-2 rounded transition-all duration-200 ${pathname === "/dashboard/student" ? "text-white bg-white/5" : "text-gray-400 hover:text-gray-200"}`}
+                            >
+                                <div className={`w-1.5 h-1.5 rounded-full ${pathname === "/dashboard/student" ? "bg-[#4085b3]" : "bg-gray-600"}`}></div>
+                                <span className="font-medium text-sm">Dashboard</span>
+                            </Link>
+
+                            <Link 
+                                href="#" 
+                                className={`flex items-center space-x-3 px-3 py-2 rounded transition-all duration-200 text-gray-400 hover:text-gray-200`}
+                            >
+                                <div className="w-1.5 h-1.5 rounded-full bg-gray-600"></div>
+                                <span className="font-medium text-sm">My Schedule</span>
+                            </Link>
+
+                            <Link 
+                                href="#" 
+                                className={`flex items-center space-x-3 px-3 py-2 rounded transition-all duration-200 text-gray-400 hover:text-gray-200`}
+                            >
+                                <div className="w-1.5 h-1.5 rounded-full bg-gray-600"></div>
+                                <span className="font-medium text-sm">My Grades</span>
+                            </Link>
+                        </>
+                    )}
+
+                    {roleName === "TEACHER" && (
+                        <>
+                            <div className="pt-4 pb-1">
+                                <p className="px-3 text-[10px] text-gray-400 uppercase font-bold tracking-wider">My Classroom</p>
+                            </div>
+                            
+                            <Link 
+                                href="/dashboard/teacher" 
+                                className={`flex items-center space-x-3 px-3 py-2 rounded transition-all duration-200 ${pathname === "/dashboard/teacher" ? "text-white bg-white/5" : "text-gray-400 hover:text-gray-200"}`}
+                            >
+                                <div className={`w-1.5 h-1.5 rounded-full ${pathname === "/dashboard/teacher" ? "bg-[#4085b3]" : "bg-gray-600"}`}></div>
+                                <span className="font-medium text-sm">Dashboard</span>
+                            </Link>
+
+                            <Link 
+                                href="#" 
+                                className={`flex items-center space-x-3 px-3 py-2 rounded transition-all duration-200 text-gray-400 hover:text-gray-200`}
+                            >
+                                <div className="w-1.5 h-1.5 rounded-full bg-gray-600"></div>
+                                <span className="font-medium text-sm">My Classes</span>
+                            </Link>
+
+                            <Link 
+                                href="#" 
+                                className={`flex items-center space-x-3 px-3 py-2 rounded transition-all duration-200 text-gray-400 hover:text-gray-200`}
+                            >
+                                <div className="w-1.5 h-1.5 rounded-full bg-gray-600"></div>
+                                <span className="font-medium text-sm">My Students</span>
+                            </Link>
+                            
+                            <Link 
+                                href="#" 
+                                className={`flex items-center space-x-3 px-3 py-2 rounded transition-all duration-200 text-gray-400 hover:text-gray-200`}
+                            >
+                                <div className="w-1.5 h-1.5 rounded-full bg-gray-600"></div>
+                                <span className="font-medium text-sm">Grading</span>
+                            </Link>
+                        </>
+                    )}
+
+                    {roleName === "PARENT" && (
+                        <>
+                            <div className="pt-4 pb-1">
+                                <p className="px-3 text-[10px] text-gray-400 uppercase font-bold tracking-wider">Family Portal</p>
+                            </div>
+                            
+                            <Link 
+                                href="/dashboard/parent" 
+                                className={`flex items-center space-x-3 px-3 py-2 rounded transition-all duration-200 ${pathname === "/dashboard/parent" ? "text-white bg-white/5" : "text-gray-400 hover:text-gray-200"}`}
+                            >
+                                <div className={`w-1.5 h-1.5 rounded-full ${pathname === "/dashboard/parent" ? "bg-[#4085b3]" : "bg-gray-600"}`}></div>
+                                <span className="font-medium text-sm">Dashboard</span>
+                            </Link>
+
+                            <Link 
+                                href="#" 
+                                className={`flex items-center space-x-3 px-3 py-2 rounded transition-all duration-200 text-gray-400 hover:text-gray-200`}
+                            >
+                                <div className="w-1.5 h-1.5 rounded-full bg-gray-600"></div>
+                                <span className="font-medium text-sm">My Children</span>
+                            </Link>
+
+                            <Link 
+                                href="#" 
+                                className={`flex items-center space-x-3 px-3 py-2 rounded transition-all duration-200 text-gray-400 hover:text-gray-200`}
+                            >
+                                <div className="w-1.5 h-1.5 rounded-full bg-gray-600"></div>
+                                <span className="font-medium text-sm">Attendance</span>
+                            </Link>
+                            
+                            <Link 
+                                href="#" 
+                                className={`flex items-center space-x-3 px-3 py-2 rounded transition-all duration-200 text-gray-400 hover:text-gray-200`}
+                            >
+                                <div className="w-1.5 h-1.5 rounded-full bg-gray-600"></div>
+                                <span className="font-medium text-sm">Messages</span>
+                            </Link>
+                        </>
+                    )}
+
+                    {roleName === "VICE_PRINCIPAL" && (
+                        <>
+                            <div className="pt-4 pb-1">
+                                <p className="px-3 text-[10px] text-gray-400 uppercase font-bold tracking-wider">Academic Leadership</p>
+                            </div>
+                            
+                            <Link 
+                                href="/dashboard/vice-principal" 
+                                className={`flex items-center space-x-3 px-3 py-2 rounded transition-all duration-200 ${pathname === "/dashboard/vice-principal" ? "text-white bg-white/5" : "text-gray-400 hover:text-gray-200"}`}
+                            >
+                                <div className={`w-1.5 h-1.5 rounded-full ${pathname === "/dashboard/vice-principal" ? "bg-[#4085b3]" : "bg-gray-600"}`}></div>
+                                <span className="font-medium text-sm">Dashboard</span>
+                            </Link>
+
+                            <Link 
+                                href="#" 
+                                className={`flex items-center space-x-3 px-3 py-2 rounded transition-all duration-200 text-gray-400 hover:text-gray-200`}
+                            >
+                                <div className="w-1.5 h-1.5 rounded-full bg-gray-600"></div>
+                                <span className="font-medium text-sm">Teacher Roster</span>
+                            </Link>
+
+                            <Link 
+                                href="#" 
+                                className={`flex items-center space-x-3 px-3 py-2 rounded transition-all duration-200 text-gray-400 hover:text-gray-200`}
+                            >
+                                <div className="w-1.5 h-1.5 rounded-full bg-gray-600"></div>
+                                <span className="font-medium text-sm">Curriculum</span>
+                            </Link>
+                            
+                            <Link 
+                                href="#" 
+                                className={`flex items-center space-x-3 px-3 py-2 rounded transition-all duration-200 text-gray-400 hover:text-gray-200`}
+                            >
+                                <div className="w-1.5 h-1.5 rounded-full bg-gray-600"></div>
+                                <span className="font-medium text-sm">Discipline</span>
+                            </Link>
+                        </>
+                    )}
+
+                    {roleName === "SUPPORT_STAFF" && (
+                        <>
+                            <div className="pt-4 pb-1">
+                                <p className="px-3 text-[10px] text-gray-400 uppercase font-bold tracking-wider">School Operations</p>
+                            </div>
+                            
+                            <Link 
+                                href="/dashboard/support-staff" 
+                                className={`flex items-center space-x-3 px-3 py-2 rounded transition-all duration-200 ${pathname === "/dashboard/support-staff" ? "text-white bg-white/5" : "text-gray-400 hover:text-gray-200"}`}
+                            >
+                                <div className={`w-1.5 h-1.5 rounded-full ${pathname === "/dashboard/support-staff" ? "bg-[#4085b3]" : "bg-gray-600"}`}></div>
+                                <span className="font-medium text-sm">Dashboard</span>
+                            </Link>
+
+                            <Link 
+                                href="#" 
+                                className={`flex items-center space-x-3 px-3 py-2 rounded transition-all duration-200 text-gray-400 hover:text-gray-200`}
+                            >
+                                <div className="w-1.5 h-1.5 rounded-full bg-gray-600"></div>
+                                <span className="font-medium text-sm">Service Desk</span>
+                            </Link>
+
+                            <Link 
+                                href="#" 
+                                className={`flex items-center space-x-3 px-3 py-2 rounded transition-all duration-200 text-gray-400 hover:text-gray-200`}
+                            >
+                                <div className="w-1.5 h-1.5 rounded-full bg-gray-600"></div>
+                                <span className="font-medium text-sm">Student Records</span>
+                            </Link>
+                            
+                            <Link 
+                                href="#" 
+                                className={`flex items-center space-x-3 px-3 py-2 rounded transition-all duration-200 text-gray-400 hover:text-gray-200`}
+                            >
+                                <div className="w-1.5 h-1.5 rounded-full bg-gray-600"></div>
+                                <span className="font-medium text-sm">Facilities</span>
+                            </Link>
+                        </>
+                    )}
+
+                    {roleName === "COMMITTEE" && (
+                        <>
+                            <div className="pt-4 pb-1">
+                                <p className="px-3 text-[10px] text-gray-400 uppercase font-bold tracking-wider">Committee Portal</p>
+                            </div>
+                            
+                            <Link 
+                                href="/dashboard/committee" 
+                                className={`flex items-center space-x-3 px-3 py-2 rounded transition-all duration-200 ${pathname === "/dashboard/committee" ? "text-white bg-white/5" : "text-gray-400 hover:text-gray-200"}`}
+                            >
+                                <div className={`w-1.5 h-1.5 rounded-full ${pathname === "/dashboard/committee" ? "bg-[#4085b3]" : "bg-gray-600"}`}></div>
+                                <span className="font-medium text-sm">Dashboard</span>
+                            </Link>
+
+                            <Link 
+                                href="#" 
+                                className={`flex items-center space-x-3 px-3 py-2 rounded transition-all duration-200 text-gray-400 hover:text-gray-200`}
+                            >
+                                <div className="w-1.5 h-1.5 rounded-full bg-gray-600"></div>
+                                <span className="font-medium text-sm">Board Meetings</span>
+                            </Link>
+
+                            <Link 
+                                href="#" 
+                                className={`flex items-center space-x-3 px-3 py-2 rounded transition-all duration-200 text-gray-400 hover:text-gray-200`}
+                            >
+                                <div className="w-1.5 h-1.5 rounded-full bg-gray-600"></div>
+                                <span className="font-medium text-sm">Reports</span>
+                            </Link>
+                            
+                            <Link 
+                                href="#" 
+                                className={`flex items-center space-x-3 px-3 py-2 rounded transition-all duration-200 text-gray-400 hover:text-gray-200`}
+                            >
+                                <div className="w-1.5 h-1.5 rounded-full bg-gray-600"></div>
+                                <span className="font-medium text-sm">Community Feedback</span>
+                            </Link>
                         </>
                     )}
                 </nav>
