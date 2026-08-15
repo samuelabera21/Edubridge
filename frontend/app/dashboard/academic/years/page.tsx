@@ -51,12 +51,12 @@ export default function AcademicYearsPage() {
             <div className="flex items-center justify-between">
                 <div>
                     <h1 className="text-2xl font-bold flex items-center space-x-2 text-gray-800">
-                        <Calendar className="h-6 w-6 text-blue-600" />
+                        <Calendar className="h-6 w-6 text-blue-500" />
                         <span>Academic Years</span>
                     </h1>
                     <p className="text-gray-500 mt-1">Manage the school's academic periods and operational timeline.</p>
                 </div>
-                <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded font-medium shadow transition-colors">
+                <button className="bg-blue-500 hover:bg-blue-700 text-white px-4 py-2 rounded font-medium shadow transition-colors">
                     + New Academic Year
                 </button>
             </div>
@@ -110,7 +110,7 @@ export default function AcademicYearsPage() {
                                         </span>
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                        <button className="text-blue-600 hover:text-blue-900 mx-2">Edit</button>
+                                        <button className="text-blue-500 hover:text-blue-900 mx-2">Edit</button>
                                         <button className="text-gray-500 hover:text-gray-700">Configure</button>
                                     </td>
                                 </tr>
