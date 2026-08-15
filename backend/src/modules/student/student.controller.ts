@@ -1,49 +1,35 @@
 import { Request, Response } from "express";
-import { prisma } from "../../infrastructure/prisma/client.js";
+import { StudentService } from "./student.service.js";
+import { EnrollmentStatus } from "../../generated/prisma/enums.js";
 
 // Create a global student identity
 export const createStudent = async (req: Request, res: Response) => {
     try {
-        // Identity creation is decoupled from enrollment
         const { firstName, lastName, studentId, dateOfBirth, gender } = req.body;
-
         if (!firstName || !lastName || !studentId) {
             return res.status(400).json({ error: "firstName, lastName, and studentId are required" });
         }
 
-        // Check if studentId already exists
-        const existing = await prisma.student.findUnique({
-            where: { studentId }
+        const student = await StudentService.createStudent({
+            firstName,
+            lastName,
+            studentId,
+            dateOfBirth,
+            gender,
+            userId: req.user?.id
         });
-
-        if (existing) {
-            return res.status(409).json({ error: "Student ID already exists" });
-        }
-
-        const student = await prisma.student.create({
-            data: {
-                firstName,
-                lastName,
-                studentId,
-                dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : null,
-                gender
-            }
-        });
-
-        // Audit log
-        await prisma.auditLog.create({
-            data: {
-                action: "STUDENT_CREATED",
-                resource: "Student",
-                resourceId: student.id,
-                newValue: JSON.parse(JSON.stringify(student)),
-                userId: req.user?.id || null // req.user from better-auth session if available
-            }
-        });
-
+        
         return res.status(201).json(student);
     } catch (error) {
-        console.error("Error creating student:", error);
+        return res.status(400).json({ error: "Failed to create student. Student ID might already exist." });
+    }
+};
+
+export const getStudents = async (req: Request, res: Response) => {
+    try {
+        const students = await StudentService.getStudents();
+        return res.json(students);
+    } catch (error) {
         return res.status(500).json({ error: "Internal server error" });
     }
 };
@@ -55,64 +41,14 @@ export const enrollStudent = async (req: Request, res: Response) => {
         if (!organizationId) return res.status(403).json({ error: "Missing school scope" });
 
         const { studentId, academicYearId, schoolGradeId, sectionId } = req.body;
-
         if (!studentId || !academicYearId || !schoolGradeId) {
             return res.status(400).json({ error: "studentId, academicYearId, and schoolGradeId are required" });
         }
 
-        // Validate the schoolGrade actually belongs to this school and academic year
-        const schoolGrade = await prisma.schoolGrade.findFirst({
-            where: { id: schoolGradeId, academicYearId, academicYear: { organizationId } }
-        });
-
-        if (!schoolGrade) {
-            return res.status(400).json({ error: "Invalid school grade or academic year for this school" });
-        }
-
-        // Validate section if provided
-        if (sectionId) {
-            const section = await prisma.section.findFirst({
-                where: { id: sectionId, schoolGradeId }
-            });
-            if (!section) {
-                return res.status(400).json({ error: "Section does not belong to this grade" });
-            }
-        }
-
-        // Check if student is already enrolled in this academic year
-        const existingEnrollment = await prisma.studentEnrollment.findUnique({
-            where: { studentId_academicYearId: { studentId, academicYearId } }
-        });
-
-        if (existingEnrollment) {
-            return res.status(409).json({ error: "Student is already enrolled in this academic year" });
-        }
-
-        const enrollment = await prisma.studentEnrollment.create({
-            data: {
-                studentId,
-                organizationId,
-                academicYearId,
-                schoolGradeId,
-                sectionId
-            }
-        });
-
-        // Audit log (with scope context)
-        await prisma.auditLog.create({
-            data: {
-                organizationId,
-                action: "STUDENT_ENROLLED",
-                resource: "StudentEnrollment",
-                resourceId: enrollment.id,
-                newValue: JSON.parse(JSON.stringify(enrollment)),
-            }
-        });
-
+        const enrollment = await StudentService.enrollStudent(organizationId, studentId, academicYearId, schoolGradeId, sectionId);
         return res.status(201).json(enrollment);
-    } catch (error) {
-        console.error("Error enrolling student:", error);
-        return res.status(500).json({ error: "Internal server error" });
+    } catch (error: any) {
+        return res.status(400).json({ error: error.message || "Failed to enroll student" });
     }
 };
 
@@ -123,62 +59,62 @@ export const getEnrollments = async (req: Request, res: Response) => {
         if (!organizationId) return res.status(403).json({ error: "Missing school scope" });
 
         const { academicYearId } = req.query;
-
-        const enrollments = await prisma.studentEnrollment.findMany({
-            where: {
-                organizationId,
-                ...(academicYearId ? { academicYearId: String(academicYearId) } : {})
-            },
-            include: {
-                student: true,
-                schoolGrade: { include: { grade: true } },
-                section: true
-            },
-            orderBy: { createdAt: "desc" }
-        });
-
+        const enrollments = await StudentService.getEnrollments(organizationId, academicYearId as string);
         return res.json(enrollments);
     } catch (error) {
-        console.error("Error fetching enrollments:", error);
         return res.status(500).json({ error: "Internal server error" });
     }
 };
 
-// Get the currently logged in student's profile and active enrollment
-export const getStudentProfile = async (req: Request, res: Response) => {
+// Transfer student mid-year
+export const transferStudent = async (req: Request, res: Response) => {
     try {
-        // This endpoint expects a student ID to be provided in the session or scope
-        // For this demo, we'll fetch the first student enrollment linked to the user's email
-        // Or if the user doesn't have an email match, we return a 404.
-        // In a real app, the User table would have a link to the Student ID.
-        
-        const userEmail = req.user?.email;
-        if (!userEmail) return res.status(401).json({ error: "Unauthorized" });
-
-        // Let's find a student enrollment where the student's email matches the user's email
-        // Wait, the Student model doesn't have an email field right now, but for the demo we'll just return the first student in the school
-        
         const organizationId = (req as any).accessScope?.id;
         if (!organizationId) return res.status(403).json({ error: "Missing school scope" });
 
-        const enrollment = await prisma.studentEnrollment.findFirst({
-            where: { organizationId },
-            include: {
-                student: true,
-                schoolGrade: { include: { grade: true } },
-                section: true,
-                academicYear: true
-            },
-            orderBy: { createdAt: "desc" }
-        });
+        const { enrollmentId } = req.params;
+        const { targetSchoolGradeId, targetSectionId, reason } = req.body;
 
-        if (!enrollment) {
-            return res.status(404).json({ error: "No student profile found for your account" });
+        if (!targetSchoolGradeId) {
+            return res.status(400).json({ error: "targetSchoolGradeId is required" });
         }
 
-        return res.json(enrollment);
+        const newEnrollment = await StudentService.transferStudent(organizationId, enrollmentId as string, targetSchoolGradeId, targetSectionId, reason);
+        return res.status(201).json(newEnrollment);
+    } catch (error: any) {
+        return res.status(400).json({ error: error.message || "Failed to transfer student" });
+    }
+};
+
+// Update enrollment status
+export const updateStudentStatus = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        if (!organizationId) return res.status(403).json({ error: "Missing school scope" });
+
+        const { enrollmentId } = req.params;
+        const { status, reason } = req.body;
+
+        if (!status) {
+            return res.status(400).json({ error: "status is required" });
+        }
+
+        const updated = await StudentService.updateStudentStatus(organizationId, enrollmentId as string, status as EnrollmentStatus, reason);
+        return res.json(updated);
+    } catch (error: any) {
+        return res.status(400).json({ error: error.message || "Failed to update student status" });
+    }
+};
+
+export const getStudentProfile = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        const userId = req.user?.id;
+        if (!organizationId || !userId) return res.status(403).json({ error: "Missing school scope or authentication" });
+
+        // TODO: Implement getStudentByUserId when userId is added to Student model
+        return res.status(404).json({ error: "Student profile not found" });
     } catch (error) {
-        console.error("Error fetching student profile:", error);
         return res.status(500).json({ error: "Internal server error" });
     }
 };
