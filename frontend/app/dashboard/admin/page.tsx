@@ -1,5 +1,7 @@
 import { fetchServerApi } from "../../../lib/server-api";
-import { Building2, Calendar, Users, GraduationCap, AlertCircle } from "lucide-react";
+import { Building2, Calendar, Users, GraduationCap } from "lucide-react";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/Card";
+import { ErrorState } from "@/components/ui/ErrorState";
 
 async function getDashboardData() {
     try {
@@ -27,12 +29,11 @@ export default async function AdminDashboard() {
 
     if ('error' in data) {
         return (
-            <div className="bg-red-50 text-red-700 p-6 rounded-xl border border-red-100 flex items-center space-x-3">
-                <AlertCircle className="h-6 w-6 text-red-500" />
-                <div>
-                    <h2 className="text-lg font-bold">Error Loading Dashboard</h2>
-                    <p>{data.error}</p>
-                </div>
+            <div className="p-6">
+                <ErrorState 
+                    title="Error Loading Dashboard" 
+                    message={data.error as string} 
+                />
             </div>
         );
     }
@@ -41,85 +42,69 @@ export default async function AdminDashboard() {
     const activeYear = years.find((y: any) => y.status === "ACTIVE") || years[0];
 
     return (
-        <div className="space-y-6 text-slate-800">
-            <h1 className="text-2xl font-bold text-slate-900">School Administration</h1>
+        <div className="space-y-6">
+            <Card>
+                <CardHeader className="text-center pb-0 border-none">
+                    <CardTitle className="text-gray-600 font-medium">The Sector in Numbers</CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        
+                        {/* School Profile Metric */}
+                        <div className="bg-white border border-gray-100 rounded-[10px] shadow-sm flex items-center p-4 transition-all hover:shadow-md">
+                            <div className="bg-[#f59e0b] w-14 h-14 rounded-[12px] flex items-center justify-center shrink-0">
+                                <Building2 className="text-white h-7 w-7" />
+                            </div>
+                            <div className="ml-4 flex-1">
+                                <p className="text-xl font-bold text-gray-900 leading-none">
+                                    {profile ? profile.name : "Not Setup"}
+                                </p>
+                                <p className="text-xs text-gray-500 mt-1.5 font-medium">School Profile</p>
+                            </div>
+                        </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                
-                {/* School Profile Card */}
-                <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-                    <div className="flex items-center space-x-3 mb-4">
-                        <div className="bg-blue-100 p-2 rounded-lg text-blue-700">
-                            <Building2 className="h-6 w-6" />
+                        {/* Academic Year Metric */}
+                        <div className="bg-white border border-gray-100 rounded-[10px] shadow-sm flex items-center p-4 transition-all hover:shadow-md">
+                            <div className="bg-[#10b981] w-14 h-14 rounded-[12px] flex items-center justify-center shrink-0">
+                                <Calendar className="text-white h-7 w-7" />
+                            </div>
+                            <div className="ml-4 flex-1">
+                                <p className="text-xl font-bold text-gray-900 leading-none">
+                                    {activeYear ? activeYear.name : "None"}
+                                </p>
+                                <p className="text-xs text-gray-500 mt-1.5 font-medium">Active Academic Year</p>
+                            </div>
                         </div>
-                        <h2 className="text-lg font-bold text-slate-900">School Profile</h2>
-                    </div>
-                    {profile ? (
-                        <div className="space-y-2 text-sm text-slate-600">
-                            <p><span className="font-semibold text-slate-700">Name:</span> {profile.name}</p>
-                            <p><span className="font-semibold text-slate-700">Status:</span> 
-                                <span className="ml-1 inline-block px-2 py-0.5 bg-green-100 text-green-800 rounded text-xs font-bold uppercase">{profile.status}</span>
-                            </p>
-                            <p><span className="font-semibold text-slate-700">Email:</span> {profile.contactEmail || "N/A"}</p>
-                            <p><span className="font-semibold text-slate-700">Phone:</span> {profile.contactPhone || "N/A"}</p>
-                            <p><span className="font-semibold text-slate-700">Address:</span> {profile.address || "N/A"}</p>
-                        </div>
-                    ) : (
-                        <p className="text-sm text-slate-500">School profile not found.</p>
-                    )}
-                </div>
 
-                {/* Academic Year Card */}
-                <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-                    <div className="flex items-center space-x-3 mb-4">
-                        <div className="bg-indigo-100 p-2 rounded-lg text-indigo-700">
-                            <Calendar className="h-6 w-6" />
+                        {/* Students Metric */}
+                        <div className="bg-white border border-gray-100 rounded-[10px] shadow-sm flex items-center p-4 transition-all hover:shadow-md">
+                            <div className="bg-[#ef4444] w-14 h-14 rounded-[12px] flex items-center justify-center shrink-0">
+                                <Users className="text-white h-7 w-7" />
+                            </div>
+                            <div className="ml-4 flex-1">
+                                <p className="text-xl font-bold text-gray-900 leading-none">
+                                    {students.length}
+                                </p>
+                                <p className="text-xs text-gray-500 mt-1.5 font-medium">Enrolled Students</p>
+                            </div>
                         </div>
-                        <h2 className="text-lg font-bold text-slate-900">Academic Year</h2>
-                    </div>
-                    {activeYear ? (
-                        <div className="space-y-2 text-sm text-slate-600">
-                            <p><span className="font-semibold text-slate-700">Current Year:</span> {activeYear.name}</p>
-                            <p><span className="font-semibold text-slate-700">Start Date:</span> {new Date(activeYear.startDate).toLocaleDateString()}</p>
-                            <p><span className="font-semibold text-slate-700">End Date:</span> {new Date(activeYear.endDate).toLocaleDateString()}</p>
-                            <p><span className="font-semibold text-slate-700">Status:</span> 
-                                <span className="ml-1 inline-block px-2 py-0.5 bg-indigo-100 text-indigo-800 rounded text-xs font-bold uppercase">{activeYear.status}</span>
-                            </p>
-                        </div>
-                    ) : (
-                        <p className="text-sm text-slate-500">No active academic year configured.</p>
-                    )}
-                </div>
 
-                {/* Students Card */}
-                <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-                    <div className="flex items-center space-x-3 mb-4">
-                        <div className="bg-emerald-100 p-2 rounded-lg text-emerald-700">
-                            <Users className="h-6 w-6" />
+                        {/* Teachers Metric */}
+                        <div className="bg-white border border-gray-100 rounded-[10px] shadow-sm flex items-center p-4 transition-all hover:shadow-md">
+                            <div className="bg-[#8b5cf6] w-14 h-14 rounded-[12px] flex items-center justify-center shrink-0">
+                                <GraduationCap className="text-white h-7 w-7" />
+                            </div>
+                            <div className="ml-4 flex-1">
+                                <p className="text-xl font-bold text-gray-900 leading-none">
+                                    {teachers.length}
+                                </p>
+                                <p className="text-xs text-gray-500 mt-1.5 font-medium">Active Teachers</p>
+                            </div>
                         </div>
-                        <h2 className="text-lg font-bold text-slate-900">Students</h2>
-                    </div>
-                    <div className="mt-4">
-                        <p className="text-sm text-slate-500 font-medium">Total Enrollments</p>
-                        <p className="text-3xl font-bold text-slate-900">{students.length}</p>
-                    </div>
-                </div>
 
-                {/* Teachers Card */}
-                <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
-                    <div className="flex items-center space-x-3 mb-4">
-                        <div className="bg-violet-100 p-2 rounded-lg text-violet-700">
-                            <GraduationCap className="h-6 w-6" />
-                        </div>
-                        <h2 className="text-lg font-bold text-slate-900">Teachers</h2>
                     </div>
-                    <div className="mt-4">
-                        <p className="text-sm text-slate-500 font-medium">Active Faculty</p>
-                        <p className="text-3xl font-bold text-slate-900">{teachers.length}</p>
-                    </div>
-                </div>
-
-            </div>
+                </CardContent>
+            </Card>
         </div>
     );
 }

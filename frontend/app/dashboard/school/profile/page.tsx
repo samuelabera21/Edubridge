@@ -3,7 +3,11 @@
 import { useEffect, useState } from "react";
 import { fetchApi } from "@/lib/api";
 import { useAuth } from "@/hooks/useAuth";
-import { Building2, Save, Loader2, AlertCircle, CheckCircle2 } from "lucide-react";
+import { Building2, Save, CheckCircle2 } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/Card";
+import { Button } from "@/components/ui/Button";
+import { LoadingState } from "@/components/ui/LoadingState";
+import { ErrorState } from "@/components/ui/ErrorState";
 
 export default function SchoolProfilePage() {
     const { authData } = useAuth(); // Auth verified by layout
@@ -105,20 +109,11 @@ export default function SchoolProfilePage() {
     };
 
     if (loading) {
-        return (
-            <div className="flex justify-center p-12">
-                <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
-            </div>
-        );
+        return <LoadingState message="Loading school profile..." />;
     }
 
     if (error && !schoolName) {
-        return (
-            <div className="bg-red-50 text-red-700 p-4 rounded-md border border-red-200 flex items-start space-x-3">
-                <AlertCircle className="h-5 w-5 mt-0.5" />
-                <p>{error}</p>
-            </div>
-        );
+        return <ErrorState message={error} onRetry={() => window.location.reload()} />;
     }
 
     return (
@@ -132,9 +127,8 @@ export default function SchoolProfilePage() {
             </div>
 
             {error && (
-                <div className="bg-red-50 text-red-700 p-4 rounded-md border border-red-200 mb-6 flex items-start space-x-3">
-                    <AlertCircle className="h-5 w-5 mt-0.5" />
-                    <p>{error}</p>
+                <div className="mb-6">
+                    <ErrorState title="Error" message={error} />
                 </div>
             )}
 
@@ -145,7 +139,8 @@ export default function SchoolProfilePage() {
                 </div>
             )}
 
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 sm:p-8">
+            <Card>
+                <CardContent className="sm:p-8">
                 <form onSubmit={handleSubmit} className="space-y-6">
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Organization Name</label>
@@ -215,14 +210,13 @@ export default function SchoolProfilePage() {
 
                     {hasUpdatePermission ? (
                         <div className="pt-4 border-t border-gray-100 flex justify-end">
-                            <button
+                            <Button
                                 type="submit"
-                                disabled={saving}
-                                className="bg-[#4085b3] text-white px-6 py-2.5 rounded-md font-medium hover:bg-[#32698e] transition-colors flex items-center space-x-2 disabled:opacity-70"
+                                isLoading={saving}
+                                leftIcon={<Save className="h-5 w-5" />}
                             >
-                                {saving ? <Loader2 className="animate-spin h-5 w-5" /> : <Save className="h-5 w-5" />}
-                                <span>{saving ? "Saving..." : "Save Profile"}</span>
-                            </button>
+                                Save Profile
+                            </Button>
                         </div>
                     ) : (
                         <div className="pt-4 border-t border-gray-100 text-sm text-gray-500 italic">
@@ -230,7 +224,8 @@ export default function SchoolProfilePage() {
                         </div>
                     )}
                 </form>
-            </div>
+                </CardContent>
+            </Card>
         </div>
     );
 }

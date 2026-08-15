@@ -1,33 +1,43 @@
 "use client";
 
+import { useState } from "react";
 import { useAuth } from "../../hooks/useAuth";
-import { Loader2, BookOpen, LogOut, LayoutDashboard, Building } from "lucide-react";
+import { Loader2, BookOpen, LogOut, LayoutDashboard, Building, Search, Lock, ChevronDown, ChevronRight, Calendar, Users, GraduationCap, ClipboardCheck, FileText, Settings, User } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { fetchApi } from "../../lib/api";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
-    const { authData, loading, error } = useAuth(true); // requireAuth = true
+    const { authData, loading, error } = useAuth(true);
     const pathname = usePathname();
     const router = useRouter();
 
+    const [openMenus, setOpenMenus] = useState<Record<string, boolean>>({
+        academics: pathname.startsWith("/dashboard/academics"),
+        students: pathname.startsWith("/dashboard/students"),
+        teachers: pathname.startsWith("/dashboard/teachers"),
+        attendance: pathname.startsWith("/dashboard/attendance"),
+    });
+
+    const toggleMenu = (key: string) => {
+        setOpenMenus(prev => ({ ...prev, [key]: !prev[key] }));
+    };
+
     if (loading) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-gray-50 text-gray-700">
-                <Loader2 className="h-8 w-8 animate-spin text-blue-600 mr-3" />
+            <div className="min-h-screen flex items-center justify-center bg-[#f4f5f7] text-gray-700">
+                <Loader2 className="h-8 w-8 animate-spin text-[#006b3f] mr-3" />
                 <span className="text-lg font-medium">Verifying access...</span>
             </div>
         );
     }
 
     if (error || !authData) {
-        return null; // The hook redirects to login if unauthenticated
+        return null;
     }
 
-    // Determine highest role for display (Simplification for Sprint 1 demo)
     const primaryAccess = authData.access[0];
     const roleName = primaryAccess?.role?.name || "Unassigned";
-    const scopeName = primaryAccess?.scope?.name || "No Organization";
 
     const handleLogout = async () => {
         try {
@@ -38,469 +48,186 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         }
     };
 
+    const isLinkActive = (path: string) => pathname.startsWith(path);
+
     return (
-        <div className="min-h-screen flex bg-gray-50 font-sans">
-            {/* Sidebar */}
-            <aside className="w-64 bg-[#2c3e50] text-white flex flex-col shadow-xl hidden md:flex animate-fade-in">
-                <div className="p-6 flex items-center space-x-3 border-b border-white/10">
-                    <div className="bg-[#4085b3] p-1.5 rounded-full shadow-sm">
-                        <BookOpen className="h-6 w-6 text-white" />
+        <div className="min-h-screen flex flex-col bg-[#f4f5f7] font-sans">
+            {/* Top Navigation Bar */}
+            <header className="bg-white border-b border-gray-200 h-16 flex items-center justify-between px-6 z-10">
+                <div className="flex items-center space-x-2">
+                    <div className="text-blue-500">
+                        {/* Placeholder for Logo, using an icon for now */}
+                        <svg className="w-8 h-8" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M12 2L2 7l10 5 10-5-10-5zm0 7.5L4.5 7 12 4.25 19.5 7 12 9.5zM2 12l10 5 10-5v5l-10 5-10-5v-5z"/>
+                        </svg>
                     </div>
-                    <span className="text-xl font-bold tracking-tight">EduBridge</span>
+                    <span className="text-xl font-bold text-orange-500 tracking-tight">Edu<span className="text-blue-500">Bridge</span></span>
                 </div>
-                
-                <div className="p-5 border-b border-white/10 bg-white/5">
-                    <p className="text-[10px] text-gray-400 uppercase font-bold tracking-wider mb-1">Role</p>
-                    <p className="font-semibold text-sm text-sky-100 truncate">{roleName.replace("_", " ")}</p>
+
+                <div className="hidden md:flex items-center space-x-6">
+                    <nav className="flex space-x-6 text-sm font-bold text-gray-700">
+                        <Link href="/dashboard" className="flex items-center hover:text-[#006b3f] transition-colors"><Building className="w-4 h-4 mr-1"/> About</Link>
+                        <Link href="/dashboard" className="flex items-center hover:text-[#006b3f] transition-colors"><LayoutDashboard className="w-4 h-4 mr-1"/> Dashboard</Link>
+                        <Link href="/dashboard/school/profile" className="flex items-center hover:text-[#006b3f] transition-colors">School Profile</Link>
+                        <Link href="/dashboard/academics/years" className="flex items-center hover:text-[#006b3f] transition-colors">Academics</Link>
+                        <Link href="#" className="flex items-center hover:text-[#006b3f] transition-colors"><Lock className="w-4 h-4 ml-1"/></Link>
+                    </nav>
                     
-                    <p className="text-[10px] text-gray-400 uppercase font-bold tracking-wider mt-4 mb-1">Scope</p>
-                    <p className="font-semibold text-sm text-sky-100 truncate" title={scopeName}>{scopeName}</p>
-                </div>
-
-                <nav className="flex-1 p-4 space-y-2">
-                    <Link 
-                        href="/dashboard" 
-                        className={`flex items-center space-x-3 px-3 py-2.5 rounded transition-all duration-200 ${pathname === "/dashboard" ? "bg-[#4085b3] text-white shadow-sm" : "text-gray-300 hover:bg-white/10 hover:text-white"}`}
-                    >
-                        <LayoutDashboard className="h-5 w-5" />
-                        <span className="font-medium text-sm">Overview</span>
-                    </Link>
-
-                    {roleName === "SCHOOL_ADMIN" && (
-                        <div className="space-y-4">
-                            {/* 1. Dashboard */}
-                            <div className="pt-2">
-                                <Link 
-                                    href="/dashboard/admin" 
-                                    className={`flex items-center space-x-3 px-3 py-2.5 rounded transition-all duration-200 ${pathname === "/dashboard/admin" ? "bg-[#4085b3] text-white shadow-sm" : "text-gray-300 hover:bg-white/10 hover:text-white"}`}
-                                >
-                                    <LayoutDashboard className="h-5 w-5" />
-                                    <span className="font-medium text-sm">Admin Dashboard</span>
-                                </Link>
-                            </div>
-
-                            {/* 2. School */}
-                            <div className="pt-2">
-                                <p className="px-3 text-[10px] text-gray-400 uppercase font-bold tracking-wider mb-1">School</p>
-                                <Link 
-                                    href="/dashboard/school/profile" 
-                                    className={`flex items-center space-x-3 px-3 py-2 rounded transition-all duration-200 ${pathname === "/dashboard/school/profile" ? "text-white bg-white/5" : "text-gray-400 hover:text-gray-200"}`}
-                                >
-                                    <div className={`w-1.5 h-1.5 rounded-full ${pathname === "/dashboard/school/profile" ? "bg-[#4085b3]" : "bg-gray-600"}`}></div>
-                                    <span className="font-medium text-sm">School Profile</span>
-                                </Link>
-                            </div>
-
-                            {/* 3. Academics */}
-                            <div className="pt-2">
-                                <p className="px-3 text-[10px] text-gray-400 uppercase font-bold tracking-wider mb-1">Academics</p>
-                                <Link href="#" title="Pending Implementation" className="flex items-center space-x-3 px-3 py-2 rounded transition-all duration-200 text-gray-500 hover:text-gray-300 cursor-not-allowed">
-                                    <div className="w-1.5 h-1.5 rounded-full bg-gray-700"></div>
-                                    <span className="font-medium text-sm italic">Academic Years</span>
-                                </Link>
-                                <Link href="#" title="Pending Implementation" className="flex items-center space-x-3 px-3 py-2 rounded transition-all duration-200 text-gray-500 hover:text-gray-300 cursor-not-allowed">
-                                    <div className="w-1.5 h-1.5 rounded-full bg-gray-700"></div>
-                                    <span className="font-medium text-sm italic">Grades & Sections</span>
-                                </Link>
-                                <Link href="#" title="Pending Implementation" className="flex items-center space-x-3 px-3 py-2 rounded transition-all duration-200 text-gray-500 hover:text-gray-300 cursor-not-allowed">
-                                    <div className="w-1.5 h-1.5 rounded-full bg-gray-700"></div>
-                                    <span className="font-medium text-sm italic">Subjects</span>
-                                </Link>
-                                <Link href="#" title="Pending Implementation" className="flex items-center space-x-3 px-3 py-2 rounded transition-all duration-200 text-gray-500 hover:text-gray-300 cursor-not-allowed">
-                                    <div className="w-1.5 h-1.5 rounded-full bg-gray-700"></div>
-                                    <span className="font-medium text-sm italic">Timetable</span>
-                                </Link>
-                            </div>
-
-                            {/* 4. Students */}
-                            <div className="pt-2">
-                                <p className="px-3 text-[10px] text-gray-400 uppercase font-bold tracking-wider mb-1">Students</p>
-                                <Link href="#" title="Pending Implementation" className="flex items-center space-x-3 px-3 py-2 rounded transition-all duration-200 text-gray-500 hover:text-gray-300 cursor-not-allowed">
-                                    <div className="w-1.5 h-1.5 rounded-full bg-gray-700"></div>
-                                    <span className="font-medium text-sm italic">Students</span>
-                                </Link>
-                                <Link href="#" title="Pending Implementation" className="flex items-center space-x-3 px-3 py-2 rounded transition-all duration-200 text-gray-500 hover:text-gray-300 cursor-not-allowed">
-                                    <div className="w-1.5 h-1.5 rounded-full bg-gray-700"></div>
-                                    <span className="font-medium text-sm italic">Enrollments</span>
-                                </Link>
-                            </div>
-
-                            {/* 5. Teachers */}
-                            <div className="pt-2">
-                                <p className="px-3 text-[10px] text-gray-400 uppercase font-bold tracking-wider mb-1">Teachers</p>
-                                <Link href="#" title="Pending Implementation" className="flex items-center space-x-3 px-3 py-2 rounded transition-all duration-200 text-gray-500 hover:text-gray-300 cursor-not-allowed">
-                                    <div className="w-1.5 h-1.5 rounded-full bg-gray-700"></div>
-                                    <span className="font-medium text-sm italic">Teachers</span>
-                                </Link>
-                                <Link href="#" title="Pending Implementation" className="flex items-center space-x-3 px-3 py-2 rounded transition-all duration-200 text-gray-500 hover:text-gray-300 cursor-not-allowed">
-                                    <div className="w-1.5 h-1.5 rounded-full bg-gray-700"></div>
-                                    <span className="font-medium text-sm italic">Teaching Assignments</span>
-                                </Link>
-                            </div>
-
-                            {/* 6. Attendance */}
-                            <div className="pt-2">
-                                <p className="px-3 text-[10px] text-gray-400 uppercase font-bold tracking-wider mb-1">Attendance</p>
-                                <Link href="#" title="Pending Implementation" className="flex items-center space-x-3 px-3 py-2 rounded transition-all duration-200 text-gray-500 hover:text-gray-300 cursor-not-allowed">
-                                    <div className="w-1.5 h-1.5 rounded-full bg-gray-700"></div>
-                                    <span className="font-medium text-sm italic">Student Attendance</span>
-                                </Link>
-                                <Link href="#" title="Pending Implementation" className="flex items-center space-x-3 px-3 py-2 rounded transition-all duration-200 text-gray-500 hover:text-gray-300 cursor-not-allowed">
-                                    <div className="w-1.5 h-1.5 rounded-full bg-gray-700"></div>
-                                    <span className="font-medium text-sm italic">Teacher Attendance</span>
-                                </Link>
-                            </div>
-
-                            {/* 7. Assessment */}
-                            <div className="pt-2">
-                                <p className="px-3 text-[10px] text-gray-400 uppercase font-bold tracking-wider mb-1">Assessment</p>
-                                <Link href="#" title="Pending Implementation" className="flex items-center space-x-3 px-3 py-2 rounded transition-all duration-200 text-gray-500 hover:text-gray-300 cursor-not-allowed">
-                                    <div className="w-1.5 h-1.5 rounded-full bg-gray-700"></div>
-                                    <span className="font-medium text-sm italic">Assessments</span>
-                                </Link>
-                                <Link href="#" title="Pending Implementation" className="flex items-center space-x-3 px-3 py-2 rounded transition-all duration-200 text-gray-500 hover:text-gray-300 cursor-not-allowed">
-                                    <div className="w-1.5 h-1.5 rounded-full bg-gray-700"></div>
-                                    <span className="font-medium text-sm italic">Student Results</span>
-                                </Link>
-                            </div>
-
-                            {/* 8. Learning & Support */}
-                            <div className="pt-2">
-                                <p className="px-3 text-[10px] text-gray-400 uppercase font-bold tracking-wider mb-1">Learning & Support</p>
-                                <Link href="#" title="Pending Implementation" className="flex items-center space-x-3 px-3 py-2 rounded transition-all duration-200 text-gray-500 hover:text-gray-300 cursor-not-allowed">
-                                    <div className="w-1.5 h-1.5 rounded-full bg-gray-700"></div>
-                                    <span className="font-medium text-sm italic">Learning Activities</span>
-                                </Link>
-                                <Link href="#" title="Pending Implementation" className="flex items-center space-x-3 px-3 py-2 rounded transition-all duration-200 text-gray-500 hover:text-gray-300 cursor-not-allowed">
-                                    <div className="w-1.5 h-1.5 rounded-full bg-gray-700"></div>
-                                    <span className="font-medium text-sm italic">Submissions</span>
-                                </Link>
-                                <Link href="#" title="Pending Implementation" className="flex items-center space-x-3 px-3 py-2 rounded transition-all duration-200 text-gray-500 hover:text-gray-300 cursor-not-allowed">
-                                    <div className="w-1.5 h-1.5 rounded-full bg-gray-700"></div>
-                                    <span className="font-medium text-sm italic">Support Flags</span>
-                                </Link>
-                            </div>
-
-                            {/* 9. Parents */}
-                            <div className="pt-2">
-                                <p className="px-3 text-[10px] text-gray-400 uppercase font-bold tracking-wider mb-1">Parents</p>
-                                <Link href="#" title="Pending Implementation" className="flex items-center space-x-3 px-3 py-2 rounded transition-all duration-200 text-gray-500 hover:text-gray-300 cursor-not-allowed">
-                                    <div className="w-1.5 h-1.5 rounded-full bg-gray-700"></div>
-                                    <span className="font-medium text-sm italic">Parents</span>
-                                </Link>
-                                <Link href="#" title="Pending Implementation" className="flex items-center space-x-3 px-3 py-2 rounded transition-all duration-200 text-gray-500 hover:text-gray-300 cursor-not-allowed">
-                                    <div className="w-1.5 h-1.5 rounded-full bg-gray-700"></div>
-                                    <span className="font-medium text-sm italic">Student Relationships</span>
-                                </Link>
-                            </div>
-
-                            {/* 10. Communication */}
-                            <div className="pt-2">
-                                <p className="px-3 text-[10px] text-gray-400 uppercase font-bold tracking-wider mb-1">Communication</p>
-                                <Link href="#" title="Pending Implementation" className="flex items-center space-x-3 px-3 py-2 rounded transition-all duration-200 text-gray-500 hover:text-gray-300 cursor-not-allowed">
-                                    <div className="w-1.5 h-1.5 rounded-full bg-gray-700"></div>
-                                    <span className="font-medium text-sm italic">Announcements</span>
-                                </Link>
-                                <Link href="#" title="Pending Implementation" className="flex items-center space-x-3 px-3 py-2 rounded transition-all duration-200 text-gray-500 hover:text-gray-300 cursor-not-allowed">
-                                    <div className="w-1.5 h-1.5 rounded-full bg-gray-700"></div>
-                                    <span className="font-medium text-sm italic">Notifications</span>
-                                </Link>
-                                <Link href="#" title="Pending Implementation" className="flex items-center space-x-3 px-3 py-2 rounded transition-all duration-200 text-gray-500 hover:text-gray-300 cursor-not-allowed">
-                                    <div className="w-1.5 h-1.5 rounded-full bg-gray-700"></div>
-                                    <span className="font-medium text-sm italic">Messages</span>
-                                </Link>
-                            </div>
-
-                            {/* 11. Operations */}
-                            <div className="pt-2 pb-6">
-                                <p className="px-3 text-[10px] text-gray-400 uppercase font-bold tracking-wider mb-1">Operations</p>
-                                <Link href="#" title="Pending Implementation" className="flex items-center space-x-3 px-3 py-2 rounded transition-all duration-200 text-gray-500 hover:text-gray-300 cursor-not-allowed">
-                                    <div className="w-1.5 h-1.5 rounded-full bg-gray-700"></div>
-                                    <span className="font-medium text-sm italic">Resources</span>
-                                </Link>
-                                <Link href="#" title="Pending Implementation" className="flex items-center space-x-3 px-3 py-2 rounded transition-all duration-200 text-gray-500 hover:text-gray-300 cursor-not-allowed">
-                                    <div className="w-1.5 h-1.5 rounded-full bg-gray-700"></div>
-                                    <span className="font-medium text-sm italic">Issues</span>
-                                </Link>
-                                <Link href="#" title="Pending Implementation" className="flex items-center space-x-3 px-3 py-2 rounded transition-all duration-200 text-gray-500 hover:text-gray-300 cursor-not-allowed">
-                                    <div className="w-1.5 h-1.5 rounded-full bg-gray-700"></div>
-                                    <span className="font-medium text-sm italic">Improvement Plans</span>
-                                </Link>
-                            </div>
-                        </div>
-                    )}
-
-                    {roleName === "STUDENT" && (
-                        <>
-                            <div className="pt-4 pb-1">
-                                <p className="px-3 text-[10px] text-gray-400 uppercase font-bold tracking-wider">My Academics</p>
-                            </div>
-                            
-                            <Link 
-                                href="/dashboard/student" 
-                                className={`flex items-center space-x-3 px-3 py-2 rounded transition-all duration-200 ${pathname === "/dashboard/student" ? "text-white bg-white/5" : "text-gray-400 hover:text-gray-200"}`}
-                            >
-                                <div className={`w-1.5 h-1.5 rounded-full ${pathname === "/dashboard/student" ? "bg-[#4085b3]" : "bg-gray-600"}`}></div>
-                                <span className="font-medium text-sm">Dashboard</span>
-                            </Link>
-
-                            <Link 
-                                href="#" 
-                                className={`flex items-center space-x-3 px-3 py-2 rounded transition-all duration-200 text-gray-400 hover:text-gray-200`}
-                            >
-                                <div className="w-1.5 h-1.5 rounded-full bg-gray-600"></div>
-                                <span className="font-medium text-sm">My Schedule</span>
-                            </Link>
-
-                            <Link 
-                                href="#" 
-                                className={`flex items-center space-x-3 px-3 py-2 rounded transition-all duration-200 text-gray-400 hover:text-gray-200`}
-                            >
-                                <div className="w-1.5 h-1.5 rounded-full bg-gray-600"></div>
-                                <span className="font-medium text-sm">My Grades</span>
-                            </Link>
-                        </>
-                    )}
-
-                    {roleName === "TEACHER" && (
-                        <>
-                            <div className="pt-4 pb-1">
-                                <p className="px-3 text-[10px] text-gray-400 uppercase font-bold tracking-wider">My Classroom</p>
-                            </div>
-                            
-                            <Link 
-                                href="/dashboard/teacher" 
-                                className={`flex items-center space-x-3 px-3 py-2 rounded transition-all duration-200 ${pathname === "/dashboard/teacher" ? "text-white bg-white/5" : "text-gray-400 hover:text-gray-200"}`}
-                            >
-                                <div className={`w-1.5 h-1.5 rounded-full ${pathname === "/dashboard/teacher" ? "bg-[#4085b3]" : "bg-gray-600"}`}></div>
-                                <span className="font-medium text-sm">Dashboard</span>
-                            </Link>
-
-                            <Link 
-                                href="#" 
-                                className={`flex items-center space-x-3 px-3 py-2 rounded transition-all duration-200 text-gray-400 hover:text-gray-200`}
-                            >
-                                <div className="w-1.5 h-1.5 rounded-full bg-gray-600"></div>
-                                <span className="font-medium text-sm">My Classes</span>
-                            </Link>
-
-                            <Link 
-                                href="#" 
-                                className={`flex items-center space-x-3 px-3 py-2 rounded transition-all duration-200 text-gray-400 hover:text-gray-200`}
-                            >
-                                <div className="w-1.5 h-1.5 rounded-full bg-gray-600"></div>
-                                <span className="font-medium text-sm">My Students</span>
-                            </Link>
-                            
-                            <Link 
-                                href="#" 
-                                className={`flex items-center space-x-3 px-3 py-2 rounded transition-all duration-200 text-gray-400 hover:text-gray-200`}
-                            >
-                                <div className="w-1.5 h-1.5 rounded-full bg-gray-600"></div>
-                                <span className="font-medium text-sm">Grading</span>
-                            </Link>
-                        </>
-                    )}
-
-                    {roleName === "PARENT" && (
-                        <>
-                            <div className="pt-4 pb-1">
-                                <p className="px-3 text-[10px] text-gray-400 uppercase font-bold tracking-wider">Family Portal</p>
-                            </div>
-                            
-                            <Link 
-                                href="/dashboard/parent" 
-                                className={`flex items-center space-x-3 px-3 py-2 rounded transition-all duration-200 ${pathname === "/dashboard/parent" ? "text-white bg-white/5" : "text-gray-400 hover:text-gray-200"}`}
-                            >
-                                <div className={`w-1.5 h-1.5 rounded-full ${pathname === "/dashboard/parent" ? "bg-[#4085b3]" : "bg-gray-600"}`}></div>
-                                <span className="font-medium text-sm">Dashboard</span>
-                            </Link>
-
-                            <Link 
-                                href="#" 
-                                className={`flex items-center space-x-3 px-3 py-2 rounded transition-all duration-200 text-gray-400 hover:text-gray-200`}
-                            >
-                                <div className="w-1.5 h-1.5 rounded-full bg-gray-600"></div>
-                                <span className="font-medium text-sm">My Children</span>
-                            </Link>
-
-                            <Link 
-                                href="#" 
-                                className={`flex items-center space-x-3 px-3 py-2 rounded transition-all duration-200 text-gray-400 hover:text-gray-200`}
-                            >
-                                <div className="w-1.5 h-1.5 rounded-full bg-gray-600"></div>
-                                <span className="font-medium text-sm">Attendance</span>
-                            </Link>
-                            
-                            <Link 
-                                href="#" 
-                                className={`flex items-center space-x-3 px-3 py-2 rounded transition-all duration-200 text-gray-400 hover:text-gray-200`}
-                            >
-                                <div className="w-1.5 h-1.5 rounded-full bg-gray-600"></div>
-                                <span className="font-medium text-sm">Messages</span>
-                            </Link>
-                        </>
-                    )}
-
-                    {roleName === "VICE_PRINCIPAL" && (
-                        <>
-                            <div className="pt-4 pb-1">
-                                <p className="px-3 text-[10px] text-gray-400 uppercase font-bold tracking-wider">Academic Leadership</p>
-                            </div>
-                            
-                            <Link 
-                                href="/dashboard/vice-principal" 
-                                className={`flex items-center space-x-3 px-3 py-2 rounded transition-all duration-200 ${pathname === "/dashboard/vice-principal" ? "text-white bg-white/5" : "text-gray-400 hover:text-gray-200"}`}
-                            >
-                                <div className={`w-1.5 h-1.5 rounded-full ${pathname === "/dashboard/vice-principal" ? "bg-[#4085b3]" : "bg-gray-600"}`}></div>
-                                <span className="font-medium text-sm">Dashboard</span>
-                            </Link>
-
-                            <Link 
-                                href="#" 
-                                className={`flex items-center space-x-3 px-3 py-2 rounded transition-all duration-200 text-gray-400 hover:text-gray-200`}
-                            >
-                                <div className="w-1.5 h-1.5 rounded-full bg-gray-600"></div>
-                                <span className="font-medium text-sm">Teacher Roster</span>
-                            </Link>
-
-                            <Link 
-                                href="#" 
-                                className={`flex items-center space-x-3 px-3 py-2 rounded transition-all duration-200 text-gray-400 hover:text-gray-200`}
-                            >
-                                <div className="w-1.5 h-1.5 rounded-full bg-gray-600"></div>
-                                <span className="font-medium text-sm">Curriculum</span>
-                            </Link>
-                            
-                            <Link 
-                                href="#" 
-                                className={`flex items-center space-x-3 px-3 py-2 rounded transition-all duration-200 text-gray-400 hover:text-gray-200`}
-                            >
-                                <div className="w-1.5 h-1.5 rounded-full bg-gray-600"></div>
-                                <span className="font-medium text-sm">Discipline</span>
-                            </Link>
-                        </>
-                    )}
-
-                    {roleName === "SUPPORT_STAFF" && (
-                        <>
-                            <div className="pt-4 pb-1">
-                                <p className="px-3 text-[10px] text-gray-400 uppercase font-bold tracking-wider">School Operations</p>
-                            </div>
-                            
-                            <Link 
-                                href="/dashboard/support-staff" 
-                                className={`flex items-center space-x-3 px-3 py-2 rounded transition-all duration-200 ${pathname === "/dashboard/support-staff" ? "text-white bg-white/5" : "text-gray-400 hover:text-gray-200"}`}
-                            >
-                                <div className={`w-1.5 h-1.5 rounded-full ${pathname === "/dashboard/support-staff" ? "bg-[#4085b3]" : "bg-gray-600"}`}></div>
-                                <span className="font-medium text-sm">Dashboard</span>
-                            </Link>
-
-                            <Link 
-                                href="#" 
-                                className={`flex items-center space-x-3 px-3 py-2 rounded transition-all duration-200 text-gray-400 hover:text-gray-200`}
-                            >
-                                <div className="w-1.5 h-1.5 rounded-full bg-gray-600"></div>
-                                <span className="font-medium text-sm">Service Desk</span>
-                            </Link>
-
-                            <Link 
-                                href="#" 
-                                className={`flex items-center space-x-3 px-3 py-2 rounded transition-all duration-200 text-gray-400 hover:text-gray-200`}
-                            >
-                                <div className="w-1.5 h-1.5 rounded-full bg-gray-600"></div>
-                                <span className="font-medium text-sm">Student Records</span>
-                            </Link>
-                            
-                            <Link 
-                                href="#" 
-                                className={`flex items-center space-x-3 px-3 py-2 rounded transition-all duration-200 text-gray-400 hover:text-gray-200`}
-                            >
-                                <div className="w-1.5 h-1.5 rounded-full bg-gray-600"></div>
-                                <span className="font-medium text-sm">Facilities</span>
-                            </Link>
-                        </>
-                    )}
-
-                    {roleName === "COMMITTEE" && (
-                        <>
-                            <div className="pt-4 pb-1">
-                                <p className="px-3 text-[10px] text-gray-400 uppercase font-bold tracking-wider">Committee Portal</p>
-                            </div>
-                            
-                            <Link 
-                                href="/dashboard/committee" 
-                                className={`flex items-center space-x-3 px-3 py-2 rounded transition-all duration-200 ${pathname === "/dashboard/committee" ? "text-white bg-white/5" : "text-gray-400 hover:text-gray-200"}`}
-                            >
-                                <div className={`w-1.5 h-1.5 rounded-full ${pathname === "/dashboard/committee" ? "bg-[#4085b3]" : "bg-gray-600"}`}></div>
-                                <span className="font-medium text-sm">Dashboard</span>
-                            </Link>
-
-                            <Link 
-                                href="#" 
-                                className={`flex items-center space-x-3 px-3 py-2 rounded transition-all duration-200 text-gray-400 hover:text-gray-200`}
-                            >
-                                <div className="w-1.5 h-1.5 rounded-full bg-gray-600"></div>
-                                <span className="font-medium text-sm">Board Meetings</span>
-                            </Link>
-
-                            <Link 
-                                href="#" 
-                                className={`flex items-center space-x-3 px-3 py-2 rounded transition-all duration-200 text-gray-400 hover:text-gray-200`}
-                            >
-                                <div className="w-1.5 h-1.5 rounded-full bg-gray-600"></div>
-                                <span className="font-medium text-sm">Reports</span>
-                            </Link>
-                            
-                            <Link 
-                                href="#" 
-                                className={`flex items-center space-x-3 px-3 py-2 rounded transition-all duration-200 text-gray-400 hover:text-gray-200`}
-                            >
-                                <div className="w-1.5 h-1.5 rounded-full bg-gray-600"></div>
-                                <span className="font-medium text-sm">Community Feedback</span>
-                            </Link>
-                        </>
-                    )}
-                </nav>
-
-                <div className="p-4 border-t border-white/10 bg-black/10">
-                    <div className="flex items-center space-x-3 mb-4 px-2">
-                        <div className="h-8 w-8 rounded-full bg-[#4085b3] flex items-center justify-center text-sm font-bold uppercase shadow-sm">
-                            {authData.user.name?.[0] || authData.user.email[0]}
-                        </div>
-                        <div className="overflow-hidden">
-                            <p className="text-sm font-semibold truncate text-white">{authData.user.name}</p>
-                            <p className="text-[11px] text-gray-400 truncate">{authData.user.email}</p>
-                        </div>
+                    <div className="relative">
+                        <input 
+                            type="text" 
+                            placeholder="Search ..." 
+                            className="bg-gray-100 border-none text-sm rounded-md pl-4 pr-10 py-1.5 focus:ring-2 focus:ring-[#006b3f] outline-none w-64"
+                        />
+                        <Search className="absolute right-3 top-2 h-4 w-4 text-gray-400" />
                     </div>
-                    <button 
-                        onClick={handleLogout}
-                        className="w-full flex items-center justify-center space-x-2 bg-white/5 hover:bg-red-500/90 transition-all text-gray-300 hover:text-white py-2 rounded text-sm font-medium border border-white/10 hover:border-transparent"
-                    >
-                        <LogOut className="h-4 w-4" />
-                        <span>Sign Out</span>
+
+                    <button onClick={handleLogout} className="text-gray-500 hover:text-red-600 transition-colors" title="Logout">
+                        <LogOut className="w-5 h-5" />
                     </button>
                 </div>
-            </aside>
+            </header>
 
-            {/* Main Content */}
-            <main className="flex-1 flex flex-col overflow-hidden animate-slide-in-right">
-                <header className="bg-white shadow-sm h-16 flex items-center px-6 md:hidden justify-between border-b border-gray-200">
-                    <div className="flex items-center space-x-3">
-                        <div className="bg-[#4085b3] p-1 rounded-full">
-                            <BookOpen className="h-5 w-5 text-white" />
-                        </div>
-                        <span className="text-lg font-bold text-[#2c3e50]">EduBridge</span>
+            <div className="flex flex-1 overflow-hidden">
+                {/* Sidebar */}
+                <aside className="w-64 bg-white border-r border-gray-200 flex flex-col hidden md:flex overflow-y-auto">
+                    <div className="p-4 pt-6">
+                        <p className="text-xs text-gray-500 uppercase font-bold tracking-wider mb-4 px-2">Navigation</p>
+                        
+                        <nav className="space-y-1">
+                            {roleName === "SCHOOL_ADMIN" && (
+                                <>
+                                    <Link 
+                                        href="/dashboard/admin" 
+                                        className={`flex items-center justify-between px-3 py-2.5 rounded-md text-sm transition-colors ${pathname === "/dashboard/admin" ? "bg-gray-100 text-gray-900 font-medium" : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"}`}
+                                    >
+                                        <div className="flex items-center space-x-3">
+                                            <LayoutDashboard className="w-4 h-4 text-gray-500" />
+                                            <span>Dashboard</span>
+                                        </div>
+                                    </Link>
+
+                                    <Link 
+                                        href="/dashboard/school/profile" 
+                                        className={`flex items-center justify-between px-3 py-2.5 rounded-md text-sm transition-colors ${pathname === "/dashboard/school/profile" ? "bg-gray-100 text-gray-900 font-medium" : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"}`}
+                                    >
+                                        <div className="flex items-center space-x-3">
+                                            <Building className="w-4 h-4 text-gray-500" />
+                                            <span>School Profile</span>
+                                        </div>
+                                    </Link>
+
+                                    {/* Academics Group */}
+                                    <div className="pt-2">
+                                        <button 
+                                            onClick={() => toggleMenu("academics")}
+                                            className="w-full flex items-center justify-between px-3 py-2.5 rounded-md text-sm text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors group"
+                                        >
+                                            <div className="flex items-center space-x-3">
+                                                <Calendar className="w-4 h-4 text-gray-500" />
+                                                <span>Academics</span>
+                                            </div>
+                                            {openMenus.academics ? 
+                                                <ChevronDown className="w-4 h-4 text-gray-600" /> : 
+                                                <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-gray-600" />
+                                            }
+                                        </button>
+                                        {openMenus.academics && (
+                                            <div className="pl-10 pr-3 py-1 space-y-1">
+                                                <Link href="/dashboard/academics/years" className={`block py-1.5 text-sm ${pathname === "/dashboard/academics/years" ? "text-[#006b3f] font-medium" : "text-gray-500 hover:text-[#006b3f]"}`}>Academic Years</Link>
+                                                <Link href="/dashboard/academics/grades" className={`block py-1.5 text-sm ${pathname.startsWith("/dashboard/academics/grades") ? "text-[#006b3f] font-medium" : "text-gray-500 hover:text-[#006b3f]"}`}>Grades & Sections</Link>
+                                                <Link href="#" className="block py-1.5 text-sm text-gray-400 cursor-not-allowed">Subjects</Link>
+                                                <Link href="#" className="block py-1.5 text-sm text-gray-400 cursor-not-allowed">Timetable</Link>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Students Group */}
+                                    <div className="pt-1">
+                                        <button 
+                                            onClick={() => toggleMenu("students")}
+                                            className="w-full flex items-center justify-between px-3 py-2.5 rounded-md text-sm text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors group"
+                                        >
+                                            <div className="flex items-center space-x-3">
+                                                <Users className="w-4 h-4 text-gray-500" />
+                                                <span>Students</span>
+                                            </div>
+                                            {openMenus.students ? 
+                                                <ChevronDown className="w-4 h-4 text-gray-600" /> : 
+                                                <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-gray-600" />
+                                            }
+                                        </button>
+                                        {openMenus.students && (
+                                            <div className="pl-10 pr-3 py-1 space-y-1">
+                                                <Link href="/dashboard/students" className={`block py-1.5 text-sm ${pathname === "/dashboard/students" ? "text-[#006b3f] font-medium" : "text-gray-500 hover:text-[#006b3f]"}`}>Students</Link>
+                                                <Link href="/dashboard/students/enrollments" className={`block py-1.5 text-sm ${pathname.startsWith("/dashboard/students/enrollments") ? "text-[#006b3f] font-medium" : "text-gray-500 hover:text-[#006b3f]"}`}>Enrollments</Link>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Teachers Group */}
+                                    <div className="pt-1">
+                                        <button 
+                                            onClick={() => toggleMenu("teachers")}
+                                            className="w-full flex items-center justify-between px-3 py-2.5 rounded-md text-sm text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors group"
+                                        >
+                                            <div className="flex items-center space-x-3">
+                                                <GraduationCap className="w-4 h-4 text-gray-500" />
+                                                <span>Teachers</span>
+                                            </div>
+                                            {openMenus.teachers ? 
+                                                <ChevronDown className="w-4 h-4 text-gray-600" /> : 
+                                                <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-gray-600" />
+                                            }
+                                        </button>
+                                        {openMenus.teachers && (
+                                            <div className="pl-10 pr-3 py-1 space-y-1">
+                                                <Link href="#" className="block py-1.5 text-sm text-gray-400 cursor-not-allowed">Teachers</Link>
+                                                <Link href="#" className="block py-1.5 text-sm text-gray-400 cursor-not-allowed">Assignments</Link>
+                                            </div>
+                                        )}
+                                    </div>
+                                    
+                                    {/* Additional generic placeholder groups for UI fidelity */}
+                                    <div className="pt-1">
+                                        <button 
+                                            onClick={() => toggleMenu("attendance")}
+                                            className="w-full flex items-center justify-between px-3 py-2.5 rounded-md text-sm text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors group"
+                                        >
+                                            <div className="flex items-center space-x-3">
+                                                <ClipboardCheck className="w-4 h-4 text-gray-500" />
+                                                <span>Attendance</span>
+                                            </div>
+                                            {openMenus.attendance ? 
+                                                <ChevronDown className="w-4 h-4 text-gray-600" /> : 
+                                                <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-gray-600" />
+                                            }
+                                        </button>
+                                        {openMenus.attendance && (
+                                            <div className="pl-10 pr-3 py-1 space-y-1">
+                                                <Link href="#" className="block py-1.5 text-sm text-gray-400 cursor-not-allowed">Student Attendance</Link>
+                                            </div>
+                                        )}
+                                    </div>
+                                </>
+                            )}
+                        </nav>
                     </div>
-                    <button onClick={handleLogout} className="p-2 text-gray-500 hover:text-red-600">
-                        <LogOut className="h-5 w-5" />
-                    </button>
-                </header>
-                
-                <div className="flex-1 overflow-auto p-4 md:p-8">
-                    {children}
-                </div>
-            </main>
+                </aside>
+
+                {/* Main Content Area */}
+                <main className="flex-1 flex flex-col overflow-y-auto">
+                    {/* Dark Green Banner */}
+                    <div className="bg-[#006b3f] text-white px-8 py-5">
+                        <h1 className="text-2xl font-bold tracking-wide">The hub for quality education in Ethiopia</h1>
+                    </div>
+                    
+                    {/* Page Content Padding */}
+                    <div className="p-6 md:p-8">
+                        {children}
+                    </div>
+                </main>
+            </div>
         </div>
     );
 }
