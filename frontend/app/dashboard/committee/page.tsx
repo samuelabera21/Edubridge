@@ -57,7 +57,7 @@ export default function CommitteeDashboard() {
                 </div>
 
                 <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 flex items-center space-x-4">
-                    <div className="p-3 bg-blue-50 text-blue-600 rounded-lg">
+                    <div className="p-3 bg-blue-50 text-blue-500 rounded-lg">
                         <FileBarChart className="w-6 h-6" />
                     </div>
                     <div>
