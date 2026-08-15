@@ -1,17 +1,76 @@
 import { Router } from "express";
-import { createTeacher, assignTeacher, getAssignments, getTeacherProfile } from "./teacher.controller.js";
+import { 
+    createTeacher, 
+    getTeachers,
+    assignTeacher, 
+    getAssignments, 
+    getTeacherProfile 
+} from "./teacher.controller.js";
 import { requirePermission, requireScope } from "../authentication/authorization.middleware.js";
 
 const router = Router();
 
-// Teacher Identity Management - explicitly scoped to SCHOOL context (as they belong to the organization)
-router.post("/", requireScope("SCHOOL"), requirePermission("ACADEMIC:CREATE"), createTeacher);
+// Ensure all teacher routes are scoped to SCHOOL
+router.use(requireScope("SCHOOL"));
 
-// Teaching Assignment Management - explicitly scoped to SCHOOL context
-router.post("/assignments", requireScope("SCHOOL"), requirePermission("ACADEMIC:CREATE"), assignTeacher);
-router.get("/assignments", requireScope("SCHOOL"), requirePermission("ACADEMIC:VIEW"), getAssignments);
+/**
+ * @openapi
+ * /api/teacher:
+ *   post:
+ *     tags: [Teachers]
+ *     summary: Create a teacher profile for the school
+ *     security:
+ *       - bearerAuth: []
+ *       - cookieAuth: []
+ */
+router.post("/", requirePermission("ACADEMIC:CREATE"), createTeacher);
 
-// Teacher self-service profile
-router.get("/me", requireScope("SCHOOL"), getTeacherProfile);
+/**
+ * @openapi
+ * /api/teacher:
+ *   get:
+ *     tags: [Teachers]
+ *     summary: Get all teachers for the school
+ *     security:
+ *       - bearerAuth: []
+ *       - cookieAuth: []
+ */
+router.get("/", requirePermission("ACADEMIC:VIEW"), getTeachers);
+
+/**
+ * @openapi
+ * /api/teacher/assignments:
+ *   post:
+ *     tags: [Teachers]
+ *     summary: Assign a teacher to a subject, grade, and section
+ *     security:
+ *       - bearerAuth: []
+ *       - cookieAuth: []
+ */
+router.post("/assignments", requirePermission("ACADEMIC:CREATE"), assignTeacher);
+
+/**
+ * @openapi
+ * /api/teacher/assignments:
+ *   get:
+ *     tags: [Teachers]
+ *     summary: Get teaching assignments within the school
+ *     security:
+ *       - bearerAuth: []
+ *       - cookieAuth: []
+ */
+router.get("/assignments", requirePermission("ACADEMIC:VIEW"), getAssignments);
+
+/**
+ * @openapi
+ * /api/teacher/me:
+ *   get:
+ *     tags: [Teachers]
+ *     summary: Get self-service profile
+ *     security:
+ *       - bearerAuth: []
+ *       - cookieAuth: []
+ */
+router.get("/me", getTeacherProfile);
 
 export default router;

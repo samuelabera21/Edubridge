@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import { AcademicService } from "./academic.service.js";
 
+// --- Academic Years ---
 export const getAcademicYears = async (req: Request, res: Response) => {
     try {
         const organizationId = (req as any).accessScope?.id;
@@ -30,17 +31,65 @@ export const createAcademicYear = async (req: Request, res: Response) => {
     }
 };
 
+export const activateAcademicYear = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        if (!organizationId) return res.status(403).json({ error: "Missing school scope" });
+
+        const year = await AcademicService.activateAcademicYear(organizationId, req.params.yearId as string);
+        res.json(year);
+    } catch (error) {
+        console.error("Error activating academic year:", error);
+        res.status(500).json({ error: "Internal server error" });
+    }
+};
+
+export const createAcademicCalendar = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        if (!organizationId) return res.status(403).json({ error: "Missing school scope" });
+        
+        const calendar = await AcademicService.createAcademicCalendar(req.params.yearId as string, req.body.description);
+        res.status(201).json(calendar);
+    } catch (error) {
+        res.status(400).json({ error: "Invalid request" });
+    }
+};
+
+export const createAcademicPeriod = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        if (!organizationId) return res.status(403).json({ error: "Missing school scope" });
+        
+        const period = await AcademicService.createAcademicPeriod(req.params.calendarId as string, req.body);
+        res.status(201).json(period);
+    } catch (error) {
+        res.status(400).json({ error: "Invalid request" });
+    }
+};
+
+// --- Grades & Sections ---
 export const getGrades = async (req: Request, res: Response) => {
     try {
         const organizationId = (req as any).accessScope?.id;
-        if (!organizationId) {
-            return res.status(403).json({ error: "Missing school scope" });
-        }
+        if (!organizationId) return res.status(403).json({ error: "Missing school scope" });
+        
         const grades = await AcademicService.getGrades(organizationId);
         res.json(grades);
     } catch (error) {
-        console.error("Error fetching grades:", error);
         res.status(500).json({ error: "Internal server error" });
+    }
+};
+
+export const createGrade = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        if (!organizationId) return res.status(403).json({ error: "Missing school scope" });
+        
+        const grade = await AcademicService.createGrade(organizationId, req.body);
+        res.status(201).json(grade);
+    } catch (error) {
+        res.status(400).json({ error: "Invalid request" });
     }
 };
 
@@ -49,12 +98,22 @@ export const getSchoolGrades = async (req: Request, res: Response) => {
         const organizationId = (req as any).accessScope?.id;
         if (!organizationId) return res.status(403).json({ error: "Missing school scope" });
         
-        const { yearId } = req.params;
-        const schoolGrades = await AcademicService.getSchoolGrades(organizationId, yearId);
+        const schoolGrades = await AcademicService.getSchoolGrades(organizationId, req.params.yearId as string);
         res.json(schoolGrades);
     } catch (error) {
-        console.error("Error fetching school grades:", error);
         res.status(404).json({ error: "Academic year not found or access denied" });
+    }
+};
+
+export const createSchoolGrade = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        if (!organizationId) return res.status(403).json({ error: "Missing school scope" });
+        
+        const sg = await AcademicService.createSchoolGrade(req.params.yearId as string, req.body.gradeId);
+        res.status(201).json(sg);
+    } catch (error) {
+        res.status(400).json({ error: "Invalid request" });
     }
 };
 
@@ -63,25 +122,58 @@ export const getSections = async (req: Request, res: Response) => {
         const organizationId = (req as any).accessScope?.id;
         if (!organizationId) return res.status(403).json({ error: "Missing school scope" });
         
-        const { schoolGradeId } = req.params;
-        const sections = await AcademicService.getSections(organizationId, schoolGradeId);
+        const sections = await AcademicService.getSections(organizationId, req.params.schoolGradeId as string);
         res.json(sections);
     } catch (error) {
-        console.error("Error fetching sections:", error);
         res.status(404).json({ error: "Grade not found or access denied" });
     }
 };
 
+export const createSection = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        if (!organizationId) return res.status(403).json({ error: "Missing school scope" });
+        
+        const section = await AcademicService.createSection(req.params.schoolGradeId as string, req.body.name, req.body.capacity);
+        res.status(201).json(section);
+    } catch (error) {
+        res.status(400).json({ error: "Invalid request" });
+    }
+};
+
+// --- Subjects ---
 export const getSubjects = async (req: Request, res: Response) => {
     try {
         const organizationId = (req as any).accessScope?.id;
-        if (!organizationId) {
-            return res.status(403).json({ error: "Missing school scope" });
-        }
+        if (!organizationId) return res.status(403).json({ error: "Missing school scope" });
+        
         const subjects = await AcademicService.getSubjects(organizationId);
         res.json(subjects);
     } catch (error) {
-        console.error("Error fetching subjects:", error);
         res.status(500).json({ error: "Internal server error" });
+    }
+};
+
+export const createSubject = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        if (!organizationId) return res.status(403).json({ error: "Missing school scope" });
+        
+        const subject = await AcademicService.createSubject(organizationId, req.body);
+        res.status(201).json(subject);
+    } catch (error) {
+        res.status(400).json({ error: "Invalid request" });
+    }
+};
+
+export const createSchoolSubject = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        if (!organizationId) return res.status(403).json({ error: "Missing school scope" });
+        
+        const ss = await AcademicService.createSchoolSubject(req.params.yearId as string, req.body.subjectId);
+        res.status(201).json(ss);
+    } catch (error) {
+        res.status(400).json({ error: "Invalid request" });
     }
 };

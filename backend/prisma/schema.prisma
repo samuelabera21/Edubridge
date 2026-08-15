@@ -23,10 +23,20 @@ model User {
   sessions Session[]
   accounts Account[]
 
-  roleAssignments RoleAssignment[]
-  auditLogs       AuditLog[]
-  teacher         Teacher?
-  parent          Parent?
+  roleAssignments    RoleAssignment[]
+  auditLogs          AuditLog[]
+  teacher            Teacher?
+  parent             Parent?
+  studentAttendances StudentAttendance[]
+  teacherAttendances TeacherAttendance[]
+  studentResults     StudentResult[]
+  supportFlags       SupportFlag[]
+  announcements      Announcement[]
+  notifications      Notification[]
+  sentMessages       Message[]           @relation("SentMessages")
+  receivedMessages   Message[]           @relation("ReceivedMessages")
+  reportedIssues     Issue[]             @relation("ReportedIssues")
+  assignedIssues     Issue[]             @relation("AssignedIssues")
 
   @@unique([email])
   @@map("user")
@@ -159,6 +169,17 @@ model OrganizationUnit {
   auditLogs          AuditLog[]
   studentEnrollments StudentEnrollment[]
   teachers           Teacher[]
+  classPeriods       ClassPeriod[]
+  timetables         Timetable[]
+  studentAttendances StudentAttendance[]
+  teacherAttendances TeacherAttendance[]
+  assessments        Assessment[]
+  learningActivities LearningActivity[]
+  supportFlags       SupportFlag[]
+  announcements      Announcement[]
+  resources          SchoolResource[]
+  issues             Issue[]
+  improvementPlans   ImprovementPlan[]
 
   @@index([parentId])
   @@index([type])
@@ -177,12 +198,14 @@ enum OrganizationUnitType {
 // ============================================================
 
 model SchoolProfile {
-  id              String  @id @default(cuid())
-  organizationId  String  @unique
+  id              String       @id @default(cuid())
+  organizationId  String       @unique
   establishedYear Int?
   contactEmail    String?
   phoneNumber     String?
   address         String?
+  status          SchoolStatus @default(ACTIVE)
+  configuration   Json?
 
   organization OrganizationUnit @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
@@ -190,6 +213,12 @@ model SchoolProfile {
   updatedAt DateTime @updatedAt
 
   @@map("school_profile")
+}
+
+enum SchoolStatus {
+  ACTIVE
+  INACTIVE
+  PENDING
 }
 
 // ============================================================
@@ -204,14 +233,20 @@ model AcademicYear {
   endDate        DateTime
   status         AcademicYearStatus @default(PLANNED)
 
-  organization   OrganizationUnit @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  schoolGrades   SchoolGrade[]
-  schoolSubjects SchoolSubject[]
+  organization     OrganizationUnit  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  schoolGrades     SchoolGrade[]
+  schoolSubjects   SchoolSubject[]
+  academicCalendar AcademicCalendar?
 
   createdAt           DateTime             @default(now())
   updatedAt           DateTime             @updatedAt
   studentEnrollments  StudentEnrollment[]
   teachingAssignments TeachingAssignment[]
+  timetables          Timetable[]
+  studentAttendances  StudentAttendance[]
+  teacherAttendances  TeacherAttendance[]
+  assessments         Assessment[]
+  learningActivities  LearningActivity[]
 
   @@unique([organizationId, name])
   @@map("academic_year")
@@ -222,6 +257,36 @@ enum AcademicYearStatus {
   ACTIVE
   COMPLETED
   ARCHIVED
+}
+
+model AcademicCalendar {
+  id             String  @id @default(cuid())
+  academicYearId String  @unique
+  description    String?
+
+  academicYear AcademicYear     @relation(fields: [academicYearId], references: [id], onDelete: Cascade)
+  periods      AcademicPeriod[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("academic_calendar")
+}
+
+model AcademicPeriod {
+  id                 String   @id @default(cuid())
+  academicCalendarId String
+  name               String
+  startDate          DateTime
+  endDate            DateTime
+  type               String // e.g. SEMESTER, TERM
+
+  academicCalendar AcademicCalendar @relation(fields: [academicCalendarId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("academic_period")
 }
 
 model Grade {
@@ -363,19 +428,39 @@ model StudentEnrollment {
   status         EnrollmentStatus @default(ENROLLED)
   enrollmentDate DateTime         @default(now())
 
-  student      Student          @relation(fields: [studentId], references: [id], onDelete: Cascade)
-  organization OrganizationUnit @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  academicYear AcademicYear     @relation(fields: [academicYearId], references: [id], onDelete: Cascade)
-  schoolGrade  SchoolGrade      @relation(fields: [schoolGradeId], references: [id], onDelete: Cascade)
-  section      Section?         @relation(fields: [sectionId], references: [id], onDelete: SetNull)
+  student       Student                @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  organization  OrganizationUnit       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  academicYear  AcademicYear           @relation(fields: [academicYearId], references: [id], onDelete: Cascade)
+  schoolGrade   SchoolGrade            @relation(fields: [schoolGradeId], references: [id], onDelete: Cascade)
+  section       Section?               @relation(fields: [sectionId], references: [id], onDelete: SetNull)
+  statusHistory StudentStatusHistory[]
+  attendances   StudentAttendance[]
+  results       StudentResult[]
+  submissions   Submission[]
+  supportFlags  SupportFlag[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@unique([studentId, academicYearId])
+  @@index([studentId, academicYearId])
   @@index([organizationId])
   @@index([schoolGradeId])
   @@map("student_enrollment")
+}
+
+model StudentStatusHistory {
+  id           String           @id @default(cuid())
+  enrollmentId String
+  status       EnrollmentStatus
+  reason       String?
+  date         DateTime         @default(now())
+
+  enrollment StudentEnrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("student_status_history")
 }
 
 enum EnrollmentStatus {
@@ -402,6 +487,7 @@ model Teacher {
   organization OrganizationUnit     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   user         User?                @relation(fields: [userId], references: [id], onDelete: SetNull)
   assignments  TeachingAssignment[]
+  attendances  TeacherAttendance[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -417,11 +503,14 @@ model TeachingAssignment {
   schoolGradeId  String
   sectionId      String?
 
-  teacher      Teacher      @relation(fields: [teacherId], references: [id], onDelete: Cascade)
-  academicYear AcademicYear @relation(fields: [academicYearId], references: [id], onDelete: Cascade)
-  subject      Subject      @relation(fields: [subjectId], references: [id], onDelete: Cascade)
-  schoolGrade  SchoolGrade  @relation(fields: [schoolGradeId], references: [id], onDelete: Cascade)
-  section      Section?     @relation(fields: [sectionId], references: [id], onDelete: SetNull)
+  teacher            Teacher            @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  academicYear       AcademicYear       @relation(fields: [academicYearId], references: [id], onDelete: Cascade)
+  subject            Subject            @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  schoolGrade        SchoolGrade        @relation(fields: [schoolGradeId], references: [id], onDelete: Cascade)
+  section            Section?           @relation(fields: [sectionId], references: [id], onDelete: SetNull)
+  timetables         Timetable[]
+  assessments        Assessment[]
+  learningActivities LearningActivity[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -436,36 +525,443 @@ model TeachingAssignment {
 // ============================================================
 
 model Parent {
-  id             String  @id @default(cuid())
-  userId         String? @unique
-  firstName      String
-  lastName       String
-  phoneNumber    String?
-  email          String?
+  id          String  @id @default(cuid())
+  userId      String? @unique
+  firstName   String
+  lastName    String
+  phoneNumber String?
+  email       String?
 
-  user           User?           @relation(fields: [userId], references: [id], onDelete: SetNull)
-  children       ParentStudent[]
+  user     User?           @relation(fields: [userId], references: [id], onDelete: SetNull)
+  children ParentStudent[]
 
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@map("parent")
 }
 
 model ParentStudent {
-  id             String  @id @default(cuid())
-  parentId       String
-  studentId      String
-  relationship   String // e.g., "Mother", "Father", "Guardian"
-  isPrimary      Boolean @default(true)
-  canPickup      Boolean @default(true)
+  id           String  @id @default(cuid())
+  parentId     String
+  studentId    String
+  relationship String // e.g., "Mother", "Father", "Guardian"
+  isPrimary    Boolean @default(true)
+  canPickup    Boolean @default(true)
 
-  parent         Parent  @relation(fields: [parentId], references: [id], onDelete: Cascade)
-  student        Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  parent  Parent  @relation(fields: [parentId], references: [id], onDelete: Cascade)
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
 
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@unique([parentId, studentId])
   @@map("parent_student")
+}
+
+// ============================================================
+// TEACHING STRUCTURE DOMAIN
+// ============================================================
+
+model ClassPeriod {
+  id             String @id @default(cuid())
+  organizationId String
+  name           String // e.g. "Period 1"
+  startTime      String // e.g. "08:00"
+  endTime        String // e.g. "08:45"
+
+  organization       OrganizationUnit    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  timetables         Timetable[]
+  studentAttendances StudentAttendance[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([organizationId, name])
+  @@map("class_period")
+}
+
+model Timetable {
+  id                   String  @id @default(cuid())
+  organizationId       String
+  academicYearId       String
+  teachingAssignmentId String
+  classPeriodId        String
+  dayOfWeek            Int // 0 = Sunday, 1 = Monday, etc.
+  roomId               String? // Optional room assignment
+
+  organization       OrganizationUnit   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  academicYear       AcademicYear       @relation(fields: [academicYearId], references: [id], onDelete: Cascade)
+  teachingAssignment TeachingAssignment @relation(fields: [teachingAssignmentId], references: [id], onDelete: Cascade)
+  classPeriod        ClassPeriod        @relation(fields: [classPeriodId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([teachingAssignmentId, classPeriodId, dayOfWeek])
+  @@index([organizationId])
+  @@map("timetable")
+}
+
+// ============================================================
+// ATTENDANCE DOMAIN
+// ============================================================
+
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+  LATE
+  EXCUSED
+}
+
+model StudentAttendance {
+  id             String           @id @default(cuid())
+  organizationId String
+  academicYearId String
+  enrollmentId   String
+  classPeriodId  String?
+  date           DateTime         @db.Date
+  status         AttendanceStatus
+  remarks        String?
+  recordedById   String?
+
+  organization OrganizationUnit  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  academicYear AcademicYear      @relation(fields: [academicYearId], references: [id], onDelete: Cascade)
+  enrollment   StudentEnrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+  classPeriod  ClassPeriod?      @relation(fields: [classPeriodId], references: [id], onDelete: SetNull)
+  recordedBy   User?             @relation(fields: [recordedById], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([enrollmentId, date, classPeriodId])
+  @@index([organizationId, date])
+  @@map("student_attendance")
+}
+
+model TeacherAttendance {
+  id             String           @id @default(cuid())
+  organizationId String
+  academicYearId String
+  teacherId      String
+  date           DateTime         @db.Date
+  status         AttendanceStatus
+  remarks        String?
+  recordedById   String?
+
+  organization OrganizationUnit @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  academicYear AcademicYear     @relation(fields: [academicYearId], references: [id], onDelete: Cascade)
+  teacher      Teacher          @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  recordedBy   User?            @relation(fields: [recordedById], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([teacherId, date])
+  @@index([organizationId, date])
+  @@map("teacher_attendance")
+}
+
+// ============================================================
+// ASSESSMENT DOMAIN
+// ============================================================
+
+enum AssessmentType {
+  EXAM
+  QUIZ
+  ASSIGNMENT
+  PROJECT
+  OTHER
+}
+
+model Assessment {
+  id                   String         @id @default(cuid())
+  organizationId       String
+  academicYearId       String
+  teachingAssignmentId String // Links back to the specific Subject+Section+Teacher
+  title                String
+  description          String?
+  type                 AssessmentType @default(EXAM)
+  maxScore             Float
+  passingScore         Float?
+  dueDate              DateTime?      @db.Date
+
+  organization       OrganizationUnit   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  academicYear       AcademicYear       @relation(fields: [academicYearId], references: [id], onDelete: Cascade)
+  teachingAssignment TeachingAssignment @relation(fields: [teachingAssignmentId], references: [id], onDelete: Cascade)
+  results            StudentResult[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([organizationId])
+  @@index([teachingAssignmentId])
+  @@map("assessment")
+}
+
+model StudentResult {
+  id           String  @id @default(cuid())
+  assessmentId String
+  enrollmentId String
+  score        Float
+  feedback     String?
+  gradedById   String?
+
+  assessment Assessment        @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  enrollment StudentEnrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+  gradedBy   User?             @relation(fields: [gradedById], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([assessmentId, enrollmentId])
+  @@map("student_result")
+}
+
+// ============================================================
+// LEARNING & SUPPORT DOMAIN
+// ============================================================
+
+enum ActivityType {
+  HOMEWORK
+  READING
+  LAB
+  PRACTICE
+}
+
+model LearningActivity {
+  id                   String       @id @default(cuid())
+  organizationId       String
+  academicYearId       String
+  teachingAssignmentId String
+  title                String
+  description          String?
+  type                 ActivityType @default(HOMEWORK)
+  dueDate              DateTime?    @db.Date
+
+  organization       OrganizationUnit   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  academicYear       AcademicYear       @relation(fields: [academicYearId], references: [id], onDelete: Cascade)
+  teachingAssignment TeachingAssignment @relation(fields: [teachingAssignmentId], references: [id], onDelete: Cascade)
+  submissions        Submission[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([organizationId])
+  @@index([teachingAssignmentId])
+  @@map("learning_activity")
+}
+
+enum SubmissionStatus {
+  PENDING
+  SUBMITTED
+  LATE
+  GRADED
+}
+
+model Submission {
+  id                 String           @id @default(cuid())
+  learningActivityId String
+  enrollmentId       String
+  status             SubmissionStatus @default(PENDING)
+  submittedAt        DateTime?
+  contentUrl         String?
+  grade              String?
+  feedback           String?
+
+  activity   LearningActivity  @relation(fields: [learningActivityId], references: [id], onDelete: Cascade)
+  enrollment StudentEnrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([learningActivityId, enrollmentId])
+  @@map("submission")
+}
+
+enum SupportFlagType {
+  ACADEMIC
+  BEHAVIORAL
+  ATTENDANCE
+  MEDICAL
+  OTHER
+}
+
+model SupportFlag {
+  id             String          @id @default(cuid())
+  organizationId String
+  enrollmentId   String
+  type           SupportFlagType
+  description    String
+  raisedById     String?
+  resolvedAt     DateTime?
+  resolution     String?
+
+  organization OrganizationUnit  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  enrollment   StudentEnrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+  raisedBy     User?             @relation(fields: [raisedById], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([organizationId])
+  @@index([enrollmentId])
+  @@map("support_flag")
+}
+
+// ============================================================
+// COMMUNICATION DOMAIN
+// ============================================================
+
+enum AnnouncementTarget {
+  ALL
+  TEACHERS
+  STUDENTS
+  PARENTS
+  SPECIFIC_GRADE
+  SPECIFIC_SECTION
+}
+
+model Announcement {
+  id             String             @id @default(cuid())
+  organizationId String
+  title          String
+  content        String
+  target         AnnouncementTarget @default(ALL)
+  targetId       String?
+  authorId       String
+  expiresAt      DateTime?          @db.Date
+
+  organization OrganizationUnit @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  author       User             @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([organizationId])
+  @@index([target])
+  @@map("announcement")
+}
+
+model Notification {
+  id      String  @id @default(cuid())
+  userId  String
+  title   String
+  content String
+  isRead  Boolean @default(false)
+  link    String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@map("notification")
+}
+
+model Message {
+  id         String  @id @default(cuid())
+  senderId   String
+  receiverId String
+  content    String
+  isRead     Boolean @default(false)
+
+  sender   User @relation("SentMessages", fields: [senderId], references: [id], onDelete: Cascade)
+  receiver User @relation("ReceivedMessages", fields: [receiverId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([senderId])
+  @@index([receiverId])
+  @@map("message")
+}
+
+// ============================================================
+// OPERATIONAL DOMAIN
+// ============================================================
+
+enum ResourceType {
+  CLASSROOM
+  LAB
+  LIBRARY
+  SPORTS_FACILITY
+  EQUIPMENT
+  OTHER
+}
+
+model SchoolResource {
+  id             String       @id @default(cuid())
+  organizationId String
+  name           String
+  type           ResourceType @default(CLASSROOM)
+  capacity       Int?
+  status         String       @default("AVAILABLE")
+  description    String?
+
+  organization OrganizationUnit @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  issues       Issue[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([organizationId])
+  @@map("school_resource")
+}
+
+enum IssueStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+}
+
+enum IssuePriority {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+model Issue {
+  id             String        @id @default(cuid())
+  organizationId String
+  title          String
+  description    String
+  status         IssueStatus   @default(OPEN)
+  priority       IssuePriority @default(MEDIUM)
+  reportedById   String
+  assignedToId   String?
+  resourceId     String?
+
+  organization OrganizationUnit @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  reportedBy   User             @relation("ReportedIssues", fields: [reportedById], references: [id])
+  assignedTo   User?            @relation("AssignedIssues", fields: [assignedToId], references: [id])
+  resource     SchoolResource?  @relation(fields: [resourceId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([organizationId])
+  @@map("issue")
+}
+
+model ImprovementPlan {
+  id             String    @id @default(cuid())
+  organizationId String
+  title          String
+  description    String
+  objectives     String
+  startDate      DateTime  @db.Date
+  endDate        DateTime? @db.Date
+  status         String    @default("PLANNED")
+
+  organization OrganizationUnit @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([organizationId])
+  @@map("improvement_plan")
 }
