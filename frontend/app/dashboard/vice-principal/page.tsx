@@ -47,7 +47,7 @@ export default function VicePrincipalDashboard() {
             {/* Quick Stats / Overview */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 flex items-center space-x-4">
-                    <div className="p-3 bg-blue-50 text-blue-600 rounded-lg">
+                    <div className="p-3 bg-blue-50 text-blue-500 rounded-lg">
                         <Users className="w-6 h-6" />
                     </div>
                     <div>
@@ -94,7 +94,7 @@ export default function VicePrincipalDashboard() {
                     <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
                         <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center">
                             <h3 className="font-semibold text-gray-900">Recent Academic Activity</h3>
-                            <button className="text-sm text-blue-600 font-medium hover:text-blue-700">View Report</button>
+                            <button className="text-sm text-blue-500 font-medium hover:text-blue-700">View Report</button>
                         </div>
                         <div className="p-6">
                             <div className="space-y-4">
