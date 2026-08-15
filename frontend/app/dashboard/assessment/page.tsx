@@ -70,11 +70,11 @@ export default function AssessmentsPage() {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
                     <h1 className="text-xl font-bold text-gray-900 flex items-center">
-                        <FileText className="w-6 h-6 mr-2 text-blue-500" />
+                        <FileText className="w-6 h-6 mr-2 text-[#006b3f]" />
                         Assessments
                     </h1>
                     <p className="text-sm text-gray-500 mt-1">
-                        Manage exams, quizzes, and continuous assessments for <span className="font-semibold text-blue-500">{activeYear?.name || "the current year"}</span>.
+                        Manage exams, quizzes, and continuous assessments for <span className="font-semibold text-[#006b3f]">{activeYear?.name || "the current year"}</span>.
                     </p>
                 </div>
                 {hasCreatePermission && (
@@ -118,7 +118,7 @@ export default function AssessmentsPage() {
                                             <td className="px-6 py-4 text-gray-600">
                                                 {assessment.type}
                                             </td>
-                                            <td className="px-6 py-4 font-medium text-blue-500">
+                                            <td className="px-6 py-4 font-medium text-[#006b3f]">
                                                 {assessment.maxScore}
                                             </td>
                                             <td className="px-6 py-4 text-gray-600 flex items-center">

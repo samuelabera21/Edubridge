@@ -41,12 +41,12 @@ export default function GradesPage() {
             <div className="flex items-center justify-between">
                 <div>
                     <h1 className="text-2xl font-bold flex items-center space-x-2 text-gray-800">
-                        <Layers className="h-6 w-6 text-blue-500" />
+                        <Layers className="h-6 w-6 text-[#006b3f]" />
                         <span>Grades & Sections</span>
                     </h1>
                     <p className="text-gray-500 mt-1">Manage the grades and classes offered by the school.</p>
                 </div>
-                <button className="bg-blue-500 hover:bg-blue-700 text-white px-4 py-2 rounded font-medium shadow transition-colors">
+                <button className="bg-[#006b3f] hover:bg-blue-700 text-white px-4 py-2 rounded font-medium shadow transition-colors">
                     + Add Grade
                 </button>
             </div>
@@ -87,7 +87,7 @@ export default function GradesPage() {
                                         {grade.name}
                                     </td>
                                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                        <button className="text-blue-500 hover:text-blue-900 mx-2">Manage Sections</button>
+                                        <button className="text-[#006b3f] hover:text-blue-900 mx-2">Manage Sections</button>
                                         <button className="text-gray-500 hover:text-gray-700">Edit</button>
                                     </td>
                                 </tr>

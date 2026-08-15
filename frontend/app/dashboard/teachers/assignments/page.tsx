@@ -70,7 +70,7 @@ export default function TeachingAssignmentsPage() {
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <div>
                         <h1 className="text-xl font-bold text-gray-900 flex items-center">
-                            <ClipboardList className="w-6 h-6 mr-2 text-blue-500" />
+                            <ClipboardList className="w-6 h-6 mr-2 text-[#006b3f]" />
                             Teaching Assignments
                         </h1>
                     </div>
@@ -88,11 +88,11 @@ export default function TeachingAssignmentsPage() {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
                     <h1 className="text-xl font-bold text-gray-900 flex items-center">
-                        <ClipboardList className="w-6 h-6 mr-2 text-blue-500" />
+                        <ClipboardList className="w-6 h-6 mr-2 text-[#006b3f]" />
                         Teaching Assignments
                     </h1>
                     <p className="text-sm text-gray-500 mt-1">
-                        Managing assignments for <span className="font-semibold text-blue-500">{activeYear.name}</span>
+                        Managing assignments for <span className="font-semibold text-[#006b3f]">{activeYear.name}</span>
                     </p>
                 </div>
                 {hasCreatePermission && (

@@ -31,7 +31,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     if (loading) {
         return (
             <div className="min-h-screen flex items-center justify-center bg-[#f4f5f7] text-gray-700">
-                <Loader2 className="h-8 w-8 animate-spin text-blue-500 mr-3" />
+                <Loader2 className="h-8 w-8 animate-spin text-[#006b3f] mr-3" />
                 <span className="text-lg font-medium">Verifying access...</span>
             </div>
         );
@@ -56,33 +56,33 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     const isLinkActive = (path: string) => pathname.startsWith(path);
 
     return (
-        <div className="min-h-screen flex flex-col bg-[#f4f5f7] font-sans">
+        <div className="h-screen flex flex-col bg-[#f4f5f7] font-sans">
             {/* Top Navigation Bar */}
             <header className="bg-white border-b border-gray-200 h-16 flex items-center justify-between px-6 z-10">
                 <div className="flex items-center space-x-2">
-                    <div className="text-blue-500">
+                    <div className="text-[#006b3f]">
                         {/* Placeholder for Logo, using an icon for now */}
                         <svg className="w-8 h-8" viewBox="0 0 24 24" fill="currentColor">
                             <path d="M12 2L2 7l10 5 10-5-10-5zm0 7.5L4.5 7 12 4.25 19.5 7 12 9.5zM2 12l10 5 10-5v5l-10 5-10-5v-5z"/>
                         </svg>
                     </div>
-                    <span className="text-xl font-bold text-orange-500 tracking-tight">Edu<span className="text-blue-500">Bridge</span></span>
+                    <span className="text-xl font-bold text-orange-500 tracking-tight">Edu<span className="text-[#006b3f]">Bridge</span></span>
                 </div>
 
                 <div className="hidden md:flex items-center space-x-6">
                     <nav className="flex space-x-6 text-sm font-bold text-gray-700">
-                        <Link href="/dashboard" className="flex items-center hover:text-blue-500 transition-colors"><Building className="w-4 h-4 mr-1"/> About</Link>
-                        <Link href="/dashboard" className="flex items-center hover:text-blue-500 transition-colors"><LayoutDashboard className="w-4 h-4 mr-1"/> Dashboard</Link>
-                        <Link href="/dashboard/school/profile" className="flex items-center hover:text-blue-500 transition-colors">School Profile</Link>
-                        <Link href="/dashboard/academics/years" className="flex items-center hover:text-blue-500 transition-colors">Academics</Link>
-                        <Link href="#" className="flex items-center hover:text-blue-500 transition-colors"><Lock className="w-4 h-4 ml-1"/></Link>
+                        <Link href="/dashboard" className="flex items-center hover:text-[#006b3f] transition-colors"><Building className="w-4 h-4 mr-1"/> About</Link>
+                        <Link href="/dashboard" className="flex items-center hover:text-[#006b3f] transition-colors"><LayoutDashboard className="w-4 h-4 mr-1"/> Dashboard</Link>
+                        <Link href="/dashboard/school/profile" className="flex items-center hover:text-[#006b3f] transition-colors">School Profile</Link>
+                        <Link href="/dashboard/academics/years" className="flex items-center hover:text-[#006b3f] transition-colors">Academics</Link>
+                        <Link href="#" className="flex items-center hover:text-[#006b3f] transition-colors"><Lock className="w-4 h-4 ml-1"/></Link>
                     </nav>
                     
                     <div className="relative">
                         <input 
                             type="text" 
                             placeholder="Search ..." 
-                            className="bg-gray-100 border-none text-sm rounded-md pl-4 pr-10 py-1.5 focus:ring-2 focus:ring-blue-500 outline-none w-64"
+                            className="bg-gray-100 border-none text-sm rounded-md pl-4 pr-10 py-1.5 focus:ring-2 focus:ring-[#006b3f] outline-none w-64"
                         />
                         <Search className="absolute right-3 top-2 h-4 w-4 text-gray-400" />
                     </div>
@@ -139,10 +139,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                                         </button>
                                         {openMenus.academics && (
                                             <div className="pl-10 pr-3 py-1 space-y-1">
-                                                <Link href="/dashboard/academics/years" className={`block py-1.5 text-sm ${pathname === "/dashboard/academics/years" ? "text-blue-500 font-medium" : "text-gray-500 hover:text-blue-500"}`}>Academic Years</Link>
-                                                <Link href="/dashboard/academics/grades" className={`block py-1.5 text-sm ${pathname.startsWith("/dashboard/academics/grades") ? "text-blue-500 font-medium" : "text-gray-500 hover:text-blue-500"}`}>Grades & Sections</Link>
-                                                <Link href="/dashboard/academics/subjects" className={`block py-1.5 text-sm ${pathname.startsWith("/dashboard/academics/subjects") ? "text-blue-500 font-medium" : "text-gray-500 hover:text-blue-500"}`}>Subjects</Link>
-                                                <Link href="/dashboard/academics/timetable" className={`block py-1.5 text-sm ${pathname.startsWith("/dashboard/academics/timetable") ? "text-blue-500 font-medium" : "text-gray-500 hover:text-blue-500"}`}>Timetable</Link>
+                                                <Link href="/dashboard/academics/years" className={`block py-1.5 text-sm ${pathname === "/dashboard/academics/years" ? "text-[#006b3f] font-medium" : "text-gray-500 hover:text-[#006b3f]"}`}>Academic Years</Link>
+                                                <Link href="/dashboard/academics/grades" className={`block py-1.5 text-sm ${pathname.startsWith("/dashboard/academics/grades") ? "text-[#006b3f] font-medium" : "text-gray-500 hover:text-[#006b3f]"}`}>Grades & Sections</Link>
+                                                <Link href="/dashboard/academics/subjects" className={`block py-1.5 text-sm ${pathname.startsWith("/dashboard/academics/subjects") ? "text-[#006b3f] font-medium" : "text-gray-500 hover:text-[#006b3f]"}`}>Subjects</Link>
+                                                <Link href="/dashboard/academics/timetable" className={`block py-1.5 text-sm ${pathname.startsWith("/dashboard/academics/timetable") ? "text-[#006b3f] font-medium" : "text-gray-500 hover:text-[#006b3f]"}`}>Timetable</Link>
                                             </div>
                                         )}
                                     </div>
@@ -164,8 +164,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                                         </button>
                                         {openMenus.students && (
                                             <div className="pl-10 pr-3 py-1 space-y-1">
-                                                <Link href="/dashboard/students" className={`block py-1.5 text-sm ${pathname === "/dashboard/students" ? "text-blue-500 font-medium" : "text-gray-500 hover:text-blue-500"}`}>Students</Link>
-                                                <Link href="/dashboard/students/enrollments" className={`block py-1.5 text-sm ${pathname.startsWith("/dashboard/students/enrollments") ? "text-blue-500 font-medium" : "text-gray-500 hover:text-blue-500"}`}>Enrollments</Link>
+                                                <Link href="/dashboard/students" className={`block py-1.5 text-sm ${pathname === "/dashboard/students" ? "text-[#006b3f] font-medium" : "text-gray-500 hover:text-[#006b3f]"}`}>Students</Link>
+                                                <Link href="/dashboard/students/enrollments" className={`block py-1.5 text-sm ${pathname.startsWith("/dashboard/students/enrollments") ? "text-[#006b3f] font-medium" : "text-gray-500 hover:text-[#006b3f]"}`}>Enrollments</Link>
                                             </div>
                                         )}
                                     </div>
@@ -187,8 +187,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                                         </button>
                                         {openMenus.teachers && (
                                             <div className="pl-10 pr-3 py-1 space-y-1">
-                                                <Link href="/dashboard/teachers" className={`block py-1.5 text-sm ${pathname === "/dashboard/teachers" ? "text-blue-500 font-medium" : "text-gray-500 hover:text-blue-500"}`}>Teachers</Link>
-                                                <Link href="/dashboard/teachers/assignments" className={`block py-1.5 text-sm ${pathname.startsWith("/dashboard/teachers/assignments") ? "text-blue-500 font-medium" : "text-gray-500 hover:text-blue-500"}`}>Assignments</Link>
+                                                <Link href="/dashboard/teachers" className={`block py-1.5 text-sm ${pathname === "/dashboard/teachers" ? "text-[#006b3f] font-medium" : "text-gray-500 hover:text-[#006b3f]"}`}>Teachers</Link>
+                                                <Link href="/dashboard/teachers/assignments" className={`block py-1.5 text-sm ${pathname.startsWith("/dashboard/teachers/assignments") ? "text-[#006b3f] font-medium" : "text-gray-500 hover:text-[#006b3f]"}`}>Assignments</Link>
                                             </div>
                                         )}
                                     </div>
@@ -210,8 +210,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                                         </button>
                                         {openMenus.attendance && (
                                             <div className="pl-10 pr-3 py-1 space-y-1">
-                                                <Link href="/dashboard/attendance/student" className={`block py-1.5 text-sm ${pathname === "/dashboard/attendance/student" ? "text-blue-500 font-medium" : "text-gray-500 hover:text-blue-500"}`}>Student Attendance</Link>
-                                                <Link href="/dashboard/attendance/teacher" className={`block py-1.5 text-sm ${pathname === "/dashboard/attendance/teacher" ? "text-blue-500 font-medium" : "text-gray-500 hover:text-blue-500"}`}>Teacher Attendance</Link>
+                                                <Link href="/dashboard/attendance/student" className={`block py-1.5 text-sm ${pathname === "/dashboard/attendance/student" ? "text-[#006b3f] font-medium" : "text-gray-500 hover:text-[#006b3f]"}`}>Student Attendance</Link>
+                                                <Link href="/dashboard/attendance/teacher" className={`block py-1.5 text-sm ${pathname === "/dashboard/attendance/teacher" ? "text-[#006b3f] font-medium" : "text-gray-500 hover:text-[#006b3f]"}`}>Teacher Attendance</Link>
                                             </div>
                                         )}
                                     </div>
@@ -233,8 +233,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                                         </button>
                                         {openMenus.assessment && (
                                             <div className="pl-10 pr-3 py-1 space-y-1">
-                                                <Link href="/dashboard/assessment" className={`block py-1.5 text-sm ${pathname === "/dashboard/assessment" ? "text-blue-500 font-medium" : "text-gray-500 hover:text-blue-500"}`}>Assessments</Link>
-                                                <Link href="/dashboard/assessment/results" className={`block py-1.5 text-sm ${pathname.startsWith("/dashboard/assessment/results") ? "text-blue-500 font-medium" : "text-gray-500 hover:text-blue-500"}`}>Student Results</Link>
+                                                <Link href="/dashboard/assessment" className={`block py-1.5 text-sm ${pathname === "/dashboard/assessment" ? "text-[#006b3f] font-medium" : "text-gray-500 hover:text-[#006b3f]"}`}>Assessments</Link>
+                                                <Link href="/dashboard/assessment/results" className={`block py-1.5 text-sm ${pathname.startsWith("/dashboard/assessment/results") ? "text-[#006b3f] font-medium" : "text-gray-500 hover:text-[#006b3f]"}`}>Student Results</Link>
                                             </div>
                                         )}
                                     </div>
@@ -256,9 +256,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                                         </button>
                                         {openMenus.learning && (
                                             <div className="pl-10 pr-3 py-1 space-y-1">
-                                                <Link href="/dashboard/learning/activities" className={`block py-1.5 text-sm ${pathname === "/dashboard/learning/activities" ? "text-blue-500 font-medium" : "text-gray-500 hover:text-blue-500"}`}>Activities</Link>
-                                                <Link href="/dashboard/learning/submissions" className={`block py-1.5 text-sm ${pathname === "/dashboard/learning/submissions" ? "text-blue-500 font-medium" : "text-gray-500 hover:text-blue-500"}`}>Submissions</Link>
-                                                <Link href="/dashboard/learning/support" className={`block py-1.5 text-sm ${pathname === "/dashboard/learning/support" ? "text-blue-500 font-medium" : "text-gray-500 hover:text-blue-500"}`}>Support Flags</Link>
+                                                <Link href="/dashboard/learning/activities" className={`block py-1.5 text-sm ${pathname === "/dashboard/learning/activities" ? "text-[#006b3f] font-medium" : "text-gray-500 hover:text-[#006b3f]"}`}>Activities</Link>
+                                                <Link href="/dashboard/learning/submissions" className={`block py-1.5 text-sm ${pathname === "/dashboard/learning/submissions" ? "text-[#006b3f] font-medium" : "text-gray-500 hover:text-[#006b3f]"}`}>Submissions</Link>
+                                                <Link href="/dashboard/learning/support" className={`block py-1.5 text-sm ${pathname === "/dashboard/learning/support" ? "text-[#006b3f] font-medium" : "text-gray-500 hover:text-[#006b3f]"}`}>Support Flags</Link>
                                             </div>
                                         )}
                                     </div>
@@ -280,8 +280,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                                         </button>
                                         {openMenus.parents && (
                                             <div className="pl-10 pr-3 py-1 space-y-1">
-                                                <Link href="/dashboard/parents" className={`block py-1.5 text-sm ${pathname === "/dashboard/parents" ? "text-blue-500 font-medium" : "text-gray-500 hover:text-blue-500"}`}>Parents</Link>
-                                                <Link href="/dashboard/parents/relationships" className={`block py-1.5 text-sm ${pathname === "/dashboard/parents/relationships" ? "text-blue-500 font-medium" : "text-gray-500 hover:text-blue-500"}`}>Relationships</Link>
+                                                <Link href="/dashboard/parents" className={`block py-1.5 text-sm ${pathname === "/dashboard/parents" ? "text-[#006b3f] font-medium" : "text-gray-500 hover:text-[#006b3f]"}`}>Parents</Link>
+                                                <Link href="/dashboard/parents/relationships" className={`block py-1.5 text-sm ${pathname === "/dashboard/parents/relationships" ? "text-[#006b3f] font-medium" : "text-gray-500 hover:text-[#006b3f]"}`}>Relationships</Link>
                                             </div>
                                         )}
                                     </div>
@@ -303,9 +303,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                                         </button>
                                         {openMenus.communication && (
                                             <div className="pl-10 pr-3 py-1 space-y-1">
-                                                <Link href="/dashboard/communication/announcements" className={`block py-1.5 text-sm ${pathname === "/dashboard/communication/announcements" ? "text-blue-500 font-medium" : "text-gray-500 hover:text-blue-500"}`}>Announcements</Link>
-                                                <Link href="/dashboard/communication/notifications" className={`block py-1.5 text-sm ${pathname === "/dashboard/communication/notifications" ? "text-blue-500 font-medium" : "text-gray-500 hover:text-blue-500"}`}>Notifications</Link>
-                                                <Link href="/dashboard/communication/messages" className={`block py-1.5 text-sm ${pathname === "/dashboard/communication/messages" ? "text-blue-500 font-medium" : "text-gray-500 hover:text-blue-500"}`}>Messages</Link>
+                                                <Link href="/dashboard/communication/announcements" className={`block py-1.5 text-sm ${pathname === "/dashboard/communication/announcements" ? "text-[#006b3f] font-medium" : "text-gray-500 hover:text-[#006b3f]"}`}>Announcements</Link>
+                                                <Link href="/dashboard/communication/notifications" className={`block py-1.5 text-sm ${pathname === "/dashboard/communication/notifications" ? "text-[#006b3f] font-medium" : "text-gray-500 hover:text-[#006b3f]"}`}>Notifications</Link>
+                                                <Link href="/dashboard/communication/messages" className={`block py-1.5 text-sm ${pathname === "/dashboard/communication/messages" ? "text-[#006b3f] font-medium" : "text-gray-500 hover:text-[#006b3f]"}`}>Messages</Link>
                                             </div>
                                         )}
                                     </div>
@@ -327,9 +327,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                                         </button>
                                         {openMenus.operations && (
                                             <div className="pl-10 pr-3 py-1 space-y-1">
-                                                <Link href="/dashboard/operations/resources" className={`block py-1.5 text-sm ${pathname === "/dashboard/operations/resources" ? "text-blue-500 font-medium" : "text-gray-500 hover:text-blue-500"}`}>Resources</Link>
-                                                <Link href="/dashboard/operations/issues" className={`block py-1.5 text-sm ${pathname === "/dashboard/operations/issues" ? "text-blue-500 font-medium" : "text-gray-500 hover:text-blue-500"}`}>Issues</Link>
-                                                <Link href="/dashboard/operations/improvements" className={`block py-1.5 text-sm ${pathname === "/dashboard/operations/improvements" ? "text-blue-500 font-medium" : "text-gray-500 hover:text-blue-500"}`}>Improvements</Link>
+                                                <Link href="/dashboard/operations/resources" className={`block py-1.5 text-sm ${pathname === "/dashboard/operations/resources" ? "text-[#006b3f] font-medium" : "text-gray-500 hover:text-[#006b3f]"}`}>Resources</Link>
+                                                <Link href="/dashboard/operations/issues" className={`block py-1.5 text-sm ${pathname === "/dashboard/operations/issues" ? "text-[#006b3f] font-medium" : "text-gray-500 hover:text-[#006b3f]"}`}>Issues</Link>
+                                                <Link href="/dashboard/operations/improvements" className={`block py-1.5 text-sm ${pathname === "/dashboard/operations/improvements" ? "text-[#006b3f] font-medium" : "text-gray-500 hover:text-[#006b3f]"}`}>Improvements</Link>
                                             </div>
                                         )}
                                     </div>

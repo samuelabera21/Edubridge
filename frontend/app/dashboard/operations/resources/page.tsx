@@ -20,7 +20,7 @@ export default function ResourcesPage() {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
                     <h1 className="text-xl font-bold text-gray-900 flex items-center">
-                        <Package className="w-6 h-6 mr-2 text-blue-500" />
+                        <Package className="w-6 h-6 mr-2 text-[#006b3f]" />
                         Resources & Inventory
                     </h1>
                     <p className="text-sm text-gray-500 mt-1">Manage school assets, library inventory, and physical resources.</p>

@@ -70,7 +70,7 @@ export default function StudentResultsPage() {
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <div>
                         <h1 className="text-xl font-bold text-gray-900 flex items-center">
-                            <FileText className="w-6 h-6 mr-2 text-blue-500" />
+                            <FileText className="w-6 h-6 mr-2 text-[#006b3f]" />
                             Student Results
                         </h1>
                     </div>
@@ -88,11 +88,11 @@ export default function StudentResultsPage() {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
                     <h1 className="text-xl font-bold text-gray-900 flex items-center">
-                        <FileText className="w-6 h-6 mr-2 text-blue-500" />
+                        <FileText className="w-6 h-6 mr-2 text-[#006b3f]" />
                         Student Results
                     </h1>
                     <p className="text-sm text-gray-500 mt-1">
-                        View assessment grades and report cards for <span className="font-semibold text-blue-500">{activeYear.name}</span>
+                        View assessment grades and report cards for <span className="font-semibold text-[#006b3f]">{activeYear.name}</span>
                     </p>
                 </div>
             </div>
@@ -126,8 +126,8 @@ export default function StudentResultsPage() {
                                         <tr key={enrollment.id} className="hover:bg-gray-50/50 transition-colors">
                                             <td className="px-6 py-4">
                                                 <div className="flex items-center">
-                                                    <div className="h-8 w-8 rounded-full bg-blue-500/10 flex items-center justify-center mr-3">
-                                                        <User className="w-4 h-4 text-blue-500" />
+                                                    <div className="h-8 w-8 rounded-full bg-[#006b3f]/10 flex items-center justify-center mr-3">
+                                                        <User className="w-4 h-4 text-[#006b3f]" />
                                                     </div>
                                                     <p className="font-medium text-gray-900">
                                                         {enrollment.student?.firstName} {enrollment.student?.lastName}

@@ -69,11 +69,11 @@ export default function LearningActivitiesPage() {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
                     <h1 className="text-xl font-bold text-gray-900 flex items-center">
-                        <BookOpen className="w-6 h-6 mr-2 text-blue-500" />
+                        <BookOpen className="w-6 h-6 mr-2 text-[#006b3f]" />
                         Learning Activities
                     </h1>
                     <p className="text-sm text-gray-500 mt-1">
-                        Manage assignments, resources, and interactive content for <span className="font-semibold text-blue-500">{activeYear?.name || "the current year"}</span>.
+                        Manage assignments, resources, and interactive content for <span className="font-semibold text-[#006b3f]">{activeYear?.name || "the current year"}</span>.
                     </p>
                 </div>
                 {hasCreatePermission && (

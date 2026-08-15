@@ -65,7 +65,7 @@ export default function SubmissionsPage() {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
                     <h1 className="text-xl font-bold text-gray-900 flex items-center">
-                        <ClipboardList className="w-6 h-6 mr-2 text-blue-500" />
+                        <ClipboardList className="w-6 h-6 mr-2 text-[#006b3f]" />
                         Submissions & Grading
                     </h1>
                     <p className="text-sm text-gray-500 mt-1">

@@ -20,7 +20,7 @@ export default function ImprovementsPage() {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
                     <h1 className="text-xl font-bold text-gray-900 flex items-center">
-                        <TrendingUp className="w-6 h-6 mr-2 text-blue-500" />
+                        <TrendingUp className="w-6 h-6 mr-2 text-[#006b3f]" />
                         Improvement Plans
                     </h1>
                     <p className="text-sm text-gray-500 mt-1">Strategic initiatives, QA feedback, and school improvement tracking.</p>

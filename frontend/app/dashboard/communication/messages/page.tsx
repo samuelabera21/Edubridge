@@ -14,7 +14,7 @@ export default function MessagesPage() {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
                     <h1 className="text-xl font-bold text-gray-900 flex items-center">
-                        <MessageSquare className="w-6 h-6 mr-2 text-blue-500" />
+                        <MessageSquare className="w-6 h-6 mr-2 text-[#006b3f]" />
                         Direct Messages
                     </h1>
                     <p className="text-sm text-gray-500 mt-1">Communicate directly with staff, parents, and students.</p>
@@ -31,7 +31,7 @@ export default function MessagesPage() {
                             <input 
                                 type="text" 
                                 placeholder="Search conversations..." 
-                                className="bg-white border text-sm rounded-md pl-4 pr-10 py-1.5 focus:ring-2 focus:ring-blue-500 outline-none w-full"
+                                className="bg-white border text-sm rounded-md pl-4 pr-10 py-1.5 focus:ring-2 focus:ring-[#006b3f] outline-none w-full"
                             />
                             <Search className="absolute right-3 top-2 h-4 w-4 text-gray-400" />
                         </div>
