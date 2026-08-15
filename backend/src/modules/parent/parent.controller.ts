@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import { prisma } from "../../infrastructure/prisma/client.js";
+import { ParentService } from "./parent.service.js";
 
 // Get the currently logged in parent's profile and their children
 export const getParentProfile = async (req: Request, res: Response) => {
@@ -44,6 +45,59 @@ export const getParentProfile = async (req: Request, res: Response) => {
         return res.json(user.parent);
     } catch (error) {
         console.error("Error fetching parent profile:", error);
+        return res.status(500).json({ error: "Internal server error" });
+    }
+};
+
+export const createParent = async (req: Request, res: Response) => {
+    try {
+        const { firstName, lastName, phoneNumber, email } = req.body;
+        
+        if (!firstName || !lastName) {
+            return res.status(400).json({ error: "firstName and lastName are required" });
+        }
+
+        const parent = await ParentService.createParent({
+            firstName,
+            lastName,
+            phoneNumber,
+            email
+        });
+
+        return res.status(201).json(parent);
+    } catch (error: any) {
+        return res.status(400).json({ error: error.message || "Failed to create parent" });
+    }
+};
+
+export const linkParentToStudent = async (req: Request, res: Response) => {
+    try {
+        const { parentId, studentId, relationship, isPrimary, canPickup } = req.body;
+        
+        if (!parentId || !studentId || !relationship) {
+            return res.status(400).json({ error: "parentId, studentId, and relationship are required" });
+        }
+
+        const link = await ParentService.linkParentToStudent({
+            parentId,
+            studentId,
+            relationship,
+            isPrimary,
+            canPickup
+        });
+
+        return res.status(201).json(link);
+    } catch (error: any) {
+        return res.status(400).json({ error: error.message || "Failed to link parent to student" });
+    }
+};
+
+export const getStudentParents = async (req: Request, res: Response) => {
+    try {
+        const { studentId } = req.params;
+        const parents = await ParentService.getStudentParents(studentId as string);
+        return res.json(parents);
+    } catch (error: any) {
         return res.status(500).json({ error: "Internal server error" });
     }
 };
