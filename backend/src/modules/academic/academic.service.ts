@@ -21,6 +21,41 @@ export class AcademicService {
         });
     }
 
+    static async activateAcademicYear(organizationId: string, yearId: string) {
+        // Ensure no other year is ACTIVE for this organization
+        await prisma.academicYear.updateMany({
+            where: { organizationId, status: "ACTIVE" },
+            data: { status: "COMPLETED" }
+        });
+        
+        const year = await prisma.academicYear.findUnique({ where: { id: yearId } });
+        if (!year || year.organizationId !== organizationId) throw new Error("Academic Year not found");
+
+        return prisma.academicYear.update({
+            where: { id: yearId },
+            data: { status: "ACTIVE" }
+        });
+    }
+
+    // --- Academic Calendar & Periods ---
+    static async createAcademicCalendar(academicYearId: string, description?: string) {
+        return prisma.academicCalendar.create({
+            data: { academicYearId, description }
+        });
+    }
+
+    static async createAcademicPeriod(academicCalendarId: string, data: { name: string; startDate: Date; endDate: Date; type: string }) {
+        return prisma.academicPeriod.create({
+            data: {
+                academicCalendarId,
+                name: data.name,
+                startDate: data.startDate,
+                endDate: data.endDate,
+                type: data.type
+            }
+        });
+    }
+
     // --- Grades ---
     static async getGrades(organizationId: string) {
         return prisma.grade.findMany({
@@ -41,7 +76,6 @@ export class AcademicService {
 
     // --- School Grades (Mapping Grades to Academic Year) ---
     static async getSchoolGrades(organizationId: string, academicYearId: string) {
-        // Validate academic year belongs to school
         const year = await prisma.academicYear.findUnique({ where: { id: academicYearId, organizationId } });
         if (!year) throw new Error("Academic Year not found");
 
@@ -51,9 +85,14 @@ export class AcademicService {
         });
     }
 
+    static async createSchoolGrade(academicYearId: string, gradeId: string) {
+        return prisma.schoolGrade.create({
+            data: { academicYearId, gradeId }
+        });
+    }
+
     // --- Sections ---
     static async getSections(organizationId: string, schoolGradeId: string) {
-        // Validate schoolGrade belongs to school (via academicYear)
         const schoolGrade = await prisma.schoolGrade.findUnique({
             where: { id: schoolGradeId },
             include: { academicYear: true }
@@ -66,6 +105,12 @@ export class AcademicService {
         return prisma.section.findMany({
             where: { schoolGradeId },
             orderBy: { name: 'asc' }
+        });
+    }
+
+    static async createSection(schoolGradeId: string, name: string, capacity?: number) {
+        return prisma.section.create({
+            data: { schoolGradeId, name, capacity }
         });
     }
 
@@ -84,6 +129,12 @@ export class AcademicService {
                 name: data.name,
                 code: data.code
             }
+        });
+    }
+
+    static async createSchoolSubject(academicYearId: string, subjectId: string) {
+        return prisma.schoolSubject.create({
+            data: { academicYearId, subjectId }
         });
     }
 }
