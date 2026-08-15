@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useAuth } from "../../hooks/useAuth";
-import { Loader2, BookOpen, LogOut, LayoutDashboard, Building, Search, Lock, ChevronDown, ChevronRight, Calendar, Users, GraduationCap, ClipboardCheck, FileText, Settings, User } from "lucide-react";
+import { Loader2, BookOpen, LogOut, LayoutDashboard, Building, Search, Lock, ChevronDown, ChevronRight, Calendar, Users, GraduationCap, ClipboardCheck, FileText, Settings, User, Megaphone, Bell, MessageSquare, Package, AlertOctagon, TrendingUp } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { fetchApi } from "../../lib/api";
@@ -17,6 +17,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         students: pathname.startsWith("/dashboard/students"),
         teachers: pathname.startsWith("/dashboard/teachers"),
         attendance: pathname.startsWith("/dashboard/attendance"),
+        assessment: pathname.startsWith("/dashboard/assessment"),
+        learning: pathname.startsWith("/dashboard/learning"),
+        parents: pathname.startsWith("/dashboard/parents"),
+        communication: pathname.startsWith("/dashboard/communication"),
+        operations: pathname.startsWith("/dashboard/operations"),
     });
 
     const toggleMenu = (key: string) => {
@@ -26,7 +31,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     if (loading) {
         return (
             <div className="min-h-screen flex items-center justify-center bg-[#f4f5f7] text-gray-700">
-                <Loader2 className="h-8 w-8 animate-spin text-[#006b3f] mr-3" />
+                <Loader2 className="h-8 w-8 animate-spin text-blue-500 mr-3" />
                 <span className="text-lg font-medium">Verifying access...</span>
             </div>
         );
@@ -66,18 +71,18 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
                 <div className="hidden md:flex items-center space-x-6">
                     <nav className="flex space-x-6 text-sm font-bold text-gray-700">
-                        <Link href="/dashboard" className="flex items-center hover:text-[#006b3f] transition-colors"><Building className="w-4 h-4 mr-1"/> About</Link>
-                        <Link href="/dashboard" className="flex items-center hover:text-[#006b3f] transition-colors"><LayoutDashboard className="w-4 h-4 mr-1"/> Dashboard</Link>
-                        <Link href="/dashboard/school/profile" className="flex items-center hover:text-[#006b3f] transition-colors">School Profile</Link>
-                        <Link href="/dashboard/academics/years" className="flex items-center hover:text-[#006b3f] transition-colors">Academics</Link>
-                        <Link href="#" className="flex items-center hover:text-[#006b3f] transition-colors"><Lock className="w-4 h-4 ml-1"/></Link>
+                        <Link href="/dashboard" className="flex items-center hover:text-blue-500 transition-colors"><Building className="w-4 h-4 mr-1"/> About</Link>
+                        <Link href="/dashboard" className="flex items-center hover:text-blue-500 transition-colors"><LayoutDashboard className="w-4 h-4 mr-1"/> Dashboard</Link>
+                        <Link href="/dashboard/school/profile" className="flex items-center hover:text-blue-500 transition-colors">School Profile</Link>
+                        <Link href="/dashboard/academics/years" className="flex items-center hover:text-blue-500 transition-colors">Academics</Link>
+                        <Link href="#" className="flex items-center hover:text-blue-500 transition-colors"><Lock className="w-4 h-4 ml-1"/></Link>
                     </nav>
                     
                     <div className="relative">
                         <input 
                             type="text" 
                             placeholder="Search ..." 
-                            className="bg-gray-100 border-none text-sm rounded-md pl-4 pr-10 py-1.5 focus:ring-2 focus:ring-[#006b3f] outline-none w-64"
+                            className="bg-gray-100 border-none text-sm rounded-md pl-4 pr-10 py-1.5 focus:ring-2 focus:ring-blue-500 outline-none w-64"
                         />
                         <Search className="absolute right-3 top-2 h-4 w-4 text-gray-400" />
                     </div>
@@ -134,10 +139,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                                         </button>
                                         {openMenus.academics && (
                                             <div className="pl-10 pr-3 py-1 space-y-1">
-                                                <Link href="/dashboard/academics/years" className={`block py-1.5 text-sm ${pathname === "/dashboard/academics/years" ? "text-[#006b3f] font-medium" : "text-gray-500 hover:text-[#006b3f]"}`}>Academic Years</Link>
-                                                <Link href="/dashboard/academics/grades" className={`block py-1.5 text-sm ${pathname.startsWith("/dashboard/academics/grades") ? "text-[#006b3f] font-medium" : "text-gray-500 hover:text-[#006b3f]"}`}>Grades & Sections</Link>
-                                                <Link href="#" className="block py-1.5 text-sm text-gray-400 cursor-not-allowed">Subjects</Link>
-                                                <Link href="#" className="block py-1.5 text-sm text-gray-400 cursor-not-allowed">Timetable</Link>
+                                                <Link href="/dashboard/academics/years" className={`block py-1.5 text-sm ${pathname === "/dashboard/academics/years" ? "text-blue-500 font-medium" : "text-gray-500 hover:text-blue-500"}`}>Academic Years</Link>
+                                                <Link href="/dashboard/academics/grades" className={`block py-1.5 text-sm ${pathname.startsWith("/dashboard/academics/grades") ? "text-blue-500 font-medium" : "text-gray-500 hover:text-blue-500"}`}>Grades & Sections</Link>
+                                                <Link href="/dashboard/academics/subjects" className={`block py-1.5 text-sm ${pathname.startsWith("/dashboard/academics/subjects") ? "text-blue-500 font-medium" : "text-gray-500 hover:text-blue-500"}`}>Subjects</Link>
+                                                <Link href="/dashboard/academics/timetable" className={`block py-1.5 text-sm ${pathname.startsWith("/dashboard/academics/timetable") ? "text-blue-500 font-medium" : "text-gray-500 hover:text-blue-500"}`}>Timetable</Link>
                                             </div>
                                         )}
                                     </div>
@@ -159,8 +164,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                                         </button>
                                         {openMenus.students && (
                                             <div className="pl-10 pr-3 py-1 space-y-1">
-                                                <Link href="/dashboard/students" className={`block py-1.5 text-sm ${pathname === "/dashboard/students" ? "text-[#006b3f] font-medium" : "text-gray-500 hover:text-[#006b3f]"}`}>Students</Link>
-                                                <Link href="/dashboard/students/enrollments" className={`block py-1.5 text-sm ${pathname.startsWith("/dashboard/students/enrollments") ? "text-[#006b3f] font-medium" : "text-gray-500 hover:text-[#006b3f]"}`}>Enrollments</Link>
+                                                <Link href="/dashboard/students" className={`block py-1.5 text-sm ${pathname === "/dashboard/students" ? "text-blue-500 font-medium" : "text-gray-500 hover:text-blue-500"}`}>Students</Link>
+                                                <Link href="/dashboard/students/enrollments" className={`block py-1.5 text-sm ${pathname.startsWith("/dashboard/students/enrollments") ? "text-blue-500 font-medium" : "text-gray-500 hover:text-blue-500"}`}>Enrollments</Link>
                                             </div>
                                         )}
                                     </div>
@@ -182,13 +187,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                                         </button>
                                         {openMenus.teachers && (
                                             <div className="pl-10 pr-3 py-1 space-y-1">
-                                                <Link href="#" className="block py-1.5 text-sm text-gray-400 cursor-not-allowed">Teachers</Link>
-                                                <Link href="#" className="block py-1.5 text-sm text-gray-400 cursor-not-allowed">Assignments</Link>
+                                                <Link href="/dashboard/teachers" className={`block py-1.5 text-sm ${pathname === "/dashboard/teachers" ? "text-blue-500 font-medium" : "text-gray-500 hover:text-blue-500"}`}>Teachers</Link>
+                                                <Link href="/dashboard/teachers/assignments" className={`block py-1.5 text-sm ${pathname.startsWith("/dashboard/teachers/assignments") ? "text-blue-500 font-medium" : "text-gray-500 hover:text-blue-500"}`}>Assignments</Link>
                                             </div>
                                         )}
                                     </div>
                                     
-                                    {/* Additional generic placeholder groups for UI fidelity */}
+                                    {/* Attendance Group */}
                                     <div className="pt-1">
                                         <button 
                                             onClick={() => toggleMenu("attendance")}
@@ -205,7 +210,126 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                                         </button>
                                         {openMenus.attendance && (
                                             <div className="pl-10 pr-3 py-1 space-y-1">
-                                                <Link href="#" className="block py-1.5 text-sm text-gray-400 cursor-not-allowed">Student Attendance</Link>
+                                                <Link href="/dashboard/attendance/student" className={`block py-1.5 text-sm ${pathname === "/dashboard/attendance/student" ? "text-blue-500 font-medium" : "text-gray-500 hover:text-blue-500"}`}>Student Attendance</Link>
+                                                <Link href="/dashboard/attendance/teacher" className={`block py-1.5 text-sm ${pathname === "/dashboard/attendance/teacher" ? "text-blue-500 font-medium" : "text-gray-500 hover:text-blue-500"}`}>Teacher Attendance</Link>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Assessment Group */}
+                                    <div className="pt-1">
+                                        <button 
+                                            onClick={() => toggleMenu("assessment")}
+                                            className="w-full flex items-center justify-between px-3 py-2.5 rounded-md text-sm text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors group"
+                                        >
+                                            <div className="flex items-center space-x-3">
+                                                <FileText className="w-4 h-4 text-gray-500" />
+                                                <span>Assessment</span>
+                                            </div>
+                                            {openMenus.assessment ? 
+                                                <ChevronDown className="w-4 h-4 text-gray-600" /> : 
+                                                <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-gray-600" />
+                                            }
+                                        </button>
+                                        {openMenus.assessment && (
+                                            <div className="pl-10 pr-3 py-1 space-y-1">
+                                                <Link href="/dashboard/assessment" className={`block py-1.5 text-sm ${pathname === "/dashboard/assessment" ? "text-blue-500 font-medium" : "text-gray-500 hover:text-blue-500"}`}>Assessments</Link>
+                                                <Link href="/dashboard/assessment/results" className={`block py-1.5 text-sm ${pathname.startsWith("/dashboard/assessment/results") ? "text-blue-500 font-medium" : "text-gray-500 hover:text-blue-500"}`}>Student Results</Link>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Learning Group */}
+                                    <div className="pt-1">
+                                        <button 
+                                            onClick={() => toggleMenu("learning")}
+                                            className="w-full flex items-center justify-between px-3 py-2.5 rounded-md text-sm text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors group"
+                                        >
+                                            <div className="flex items-center space-x-3">
+                                                <BookOpen className="w-4 h-4 text-gray-500" />
+                                                <span>Learning & Support</span>
+                                            </div>
+                                            {openMenus.learning ? 
+                                                <ChevronDown className="w-4 h-4 text-gray-600" /> : 
+                                                <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-gray-600" />
+                                            }
+                                        </button>
+                                        {openMenus.learning && (
+                                            <div className="pl-10 pr-3 py-1 space-y-1">
+                                                <Link href="/dashboard/learning/activities" className={`block py-1.5 text-sm ${pathname === "/dashboard/learning/activities" ? "text-blue-500 font-medium" : "text-gray-500 hover:text-blue-500"}`}>Activities</Link>
+                                                <Link href="/dashboard/learning/submissions" className={`block py-1.5 text-sm ${pathname === "/dashboard/learning/submissions" ? "text-blue-500 font-medium" : "text-gray-500 hover:text-blue-500"}`}>Submissions</Link>
+                                                <Link href="/dashboard/learning/support" className={`block py-1.5 text-sm ${pathname === "/dashboard/learning/support" ? "text-blue-500 font-medium" : "text-gray-500 hover:text-blue-500"}`}>Support Flags</Link>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Parents Group */}
+                                    <div className="pt-1">
+                                        <button 
+                                            onClick={() => toggleMenu("parents")}
+                                            className="w-full flex items-center justify-between px-3 py-2.5 rounded-md text-sm text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors group"
+                                        >
+                                            <div className="flex items-center space-x-3">
+                                                <Users className="w-4 h-4 text-gray-500" />
+                                                <span>Parents</span>
+                                            </div>
+                                            {openMenus.parents ? 
+                                                <ChevronDown className="w-4 h-4 text-gray-600" /> : 
+                                                <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-gray-600" />
+                                            }
+                                        </button>
+                                        {openMenus.parents && (
+                                            <div className="pl-10 pr-3 py-1 space-y-1">
+                                                <Link href="/dashboard/parents" className={`block py-1.5 text-sm ${pathname === "/dashboard/parents" ? "text-blue-500 font-medium" : "text-gray-500 hover:text-blue-500"}`}>Parents</Link>
+                                                <Link href="/dashboard/parents/relationships" className={`block py-1.5 text-sm ${pathname === "/dashboard/parents/relationships" ? "text-blue-500 font-medium" : "text-gray-500 hover:text-blue-500"}`}>Relationships</Link>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Communication Group */}
+                                    <div className="pt-1">
+                                        <button 
+                                            onClick={() => toggleMenu("communication")}
+                                            className="w-full flex items-center justify-between px-3 py-2.5 rounded-md text-sm text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors group"
+                                        >
+                                            <div className="flex items-center space-x-3">
+                                                <Megaphone className="w-4 h-4 text-gray-500" />
+                                                <span>Communication</span>
+                                            </div>
+                                            {openMenus.communication ? 
+                                                <ChevronDown className="w-4 h-4 text-gray-600" /> : 
+                                                <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-gray-600" />
+                                            }
+                                        </button>
+                                        {openMenus.communication && (
+                                            <div className="pl-10 pr-3 py-1 space-y-1">
+                                                <Link href="/dashboard/communication/announcements" className={`block py-1.5 text-sm ${pathname === "/dashboard/communication/announcements" ? "text-blue-500 font-medium" : "text-gray-500 hover:text-blue-500"}`}>Announcements</Link>
+                                                <Link href="/dashboard/communication/notifications" className={`block py-1.5 text-sm ${pathname === "/dashboard/communication/notifications" ? "text-blue-500 font-medium" : "text-gray-500 hover:text-blue-500"}`}>Notifications</Link>
+                                                <Link href="/dashboard/communication/messages" className={`block py-1.5 text-sm ${pathname === "/dashboard/communication/messages" ? "text-blue-500 font-medium" : "text-gray-500 hover:text-blue-500"}`}>Messages</Link>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Operations Group */}
+                                    <div className="pt-1">
+                                        <button 
+                                            onClick={() => toggleMenu("operations")}
+                                            className="w-full flex items-center justify-between px-3 py-2.5 rounded-md text-sm text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors group"
+                                        >
+                                            <div className="flex items-center space-x-3">
+                                                <Settings className="w-4 h-4 text-gray-500" />
+                                                <span>Operations</span>
+                                            </div>
+                                            {openMenus.operations ? 
+                                                <ChevronDown className="w-4 h-4 text-gray-600" /> : 
+                                                <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-gray-600" />
+                                            }
+                                        </button>
+                                        {openMenus.operations && (
+                                            <div className="pl-10 pr-3 py-1 space-y-1">
+                                                <Link href="/dashboard/operations/resources" className={`block py-1.5 text-sm ${pathname === "/dashboard/operations/resources" ? "text-blue-500 font-medium" : "text-gray-500 hover:text-blue-500"}`}>Resources</Link>
+                                                <Link href="/dashboard/operations/issues" className={`block py-1.5 text-sm ${pathname === "/dashboard/operations/issues" ? "text-blue-500 font-medium" : "text-gray-500 hover:text-blue-500"}`}>Issues</Link>
+                                                <Link href="/dashboard/operations/improvements" className={`block py-1.5 text-sm ${pathname === "/dashboard/operations/improvements" ? "text-blue-500 font-medium" : "text-gray-500 hover:text-blue-500"}`}>Improvements</Link>
                                             </div>
                                         )}
                                     </div>
@@ -217,8 +341,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
                 {/* Main Content Area */}
                 <main className="flex-1 flex flex-col overflow-y-auto">
-                    {/* Dark Green Banner */}
-                    <div className="bg-[#006b3f] text-white px-8 py-5">
+                    {/* Blue Banner */}
+                    <div className="bg-blue-500 text-white px-8 py-5">
                         <h1 className="text-2xl font-bold tracking-wide">The hub for quality education in Ethiopia</h1>
                     </div>
                     
