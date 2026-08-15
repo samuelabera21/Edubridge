@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { fetchApi } from "../../../lib/api";
-import { useAuth } from "../../../hooks/useAuth";
+import { fetchApi } from "@/lib/api";
+import { useAuth } from "@/hooks/useAuth";
 import { Building2, Save, Loader2, AlertCircle, CheckCircle2 } from "lucide-react";
 
 export default function SchoolProfilePage() {

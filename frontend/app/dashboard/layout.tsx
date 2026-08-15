@@ -67,63 +67,167 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     </Link>
 
                     {roleName === "SCHOOL_ADMIN" && (
-                        <>
-                            <Link 
-                                href="/dashboard/profile" 
-                                className={`flex items-center space-x-3 px-3 py-2.5 rounded transition-all duration-200 ${pathname === "/dashboard/profile" ? "bg-[#4085b3] text-white shadow-sm" : "text-gray-300 hover:bg-white/10 hover:text-white"}`}
-                            >
-                                <Building className="h-5 w-5" />
-                                <span className="font-medium text-sm">School Profile</span>
-                            </Link>
-                            
-                            <div className="pt-4 pb-1">
-                                <p className="px-3 text-[10px] text-gray-400 uppercase font-bold tracking-wider">Academic Structure</p>
-                            </div>
-                            
-                            <Link 
-                                href="/dashboard/academic/years" 
-                                className={`flex items-center space-x-3 px-3 py-2 rounded transition-all duration-200 ${pathname.includes("/dashboard/academic/years") ? "text-white bg-white/5" : "text-gray-400 hover:text-gray-200"}`}
-                            >
-                                <div className={`w-1.5 h-1.5 rounded-full ${pathname.includes("/dashboard/academic/years") ? "bg-[#4085b3]" : "bg-gray-600"}`}></div>
-                                <span className="font-medium text-sm">Academic Years</span>
-                            </Link>
-
-                            <Link 
-                                href="/dashboard/academic/grades" 
-                                className={`flex items-center space-x-3 px-3 py-2 rounded transition-all duration-200 ${pathname.includes("/dashboard/academic/grades") ? "text-white bg-white/5" : "text-gray-400 hover:text-gray-200"}`}
-                            >
-                                <div className={`w-1.5 h-1.5 rounded-full ${pathname.includes("/dashboard/academic/grades") ? "bg-[#4085b3]" : "bg-gray-600"}`}></div>
-                                <span className="font-medium text-sm">Grades & Sections</span>
-                            </Link>
-
-                            <Link 
-                                href="/dashboard/academic/subjects" 
-                                className={`flex items-center space-x-3 px-3 py-2 rounded transition-all duration-200 ${pathname.includes("/dashboard/academic/subjects") ? "text-white bg-white/5" : "text-gray-400 hover:text-gray-200"}`}
-                            >
-                                <div className={`w-1.5 h-1.5 rounded-full ${pathname.includes("/dashboard/academic/subjects") ? "bg-[#4085b3]" : "bg-gray-600"}`}></div>
-                                <span className="font-medium text-sm">Subjects</span>
-                            </Link>
-                            
-                            <div className="pt-4 pb-1">
-                                <p className="px-3 text-[10px] text-gray-400 uppercase font-bold tracking-wider">People & Identities</p>
+                        <div className="space-y-4">
+                            {/* 1. Dashboard */}
+                            <div className="pt-2">
+                                <Link 
+                                    href="/dashboard/admin" 
+                                    className={`flex items-center space-x-3 px-3 py-2.5 rounded transition-all duration-200 ${pathname === "/dashboard/admin" ? "bg-[#4085b3] text-white shadow-sm" : "text-gray-300 hover:bg-white/10 hover:text-white"}`}
+                                >
+                                    <LayoutDashboard className="h-5 w-5" />
+                                    <span className="font-medium text-sm">Admin Dashboard</span>
+                                </Link>
                             </div>
 
-                            <Link 
-                                href="/dashboard/students" 
-                                className={`flex items-center space-x-3 px-3 py-2 rounded transition-all duration-200 ${pathname.includes("/dashboard/students") ? "text-white bg-white/5" : "text-gray-400 hover:text-gray-200"}`}
-                            >
-                                <div className={`w-1.5 h-1.5 rounded-full ${pathname.includes("/dashboard/students") ? "bg-[#4085b3]" : "bg-gray-600"}`}></div>
-                                <span className="font-medium text-sm">Students (Foundation)</span>
-                            </Link>
+                            {/* 2. School */}
+                            <div className="pt-2">
+                                <p className="px-3 text-[10px] text-gray-400 uppercase font-bold tracking-wider mb-1">School</p>
+                                <Link 
+                                    href="/dashboard/school/profile" 
+                                    className={`flex items-center space-x-3 px-3 py-2 rounded transition-all duration-200 ${pathname === "/dashboard/school/profile" ? "text-white bg-white/5" : "text-gray-400 hover:text-gray-200"}`}
+                                >
+                                    <div className={`w-1.5 h-1.5 rounded-full ${pathname === "/dashboard/school/profile" ? "bg-[#4085b3]" : "bg-gray-600"}`}></div>
+                                    <span className="font-medium text-sm">School Profile</span>
+                                </Link>
+                            </div>
 
-                            <Link 
-                                href="/dashboard/teachers" 
-                                className={`flex items-center space-x-3 px-3 py-2 rounded transition-all duration-200 ${pathname.includes("/dashboard/teachers") ? "text-white bg-white/5" : "text-gray-400 hover:text-gray-200"}`}
-                            >
-                                <div className={`w-1.5 h-1.5 rounded-full ${pathname.includes("/dashboard/teachers") ? "bg-[#4085b3]" : "bg-gray-600"}`}></div>
-                                <span className="font-medium text-sm">Teachers (Foundation)</span>
-                            </Link>
-                        </>
+                            {/* 3. Academics */}
+                            <div className="pt-2">
+                                <p className="px-3 text-[10px] text-gray-400 uppercase font-bold tracking-wider mb-1">Academics</p>
+                                <Link href="#" title="Pending Implementation" className="flex items-center space-x-3 px-3 py-2 rounded transition-all duration-200 text-gray-500 hover:text-gray-300 cursor-not-allowed">
+                                    <div className="w-1.5 h-1.5 rounded-full bg-gray-700"></div>
+                                    <span className="font-medium text-sm italic">Academic Years</span>
+                                </Link>
+                                <Link href="#" title="Pending Implementation" className="flex items-center space-x-3 px-3 py-2 rounded transition-all duration-200 text-gray-500 hover:text-gray-300 cursor-not-allowed">
+                                    <div className="w-1.5 h-1.5 rounded-full bg-gray-700"></div>
+                                    <span className="font-medium text-sm italic">Grades & Sections</span>
+                                </Link>
+                                <Link href="#" title="Pending Implementation" className="flex items-center space-x-3 px-3 py-2 rounded transition-all duration-200 text-gray-500 hover:text-gray-300 cursor-not-allowed">
+                                    <div className="w-1.5 h-1.5 rounded-full bg-gray-700"></div>
+                                    <span className="font-medium text-sm italic">Subjects</span>
+                                </Link>
+                                <Link href="#" title="Pending Implementation" className="flex items-center space-x-3 px-3 py-2 rounded transition-all duration-200 text-gray-500 hover:text-gray-300 cursor-not-allowed">
+                                    <div className="w-1.5 h-1.5 rounded-full bg-gray-700"></div>
+                                    <span className="font-medium text-sm italic">Timetable</span>
+                                </Link>
+                            </div>
+
+                            {/* 4. Students */}
+                            <div className="pt-2">
+                                <p className="px-3 text-[10px] text-gray-400 uppercase font-bold tracking-wider mb-1">Students</p>
+                                <Link href="#" title="Pending Implementation" className="flex items-center space-x-3 px-3 py-2 rounded transition-all duration-200 text-gray-500 hover:text-gray-300 cursor-not-allowed">
+                                    <div className="w-1.5 h-1.5 rounded-full bg-gray-700"></div>
+                                    <span className="font-medium text-sm italic">Students</span>
+                                </Link>
+                                <Link href="#" title="Pending Implementation" className="flex items-center space-x-3 px-3 py-2 rounded transition-all duration-200 text-gray-500 hover:text-gray-300 cursor-not-allowed">
+                                    <div className="w-1.5 h-1.5 rounded-full bg-gray-700"></div>
+                                    <span className="font-medium text-sm italic">Enrollments</span>
+                                </Link>
+                            </div>
+
+                            {/* 5. Teachers */}
+                            <div className="pt-2">
+                                <p className="px-3 text-[10px] text-gray-400 uppercase font-bold tracking-wider mb-1">Teachers</p>
+                                <Link href="#" title="Pending Implementation" className="flex items-center space-x-3 px-3 py-2 rounded transition-all duration-200 text-gray-500 hover:text-gray-300 cursor-not-allowed">
+                                    <div className="w-1.5 h-1.5 rounded-full bg-gray-700"></div>
+                                    <span className="font-medium text-sm italic">Teachers</span>
+                                </Link>
+                                <Link href="#" title="Pending Implementation" className="flex items-center space-x-3 px-3 py-2 rounded transition-all duration-200 text-gray-500 hover:text-gray-300 cursor-not-allowed">
+                                    <div className="w-1.5 h-1.5 rounded-full bg-gray-700"></div>
+                                    <span className="font-medium text-sm italic">Teaching Assignments</span>
+                                </Link>
+                            </div>
+
+                            {/* 6. Attendance */}
+                            <div className="pt-2">
+                                <p className="px-3 text-[10px] text-gray-400 uppercase font-bold tracking-wider mb-1">Attendance</p>
+                                <Link href="#" title="Pending Implementation" className="flex items-center space-x-3 px-3 py-2 rounded transition-all duration-200 text-gray-500 hover:text-gray-300 cursor-not-allowed">
+                                    <div className="w-1.5 h-1.5 rounded-full bg-gray-700"></div>
+                                    <span className="font-medium text-sm italic">Student Attendance</span>
+                                </Link>
+                                <Link href="#" title="Pending Implementation" className="flex items-center space-x-3 px-3 py-2 rounded transition-all duration-200 text-gray-500 hover:text-gray-300 cursor-not-allowed">
+                                    <div className="w-1.5 h-1.5 rounded-full bg-gray-700"></div>
+                                    <span className="font-medium text-sm italic">Teacher Attendance</span>
+                                </Link>
+                            </div>
+
+                            {/* 7. Assessment */}
+                            <div className="pt-2">
+                                <p className="px-3 text-[10px] text-gray-400 uppercase font-bold tracking-wider mb-1">Assessment</p>
+                                <Link href="#" title="Pending Implementation" className="flex items-center space-x-3 px-3 py-2 rounded transition-all duration-200 text-gray-500 hover:text-gray-300 cursor-not-allowed">
+                                    <div className="w-1.5 h-1.5 rounded-full bg-gray-700"></div>
+                                    <span className="font-medium text-sm italic">Assessments</span>
+                                </Link>
+                                <Link href="#" title="Pending Implementation" className="flex items-center space-x-3 px-3 py-2 rounded transition-all duration-200 text-gray-500 hover:text-gray-300 cursor-not-allowed">
+                                    <div className="w-1.5 h-1.5 rounded-full bg-gray-700"></div>
+                                    <span className="font-medium text-sm italic">Student Results</span>
+                                </Link>
+                            </div>
+
+                            {/* 8. Learning & Support */}
+                            <div className="pt-2">
+                                <p className="px-3 text-[10px] text-gray-400 uppercase font-bold tracking-wider mb-1">Learning & Support</p>
+                                <Link href="#" title="Pending Implementation" className="flex items-center space-x-3 px-3 py-2 rounded transition-all duration-200 text-gray-500 hover:text-gray-300 cursor-not-allowed">
+                                    <div className="w-1.5 h-1.5 rounded-full bg-gray-700"></div>
+                                    <span className="font-medium text-sm italic">Learning Activities</span>
+                                </Link>
+                                <Link href="#" title="Pending Implementation" className="flex items-center space-x-3 px-3 py-2 rounded transition-all duration-200 text-gray-500 hover:text-gray-300 cursor-not-allowed">
+                                    <div className="w-1.5 h-1.5 rounded-full bg-gray-700"></div>
+                                    <span className="font-medium text-sm italic">Submissions</span>
+                                </Link>
+                                <Link href="#" title="Pending Implementation" className="flex items-center space-x-3 px-3 py-2 rounded transition-all duration-200 text-gray-500 hover:text-gray-300 cursor-not-allowed">
+                                    <div className="w-1.5 h-1.5 rounded-full bg-gray-700"></div>
+                                    <span className="font-medium text-sm italic">Support Flags</span>
+                                </Link>
+                            </div>
+
+                            {/* 9. Parents */}
+                            <div className="pt-2">
+                                <p className="px-3 text-[10px] text-gray-400 uppercase font-bold tracking-wider mb-1">Parents</p>
+                                <Link href="#" title="Pending Implementation" className="flex items-center space-x-3 px-3 py-2 rounded transition-all duration-200 text-gray-500 hover:text-gray-300 cursor-not-allowed">
+                                    <div className="w-1.5 h-1.5 rounded-full bg-gray-700"></div>
+                                    <span className="font-medium text-sm italic">Parents</span>
+                                </Link>
+                                <Link href="#" title="Pending Implementation" className="flex items-center space-x-3 px-3 py-2 rounded transition-all duration-200 text-gray-500 hover:text-gray-300 cursor-not-allowed">
+                                    <div className="w-1.5 h-1.5 rounded-full bg-gray-700"></div>
+                                    <span className="font-medium text-sm italic">Student Relationships</span>
+                                </Link>
+                            </div>
+
+                            {/* 10. Communication */}
+                            <div className="pt-2">
+                                <p className="px-3 text-[10px] text-gray-400 uppercase font-bold tracking-wider mb-1">Communication</p>
+                                <Link href="#" title="Pending Implementation" className="flex items-center space-x-3 px-3 py-2 rounded transition-all duration-200 text-gray-500 hover:text-gray-300 cursor-not-allowed">
+                                    <div className="w-1.5 h-1.5 rounded-full bg-gray-700"></div>
+                                    <span className="font-medium text-sm italic">Announcements</span>
+                                </Link>
+                                <Link href="#" title="Pending Implementation" className="flex items-center space-x-3 px-3 py-2 rounded transition-all duration-200 text-gray-500 hover:text-gray-300 cursor-not-allowed">
+                                    <div className="w-1.5 h-1.5 rounded-full bg-gray-700"></div>
+                                    <span className="font-medium text-sm italic">Notifications</span>
+                                </Link>
+                                <Link href="#" title="Pending Implementation" className="flex items-center space-x-3 px-3 py-2 rounded transition-all duration-200 text-gray-500 hover:text-gray-300 cursor-not-allowed">
+                                    <div className="w-1.5 h-1.5 rounded-full bg-gray-700"></div>
+                                    <span className="font-medium text-sm italic">Messages</span>
+                                </Link>
+                            </div>
+
+                            {/* 11. Operations */}
+                            <div className="pt-2 pb-6">
+                                <p className="px-3 text-[10px] text-gray-400 uppercase font-bold tracking-wider mb-1">Operations</p>
+                                <Link href="#" title="Pending Implementation" className="flex items-center space-x-3 px-3 py-2 rounded transition-all duration-200 text-gray-500 hover:text-gray-300 cursor-not-allowed">
+                                    <div className="w-1.5 h-1.5 rounded-full bg-gray-700"></div>
+                                    <span className="font-medium text-sm italic">Resources</span>
+                                </Link>
+                                <Link href="#" title="Pending Implementation" className="flex items-center space-x-3 px-3 py-2 rounded transition-all duration-200 text-gray-500 hover:text-gray-300 cursor-not-allowed">
+                                    <div className="w-1.5 h-1.5 rounded-full bg-gray-700"></div>
+                                    <span className="font-medium text-sm italic">Issues</span>
+                                </Link>
+                                <Link href="#" title="Pending Implementation" className="flex items-center space-x-3 px-3 py-2 rounded transition-all duration-200 text-gray-500 hover:text-gray-300 cursor-not-allowed">
+                                    <div className="w-1.5 h-1.5 rounded-full bg-gray-700"></div>
+                                    <span className="font-medium text-sm italic">Improvement Plans</span>
+                                </Link>
+                            </div>
+                        </div>
                     )}
 
                     {roleName === "STUDENT" && (
