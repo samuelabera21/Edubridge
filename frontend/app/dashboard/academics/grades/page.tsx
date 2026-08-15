@@ -72,7 +72,7 @@ export default function GradesAndSectionsPage() {
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <div>
                         <h1 className="text-xl font-bold text-gray-900 flex items-center">
-                            <School className="w-6 h-6 mr-2 text-[#006b3f]" />
+                            <School className="w-6 h-6 mr-2 text-blue-500" />
                             Grades & Sections
                         </h1>
                         <p className="text-sm text-gray-500 mt-1">Manage grade levels and sections for the academic year.</p>
@@ -91,11 +91,11 @@ export default function GradesAndSectionsPage() {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
                     <h1 className="text-xl font-bold text-gray-900 flex items-center">
-                        <School className="w-6 h-6 mr-2 text-[#006b3f]" />
+                        <School className="w-6 h-6 mr-2 text-blue-500" />
                         Grades & Sections
                     </h1>
                     <p className="text-sm text-gray-500 mt-1">
-                        Managing structure for <span className="font-semibold text-[#006b3f]">{activeYear.name}</span>
+                        Managing structure for <span className="font-semibold text-blue-500">{activeYear.name}</span>
                     </p>
                 </div>
                 {hasCreatePermission && (
