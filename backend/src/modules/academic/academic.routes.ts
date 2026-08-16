@@ -121,7 +121,7 @@ router.get("/grades/:schoolGradeId/sections", requirePermission("ACADEMIC:VIEW")
  *     tags: [Academic]
  *     summary: Create a section
  */
-router.post("/grades/:schoolGradeId/sections", requirePermission("ACADEMIC:CREATE"), createSection);
+router.post("/grades/:schoolGradeId/sections", createSection);
 
 // --- Subjects ---
 /**
