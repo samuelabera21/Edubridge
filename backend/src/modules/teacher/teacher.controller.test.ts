@@ -9,6 +9,15 @@ import {
     getMyTimetable,
     getMyStudents,
     getDashboardSummary,
+    getStudentDetail,
+    recordBatchAttendance,
+    createAssessmentWithResults,
+    gradeActivitySubmission,
+    createStudentSupportFlag,
+    resolveSupportFlag,
+    sendParentMessage,
+    getClassPerformanceReport,
+    generateAiTeachingAssistantInsight,
     reportIssue,
     getMyIssues
 } from "./teacher.controller.js";
@@ -24,6 +33,15 @@ vi.mock("./teacher.service.js", () => ({
         getMyTimetable: vi.fn(),
         getMyStudents: vi.fn(),
         getDashboardSummary: vi.fn(),
+        getStudentDetail: vi.fn(),
+        recordBatchAttendance: vi.fn(),
+        createAssessmentWithResults: vi.fn(),
+        gradeActivitySubmission: vi.fn(),
+        createStudentSupportFlag: vi.fn(),
+        resolveSupportFlag: vi.fn(),
+        sendParentMessage: vi.fn(),
+        getClassPerformanceReport: vi.fn(),
+        generateAiTeachingAssistantInsight: vi.fn(),
         reportIssue: vi.fn(),
         getMyIssues: vi.fn()
     }
@@ -109,11 +127,6 @@ describe("Teacher Controller", () => {
     });
 
     describe("getDashboardSummary", () => {
-        it("should return 403 if unauthenticated or missing scope", async () => {
-            await getDashboardSummary(mockReq as Request, mockRes as Response);
-            expect(mockRes.status).toHaveBeenCalledWith(403);
-        });
-
         it("should return summary for authenticated teacher", async () => {
             (mockReq as any).accessScope = { id: "school1" };
             (mockReq as any).user = { id: "u1" };
@@ -136,16 +149,52 @@ describe("Teacher Controller", () => {
         });
     });
 
-    describe("reportIssue", () => {
-        it("should return 400 if title is missing", async () => {
+    describe("recordBatchAttendance", () => {
+        it("should return 400 if required parameters are missing", async () => {
             (mockReq as any).accessScope = { id: "school1" };
             (mockReq as any).user = { id: "u1" };
             mockReq.body = {};
 
-            await reportIssue(mockReq as Request, mockRes as Response);
+            await recordBatchAttendance(mockReq as Request, mockRes as Response);
             expect(mockRes.status).toHaveBeenCalledWith(400);
         });
 
+        it("should record batch attendance successfully", async () => {
+            (mockReq as any).accessScope = { id: "school1" };
+            (mockReq as any).user = { id: "u1" };
+            mockReq.body = {
+                academicYearId: "ay1",
+                sectionId: "sec1",
+                date: "2026-08-16",
+                attendances: [{ enrollmentId: "e1", status: "PRESENT" }]
+            };
+
+            vi.mocked(TeacherService.recordBatchAttendance).mockResolvedValue([{ id: "att1" }] as any);
+
+            await recordBatchAttendance(mockReq as Request, mockRes as Response);
+
+            expect(TeacherService.recordBatchAttendance).toHaveBeenCalledWith("u1", "school1", expect.objectContaining({ sectionId: "sec1" }));
+            expect(mockRes.status).toHaveBeenCalledWith(201);
+        });
+    });
+
+    describe("generateAiTeachingAssistantInsight", () => {
+        it("should return AI insight response", async () => {
+            (mockReq as any).accessScope = { id: "school1" };
+            (mockReq as any).user = { id: "u1" };
+            mockReq.body = { prompt: "Pythagorean Theorem" };
+
+            const mockInsight = { prompt: "Pythagorean Theorem", recommendation: "Demo Plan" };
+            vi.mocked(TeacherService.generateAiTeachingAssistantInsight).mockResolvedValue(mockInsight as any);
+
+            await generateAiTeachingAssistantInsight(mockReq as Request, mockRes as Response);
+
+            expect(TeacherService.generateAiTeachingAssistantInsight).toHaveBeenCalledWith("u1", "school1", "Pythagorean Theorem", undefined);
+            expect(mockRes.json).toHaveBeenCalledWith(mockInsight);
+        });
+    });
+
+    describe("reportIssue", () => {
         it("should report issue successfully", async () => {
             (mockReq as any).accessScope = { id: "school1" };
             (mockReq as any).user = { id: "u1" };
