@@ -108,8 +108,8 @@ Every developer must follow this workflow.
 Before starting:
 
 ```bash
-git checkout main
-git pull origin main
+git checkout dev
+git pull origin dev
 ```
 
 Then create a meaningful branch. Examples:
@@ -121,16 +121,16 @@ git checkout -b feature/academic-leader-actor
 ```
 
 > [!IMPORTANT]
-> Never work directly on `main`.
+> Never work directly on `main` or `dev`.
 
 Before every major implementation phase:
 
 ```bash
-git checkout main
-git pull origin main
+git checkout dev
+git pull origin dev
 ```
 
-Then rebase/merge the latest main changes into the feature branch as appropriate.
+Then rebase/merge the latest dev changes into the feature branch as appropriate.
 
 Use meaningful commits. Examples:
 
@@ -330,6 +330,23 @@ If an actor requires an Admin operation during development, create/use a legitim
 # 15. PARALLEL DEVELOPMENT RULE
 
 These teams are intentionally independent. Each developer must minimize unnecessary changes outside their actor domain. If a developer discovers that another actor needs a shared foundation change, document it and coordinate before modifying another team's domain.
+
+### Expected Architecture:
+
+```mermaid
+graph TD
+    M[MAIN Branch] --> D[DEV Branch]
+    D --> S[Student Branch]
+    D --> T[Teacher Branch]
+    D --> A[Academic Leader Branch]
+    
+    S --> |PR| R[Code Review]
+    T --> |PR| R
+    A --> |PR| R
+    
+    R --> |Merge| D
+    D --> |Release| M
+```
 
 ---
 
