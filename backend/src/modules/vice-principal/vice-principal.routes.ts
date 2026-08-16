@@ -1,6 +1,14 @@
 import { Router } from "express";
 import { requireScope } from "../authentication/authorization.middleware.js";
-import { getVicePrincipalProfile } from "./vice-principal.controller.js";
+import { 
+    getVicePrincipalProfile,
+    getAttendanceDashboard,
+    getAssessmentDashboard,
+    getStudentSupportDashboard,
+    getTeacherSupportDashboard,
+    getCommunicationDashboard,
+    getAiInsightsDashboard
+} from "./vice-principal.controller.js";
 
 const router = Router();
 
@@ -8,5 +16,11 @@ const router = Router();
 router.use(requireScope("SCHOOL"));
 
 router.get("/me", getVicePrincipalProfile);
+router.get("/attendance", getAttendanceDashboard);
+router.get("/assessments", getAssessmentDashboard);
+router.get("/support/students", getStudentSupportDashboard);
+router.get("/support/teachers", getTeacherSupportDashboard);
+router.get("/communication", getCommunicationDashboard);
+router.get("/ai-insights", getAiInsightsDashboard);
 
 export default router;
