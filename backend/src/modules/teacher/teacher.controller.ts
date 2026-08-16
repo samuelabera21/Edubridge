@@ -146,7 +146,7 @@ export const getStudentDetail = async (req: Request, res: Response) => {
         const userId = req.user?.id;
         if (!organizationId || !userId) return res.status(403).json({ error: "Missing school scope or authentication" });
 
-        const { studentId } = req.params;
+        const studentId = req.params.studentId as string;
         const student = await TeacherService.getStudentDetail(userId, organizationId, studentId);
         return res.json(student);
     } catch (error: any) {
@@ -212,7 +212,7 @@ export const gradeActivitySubmission = async (req: Request, res: Response) => {
         const userId = req.user?.id;
         if (!organizationId || !userId) return res.status(403).json({ error: "Missing school scope or authentication" });
 
-        const { submissionId } = req.params;
+        const submissionId = req.params.submissionId as string;
         const { status, grade, feedback } = req.body;
 
         const updated = await TeacherService.gradeActivitySubmission(userId, organizationId, submissionId, {
@@ -256,7 +256,7 @@ export const resolveSupportFlag = async (req: Request, res: Response) => {
         const userId = req.user?.id;
         if (!organizationId || !userId) return res.status(403).json({ error: "Missing school scope or authentication" });
 
-        const { flagId } = req.params;
+        const flagId = req.params.flagId as string;
         const { resolution } = req.body;
         if (!resolution) return res.status(400).json({ error: "resolution text is required" });
 
@@ -289,7 +289,7 @@ export const getClassPerformanceReport = async (req: Request, res: Response) => 
         const userId = req.user?.id;
         if (!organizationId || !userId) return res.status(403).json({ error: "Missing school scope or authentication" });
 
-        const { teachingAssignmentId } = req.params;
+        const teachingAssignmentId = req.params.teachingAssignmentId as string;
         const report = await TeacherService.getClassPerformanceReport(userId, organizationId, teachingAssignmentId);
         return res.json(report);
     } catch (error: any) {

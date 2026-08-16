@@ -498,6 +498,7 @@ export class TeacherService {
         const assessment = await prisma.assessment.create({
             data: {
                 organizationId,
+                academicYearId: assignment.academicYearId,
                 teachingAssignmentId: data.teachingAssignmentId,
                 title: data.title,
                 type: assessmentType as any,
