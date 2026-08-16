@@ -131,13 +131,20 @@ export const getSections = async (req: Request, res: Response) => {
 
 export const createSection = async (req: Request, res: Response) => {
     try {
+        console.log("createSection START", req.params.schoolGradeId, req.body);
         const organizationId = (req as any).accessScope?.id;
-        if (!organizationId) return res.status(403).json({ error: "Missing school scope" });
+        if (!organizationId) {
+            console.log("createSection NO ORG ID");
+            return res.status(403).json({ error: "Missing school scope" });
+        }
         
+        console.log("Calling AcademicService.createSection");
         const section = await AcademicService.createSection(req.params.schoolGradeId as string, req.body.name, req.body.capacity);
+        console.log("createSection SUCCESS", section);
         res.status(201).json(section);
-    } catch (error) {
-        res.status(400).json({ error: "Invalid request" });
+    } catch (error: any) {
+        console.error("createSection ERROR:", error);
+        res.status(400).json({ error: error?.message || "Invalid request" });
     }
 };
 

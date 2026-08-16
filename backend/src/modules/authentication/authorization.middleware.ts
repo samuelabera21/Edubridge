@@ -22,11 +22,12 @@ export function requireAuth() {
 
 export function requirePermission(permissionName: string) {
     return async (req: Request, res: Response, next: NextFunction) => {
-        const session = await auth.api.getSession({
-            headers: fromNodeHeaders(req.headers),
-        });
+        try {
+            const session = await auth.api.getSession({
+                headers: fromNodeHeaders(req.headers),
+            });
 
-        if (!session) {
+            if (!session) {
             return res.status(401).json({
                 message: "Unauthorized",
             });
@@ -47,14 +48,18 @@ export function requirePermission(permissionName: string) {
             },
         });
 
-        if (!permission) {
-            return res.status(403).json({
-                message: "Forbidden",
-            });
-        }
+            if (!permission) {
+                return res.status(403).json({
+                    message: "Forbidden",
+                });
+            }
 
-        (req as any).user = session.user;
-        next();
+            (req as any).user = session.user;
+            next();
+        } catch (error) {
+            console.error("Permission check error:", error);
+            return res.status(500).json({ error: "Internal Server Error during permission check" });
+        }
     };
 }
 

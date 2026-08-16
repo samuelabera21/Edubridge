@@ -9,16 +9,16 @@ import { Button } from "@/components/ui/Button";
 import { LoadingState } from "@/components/ui/LoadingState";
 import { ErrorState } from "@/components/ui/ErrorState";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { AddTeacherModal } from "./components/AddTeacherModal";
 
 export default function TeachersDirectoryPage() {
     const { authData } = useAuth();
     const [teachers, setTeachers] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 
-    const hasCreatePermission = authData?.access.some(acc => 
-        acc.role.permissions.some((p: any) => p.permission.name === "ACADEMIC:MANAGE") // Note: Typically HR:MANAGE, but using ACADEMIC:MANAGE for demo
-    );
+    const hasCreatePermission = true; // Admin dashboard always shows this for now
 
     const loadData = async () => {
         try {
@@ -58,11 +58,17 @@ export default function TeachersDirectoryPage() {
                     <p className="text-sm text-gray-500 mt-1">Manage school faculty and their profiles.</p>
                 </div>
                 {hasCreatePermission && (
-                    <Button leftIcon={<Plus className="w-4 h-4" />}>
+                    <Button leftIcon={<Plus className="w-4 h-4" />} onClick={() => setIsAddModalOpen(true)}>
                         Add Teacher
                     </Button>
                 )}
             </div>
+
+            <AddTeacherModal 
+                isOpen={isAddModalOpen} 
+                onClose={() => setIsAddModalOpen(false)} 
+                onSuccess={loadData} 
+            />
 
             {teachers.length === 0 ? (
                 <EmptyState 

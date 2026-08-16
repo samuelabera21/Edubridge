@@ -418,8 +418,30 @@ model Student {
   studentId   String    @unique
   firstName   String
   lastName    String
+  fatherName  String?
+  grandfatherName String?
   dateOfBirth DateTime?
   gender      String?
+  nationality String?
+  placeOfBirth String?
+  photoUrl    String?
+
+  // Address
+  region      String?
+  zone        String?
+  woreda      String?
+  city        String?
+  kebele      String?
+  houseNumber String?
+
+  // Previous School
+  previousSchool    String?
+  previousStudentId String?
+
+  // Emergency Contact
+  emergencyContactName     String?
+  emergencyContactRelation String?
+  emergencyContactPhone    String?
 
   enrollments StudentEnrollment[]
   parents     ParentStudent[]
