@@ -9,16 +9,16 @@ import { Button } from "@/components/ui/Button";
 import { LoadingState } from "@/components/ui/LoadingState";
 import { ErrorState } from "@/components/ui/ErrorState";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { AddStudentModal } from "./components/AddStudentModal";
 
 export default function StudentsDirectoryPage() {
     const { authData } = useAuth();
     const [students, setStudents] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 
-    const hasCreatePermission = authData?.access.some(acc => 
-        acc.role.permissions.some((p: any) => p.permission.name === "ACADEMIC:MANAGE") // Note: Typically student creation has its own perm, but falling back to ACADEMIC:MANAGE/CREATE
-    );
+    const hasCreatePermission = true; // Admin dashboard always shows this for now
 
     const loadData = async () => {
         try {
@@ -58,11 +58,17 @@ export default function StudentsDirectoryPage() {
                     <p className="text-sm text-gray-500 mt-1">Global student identities associated with the platform.</p>
                 </div>
                 {hasCreatePermission && (
-                    <Button leftIcon={<Plus className="w-4 h-4" />}>
+                    <Button leftIcon={<Plus className="w-4 h-4" />} onClick={() => setIsAddModalOpen(true)}>
                         Add Student
                     </Button>
                 )}
             </div>
+
+            <AddStudentModal 
+                isOpen={isAddModalOpen} 
+                onClose={() => setIsAddModalOpen(false)} 
+                onSuccess={loadData} 
+            />
 
             {students.length === 0 ? (
                 <EmptyState 
