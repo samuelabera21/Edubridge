@@ -1,27 +1,31 @@
-       STUDENT DETAILS & ENROLLMENT DATA SPECIFICATION
-Every logged-in student session is initialized with a global profile context containing the following data fields:
+ # STUDENT DETAILS & ENROLLMENT DATA SPECIFICATION
 
-         Personal Profile Data
-Student ID: Unique institutional identifier (e.g., STU-2026-8942).
+> **Overview & Purpose**  
+This specification defines the global profile context initialized for every logged-in student session. It encapsulates the core data fields required across the portal for identity verification, administrative record-keeping, academic placement, and emergency contacts.
 
-Full Legal Name: First Name, Father's Name, Grandfather's Name.
+---
 
-Profile Photo & Avatar: URL path to uploaded profile image.
+## 1. PERSONAL PROFILE DATA
 
-Date of Birth & Gender: Demographics for administrative registration.
+* **Student ID:** Unique institutional identifier (e.g., `STU-2026-8942`).
+* **Full Legal Name:** First Name, Father's Name, Grandfather's Name.
+* **Profile Photo & Avatar:** URL path to the uploaded profile image.
+* **Date of Birth & Gender:** Demographic attributes used for administrative registration.
+* **Guardian Details:** 
+  * Primary Contact Name
+  * Relationship to Student
+  * Phone Number
+  * Emergency Contact Line
 
-Guardian Details: Primary Contact Name, Relationship, Phone Number, Emergency Line.
+---
 
-         Academic Placement & Enrollment
-Institution Details: School Name, School Code, Regional Office.
+## 2. ACADEMIC PLACEMENT & ENROLLMENT
 
-Grade Level: Enrolled grade level (e.g., Grade 9).
-
-Section Assignment: Enrolled section (e.g., Section 9-A).
-
-Academic Year & Term: Active academic year (e.g., 2018 E.C.) and active term/semester.
-
-Homeroom Teacher: Assigned advisor name and contact.
+* **Institution Details:** School Name, School Code, Regional Administrative Office.
+* **Grade Level:** Currently enrolled grade level (e.g., *Grade 9*).
+* **Section Assignment:** Assigned section classroom (e.g., *Section 9-A*).
+* **Academic Year & Term:** Active academic calendar year (e.g., *2018 E.C.*) and active semester/term.
+* **Homeroom Teacher:** Assigned advisor name and direct contact details.
 
 # FULL NAVIGATION BREAKDOWN & WORKFLOW GUIDES
 
