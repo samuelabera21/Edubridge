@@ -1,4 +1,5 @@
 import { prisma } from "../../infrastructure/prisma/client.js";
+import { AcademicYear, SchoolGrade, Section } from "@prisma/client";
 
 export async function getAcademicOverview(organizationId: string) {
     // 1. Fetch active academic year
@@ -464,4 +465,39 @@ export async function getAiInsights(organizationId: string) {
     const summary = "Overall, academic performance is stable. However, targeted interventions are highly recommended for Grade 10 Mathematics.";
 
     return { summary, insights };
+}
+
+// ==========================================
+// STEP 2: ACADEMIC ORGANIZATION
+// ==========================================
+
+export async function getAcademicOrganizationGrades(organizationId: string, academicYearId: string) {
+    // Fetch grades for the active year and aggregate section/student metrics
+    return prisma.schoolGrade.findMany({
+        where: { 
+            academicYearId,
+            academicYear: { organizationId }
+        },
+        include: {
+            grade: true,
+            _count: {
+                select: { sections: true }
+            }
+        }
+    });
+}
+
+export async function getAcademicOrganizationSections(organizationId: string, schoolGradeId: string) {
+    // Fetch sections for the given grade and aggregate student enrollment counts
+    return prisma.section.findMany({
+        where: { 
+            schoolGradeId, 
+            schoolGrade: { academicYear: { organizationId } } 
+        },
+        include: {
+            _count: {
+                select: { studentEnrollments: true }
+            }
+        }
+    });
 }

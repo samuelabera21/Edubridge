@@ -7,7 +7,9 @@ import {
     getStudentSupportDashboard,
     getTeacherSupportDashboard,
     getCommunicationDashboard,
-    getAiInsightsDashboard
+    getAiInsightsDashboard,
+    getAcademicOrganizationGrades,
+    getAcademicOrganizationSections
 } from "./vice-principal.controller.js";
 
 const router = Router();
@@ -22,5 +24,9 @@ router.get("/support/students", getStudentSupportDashboard);
 router.get("/support/teachers", getTeacherSupportDashboard);
 router.get("/communication", getCommunicationDashboard);
 router.get("/ai-insights", getAiInsightsDashboard);
+
+// Step 2: Academic Organization endpoints
+router.get("/academic/years/:yearId/grades", getAcademicOrganizationGrades);
+router.get("/academic/grades/:schoolGradeId/sections", getAcademicOrganizationSections);
 
 export default router;

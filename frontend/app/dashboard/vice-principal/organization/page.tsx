@@ -52,7 +52,7 @@ export default function AcademicOrganizationPage() {
             setLoadingGrades(true);
             setError(null);
             try {
-                const res = await fetchApi(`/academic/years/${activeYear.id}/grades`);
+                const res = await fetchApi(`/vice-principal/academic/years/${activeYear.id}/grades`);
                 if (res.ok) {
                     const data = await res.json();
                     setGrades(data || []);
@@ -83,7 +83,7 @@ export default function AcademicOrganizationPage() {
 
             setLoadingSections(true);
             try {
-                const res = await fetchApi(`/academic/grades/${selectedGrade.id}/sections`);
+                const res = await fetchApi(`/vice-principal/academic/grades/${selectedGrade.id}/sections`);
                 if (res.ok) {
                     const data = await res.json();
                     setSections(data || []);
@@ -192,7 +192,10 @@ export default function AcademicOrganizationPage() {
                                         >
                                             <div>
                                                 <h3 className={`font-bold ${selectedGrade?.id === schoolGrade.id ? 'text-blue-900' : 'text-gray-900'}`}>{schoolGrade.grade.name}</h3>
-                                                {schoolGrade.grade.code && <p className="text-xs text-gray-500 mt-1">Code: {schoolGrade.grade.code}</p>}
+                                                <div className="flex items-center space-x-3 mt-1">
+                                                    {schoolGrade.grade.code && <span className="text-xs text-gray-500">Code: {schoolGrade.grade.code}</span>}
+                                                    <span className="text-xs text-gray-500 font-medium">Sections: {schoolGrade._count?.sections || 0}</span>
+                                                </div>
                                             </div>
                                             <div className="text-xs font-medium text-emerald-600 bg-emerald-50 px-2 py-1 rounded">
                                                 Active
@@ -233,6 +236,7 @@ export default function AcademicOrganizationPage() {
                                     <li key={section.id} className="p-5 hover:bg-gray-50 transition-colors flex justify-between items-center">
                                         <div>
                                             <h3 className="font-bold text-gray-900">{section.name}</h3>
+                                            <p className="text-sm text-gray-500 mt-1">Students: {section._count?.studentEnrollments || 0}</p>
                                         </div>
                                         <div className="text-xs font-medium text-emerald-600 bg-emerald-50 px-2 py-1 rounded">
                                             Active

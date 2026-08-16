@@ -114,3 +114,42 @@ export async function getAiInsightsDashboard(req: Request, res: Response) {
         return res.status(500).json({ error: "Internal server error" });
     }
 }
+
+// ==========================================
+// STEP 2: ACADEMIC ORGANIZATION
+// ==========================================
+import { getAcademicOrganizationGrades as getGradesSvc, getAcademicOrganizationSections as getSectionsSvc } from "./vice-principal.service.js";
+
+export async function getAcademicOrganizationGrades(req: Request, res: Response) {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        const yearId = req.params.yearId;
+        
+        if (!organizationId) {
+            return res.status(403).json({ error: "Missing school scope" });
+        }
+        
+        const grades = await getGradesSvc(organizationId, yearId);
+        res.json(grades);
+    } catch (error) {
+        console.error("Error fetching academic organization grades:", error);
+        res.status(500).json({ error: "Internal server error" });
+    }
+}
+
+export async function getAcademicOrganizationSections(req: Request, res: Response) {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        const schoolGradeId = req.params.schoolGradeId;
+        
+        if (!organizationId) {
+            return res.status(403).json({ error: "Missing school scope" });
+        }
+        
+        const sections = await getSectionsSvc(organizationId, schoolGradeId);
+        res.json(sections);
+    } catch (error) {
+        console.error("Error fetching academic organization sections:", error);
+        res.status(500).json({ error: "Internal server error" });
+    }
+}
