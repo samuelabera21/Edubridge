@@ -10,7 +10,7 @@ const options = {
     },
     servers: [
       {
-        url: "http://localhost:5000",
+        url: "/",
         description: "Development Server",
       },
     ],
@@ -38,22 +38,41 @@ const options = {
     ],
     tags: [
       { name: "Authentication" },
-      { name: "Authorization" },
-      { name: "School" },
-      { name: "Academic" },
-      { name: "Students" },
-      { name: "Teachers" },
-      { name: "Timetable" },
-      { name: "Attendance" },
-      { name: "Assessment" },
-      { name: "Learning" },
-      { name: "Support" },
-      { name: "Parents" },
-      { name: "Communication" },
-      { name: "Operations" },
+      { name: "Vice Principal" },
     ],
+    paths: {
+      "/api/auth/sign-in/email": {
+        post: {
+          tags: ["Authentication"],
+          summary: "Sign In via Email",
+          description: "Login with Better Auth to receive a session cookie.",
+          requestBody: {
+            required: true,
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  properties: {
+                    email: { type: "string" },
+                    password: { type: "string" },
+                  },
+                },
+              },
+            },
+          },
+          responses: {
+            "200": {
+              description: "Successfully authenticated",
+            },
+            "401": {
+              description: "Unauthorized",
+            }
+          },
+        },
+      },
+    },
   },
-  apis: ["./src/modules/**/*.routes.ts", "./src/modules/**/*.ts"], 
+  apis: ["./src/modules/**/*.ts", "./src/modules/**/*.js"],
 };
 
 export const swaggerSpec = swaggerJsdoc(options);
