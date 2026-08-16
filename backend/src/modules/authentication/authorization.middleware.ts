@@ -53,6 +53,7 @@ export function requirePermission(permissionName: string) {
             });
         }
 
+        (req as any).user = session.user;
         next();
     };
 }
@@ -87,6 +88,9 @@ export function requireScope(scopeType: "SCHOOL" | "WOREDA" | "ZONE" | "REGION" 
 
         // Attach scope to request for controller to use
         (req as any).accessScope = assignment.scope;
+        (req as any).user = session.user;
+        
+        console.log("=> [MIDDLEWARE] requireScope PASSED for user:", session.user.email);
 
         next();
     };

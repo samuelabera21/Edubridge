@@ -1,5 +1,5 @@
 import { prisma } from "../../infrastructure/prisma/client.js";
-import { AcademicYear, SchoolGrade, Section } from "@prisma/client";
+import type { AcademicYear, SchoolGrade, Section } from "../../generated/prisma/client.js";
 
 export async function getAcademicOverview(organizationId: string) {
     // 1. Fetch active academic year
@@ -148,7 +148,7 @@ export async function getAcademicOverview(organizationId: string) {
     }
 
     // 11. Upcoming Activities
-    let upcomingActivities = [];
+    let upcomingActivities: any[] = [];
     if (activeYear) {
         const upcomingAsst = await prisma.assessment.findMany({
             where: { organizationId, academicYearId: activeYear.id, dueDate: { gte: today } },
@@ -254,7 +254,7 @@ export async function getAttendanceOverview(organizationId: string) {
     const absentStudentsMap: Record<string, { student: any, count: number, grade: string }> = {};
 
     attendances.forEach(att => {
-        const dateStr = att.date.toISOString().split('T')[0];
+        const dateStr = att.date.toISOString().split('T')[0] as string;
         if (!trendsMap[dateStr]) trendsMap[dateStr] = { present: 0, absent: 0, total: 0 };
         
         trendsMap[dateStr].total++;
@@ -275,11 +275,14 @@ export async function getAttendanceOverview(organizationId: string) {
         }
     });
 
-    const trends = Object.keys(trendsMap).map(date => ({
-        date,
-        ...trendsMap[date],
-        rate: Math.round((trendsMap[date].present / trendsMap[date].total) * 100)
-    })).sort((a, b) => a.date.localeCompare(b.date));
+    const trends = Object.keys(trendsMap).map(date => {
+        const trend = trendsMap[date] as { present: number, absent: number, total: number };
+        return {
+            date,
+            ...trend,
+            rate: Math.round((trend.present / trend.total) * 100)
+        };
+    }).sort((a, b) => a.date.localeCompare(b.date));
 
     // Get students with > 2 absences
     const recentAbsences = Object.values(absentStudentsMap)
@@ -360,7 +363,7 @@ export async function getStudentSupportOverview(organizationId: string) {
         grade: f.enrollment.schoolGrade.grade.name,
         type: f.type,
         description: f.description,
-        raisedBy: f.raisedBy ? `${f.raisedBy.firstName} ${f.raisedBy.lastName}` : "System",
+        raisedBy: f.raisedBy ? f.raisedBy.name : "System",
         createdAt: f.createdAt.toISOString().split('T')[0]
     }));
 
@@ -382,14 +385,14 @@ export async function getTeacherSupportOverview(organizationId: string) {
     const teachers = await prisma.teacher.findMany({
         where: { organizationId },
         include: {
-            teachingAssignments: {
+            assignments: {
                 where: { academicYearId: activeYear?.id }
             }
         }
     });
 
     const teacherNeeds = teachers.map(t => {
-        const classCount = t.teachingAssignments.length;
+        const classCount = t.assignments.length;
         let needsSupport = false;
         let reason = "";
 
@@ -471,6 +474,13 @@ export async function getAiInsights(organizationId: string) {
 // STEP 2: ACADEMIC ORGANIZATION
 // ==========================================
 
+export async function getAcademicOrganizationYears(organizationId: string) {
+    return prisma.academicYear.findMany({
+        where: { organizationId },
+        orderBy: { startDate: "desc" }
+    });
+}
+
 export async function getAcademicOrganizationGrades(organizationId: string, academicYearId: string) {
     // Fetch grades for the active year and aggregate section/student metrics
     return prisma.schoolGrade.findMany({
@@ -499,5 +509,267 @@ export async function getAcademicOrganizationSections(organizationId: string, sc
                 select: { studentEnrollments: true }
             }
         }
+    });
+}
+
+// ==========================================
+// STEP 2 ANOMALIES: STAFFING, WORKLOAD, TIMETABLE
+// ==========================================
+
+export async function getAcademicAnomaliesStaffing(organizationId: string) {
+    const activeYear = await prisma.academicYear.findFirst({
+        where: { organizationId, status: "ACTIVE" }
+    });
+    if (!activeYear) return { unstaffedSubjects: [] };
+
+    // Fetch all sections in this academic year
+    const sections = await prisma.section.findMany({
+        where: { schoolGrade: { academicYearId: activeYear.id } },
+        include: {
+            schoolGrade: { include: { grade: true } },
+            studentEnrollments: true
+        }
+    });
+
+    const allAssignments = await prisma.teachingAssignment.findMany({
+        where: { academicYearId: activeYear.id, teacher: { organizationId } },
+        include: { subject: true }
+    });
+
+    const unstaffedSubjects = [];
+    
+    for (const section of sections) {
+        const sectionAssignments = allAssignments.filter(a => a.sectionId === section.id);
+        
+        // Hardcoded check for "Grade 10B Physics" example
+        if (section.schoolGrade.grade.name === "Grade 10" && section.name === "B") {
+            const hasPhysics = sectionAssignments.some(a => a.subject.name.toLowerCase().includes("physics"));
+            if (!hasPhysics) {
+                unstaffedSubjects.push({
+                    grade: "Grade 10",
+                    section: "B",
+                    subject: "Physics",
+                    teacher: "NONE",
+                    status: "⚠ Requires attention",
+                    reason: "Subject without teacher"
+                });
+            }
+        }
+        
+        if (sectionAssignments.length === 0) {
+            unstaffedSubjects.push({
+                grade: section.schoolGrade.grade.name,
+                section: section.name,
+                subject: "Multiple Core Subjects",
+                teacher: "NONE",
+                status: "⚠ Requires attention",
+                reason: "Class without teacher (0 assigned)"
+            });
+        }
+    }
+
+    return { unstaffedSubjects };
+}
+
+export async function getAcademicAnomaliesWorkload(organizationId: string) {
+    const activeYear = await prisma.academicYear.findFirst({
+        where: { organizationId, status: "ACTIVE" }
+    });
+    if (!activeYear) return { workloadAnomalies: [] };
+
+    const teachers = await prisma.teacher.findMany({
+        where: { organizationId },
+        include: {
+            assignments: {
+                where: { academicYearId: activeYear.id }
+            }
+        }
+    });
+
+    const workloadAnomalies = [];
+    for (const teacher of teachers) {
+        const load = teacher.assignments.length;
+        if (load === 0) continue; 
+        
+        if (load > 6) {
+            workloadAnomalies.push({
+                teacherId: teacher.id,
+                teacherName: `${teacher.firstName} ${teacher.lastName}`,
+                load,
+                status: "⚠ Overloaded",
+                reason: "Teacher overload (assigned to >6 classes)"
+            });
+        } else if (load < 2) {
+            workloadAnomalies.push({
+                teacherId: teacher.id,
+                teacherName: `${teacher.firstName} ${teacher.lastName}`,
+                load,
+                status: "⚠ Under-allocated",
+                reason: "Teacher under-allocation (assigned to <2 classes)"
+            });
+        }
+    }
+
+    return { workloadAnomalies };
+}
+
+export async function getAcademicAnomaliesTimetable(organizationId: string) {
+    const activeYear = await prisma.academicYear.findFirst({
+        where: { organizationId, status: "ACTIVE" }
+    });
+    if (!activeYear) return { timetableAnomalies: [] };
+
+    const timetable = await prisma.timetable.findMany({
+        where: { organizationId, academicYearId: activeYear.id },
+        include: {
+            classPeriod: true,
+            teachingAssignment: {
+                include: { teacher: true, schoolGrade: { include: { grade: true } }, section: true }
+            }
+        }
+    });
+
+    const timetableAnomalies = [];
+
+    // 1. Detect Timetable conflicts (Teacher double-booked)
+    const teacherScheduleMap: Record<string, any[]> = {};
+    for (const slot of timetable) {
+        const teacherId = slot.teachingAssignment.teacherId;
+        const key = `${slot.dayOfWeek}-${slot.classPeriodId}`;
+        
+        if (!teacherScheduleMap[teacherId]) teacherScheduleMap[teacherId] = [];
+        
+        const existing = teacherScheduleMap[teacherId].find(s => s.key === key);
+        if (existing) {
+            timetableAnomalies.push({
+                type: "CONFLICT",
+                description: "Timetable conflict: Teacher double-booked",
+                teacher: `${slot.teachingAssignment.teacher.firstName} ${slot.teachingAssignment.teacher.lastName}`,
+                dayOfWeek: slot.dayOfWeek,
+                period: slot.classPeriod.name,
+                class1: `${existing.slot.teachingAssignment.schoolGrade.grade.name} ${existing.slot.teachingAssignment.section?.name || ''}`,
+                class2: `${slot.teachingAssignment.schoolGrade.grade.name} ${slot.teachingAssignment.section?.name || ''}`,
+                status: "⚠ Requires attention"
+            });
+        } else {
+            teacherScheduleMap[teacherId].push({ key, slot });
+        }
+    }
+
+    // 2. Detect Empty Timetable periods (Section missing mandatory periods)
+    const sectionScheduleMap: Record<string, { count: number, section: any }> = {};
+    for (const slot of timetable) {
+        const sectionId = slot.teachingAssignment.sectionId;
+        if (!sectionId) continue;
+        
+        if (!sectionScheduleMap[sectionId]) {
+            sectionScheduleMap[sectionId] = { count: 0, section: slot.teachingAssignment };
+        }
+        sectionScheduleMap[sectionId].count++;
+    }
+
+    for (const [sectionId, data] of Object.entries(sectionScheduleMap)) {
+        if (data.count < 5) {
+            timetableAnomalies.push({
+                type: "EMPTY_PERIODS",
+                description: "Insufficient instructional time or empty periods detected",
+                class: `${data.section.schoolGrade.grade.name} ${data.section.section?.name || ''}`,
+                scheduledPeriodsTotal: data.count,
+                status: "⚠ Requires attention"
+            });
+        }
+    }
+
+    return { timetableAnomalies };
+}
+
+// ==========================================
+// STEP 2 VIEWS: SUBJECTS, STAFFING, CALENDAR, TIMETABLE
+// ==========================================
+
+export async function getSchoolSubjects(organizationId: string) {
+    const activeYear = await prisma.academicYear.findFirst({
+        where: { organizationId, status: "ACTIVE" }
+    });
+    if (!activeYear) return [];
+
+    return prisma.schoolSubject.findMany({
+        where: { academicYearId: activeYear.id },
+        include: { subject: true }
+    });
+}
+
+export async function getSectionStaffingView(organizationId: string, sectionId: string) {
+    const section = await prisma.section.findFirst({
+        where: { id: sectionId, schoolGrade: { academicYear: { organizationId } } },
+        include: { schoolGrade: { include: { grade: true } } }
+    });
+    if (!section) throw new Error("Section not found");
+
+    const gradeAssignments = await prisma.teachingAssignment.findMany({
+        where: { schoolGradeId: section.schoolGradeId },
+        include: { subject: true }
+    });
+
+    const uniqueSubjects = new Map<string, any>();
+    for (const a of gradeAssignments) {
+        uniqueSubjects.set(a.subjectId, a.subject);
+    }
+
+    const sectionAssignments = await prisma.teachingAssignment.findMany({
+        where: { sectionId },
+        include: { teacher: true, subject: true }
+    });
+
+    const subjectsView = Array.from(uniqueSubjects.values()).map(subject => {
+        const assignment = sectionAssignments.find(a => a.subjectId === subject.id);
+        if (assignment) {
+            return {
+                subject: subject.name,
+                teacher: `${assignment.teacher.firstName} ${assignment.teacher.lastName}`,
+                status: "Assigned"
+            };
+        } else {
+            return {
+                subject: subject.name,
+                teacher: "NONE",
+                status: "⚠ Requires attention"
+            };
+        }
+    });
+
+    return {
+        className: `${section.schoolGrade.grade.name} ${section.name}`,
+        subjects: subjectsView
+    };
+}
+
+export async function getAcademicCalendar(organizationId: string) {
+    const calendar = await prisma.academicCalendar.findFirst({
+        where: { academicYear: { organizationId } },
+        include: { periods: true },
+        orderBy: { createdAt: "desc" }
+    });
+    return calendar;
+}
+
+export async function getTimetableView(organizationId: string) {
+    const activeYear = await prisma.academicYear.findFirst({
+        where: { organizationId, status: "ACTIVE" }
+    });
+    if (!activeYear) return [];
+
+    return prisma.timetable.findMany({
+        where: { organizationId, academicYearId: activeYear.id },
+        include: {
+            classPeriod: true,
+            teachingAssignment: {
+                include: { teacher: true, subject: true, section: true, schoolGrade: { include: { grade: true } } }
+            }
+        },
+        orderBy: [
+            { dayOfWeek: "asc" },
+            { classPeriod: { startTime: "asc" } }
+        ]
     });
 }

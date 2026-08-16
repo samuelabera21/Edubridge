@@ -13,8 +13,8 @@ export default function TeachingMonitoringPage() {
         async function loadData() {
             try {
                 const [teachersRes, assignmentsRes] = await Promise.all([
-                    fetchApi("/teacher"),
-                    fetchApi("/teacher/assignments")
+                    fetchApi("/vice-principal/teachers"),
+                    fetchApi("/vice-principal/teachers/assignments")
                 ]);
 
                 if (teachersRes.ok) {
@@ -83,7 +83,7 @@ export default function TeachingMonitoringPage() {
                                     const teacherAssignments = assignments.filter(a => a.teacherId === teacher.id);
                                     
                                     // Extract unique subjects
-                                    const subjects = Array.from(new Set(teacherAssignments.map(a => a.schoolSubject?.subject?.name).filter(Boolean)));
+                                    const subjects = Array.from(new Set(teacherAssignments.map(a => a.subject?.name).filter(Boolean)));
                                     const classCount = teacherAssignments.length;
                                     
                                     // Simple logic: > 5 classes is high workload, else normal

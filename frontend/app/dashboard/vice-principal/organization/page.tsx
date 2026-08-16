@@ -21,7 +21,7 @@ export default function AcademicOrganizationPage() {
         setLoadingYears(true);
         setError(null);
         try {
-            const res = await fetchApi("/academic/years");
+            const res = await fetchApi("/vice-principal/academic/years");
             if (res.ok) {
                 const data = await res.json();
                 setAcademicYears(data || []);

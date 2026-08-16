@@ -6,7 +6,7 @@ import { fetchApi } from "../../../lib/api";
 import Link from "next/link";
 import { 
     BookOpen, Users, AlertTriangle, CheckCircle, 
-    Clock, Activity, AlertCircle, ChevronRight, GraduationCap
+    Clock, Activity, AlertCircle, ChevronRight, GraduationCap, Eye
 } from "lucide-react";
 
 export default function VicePrincipalDashboard() {
@@ -18,8 +18,15 @@ export default function VicePrincipalDashboard() {
     useEffect(() => {
         async function loadDashboard() {
             try {
-                const data = await fetchApi("/vice-principal/me");
-                setDashboardData(data.overview || data);
+                const res = await fetchApi("/vice-principal/me");
+                if (res.ok) {
+                    const data = await res.json();
+                    setDashboardData(data.overview || data);
+                } else {
+                    const errText = await res.text();
+                    console.error("Dashboard API Error:", res.status, errText);
+                    setError(`Failed to load dashboard data. Status: ${res.status}`);
+                }
             } catch (err) {
                 console.error("Failed to load dashboard data:", err);
                 setError("Failed to load dashboard data. Please try again later.");
@@ -57,6 +64,8 @@ export default function VicePrincipalDashboard() {
     const assessment = dashboardData?.assessmentOverview || {};
     const curriculum = dashboardData?.curriculumProgress || {};
     const alerts = dashboardData?.attentionAlerts || [];
+    const announcements = dashboardData?.academicAnnouncements || [];
+    const upcomingActivities = dashboardData?.upcomingActivities || [];
 
     return (
         <div className="w-full max-w-7xl mx-auto space-y-8 pb-10">
@@ -160,7 +169,7 @@ export default function VicePrincipalDashboard() {
                 </Link>
 
                 {/* Assessment */}
-                <Link href="/dashboard/vice-principal/assessment" className="group bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:border-emerald-300 hover:shadow-md transition">
+                <Link href="/dashboard/vice-principal/assessments" className="group bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:border-emerald-300 hover:shadow-md transition">
                     <div className="flex justify-between items-center mb-4">
                         <div className="p-3 bg-emerald-50 rounded-lg text-emerald-600">
                             <CheckCircle className="w-6 h-6" />
@@ -203,8 +212,20 @@ export default function VicePrincipalDashboard() {
                     </div>
                 </Link>
 
+                {/* Observations */}
+                <Link href="/dashboard/vice-principal/observations" className="group bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:border-indigo-300 hover:shadow-md transition col-span-1 md:col-span-1">
+                    <div className="flex justify-between items-center mb-4">
+                        <div className="p-3 bg-indigo-50 rounded-lg text-indigo-600">
+                            <Eye className="w-6 h-6" />
+                        </div>
+                        <ChevronRight className="text-gray-300 group-hover:text-indigo-500 transition" />
+                    </div>
+                    <h3 className="font-bold text-gray-900 text-lg mb-1">Observations</h3>
+                    <p className="text-sm text-gray-500">Supervise teachers & track academic progress.</p>
+                </Link>
+
                 {/* Other drill-downs */}
-                <Link href="/dashboard/vice-principal/support" className="group bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:border-purple-300 hover:shadow-md transition col-span-1 md:col-span-2 lg:col-span-1">
+                <Link href="/dashboard/vice-principal/support/students" className="group bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:border-purple-300 hover:shadow-md transition col-span-1 md:col-span-2 lg:col-span-2">
                     <div className="flex justify-between items-center mb-4">
                         <div className="p-3 bg-purple-50 rounded-lg text-purple-600">
                             <Activity className="w-6 h-6" />
@@ -214,17 +235,59 @@ export default function VicePrincipalDashboard() {
                     <h3 className="font-bold text-gray-900 text-lg mb-1">Student Support</h3>
                     <p className="text-sm text-gray-500">View flagged students and support requirements.</p>
                 </Link>
+            </div>
 
-                <Link href="/dashboard/vice-principal/activities" className="group bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:border-pink-300 hover:shadow-md transition col-span-1 md:col-span-2 lg:col-span-1">
-                    <div className="flex justify-between items-center mb-4">
-                        <div className="p-3 bg-pink-50 rounded-lg text-pink-600">
-                            <BookOpen className="w-6 h-6" />
+            {/* Bottom Row: Upcoming Activities and Announcements */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+                {/* Upcoming Activities */}
+                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                    <h3 className="font-bold text-gray-900 text-lg mb-4 flex items-center">
+                        <BookOpen className="w-5 h-5 mr-2 text-indigo-500" />
+                        Upcoming Academic Activities
+                    </h3>
+                    {upcomingActivities.length > 0 ? (
+                        <div className="space-y-4">
+                            {upcomingActivities.map((activity: any, i: number) => (
+                                <div key={i} className="flex justify-between items-center border-b border-gray-100 pb-3 last:border-0 last:pb-0">
+                                    <div>
+                                        <p className="font-medium text-gray-900">{activity.title}</p>
+                                        <span className="text-xs bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded uppercase">{activity.type}</span>
+                                    </div>
+                                    <div className="text-sm text-gray-500 font-medium">
+                                        {new Date(activity.date).toLocaleDateString()}
+                                    </div>
+                                </div>
+                            ))}
                         </div>
-                        <ChevronRight className="text-gray-300 group-hover:text-pink-500 transition" />
-                    </div>
-                    <h3 className="font-bold text-gray-900 text-lg mb-1">Activities & Issues</h3>
-                    <p className="text-sm text-gray-500">View announcements, calendar, and open issues.</p>
-                </Link>
+                    ) : (
+                        <p className="text-gray-500 text-sm">No upcoming activities scheduled.</p>
+                    )}
+                </div>
+
+                {/* Academic Announcements */}
+                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                    <h3 className="font-bold text-gray-900 text-lg mb-4 flex items-center">
+                        <Activity className="w-5 h-5 mr-2 text-rose-500" />
+                        Academic Announcements
+                    </h3>
+                    {announcements.length > 0 ? (
+                        <div className="space-y-4">
+                            {announcements.map((announcement: any, i: number) => (
+                                <div key={i} className="border-b border-gray-100 pb-3 last:border-0 last:pb-0">
+                                    <div className="flex justify-between items-start mb-1">
+                                        <p className="font-medium text-gray-900">{announcement.title}</p>
+                                        <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded uppercase">{announcement.target}</span>
+                                    </div>
+                                    <div className="text-xs text-gray-400">
+                                        Posted: {new Date(announcement.date).toLocaleDateString()}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    ) : (
+                        <p className="text-gray-500 text-sm">No new academic announcements.</p>
+                    )}
+                </div>
             </div>
         </div>
     );
