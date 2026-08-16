@@ -15,11 +15,34 @@ router.use(requireScope("SCHOOL"));
  * @openapi
  * /api/attendance/student:
  *   post:
- *     tags: [Attendance]
+ *     tags: [Attendance, Teachers]
  *     summary: Record student attendance (daily or by period)
  *     security:
  *       - bearerAuth: []
  *       - cookieAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [enrollmentId, date]
+ *             properties:
+ *               enrollmentId:
+ *                 type: string
+ *               date:
+ *                 type: string
+ *                 format: date
+ *               status:
+ *                 type: string
+ *                 enum: [PRESENT, ABSENT, LATE, EXCUSED]
+ *               remarks:
+ *                 type: string
+ *     responses:
+ *       201:
+ *         description: Student attendance recorded successfully
+ *       400:
+ *         description: Bad request
  */
 router.post("/student", requirePermission("ACADEMIC:CREATE"), recordStudentAttendance);
 
@@ -27,11 +50,20 @@ router.post("/student", requirePermission("ACADEMIC:CREATE"), recordStudentAtten
  * @openapi
  * /api/attendance/student/{enrollmentId}:
  *   get:
- *     tags: [Attendance]
+ *     tags: [Attendance, Teachers]
  *     summary: Get student attendance history
  *     security:
  *       - bearerAuth: []
  *       - cookieAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: enrollmentId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Student attendance history records
  */
 router.get("/student/:enrollmentId", requirePermission("ACADEMIC:VIEW"), getStudentAttendance);
 
@@ -44,6 +76,9 @@ router.get("/student/:enrollmentId", requirePermission("ACADEMIC:VIEW"), getStud
  *     security:
  *       - bearerAuth: []
  *       - cookieAuth: []
+ *     responses:
+ *       201:
+ *         description: Teacher attendance recorded successfully
  */
 router.post("/teacher", requirePermission("ACADEMIC:CREATE"), recordTeacherAttendance);
 
@@ -56,6 +91,15 @@ router.post("/teacher", requirePermission("ACADEMIC:CREATE"), recordTeacherAtten
  *     security:
  *       - bearerAuth: []
  *       - cookieAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: teacherId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Teacher attendance history records
  */
 router.get("/teacher/:teacherId", requirePermission("ACADEMIC:VIEW"), getTeacherAttendance);
 

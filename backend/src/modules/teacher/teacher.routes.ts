@@ -28,6 +28,27 @@ router.use(requireScope("SCHOOL"));
  *     security:
  *       - bearerAuth: []
  *       - cookieAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [firstName, lastName]
+ *             properties:
+ *               firstName:
+ *                 type: string
+ *               lastName:
+ *                 type: string
+ *               employeeId:
+ *                 type: string
+ *     responses:
+ *       201:
+ *         description: Teacher profile created successfully
+ *       400:
+ *         description: Bad request
+ *       403:
+ *         description: Missing school scope
  */
 router.post("/", requirePermission("ACADEMIC:CREATE"), createTeacher);
 
@@ -40,6 +61,11 @@ router.post("/", requirePermission("ACADEMIC:CREATE"), createTeacher);
  *     security:
  *       - bearerAuth: []
  *       - cookieAuth: []
+ *     responses:
+ *       200:
+ *         description: List of teachers
+ *       403:
+ *         description: Missing school scope
  */
 router.get("/", requirePermission("ACADEMIC:VIEW"), getTeachers);
 
@@ -52,6 +78,31 @@ router.get("/", requirePermission("ACADEMIC:VIEW"), getTeachers);
  *     security:
  *       - bearerAuth: []
  *       - cookieAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [teacherId, academicYearId, subjectId, schoolGradeId]
+ *             properties:
+ *               teacherId:
+ *                 type: string
+ *               academicYearId:
+ *                 type: string
+ *               subjectId:
+ *                 type: string
+ *               schoolGradeId:
+ *                 type: string
+ *               sectionId:
+ *                 type: string
+ *     responses:
+ *       201:
+ *         description: Teaching assignment created successfully
+ *       400:
+ *         description: Invalid parameters or assignment already exists
+ *       403:
+ *         description: Missing school scope
  */
 router.post("/assignments", requirePermission("ACADEMIC:CREATE"), assignTeacher);
 
@@ -64,6 +115,17 @@ router.post("/assignments", requirePermission("ACADEMIC:CREATE"), assignTeacher)
  *     security:
  *       - bearerAuth: []
  *       - cookieAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: academicYearId
+ *         schema:
+ *           type: string
+ *         description: Filter by academic year ID
+ *     responses:
+ *       200:
+ *         description: List of teaching assignments
+ *       403:
+ *         description: Missing school scope
  */
 router.get("/assignments", requirePermission("ACADEMIC:VIEW"), getAssignments);
 
@@ -76,6 +138,11 @@ router.get("/assignments", requirePermission("ACADEMIC:VIEW"), getAssignments);
  *     security:
  *       - bearerAuth: []
  *       - cookieAuth: []
+ *     responses:
+ *       200:
+ *         description: Logged-in teacher profile and assignment details
+ *       404:
+ *         description: Teacher profile not found
  */
 router.get("/me", getTeacherProfile);
 
@@ -84,10 +151,15 @@ router.get("/me", getTeacherProfile);
  * /api/teacher/dashboard-summary:
  *   get:
  *     tags: [Teachers]
- *     summary: Get full dashboard summary (today's classes, timetable, students, pending tasks, AI insights) for the logged-in teacher
+ *     summary: Get full dashboard summary (today's classes, timetable, students, pending tasks, AI insights)
  *     security:
  *       - bearerAuth: []
  *       - cookieAuth: []
+ *     responses:
+ *       200:
+ *         description: Complete teacher dashboard metrics and insights
+ *       403:
+ *         description: Authentication or school scope missing
  */
 router.get("/dashboard-summary", getDashboardSummary);
 
@@ -100,6 +172,11 @@ router.get("/dashboard-summary", getDashboardSummary);
  *     security:
  *       - bearerAuth: []
  *       - cookieAuth: []
+ *     responses:
+ *       200:
+ *         description: Array of assigned classes with student rosters
+ *       403:
+ *         description: Authentication or school scope missing
  */
 router.get("/my-classes", getMyClasses);
 
@@ -112,6 +189,11 @@ router.get("/my-classes", getMyClasses);
  *     security:
  *       - bearerAuth: []
  *       - cookieAuth: []
+ *     responses:
+ *       200:
+ *         description: List of weekly timetable class periods
+ *       403:
+ *         description: Authentication or school scope missing
  */
 router.get("/my-timetable", getMyTimetable);
 
@@ -124,6 +206,11 @@ router.get("/my-timetable", getMyTimetable);
  *     security:
  *       - bearerAuth: []
  *       - cookieAuth: []
+ *     responses:
+ *       200:
+ *         description: List of active students with attendance & result history
+ *       403:
+ *         description: Authentication or school scope missing
  */
 router.get("/students", getMyStudents);
 
@@ -136,6 +223,28 @@ router.get("/students", getMyStudents);
  *     security:
  *       - bearerAuth: []
  *       - cookieAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [title]
+ *             properties:
+ *               title:
+ *                 type: string
+ *               description:
+ *                 type: string
+ *               category:
+ *                 type: string
+ *               priority:
+ *                 type: string
+ *                 enum: [LOW, MEDIUM, HIGH, CRITICAL]
+ *     responses:
+ *       201:
+ *         description: Obstacle issue reported successfully
+ *       400:
+ *         description: Invalid parameters
  */
 router.post("/issues", reportIssue);
 
@@ -148,6 +257,11 @@ router.post("/issues", reportIssue);
  *     security:
  *       - bearerAuth: []
  *       - cookieAuth: []
+ *     responses:
+ *       200:
+ *         description: List of reported issues and status history
+ *       403:
+ *         description: Authentication or school scope missing
  */
 router.get("/issues", getMyIssues);
 
