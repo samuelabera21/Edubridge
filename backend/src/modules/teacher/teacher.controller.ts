@@ -94,3 +94,96 @@ export const getTeacherProfile = async (req: Request, res: Response) => {
         return res.status(500).json({ error: "Internal server error" });
     }
 };
+
+// Self-service: Get assigned classes & rosters for logged in teacher
+export const getMyClasses = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        const userId = req.user?.id;
+        if (!organizationId || !userId) return res.status(403).json({ error: "Missing school scope or authentication" });
+
+        const classes = await TeacherService.getMyClasses(userId, organizationId);
+        return res.json(classes);
+    } catch (error) {
+        return res.status(500).json({ error: "Internal server error" });
+    }
+};
+
+// Self-service: Get weekly timetable for logged in teacher
+export const getMyTimetable = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        const userId = req.user?.id;
+        if (!organizationId || !userId) return res.status(403).json({ error: "Missing school scope or authentication" });
+
+        const timetable = await TeacherService.getMyTimetable(userId, organizationId);
+        return res.json(timetable);
+    } catch (error) {
+        return res.status(500).json({ error: "Internal server error" });
+    }
+};
+
+// Self-service: Get assigned student roster across sections
+export const getMyStudents = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        const userId = req.user?.id;
+        if (!organizationId || !userId) return res.status(403).json({ error: "Missing school scope or authentication" });
+
+        const students = await TeacherService.getMyStudents(userId, organizationId);
+        return res.json(students);
+    } catch (error) {
+        return res.status(500).json({ error: "Internal server error" });
+    }
+};
+
+// Self-service: Complete Teacher Dashboard summary
+export const getDashboardSummary = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        const userId = req.user?.id;
+        if (!organizationId || !userId) return res.status(403).json({ error: "Missing school scope or authentication" });
+
+        const summary = await TeacherService.getDashboardSummary(userId, organizationId);
+        return res.json(summary);
+    } catch (error) {
+        return res.status(500).json({ error: "Internal server error" });
+    }
+};
+
+// Self-service: Report teaching/classroom issue
+export const reportIssue = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        const userId = req.user?.id;
+        if (!organizationId || !userId) return res.status(403).json({ error: "Missing school scope or authentication" });
+
+        const { title, category, description, priority } = req.body;
+        if (!title) return res.status(400).json({ error: "title is required" });
+
+        const issue = await TeacherService.reportIssue(userId, organizationId, {
+            title,
+            category,
+            description,
+            priority
+        });
+
+        return res.status(201).json(issue);
+    } catch (error: any) {
+        return res.status(400).json({ error: error.message || "Failed to report issue" });
+    }
+};
+
+// Self-service: Get reported issues for logged in teacher
+export const getMyIssues = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        const userId = req.user?.id;
+        if (!organizationId || !userId) return res.status(403).json({ error: "Missing school scope or authentication" });
+
+        const issues = await TeacherService.getMyIssues(userId, organizationId);
+        return res.json(issues);
+    } catch (error) {
+        return res.status(500).json({ error: "Internal server error" });
+    }
+};
