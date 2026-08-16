@@ -5,17 +5,23 @@ import { EnrollmentStatus } from "../../generated/prisma/enums.js";
 // Create a global student identity
 export const createStudent = async (req: Request, res: Response) => {
     try {
-        const { firstName, lastName, studentId, dateOfBirth, gender } = req.body;
-        if (!firstName || !lastName || !studentId) {
-            return res.status(400).json({ error: "firstName, lastName, and studentId are required" });
+        const { firstName, lastName } = req.body;
+        let { studentId } = req.body;
+
+        if (!firstName || !lastName) {
+            return res.status(400).json({ error: "firstName and lastName are required" });
+        }
+
+        if (!studentId) {
+            // Auto-generate a Student ID (e.g., STU-YYYYMM-XXXX)
+            const randomCode = Math.floor(1000 + Math.random() * 9000);
+            const dateStr = new Date().toISOString().slice(2, 7).replace("-", ""); // YYMM
+            studentId = `STU-${dateStr}-${randomCode}`;
         }
 
         const student = await StudentService.createStudent({
-            firstName,
-            lastName,
+            ...req.body,
             studentId,
-            dateOfBirth,
-            gender,
             userId: req.user?.id
         });
         
