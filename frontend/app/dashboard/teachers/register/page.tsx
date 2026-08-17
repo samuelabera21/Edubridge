@@ -200,20 +200,20 @@ export default function TeacherRegistrationPage() {
                     <CardContent className="p-6 grid grid-cols-1 md:grid-cols-3 gap-6">
                         <div className="space-y-2">
                             <label className="text-sm font-medium text-gray-700">First Name <span className="text-red-500">*</span></label>
-                            <input required type="text" name="firstName" value={formData.firstName} onChange={handleChange} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#006b3f]/20 focus:border-[#006b3f]" placeholder="Enter first name" />
+                            <input required type="text" name="firstName" value={formData.firstName} onChange={handleChange} className="w-full px-3 py-2 border border-gray-300 bg-white text-gray-900 rounded-md focus:outline-none focus:ring-2 focus:ring-[#006b3f]/20 focus:border-[#006b3f]" placeholder="Enter first name" />
                         </div>
                         <div className="space-y-2">
                             <label className="text-sm font-medium text-gray-700">Father's Name <span className="text-red-500">*</span></label>
-                            <input required type="text" name="lastName" value={formData.lastName} onChange={handleChange} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#006b3f]/20 focus:border-[#006b3f]" placeholder="Enter father's name" />
+                            <input required type="text" name="lastName" value={formData.lastName} onChange={handleChange} className="w-full px-3 py-2 border border-gray-300 bg-white text-gray-900 rounded-md focus:outline-none focus:ring-2 focus:ring-[#006b3f]/20 focus:border-[#006b3f]" placeholder="Enter father's name" />
                         </div>
                         <div className="space-y-2">
                             <label className="text-sm font-medium text-gray-700">Grandfather's Name</label>
-                            <input type="text" name="grandfatherName" value={formData.grandfatherName} onChange={handleChange} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#006b3f]/20 focus:border-[#006b3f]" placeholder="Enter grandfather's name" />
+                            <input type="text" name="grandfatherName" value={formData.grandfatherName} onChange={handleChange} className="w-full px-3 py-2 border border-gray-300 bg-white text-gray-900 rounded-md focus:outline-none focus:ring-2 focus:ring-[#006b3f]/20 focus:border-[#006b3f]" placeholder="Enter grandfather's name" />
                         </div>
                         
                         <div className="space-y-2">
                             <label className="text-sm font-medium text-gray-700">Gender</label>
-                            <select name="gender" value={formData.gender} onChange={handleChange} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#006b3f]/20 focus:border-[#006b3f]">
+                            <select name="gender" value={formData.gender} onChange={handleChange} className="w-full px-3 py-2 border border-gray-300 bg-white text-gray-900 rounded-md focus:outline-none focus:ring-2 focus:ring-[#006b3f]/20 focus:border-[#006b3f]">
                                 <option value="">Select Gender</option>
                                 <option value="MALE">Male</option>
                                 <option value="FEMALE">Female</option>
@@ -221,11 +221,11 @@ export default function TeacherRegistrationPage() {
                         </div>
                         <div className="space-y-2">
                             <label className="text-sm font-medium text-gray-700">Date of Birth</label>
-                            <input type="date" name="dateOfBirth" value={formData.dateOfBirth} onChange={handleChange} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#006b3f]/20 focus:border-[#006b3f]" />
+                            <input type="date" name="dateOfBirth" value={formData.dateOfBirth} onChange={handleChange} className="w-full px-3 py-2 border border-gray-300 bg-white text-gray-900 rounded-md focus:outline-none focus:ring-2 focus:ring-[#006b3f]/20 focus:border-[#006b3f]" />
                         </div>
                         <div className="space-y-2">
                             <label className="text-sm font-medium text-gray-700">Staff / Employee ID</label>
-                            <input type="text" name="employeeId" value={formData.employeeId} onChange={handleChange} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#006b3f]/20 focus:border-[#006b3f]" placeholder="e.g. TR-2023-001" />
+                            <input type="text" name="employeeId" value={formData.employeeId} onChange={handleChange} className="w-full px-3 py-2 border border-gray-300 bg-white text-gray-900 rounded-md focus:outline-none focus:ring-2 focus:ring-[#006b3f]/20 focus:border-[#006b3f]" placeholder="e.g. TR-2023-001" />
                         </div>
                     </CardContent>
                 </Card>
@@ -241,7 +241,7 @@ export default function TeacherRegistrationPage() {
                     <CardContent className="p-6 grid grid-cols-1 md:grid-cols-3 gap-6">
                         <div className="space-y-2">
                             <label className="text-sm font-medium text-gray-700">Highest Qualification</label>
-                            <select name="qualification" value={formData.qualification} onChange={handleChange} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#006b3f]/20 focus:border-[#006b3f]">
+                            <select name="qualification" value={formData.qualification} onChange={handleChange} className="w-full px-3 py-2 border border-gray-300 bg-white text-gray-900 rounded-md focus:outline-none focus:ring-2 focus:ring-[#006b3f]/20 focus:border-[#006b3f]">
                                 <option value="">Select Qualification</option>
                                 <option value="Certificate">Certificate</option>
                                 <option value="Diploma">Diploma</option>
@@ -252,11 +252,11 @@ export default function TeacherRegistrationPage() {
                         </div>
                         <div className="space-y-2">
                             <label className="text-sm font-medium text-gray-700">Field of Study</label>
-                            <input type="text" name="fieldOfStudy" value={formData.fieldOfStudy} onChange={handleChange} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#006b3f]/20 focus:border-[#006b3f]" placeholder="e.g. Applied Mathematics" />
+                            <input type="text" name="fieldOfStudy" value={formData.fieldOfStudy} onChange={handleChange} className="w-full px-3 py-2 border border-gray-300 bg-white text-gray-900 rounded-md focus:outline-none focus:ring-2 focus:ring-[#006b3f]/20 focus:border-[#006b3f]" placeholder="e.g. Applied Mathematics" />
                         </div>
                         <div className="space-y-2">
                             <label className="text-sm font-medium text-gray-700">Years of Experience</label>
-                            <input type="number" min="0" name="yearsOfExperience" value={formData.yearsOfExperience} onChange={handleChange} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#006b3f]/20 focus:border-[#006b3f]" placeholder="0" />
+                            <input type="number" min="0" name="yearsOfExperience" value={formData.yearsOfExperience} onChange={handleChange} className="w-full px-3 py-2 border border-gray-300 bg-white text-gray-900 rounded-md focus:outline-none focus:ring-2 focus:ring-[#006b3f]/20 focus:border-[#006b3f]" placeholder="0" />
                         </div>
                     </CardContent>
                 </Card>
@@ -272,24 +272,24 @@ export default function TeacherRegistrationPage() {
                     <CardContent className="p-6 grid grid-cols-1 md:grid-cols-3 gap-6">
                         <div className="space-y-2">
                             <label className="text-sm font-medium text-gray-700">Phone Number</label>
-                            <input type="tel" name="phoneNumber" value={formData.phoneNumber} onChange={handleChange} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#006b3f]/20 focus:border-[#006b3f]" placeholder="+251 9..." />
+                            <input type="tel" name="phoneNumber" value={formData.phoneNumber} onChange={handleChange} className="w-full px-3 py-2 border border-gray-300 bg-white text-gray-900 rounded-md focus:outline-none focus:ring-2 focus:ring-[#006b3f]/20 focus:border-[#006b3f]" placeholder="+251 9..." />
                         </div>
                         <div className="space-y-2 md:col-span-2">
                             <label className="text-sm font-medium text-gray-700">Email Address</label>
-                            <input type="email" name="email" value={formData.email} onChange={handleChange} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#006b3f]/20 focus:border-[#006b3f]" placeholder="teacher@school.edu.et" />
+                            <input type="email" name="email" value={formData.email} onChange={handleChange} className="w-full px-3 py-2 border border-gray-300 bg-white text-gray-900 rounded-md focus:outline-none focus:ring-2 focus:ring-[#006b3f]/20 focus:border-[#006b3f]" placeholder="teacher@school.edu.et" />
                         </div>
                         
                         <div className="space-y-2">
                             <label className="text-sm font-medium text-gray-700">Region</label>
-                            <input type="text" name="region" value={formData.region} onChange={handleChange} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#006b3f]/20 focus:border-[#006b3f]" placeholder="Addis Ababa" />
+                            <input type="text" name="region" value={formData.region} onChange={handleChange} className="w-full px-3 py-2 border border-gray-300 bg-white text-gray-900 rounded-md focus:outline-none focus:ring-2 focus:ring-[#006b3f]/20 focus:border-[#006b3f]" placeholder="Addis Ababa" />
                         </div>
                         <div className="space-y-2">
                             <label className="text-sm font-medium text-gray-700">Zone / Sub-city</label>
-                            <input type="text" name="zone" value={formData.zone} onChange={handleChange} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#006b3f]/20 focus:border-[#006b3f]" placeholder="Bole" />
+                            <input type="text" name="zone" value={formData.zone} onChange={handleChange} className="w-full px-3 py-2 border border-gray-300 bg-white text-gray-900 rounded-md focus:outline-none focus:ring-2 focus:ring-[#006b3f]/20 focus:border-[#006b3f]" placeholder="Bole" />
                         </div>
                         <div className="space-y-2">
                             <label className="text-sm font-medium text-gray-700">Woreda</label>
-                            <input type="text" name="woreda" value={formData.woreda} onChange={handleChange} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#006b3f]/20 focus:border-[#006b3f]" placeholder="03" />
+                            <input type="text" name="woreda" value={formData.woreda} onChange={handleChange} className="w-full px-3 py-2 border border-gray-300 bg-white text-gray-900 rounded-md focus:outline-none focus:ring-2 focus:ring-[#006b3f]/20 focus:border-[#006b3f]" placeholder="03" />
                         </div>
                     </CardContent>
                 </Card>
@@ -335,7 +335,7 @@ export default function TeacherRegistrationPage() {
                         <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                             <div className="space-y-2">
                                 <label className="text-sm font-medium text-gray-700">Academic Year</label>
-                                <select name="academicYearId" value={formData.academicYearId} onChange={handleChange} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#006b3f]/20 focus:border-[#006b3f]">
+                                <select name="academicYearId" value={formData.academicYearId} onChange={handleChange} className="w-full px-3 py-2 border border-gray-300 bg-white text-gray-900 rounded-md focus:outline-none focus:ring-2 focus:ring-[#006b3f]/20 focus:border-[#006b3f]">
                                     <option value="">Select Year</option>
                                     {academicYears.map(year => (
                                         <option key={year.id} value={year.id}>{year.name}</option>
@@ -344,7 +344,7 @@ export default function TeacherRegistrationPage() {
                             </div>
                             <div className="space-y-2">
                                 <label className="text-sm font-medium text-gray-700">Subject</label>
-                                <select name="subjectId" value={formData.subjectId} onChange={handleChange} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#006b3f]/20 focus:border-[#006b3f]">
+                                <select name="subjectId" value={formData.subjectId} onChange={handleChange} className="w-full px-3 py-2 border border-gray-300 bg-white text-gray-900 rounded-md focus:outline-none focus:ring-2 focus:ring-[#006b3f]/20 focus:border-[#006b3f]">
                                     <option value="">Select Subject</option>
                                     {subjects.map(subject => (
                                         <option key={subject.id} value={subject.id}>{subject.name}</option>
@@ -353,7 +353,7 @@ export default function TeacherRegistrationPage() {
                             </div>
                             <div className="space-y-2">
                                 <label className="text-sm font-medium text-gray-700">Grade</label>
-                                <select name="schoolGradeId" value={formData.schoolGradeId} onChange={handleChange} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#006b3f]/20 focus:border-[#006b3f]" disabled={!formData.academicYearId}>
+                                <select name="schoolGradeId" value={formData.schoolGradeId} onChange={handleChange} className="w-full px-3 py-2 border border-gray-300 bg-white text-gray-900 rounded-md focus:outline-none focus:ring-2 focus:ring-[#006b3f]/20 focus:border-[#006b3f]" disabled={!formData.academicYearId}>
                                     <option value="">Select Grade</option>
                                     {grades.map(grade => (
                                         <option key={grade.id} value={grade.id}>{grade.grade.name}</option>
@@ -362,7 +362,7 @@ export default function TeacherRegistrationPage() {
                             </div>
                             <div className="space-y-2">
                                 <label className="text-sm font-medium text-gray-700">Section (Optional)</label>
-                                <select name="sectionId" value={formData.sectionId} onChange={handleChange} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#006b3f]/20 focus:border-[#006b3f]" disabled={!formData.schoolGradeId || sections.length === 0}>
+                                <select name="sectionId" value={formData.sectionId} onChange={handleChange} className="w-full px-3 py-2 border border-gray-300 bg-white text-gray-900 rounded-md focus:outline-none focus:ring-2 focus:ring-[#006b3f]/20 focus:border-[#006b3f]" disabled={!formData.schoolGradeId || sections.length === 0}>
                                     <option value="">All Sections / Not Specific</option>
                                     {sections.map(section => (
                                         <option key={section.id} value={section.id}>{section.name}</option>

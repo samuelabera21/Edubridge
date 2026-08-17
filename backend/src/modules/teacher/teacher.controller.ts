@@ -14,12 +14,14 @@ export const createTeacher = async (req: Request, res: Response) => {
         }
 
         const teacher = await TeacherService.createTeacher(organizationId, {
-            ...req.body,
-            userId: req.user?.id
+            ...req.body
         });
 
         return res.status(201).json(teacher);
     } catch (error: any) {
+        if (error?.code === 'P2002') {
+            return res.status(400).json({ error: "A teacher with this information already exists." });
+        }
         return res.status(400).json({ error: error.message || "Failed to create teacher" });
     }
 };

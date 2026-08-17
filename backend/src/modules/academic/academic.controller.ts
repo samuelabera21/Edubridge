@@ -214,7 +214,7 @@ export const createSection = async (req: Request, res: Response) => {
         res.status(201).json(section);
     } catch (error: any) {
         console.error("createSection ERROR:", error);
-        res.status(400).json({ error: error?.message || "Invalid request" });
+        handlePrismaError(error, res, "Invalid request or a section with this name already exists");
     }
 };
 

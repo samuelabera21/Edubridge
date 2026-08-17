@@ -93,7 +93,7 @@ export default function SectionDetailsPage() {
                                         <td className="px-6 py-4 font-medium text-gray-900">
                                             {enrollment.student.studentId}
                                         </td>
-                                        <td className="px-6 py-4">
+                                        <td className="px-6 py-4 text-gray-900">
                                             {enrollment.student.firstName} {enrollment.student.lastName}
                                         </td>
                                         <td className="px-6 py-4 text-gray-600 capitalize">
