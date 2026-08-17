@@ -184,6 +184,7 @@ model OrganizationUnit {
   resources          SchoolResource[]
   issues             Issue[]
   improvementPlans   ImprovementPlan[]
+  timetableConfigs   TimetableConfig[]
 
   @@index([parentId])
   @@index([type])
@@ -253,6 +254,7 @@ model AcademicYear {
   teacherAttendances  TeacherAttendance[]
   assessments         Assessment[]
   learningActivities  LearningActivity[]
+  timetableConfigs    TimetableConfig[]
 
   @@unique([organizationId, name])
   @@map("academic_year")
@@ -964,6 +966,7 @@ model SchoolResource {
   capacity       Int?
   status         String       @default("AVAILABLE")
   description    String?
+  availability   Json?
 
   organization OrganizationUnit @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   issues       Issue[]
@@ -1065,4 +1068,28 @@ model ClassroomObservation {
   updatedAt DateTime @updatedAt
 
   @@map("classroom_observation")
+}
+
+model TimetableConfig {
+  id             String           @id @default(cuid())
+  organizationId String
+  academicYearId String
+  operatingDays  Json             // Array of numbers, e.g., [1,2,3,4,5] (Mon-Fri)
+  startTime      String           // e.g., "08:00"
+  periodDuration Int              // minutes, e.g., 40
+  periodsPerDay  Int              // e.g., 6 or 8
+  breakDuration  Int?             // short recess in minutes
+  breakAfter     Int?             // period number after which break occurs
+  lunchDuration  Int?             // lunch recess in minutes
+  lunchAfter     Int?             // period number after which lunch occurs
+  shift          String           // "FULL", "MORNING", "AFTERNOON"
+
+  organization   OrganizationUnit @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  academicYear   AcademicYear     @relation(fields: [academicYearId], references: [id], onDelete: Cascade)
+
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  @@unique([organizationId, academicYearId])
+  @@map("timetable_config")
 }

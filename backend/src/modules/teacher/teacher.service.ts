@@ -115,7 +115,7 @@ export class TeacherService {
         });
     }
 
-    static async assignTeacher(organizationId: string, data: { teacherId: string; academicYearId: string; subjectId: string; schoolGradeId: string; sectionId?: string }) {
+    static async assignTeacher(organizationId: string, data: { teacherId: string; academicYearId: string; subjectId: string; schoolGradeId: string; sectionId?: string; periodsPerWeek?: number }) {
         const teacher = await prisma.teacher.findFirst({
             where: { id: data.teacherId, organizationId }
         });

@@ -105,10 +105,25 @@ export class TimetableService {
                 throw new Error("Room conflict: Room is already booked for this period on this day.");
             }
 
-            // Room Capacity check
+            // Fetch room details
             const room = await prisma.schoolResource.findFirst({
                 where: { id: data.roomId, organizationId }
             });
+
+            // Room Availability check
+            if (room && room.availability) {
+                const availability = room.availability as any;
+                if (availability.blockedSlots && Array.isArray(availability.blockedSlots)) {
+                    const isBlocked = availability.blockedSlots.some((slot: any) => 
+                        slot.dayOfWeek === data.dayOfWeek && slot.classPeriodId === data.classPeriodId
+                    );
+                    if (isBlocked) {
+                        throw new Error(`Room availability conflict: Room ${room.name} is not available during this period on this day.`);
+                    }
+                }
+            }
+
+            // Room Capacity check
             if (room && room.capacity !== null && assignment.sectionId) {
                 const sectionStudentsCount = await prisma.studentEnrollment.count({
                     where: {
