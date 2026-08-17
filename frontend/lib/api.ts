@@ -8,7 +8,8 @@ export async function fetchApi(endpoint: string, options: RequestInit = {}) {
             "Content-Type": "application/json",
             ...options.headers,
         },
-        credentials: "include", // Ensures cookies/session tokens are sent to backend
+        credentials: "include",
+        cache: "no-store", // Prevent Next.js from caching API responses
     };
 
     return fetch(url, defaultOptions);

@@ -2,14 +2,31 @@ import { prisma } from "../../infrastructure/prisma/client.js";
 import { EnrollmentStatus } from "../../generated/prisma/enums.js";
 
 export class StudentService {
-    static async createStudent(data: { firstName: string; lastName: string; studentId: string; dateOfBirth?: string; gender?: string; userId?: string }) {
+    static async createStudent(data: any) {
         const student = await prisma.student.create({
             data: {
                 firstName: data.firstName,
                 lastName: data.lastName,
+                fatherName: data.fatherName,
+                grandfatherName: data.grandfatherName,
                 studentId: data.studentId,
                 dateOfBirth: data.dateOfBirth ? new Date(data.dateOfBirth) : null,
                 gender: data.gender,
+                nationality: data.nationality,
+                placeOfBirth: data.placeOfBirth,
+                photoUrl: data.photoUrl,
+                region: data.region,
+                zone: data.zone,
+                woreda: data.woreda,
+                city: data.city,
+                kebele: data.kebele,
+                houseNumber: data.houseNumber,
+                previousSchool: data.previousSchool,
+                previousStudentId: data.previousStudentId,
+                emergencyContactName: data.emergencyContactName,
+                emergencyContactRelation: data.emergencyContactRelation,
+                emergencyContactPhone: data.emergencyContactPhone,
+                documents: data.documents || null
             }
         });
         
@@ -28,6 +45,24 @@ export class StudentService {
 
     static async getStudents() {
         return prisma.student.findMany();
+    }
+
+    static async getStudentById(id: string) {
+        return prisma.student.findUnique({
+            where: { id },
+            include: {
+                enrollments: {
+                    include: {
+                        academicYear: true,
+                        schoolGrade: {
+                            include: { grade: true }
+                        },
+                        section: true
+                    }
+                },
+                parents: true
+            }
+        });
     }
 
     static async enrollStudent(organizationId: string, studentId: string, academicYearId: string, schoolGradeId: string, sectionId?: string) {

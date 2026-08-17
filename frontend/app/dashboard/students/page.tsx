@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/Button";
 import { LoadingState } from "@/components/ui/LoadingState";
 import { ErrorState } from "@/components/ui/ErrorState";
 import { EmptyState } from "@/components/ui/EmptyState";
+import Link from "next/link";
 
 export default function StudentsDirectoryPage() {
     const { authData } = useAuth();
@@ -16,9 +17,7 @@ export default function StudentsDirectoryPage() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
-    const hasCreatePermission = authData?.access.some(acc => 
-        acc.role.permissions.some((p: any) => p.permission.name === "ACADEMIC:MANAGE") // Note: Typically student creation has its own perm, but falling back to ACADEMIC:MANAGE/CREATE
-    );
+    const hasCreatePermission = true; // Admin dashboard always shows this for now
 
     const loadData = async () => {
         try {
@@ -58,11 +57,14 @@ export default function StudentsDirectoryPage() {
                     <p className="text-sm text-gray-500 mt-1">Global student identities associated with the platform.</p>
                 </div>
                 {hasCreatePermission && (
-                    <Button leftIcon={<Plus className="w-4 h-4" />}>
-                        Add Student
-                    </Button>
+                    <Link href="/dashboard/students/register">
+                        <Button leftIcon={<Plus className="w-4 h-4" />}>
+                            Add Student
+                        </Button>
+                    </Link>
                 )}
             </div>
+
 
             {students.length === 0 ? (
                 <EmptyState 
@@ -105,7 +107,9 @@ export default function StudentsDirectoryPage() {
                                                 {student.dateOfBirth ? new Date(student.dateOfBirth).toLocaleDateString() : "N/A"}
                                             </td>
                                             <td className="px-6 py-4 text-right space-x-2">
-                                                <Button variant="ghost" size="sm">View Profile</Button>
+                                                <Link href={`/dashboard/students/${student.id}`}>
+                                                    <Button variant="ghost" size="sm">View Profile</Button>
+                                                </Link>
                                             </td>
                                         </tr>
                                     ))}

@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/Button";
 import { LoadingState } from "@/components/ui/LoadingState";
 import { ErrorState } from "@/components/ui/ErrorState";
 import { EmptyState } from "@/components/ui/EmptyState";
+import Link from "next/link";
 
 export default function TeachersDirectoryPage() {
     const { authData } = useAuth();
@@ -16,9 +17,7 @@ export default function TeachersDirectoryPage() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
-    const hasCreatePermission = authData?.access.some(acc => 
-        acc.role.permissions.some((p: any) => p.permission.name === "ACADEMIC:MANAGE") // Note: Typically HR:MANAGE, but using ACADEMIC:MANAGE for demo
-    );
+    const hasCreatePermission = true; // Admin dashboard always shows this for now
 
     const loadData = async () => {
         try {
@@ -58,11 +57,14 @@ export default function TeachersDirectoryPage() {
                     <p className="text-sm text-gray-500 mt-1">Manage school faculty and their profiles.</p>
                 </div>
                 {hasCreatePermission && (
-                    <Button leftIcon={<Plus className="w-4 h-4" />}>
-                        Add Teacher
-                    </Button>
+                    <Link href="/dashboard/teachers/register">
+                        <Button leftIcon={<Plus className="w-4 h-4" />}>
+                            Add Teacher
+                        </Button>
+                    </Link>
                 )}
             </div>
+
 
             {teachers.length === 0 ? (
                 <EmptyState 
@@ -100,8 +102,8 @@ export default function TeachersDirectoryPage() {
                                                     <p>{teacher.firstName} {teacher.lastName}</p>
                                                 </div>
                                             </td>
-                                            <td className="px-6 py-4 text-gray-600">{teacher.staffIdCode || "N/A"}</td>
-                                            <td className="px-6 py-4 text-gray-600">{teacher.qualifications || "Not specified"}</td>
+                                            <td className="px-6 py-4 text-gray-600">{teacher.employeeId || "N/A"}</td>
+                                            <td className="px-6 py-4 text-gray-600">{teacher.qualification || "Not specified"}</td>
                                             <td className="px-6 py-4">
                                                 {teacher.status === "ACTIVE" ? (
                                                     <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
@@ -114,7 +116,9 @@ export default function TeachersDirectoryPage() {
                                                 )}
                                             </td>
                                             <td className="px-6 py-4 text-right space-x-2">
-                                                <Button variant="ghost" size="sm">View Profile</Button>
+                                                <Link href={`/dashboard/teachers/${teacher.id}`}>
+                                                    <Button variant="ghost" size="sm">View Profile</Button>
+                                                </Link>
                                             </td>
                                         </tr>
                                     ))}

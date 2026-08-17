@@ -12,13 +12,15 @@ datasource db {
 // ============================================================
 
 model User {
-  id            String   @id
-  name          String
-  email         String
-  emailVerified Boolean  @default(false)
-  image         String?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id                   String                 @id
+  name                 String
+  email                String
+  emailVerified        Boolean                @default(false)
+  image                String?
+  observerObservations ClassroomObservation[] @relation("ObserverObservations")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   sessions Session[]
   accounts Account[]
@@ -161,6 +163,8 @@ model OrganizationUnit {
   assignments   RoleAssignment[]
   schoolProfile SchoolProfile?
 
+  classroomObservations ClassroomObservation[]
+
   createdAt          DateTime            @default(now())
   updatedAt          DateTime            @updatedAt
   academicYears      AcademicYear[]
@@ -237,6 +241,8 @@ model AcademicYear {
   schoolGrades     SchoolGrade[]
   schoolSubjects   SchoolSubject[]
   academicCalendar AcademicCalendar?
+
+  classroomObservations ClassroomObservation[]
 
   createdAt           DateTime             @default(now())
   updatedAt           DateTime             @updatedAt
@@ -315,6 +321,8 @@ model SchoolGrade {
   grade        Grade        @relation(fields: [gradeId], references: [id], onDelete: Cascade)
   sections     Section[]
 
+  classroomObservations ClassroomObservation[]
+
   createdAt           DateTime             @default(now())
   updatedAt           DateTime             @updatedAt
   studentEnrollments  StudentEnrollment[]
@@ -331,6 +339,8 @@ model Section {
   capacity      Int?
 
   schoolGrade SchoolGrade @relation(fields: [schoolGradeId], references: [id], onDelete: Cascade)
+
+  classroomObservations ClassroomObservation[]
 
   createdAt           DateTime             @default(now())
   updatedAt           DateTime             @updatedAt
@@ -349,6 +359,8 @@ model Subject {
 
   organization   OrganizationUnit @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   schoolSubjects SchoolSubject[]
+
+  classroomObservations ClassroomObservation[]
 
   createdAt           DateTime             @default(now())
   updatedAt           DateTime             @updatedAt
@@ -406,8 +418,31 @@ model Student {
   studentId   String    @unique
   firstName   String
   lastName    String
+  fatherName  String?
+  grandfatherName String?
   dateOfBirth DateTime?
   gender      String?
+  nationality String?
+  placeOfBirth String?
+  photoUrl    String?
+  documents   Json?
+
+  // Address
+  region      String?
+  zone        String?
+  woreda      String?
+  city        String?
+  kebele      String?
+  houseNumber String?
+
+  // Previous School
+  previousSchool    String?
+  previousStudentId String?
+
+  // Emergency Contact
+  emergencyContactName     String?
+  emergencyContactRelation String?
+  emergencyContactPhone    String?
 
   enrollments StudentEnrollment[]
   parents     ParentStudent[]
@@ -481,13 +516,40 @@ model Teacher {
   organizationId String
   firstName      String
   lastName       String
+  fatherName     String?
+  grandfatherName String?
   employeeId     String? @unique
   userId         String? @unique
+  
+  gender         String?
+  dateOfBirth    DateTime?
+  qualification  String?
+  fieldOfStudy   String?
+  yearsOfExperience Int?
+  
+  phoneNumber    String?
+  email          String?
+  
+  // Address
+  region         String?
+  zone           String?
+  woreda         String?
+  city           String?
+  kebele         String?
+  houseNumber    String?
+  
+  // Media & Documents
+  photoUrl       String?
+  documents      Json?
+  
+  status         String  @default("ACTIVE")
 
   organization OrganizationUnit     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   user         User?                @relation(fields: [userId], references: [id], onDelete: SetNull)
   assignments  TeachingAssignment[]
   attendances  TeacherAttendance[]
+
+  classroomObservations ClassroomObservation[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -964,4 +1026,40 @@ model ImprovementPlan {
 
   @@index([organizationId])
   @@map("improvement_plan")
+}
+
+model ClassroomObservation {
+  id             String  @id @default(cuid())
+  organizationId String
+  academicYearId String
+  teacherId      String
+  subjectId      String
+  schoolGradeId  String
+  sectionId      String?
+  observerId     String
+
+  date  DateTime
+  topic String
+
+  strengths       String? @db.Text
+  weaknesses      String? @db.Text
+  recommendations String? @db.Text
+  feedback        String? @db.Text
+
+  followUpAction String?   @db.Text
+  followUpDate   DateTime?
+  status         String    @default("SCHEDULED")
+
+  organization OrganizationUnit @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  academicYear AcademicYear     @relation(fields: [academicYearId], references: [id], onDelete: Cascade)
+  teacher      Teacher          @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  subject      Subject          @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  schoolGrade  SchoolGrade      @relation(fields: [schoolGradeId], references: [id], onDelete: Cascade)
+  section      Section?         @relation(fields: [sectionId], references: [id], onDelete: SetNull)
+  observer     User             @relation("ObserverObservations", fields: [observerId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("classroom_observation")
 }

@@ -14,15 +14,15 @@ export const createTeacher = async (req: Request, res: Response) => {
         }
 
         const teacher = await TeacherService.createTeacher(organizationId, {
-            firstName,
-            lastName,
-            employeeId,
-            userId: req.user?.id
+            ...req.body
         });
 
         return res.status(201).json(teacher);
     } catch (error: any) {
-        return res.status(409).json({ error: "Employee ID already exists or invalid request" });
+        if (error?.code === 'P2002') {
+            return res.status(400).json({ error: "A teacher with this information already exists." });
+        }
+        return res.status(400).json({ error: error.message || "Failed to create teacher" });
     }
 };
 
@@ -33,6 +33,22 @@ export const getTeachers = async (req: Request, res: Response) => {
 
         const teachers = await TeacherService.getTeachers(organizationId);
         return res.json(teachers);
+    } catch (error) {
+        return res.status(500).json({ error: "Internal server error" });
+    }
+};
+
+
+
+export const getTeacherById = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        if (!organizationId) return res.status(403).json({ error: "Missing school scope" });
+
+        const teacher = await TeacherService.getTeacherById(organizationId, req.params.id as string);
+        if (!teacher) return res.status(404).json({ error: "Teacher not found" });
+
+        return res.json(teacher);
     } catch (error) {
         return res.status(500).json({ error: "Internal server error" });
     }
@@ -76,6 +92,34 @@ export const getAssignments = async (req: Request, res: Response) => {
         return res.json(assignments);
     } catch (error) {
         return res.status(500).json({ error: "Internal server error" });
+    }
+};
+
+// Update an assignment
+export const updateAssignment = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        if (!organizationId) return res.status(403).json({ error: "Missing school scope" });
+
+        const id = req.params.id as string;
+        const assignment = await TeacherService.updateAssignment(id, organizationId, req.body);
+        return res.json(assignment);
+    } catch (error: any) {
+        return res.status(400).json({ error: error.message || "Failed to update assignment" });
+    }
+};
+
+// Delete an assignment
+export const deleteAssignment = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        if (!organizationId) return res.status(403).json({ error: "Missing school scope" });
+
+        const id = req.params.id as string;
+        await TeacherService.deleteAssignment(id, organizationId);
+        return res.status(204).send();
+    } catch (error: any) {
+        return res.status(400).json({ error: error.message || "Failed to delete assignment" });
     }
 };
 
