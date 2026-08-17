@@ -67,13 +67,18 @@ export function RegistrationForm() {
         emergencyContactPhone: "",
     });
 
-    const [previews, setPreviews] = useState<{ [key: string]: { url: string, type: string, name: string } }>({});
+    const [previews, setPreviews] = useState<{ [key: string]: { url: string, type: string, name: string, base64?: string } }>({});
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, fieldName: string) => {
         const file = e.target.files?.[0];
         if (file) {
             const url = URL.createObjectURL(file);
-            setPreviews(prev => ({ ...prev, [fieldName]: { url, type: file.type, name: file.name } }));
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                const base64 = reader.result as string;
+                setPreviews(prev => ({ ...prev, [fieldName]: { url, type: file.type, name: file.name, base64 } }));
+            };
+            reader.readAsDataURL(file);
         }
     };
 
@@ -171,7 +176,12 @@ export function RegistrationForm() {
                 emergencyContactName: formData.emergencyContactName,
                 emergencyContactRelation: formData.emergencyContactRelation,
                 emergencyContactPhone: formData.emergencyContactPhone,
-                photoUrl: formData.photoUrl // we can mock the string for now
+                photoUrl: previews['photo']?.base64 || null,
+                documents: {
+                    birthCertificate: previews['birthCert']?.base64 || null,
+                    transcript: previews['transcript']?.base64 || null,
+                    parentID: previews['guardianId']?.base64 || null
+                }
             };
 
             const studentRes = await fetchApi("/student", {

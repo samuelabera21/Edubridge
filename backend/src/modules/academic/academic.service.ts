@@ -81,7 +81,7 @@ export class AcademicService {
 
         return prisma.schoolGrade.findMany({
             where: { academicYearId },
-            include: { grade: true }
+            include: { grade: true, sections: true }
         });
     }
 

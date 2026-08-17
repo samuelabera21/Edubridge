@@ -425,6 +425,7 @@ model Student {
   nationality String?
   placeOfBirth String?
   photoUrl    String?
+  documents   Json?
 
   // Address
   region      String?

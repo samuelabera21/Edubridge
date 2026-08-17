@@ -1,6 +1,15 @@
 import { Request, Response } from "express";
 import { AcademicService } from "./academic.service.js";
 
+// Helper for Prisma unique constraint errors
+const handlePrismaError = (error: any, res: Response, fallbackMessage: string) => {
+    if (error?.code === 'P2002') {
+        const fields = error.meta?.target || "record";
+        return res.status(400).json({ error: `This ${fields} already exists.` });
+    }
+    return res.status(400).json({ error: error?.message || fallbackMessage });
+};
+
 // --- Academic Years ---
 export const getAcademicYears = async (req: Request, res: Response) => {
     try {
@@ -25,9 +34,8 @@ export const createAcademicYear = async (req: Request, res: Response) => {
         
         const year = await AcademicService.createAcademicYear(organizationId, req.body);
         res.status(201).json(year);
-    } catch (error) {
-        console.error("Error creating academic year:", error);
-        res.status(400).json({ error: "Invalid request or duplicate academic year" });
+    } catch (error: any) {
+        handlePrismaError(error, res, "Invalid request or duplicate academic year");
     }
 };
 
@@ -51,8 +59,8 @@ export const createAcademicCalendar = async (req: Request, res: Response) => {
         
         const calendar = await AcademicService.createAcademicCalendar(req.params.yearId as string, req.body.description);
         res.status(201).json(calendar);
-    } catch (error) {
-        res.status(400).json({ error: "Invalid request" });
+    } catch (error: any) {
+        handlePrismaError(error, res, "Invalid request");
     }
 };
 
@@ -63,8 +71,8 @@ export const createAcademicPeriod = async (req: Request, res: Response) => {
         
         const period = await AcademicService.createAcademicPeriod(req.params.calendarId as string, req.body);
         res.status(201).json(period);
-    } catch (error) {
-        res.status(400).json({ error: "Invalid request" });
+    } catch (error: any) {
+        handlePrismaError(error, res, "Invalid request");
     }
 };
 
@@ -88,8 +96,8 @@ export const createGrade = async (req: Request, res: Response) => {
         
         const grade = await AcademicService.createGrade(organizationId, req.body);
         res.status(201).json(grade);
-    } catch (error) {
-        res.status(400).json({ error: "Invalid request" });
+    } catch (error: any) {
+        handlePrismaError(error, res, "Invalid request");
     }
 };
 
@@ -112,8 +120,8 @@ export const createSchoolGrade = async (req: Request, res: Response) => {
         
         const sg = await AcademicService.createSchoolGrade(req.params.yearId as string, req.body.gradeId);
         res.status(201).json(sg);
-    } catch (error) {
-        res.status(400).json({ error: "Invalid request" });
+    } catch (error: any) {
+        handlePrismaError(error, res, "Invalid request");
     }
 };
 
@@ -168,8 +176,8 @@ export const createSubject = async (req: Request, res: Response) => {
         
         const subject = await AcademicService.createSubject(organizationId, req.body);
         res.status(201).json(subject);
-    } catch (error) {
-        res.status(400).json({ error: "Invalid request" });
+    } catch (error: any) {
+        handlePrismaError(error, res, "Invalid request");
     }
 };
 
@@ -180,7 +188,7 @@ export const createSchoolSubject = async (req: Request, res: Response) => {
         
         const ss = await AcademicService.createSchoolSubject(req.params.yearId as string, req.body.subjectId);
         res.status(201).json(ss);
-    } catch (error) {
-        res.status(400).json({ error: "Invalid request" });
+    } catch (error: any) {
+        handlePrismaError(error, res, "Invalid request");
     }
 };

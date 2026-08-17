@@ -2,6 +2,7 @@ import { Router } from "express";
 import { 
     createStudent, 
     getStudents,
+    getStudentById,
     enrollStudent, 
     getEnrollments, 
     transferStudent,
@@ -35,6 +36,8 @@ router.post("/", requirePermission("ACADEMIC:CREATE"), createStudent);
  *       - cookieAuth: []
  */
 router.get("/", requirePermission("ACADEMIC:VIEW"), getStudents);
+
+
 
 // Enrollment Management - explicitly scoped to SCHOOL context
 /**
@@ -96,5 +99,17 @@ router.put("/enrollments/:enrollmentId/status", requireScope("SCHOOL"), requireP
  *       - cookieAuth: []
  */
 router.get("/me", requireScope("SCHOOL"), getStudentProfile);
+
+/**
+ * @openapi
+ * /api/student/{id}:
+ *   get:
+ *     tags: [Students]
+ *     summary: Get a single student's profile (including enrollments and documents)
+ *     security:
+ *       - bearerAuth: []
+ *       - cookieAuth: []
+ */
+router.get("/:id", requireScope("SCHOOL"), requirePermission("ACADEMIC:VIEW"), getStudentById);
 
 export default router;
