@@ -9,7 +9,6 @@ import { Button } from "@/components/ui/Button";
 import { LoadingState } from "@/components/ui/LoadingState";
 import { ErrorState } from "@/components/ui/ErrorState";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { AddStudentModal } from "./components/AddStudentModal";
 import Link from "next/link";
 
 export default function StudentsDirectoryPage() {
@@ -17,7 +16,6 @@ export default function StudentsDirectoryPage() {
     const [students, setStudents] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
-    const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 
     const hasCreatePermission = true; // Admin dashboard always shows this for now
 
@@ -59,17 +57,14 @@ export default function StudentsDirectoryPage() {
                     <p className="text-sm text-gray-500 mt-1">Global student identities associated with the platform.</p>
                 </div>
                 {hasCreatePermission && (
-                    <Button leftIcon={<Plus className="w-4 h-4" />} onClick={() => setIsAddModalOpen(true)}>
-                        Add Student
-                    </Button>
+                    <Link href="/dashboard/students/register">
+                        <Button leftIcon={<Plus className="w-4 h-4" />}>
+                            Add Student
+                        </Button>
+                    </Link>
                 )}
             </div>
 
-            <AddStudentModal 
-                isOpen={isAddModalOpen} 
-                onClose={() => setIsAddModalOpen(false)} 
-                onSuccess={loadData} 
-            />
 
             {students.length === 0 ? (
                 <EmptyState 
