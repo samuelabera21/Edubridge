@@ -425,6 +425,7 @@ model Student {
   nationality String?
   placeOfBirth String?
   photoUrl    String?
+  documents   Json?
 
   // Address
   region      String?
@@ -515,8 +516,33 @@ model Teacher {
   organizationId String
   firstName      String
   lastName       String
+  fatherName     String?
+  grandfatherName String?
   employeeId     String? @unique
   userId         String? @unique
+  
+  gender         String?
+  dateOfBirth    DateTime?
+  qualification  String?
+  fieldOfStudy   String?
+  yearsOfExperience Int?
+  
+  phoneNumber    String?
+  email          String?
+  
+  // Address
+  region         String?
+  zone           String?
+  woreda         String?
+  city           String?
+  kebele         String?
+  houseNumber    String?
+  
+  // Media & Documents
+  photoUrl       String?
+  documents      Json?
+  
+  status         String  @default("ACTIVE")
 
   organization OrganizationUnit     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   user         User?                @relation(fields: [userId], references: [id], onDelete: SetNull)

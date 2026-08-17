@@ -10,6 +10,7 @@ import { LoadingState } from "@/components/ui/LoadingState";
 import { ErrorState } from "@/components/ui/ErrorState";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { AddStudentModal } from "./components/AddStudentModal";
+import Link from "next/link";
 
 export default function StudentsDirectoryPage() {
     const { authData } = useAuth();
@@ -111,7 +112,9 @@ export default function StudentsDirectoryPage() {
                                                 {student.dateOfBirth ? new Date(student.dateOfBirth).toLocaleDateString() : "N/A"}
                                             </td>
                                             <td className="px-6 py-4 text-right space-x-2">
-                                                <Button variant="ghost" size="sm">View Profile</Button>
+                                                <Link href={`/dashboard/students/${student.id}`}>
+                                                    <Button variant="ghost" size="sm">View Profile</Button>
+                                                </Link>
                                             </td>
                                         </tr>
                                     ))}

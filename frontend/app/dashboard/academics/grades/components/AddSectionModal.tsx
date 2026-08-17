@@ -20,7 +20,9 @@ export function AddSectionModal({ isOpen, onClose, onSuccess, schoolGradeId, gra
         capacity: "50"
     });
 
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const STANDARD_SECTIONS = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J"];
+
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
     };
 
@@ -60,13 +62,21 @@ export function AddSectionModal({ isOpen, onClose, onSuccess, schoolGradeId, gra
             <form onSubmit={handleSubmit} className="space-y-4">
                 {error && <div className="p-3 bg-red-100 text-red-700 rounded-md text-sm">{error}</div>}
                 
-                <Input 
-                    label="Section Name (e.g., A, B, or 9A)" 
-                    name="name" 
-                    value={formData.name} 
-                    onChange={handleChange} 
-                    required 
-                />
+                <div className="flex flex-col gap-1">
+                    <label className="text-sm font-medium text-gray-700">Section Name</label>
+                    <select
+                        name="name"
+                        value={formData.name}
+                        onChange={handleChange}
+                        required
+                        className="p-2 border rounded-md bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                        <option value="" disabled>Select a section...</option>
+                        {STANDARD_SECTIONS.map(s => (
+                            <option key={s} value={s}>Section {s}</option>
+                        ))}
+                    </select>
+                </div>
                 
                 <Input 
                     label="Student Capacity" 

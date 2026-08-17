@@ -97,7 +97,6 @@ export default function SubjectsPage() {
                                     <tr>
                                         <th className="px-6 py-3 font-semibold">Code</th>
                                         <th className="px-6 py-3 font-semibold">Name</th>
-                                        <th className="px-6 py-3 font-semibold">Credits</th>
                                         <th className="px-6 py-3 font-semibold text-right">Actions</th>
                                     </tr>
                                 </thead>
@@ -111,7 +110,6 @@ export default function SubjectsPage() {
                                                 </div>
                                             </td>
                                             <td className="px-6 py-4 text-gray-900 font-medium">{subject.name}</td>
-                                            <td className="px-6 py-4 text-gray-600">{subject.credits || "N/A"}</td>
                                             <td className="px-6 py-4 text-right space-x-2">
                                                 <Button variant="ghost" size="sm">Manage</Button>
                                             </td>

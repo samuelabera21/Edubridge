@@ -40,6 +40,18 @@ export const getStudents = async (req: Request, res: Response) => {
     }
 };
 
+export const getStudentById = async (req: Request, res: Response) => {
+    try {
+        const student = await StudentService.getStudentById(req.params.id as string);
+        if (!student) {
+            return res.status(404).json({ error: "Student not found" });
+        }
+        return res.json(student);
+    } catch (error) {
+        return res.status(500).json({ error: "Internal server error" });
+    }
+};
+
 // Enroll a student in a specific school and academic year
 export const enrollStudent = async (req: Request, res: Response) => {
     try {

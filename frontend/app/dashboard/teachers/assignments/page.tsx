@@ -10,12 +10,14 @@ import { LoadingState } from "@/components/ui/LoadingState";
 import { ErrorState } from "@/components/ui/ErrorState";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { AcademicYear } from "@/types/api";
+import { EditAssignmentModal } from "./components/EditAssignmentModal";
 
 export default function TeachingAssignmentsPage() {
     const { authData } = useAuth();
     const [years, setYears] = useState<AcademicYear[]>([]);
     const [activeYear, setActiveYear] = useState<AcademicYear | null>(null);
     const [assignments, setAssignments] = useState<any[]>([]);
+    const [editingAssignment, setEditingAssignment] = useState<any>(null);
     
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -122,8 +124,8 @@ export default function TeachingAssignmentsPage() {
                                     <tr>
                                         <th className="px-6 py-3 font-semibold">Teacher</th>
                                         <th className="px-6 py-3 font-semibold">Subject</th>
-                                        <th className="px-6 py-3 font-semibold">Grade/Section</th>
-                                        <th className="px-6 py-3 font-semibold">Type</th>
+                                        <th className="px-6 py-3 font-semibold">Grade</th>
+                                        <th className="px-6 py-3 font-semibold">Section</th>
                                         <th className="px-6 py-3 font-semibold text-right">Actions</th>
                                     </tr>
                                 </thead>
@@ -137,19 +139,18 @@ export default function TeachingAssignmentsPage() {
                                                 <p className="text-xs text-gray-500">{assignment.teacher?.staffIdCode}</p>
                                             </td>
                                             <td className="px-6 py-4 font-medium text-gray-900">
-                                                {assignment.schoolSubject?.subject?.name || "Unknown Subject"}
+                                                {assignment.subject?.name || "Unknown Subject"}
                                             </td>
                                             <td className="px-6 py-4 text-gray-600">
-                                                {assignment.section?.schoolGrade?.grade?.name || "Unknown Grade"} 
-                                                {assignment.section ? ` - ${assignment.section.name}` : ""}
+                                                {assignment.schoolGrade?.grade?.name || "Unknown Grade"} 
                                             </td>
-                                            <td className="px-6 py-4">
-                                                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${assignment.isPrimary ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-800'}`}>
-                                                    {assignment.isPrimary ? 'Primary' : 'Assistant'}
-                                                </span>
+                                            <td className="px-6 py-4 text-gray-600">
+                                                {assignment.section ? assignment.section.name : "All Sections"}
                                             </td>
                                             <td className="px-6 py-4 text-right space-x-2">
-                                                <Button variant="ghost" size="sm">Manage</Button>
+                                                <Button variant="ghost" size="sm" onClick={() => setEditingAssignment(assignment)}>
+                                                    Manage
+                                                </Button>
                                             </td>
                                         </tr>
                                     ))}
@@ -158,6 +159,19 @@ export default function TeachingAssignmentsPage() {
                         </div>
                     </CardContent>
                 </Card>
+            )}
+
+            {activeYear && editingAssignment && (
+                <EditAssignmentModal 
+                    isOpen={!!editingAssignment}
+                    onClose={() => setEditingAssignment(null)}
+                    onSuccess={() => {
+                        setEditingAssignment(null);
+                        loadData();
+                    }}
+                    assignment={editingAssignment}
+                    activeYearId={activeYear.id}
+                />
             )}
         </div>
     );

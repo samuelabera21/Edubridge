@@ -25,7 +25,8 @@ export class StudentService {
                 previousStudentId: data.previousStudentId,
                 emergencyContactName: data.emergencyContactName,
                 emergencyContactRelation: data.emergencyContactRelation,
-                emergencyContactPhone: data.emergencyContactPhone
+                emergencyContactPhone: data.emergencyContactPhone,
+                documents: data.documents || null
             }
         });
         
@@ -44,6 +45,24 @@ export class StudentService {
 
     static async getStudents() {
         return prisma.student.findMany();
+    }
+
+    static async getStudentById(id: string) {
+        return prisma.student.findUnique({
+            where: { id },
+            include: {
+                enrollments: {
+                    include: {
+                        academicYear: true,
+                        schoolGrade: {
+                            include: { grade: true }
+                        },
+                        section: true
+                    }
+                },
+                parents: true
+            }
+        });
     }
 
     static async enrollStudent(organizationId: string, studentId: string, academicYearId: string, schoolGradeId: string, sectionId?: string) {

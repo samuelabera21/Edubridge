@@ -19,8 +19,38 @@ export function AddSubjectModal({ isOpen, onClose, onSuccess, activeYearId }: Ad
         code: ""
     });
 
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
+    const [isCustom, setIsCustom] = useState(false);
+
+    const STANDARD_SUBJECTS = [
+        "Amharic",
+        "English",
+        "Mathematics",
+        "Environmental Science",
+        "General Science",
+        "Social Studies",
+        "Physics",
+        "Chemistry",
+        "Biology",
+        "Civics and Ethical Education",
+        "Information Technology",
+        "Geography",
+        "History",
+        "Physical Education"
+    ];
+
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+        const { name, value } = e.target;
+        if (name === "subjectSelect") {
+            if (value === "OTHER") {
+                setIsCustom(true);
+                setFormData(prev => ({ ...prev, name: "", code: "" }));
+            } else {
+                setIsCustom(false);
+                setFormData(prev => ({ ...prev, name: value, code: value.substring(0, 4).toUpperCase() + "-101" }));
+            }
+        } else {
+            setFormData(prev => ({ ...prev, [name]: value }));
+        }
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -77,13 +107,31 @@ export function AddSubjectModal({ isOpen, onClose, onSuccess, activeYearId }: Ad
                     This will create a new Subject and assign it to the currently active Academic Year.
                 </p>
 
-                <Input 
-                    label="Subject Name (e.g., Mathematics)" 
-                    name="name" 
-                    value={formData.name} 
-                    onChange={handleChange} 
-                    required 
-                />
+                <div className="flex flex-col gap-1">
+                    <label className="text-sm font-medium text-gray-700">Select Subject</label>
+                    <select
+                        name="subjectSelect"
+                        onChange={handleChange}
+                        className="p-2 border rounded-md bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        defaultValue=""
+                    >
+                        <option value="" disabled>Select a subject...</option>
+                        {STANDARD_SUBJECTS.map(s => (
+                            <option key={s} value={s}>{s}</option>
+                        ))}
+                        <option value="OTHER">Custom Subject...</option>
+                    </select>
+                </div>
+
+                {isCustom && (
+                    <Input 
+                        label="Custom Subject Name" 
+                        name="name" 
+                        value={formData.name} 
+                        onChange={handleChange} 
+                        required 
+                    />
+                )}
                 
                 <Input 
                     label="Subject Code (e.g., MATH-101)" 

@@ -19,8 +19,31 @@ export function AddGradeModal({ isOpen, onClose, onSuccess, activeYearId }: AddG
         level: ""
     });
 
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
+    const STANDARD_GRADES = [
+        { name: "Pre-K", level: -3 },
+        { name: "KG 1", level: -2 },
+        { name: "KG 2", level: -1 },
+        { name: "KG 3", level: 0 },
+        { name: "Grade 1", level: 1 },
+        { name: "Grade 2", level: 2 },
+        { name: "Grade 3", level: 3 },
+        { name: "Grade 4", level: 4 },
+        { name: "Grade 5", level: 5 },
+        { name: "Grade 6", level: 6 },
+        { name: "Grade 7", level: 7 },
+        { name: "Grade 8", level: 8 },
+        { name: "Grade 9", level: 9 },
+        { name: "Grade 10", level: 10 },
+        { name: "Grade 11", level: 11 },
+        { name: "Grade 12", level: 12 },
+    ];
+
+    const handleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+        const selectedName = e.target.value;
+        const selectedGrade = STANDARD_GRADES.find(g => g.name === selectedName);
+        if (selectedGrade) {
+            setFormData({ name: selectedGrade.name, level: selectedGrade.level.toString() });
+        }
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -77,22 +100,27 @@ export function AddGradeModal({ isOpen, onClose, onSuccess, activeYearId }: AddG
                     This will create a new Grade and assign it to the currently active Academic Year.
                 </p>
 
-                <Input 
-                    label="Grade Name (e.g., Grade 9)" 
-                    name="name" 
-                    value={formData.name} 
-                    onChange={handleChange} 
-                    required 
-                />
-                
-                <Input 
-                    label="Numeric Level (e.g., 9)" 
-                    type="number"
-                    name="level" 
-                    value={formData.level} 
-                    onChange={handleChange} 
-                    required 
-                />
+                <div className="flex flex-col gap-1">
+                    <label className="text-sm font-medium text-gray-700">Select Grade</label>
+                    <select
+                        name="name"
+                        value={formData.name}
+                        onChange={handleChange}
+                        required
+                        className="p-2 border rounded-md bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                        <option value="" disabled>Select a grade...</option>
+                        {STANDARD_GRADES.map(g => (
+                            <option key={g.name} value={g.name}>{g.name}</option>
+                        ))}
+                    </select>
+                </div>
+
+                {formData.name && (
+                    <div className="p-3 bg-blue-50 text-blue-800 rounded-md text-sm">
+                        Numeric Level: {formData.level}
+                    </div>
+                )}
 
                 <div className="flex justify-end gap-3 pt-4 border-t">
                     <Button type="button" variant="ghost" onClick={onClose}>Cancel</Button>

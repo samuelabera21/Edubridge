@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { fetchApi } from "@/lib/api";
 import { useAuth } from "@/hooks/useAuth";
+import Link from "next/link";
 import { Calendar, Plus, CheckCircle, Clock } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -118,7 +119,9 @@ export default function AcademicYearsPage() {
                                                 )}
                                             </td>
                                             <td className="px-6 py-4 text-right space-x-2">
-                                                <Button variant="ghost" size="sm">Manage</Button>
+                                                <Link href={`/dashboard/academics/years/${year.id}`}>
+                                                    <Button variant="ghost" size="sm">Manage</Button>
+                                                </Link>
                                             </td>
                                         </tr>
                                     ))}
