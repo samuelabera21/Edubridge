@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import { getSchoolProfile, updateSchoolProfile, createOrganizationUnit, getOrganizationHierarchy } from "./school.service.js";
 import { OrganizationUnitType, SchoolStatus } from "../../generated/prisma/enums.js";
+import { prisma } from "../../infrastructure/prisma/client.js";
 
 export async function getHierarchyHandler(req: Request, res: Response) {
     try {
@@ -46,9 +47,27 @@ export async function getProfileHandler(req: Request, res: Response) {
 
         const profile = await getSchoolProfile(accessScope.id);
         
+        // Fetch aggregated stats
+        const activeYear = await prisma.academicYear.findFirst({
+            where: { organizationId: accessScope.id, status: "ACTIVE" }
+        });
+
+        const [totalTeachers, totalStudents, activeSections, academicYears] = await Promise.all([
+            prisma.teacher.count({ where: { organizationId: accessScope.id } }),
+            prisma.student.count({ where: { enrollments: { some: { organizationId: accessScope.id } } } }),
+            activeYear ? prisma.section.count({ where: { schoolGrade: { academicYearId: activeYear.id } } }) : 0,
+            prisma.academicYear.findMany({ where: { organizationId: accessScope.id }, orderBy: { startDate: 'desc' } })
+        ]);
+        
         return res.json({
             school: accessScope,
             profile: profile || null,
+            academicYears,
+            stats: {
+                totalTeachers,
+                totalStudents,
+                activeSections
+            }
         });
     } catch (error) {
         console.error("Error getting school profile:", error);
@@ -65,6 +84,7 @@ export async function updateProfileHandler(req: Request, res: Response) {
 
         const data = req.body;
         const profile = await updateSchoolProfile(accessScope.id, {
+            schoolName: data.schoolName,
             establishedYear: data.establishedYear,
             contactEmail: data.contactEmail,
             phoneNumber: data.phoneNumber,
@@ -72,6 +92,19 @@ export async function updateProfileHandler(req: Request, res: Response) {
             status: data.status as SchoolStatus,
             configuration: data.configuration,
         });
+
+        if (data.activeAcademicYearId) {
+            // Set all to COMPLETED
+            await prisma.academicYear.updateMany({
+                where: { organizationId: accessScope.id, id: { not: data.activeAcademicYearId } },
+                data: { status: "COMPLETED" }
+            });
+            // Set selected to ACTIVE
+            await prisma.academicYear.update({
+                where: { id: data.activeAcademicYearId },
+                data: { status: "ACTIVE" }
+            });
+        }
 
         return res.json({
             message: "Profile updated successfully",

@@ -39,6 +39,53 @@ export const createAcademicYear = async (req: Request, res: Response) => {
     }
 };
 
+export const getAcademicYearById = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        if (!organizationId) {
+            return res.status(403).json({ error: "Missing school scope" });
+        }
+        
+        const year = await AcademicService.getAcademicYearById(organizationId, req.params.yearId as string);
+        res.json(year);
+    } catch (error: any) {
+        if (error.message === "Academic Year not found") {
+            return res.status(404).json({ error: error.message });
+        }
+        res.status(500).json({ error: "Internal server error" });
+    }
+};
+
+export const updateAcademicYear = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        if (!organizationId) {
+            return res.status(403).json({ error: "Missing school scope" });
+        }
+        
+        const year = await AcademicService.updateAcademicYear(organizationId, req.params.yearId as string, req.body);
+        res.json(year);
+    } catch (error: any) {
+        handlePrismaError(error, res, "Invalid request or duplicate academic year name");
+    }
+};
+
+export const copyStructureFromPreviousYear = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        if (!organizationId) return res.status(403).json({ error: "Missing school scope" });
+        
+        const result = await AcademicService.copyStructureFromPreviousYear(
+            organizationId, 
+            req.params.yearId as string, 
+            req.body.previousYearId as string
+        );
+        res.json(result);
+    } catch (error: any) {
+        res.status(400).json({ error: error.message || "Failed to copy structure" });
+    }
+};
+
 export const activateAcademicYear = async (req: Request, res: Response) => {
     try {
         const organizationId = (req as any).accessScope?.id;
@@ -122,6 +169,21 @@ export const createSchoolGrade = async (req: Request, res: Response) => {
         res.status(201).json(sg);
     } catch (error: any) {
         handlePrismaError(error, res, "Invalid request");
+    }
+};
+
+export const getSchoolGradeDetails = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        if (!organizationId) return res.status(403).json({ error: "Missing school scope" });
+        
+        const details = await AcademicService.getSchoolGradeDetails(organizationId, req.params.schoolGradeId as string);
+        res.json(details);
+    } catch (error: any) {
+        if (error.message === "School Grade not found or unauthorized") {
+            return res.status(404).json({ error: error.message });
+        }
+        res.status(500).json({ error: "Internal server error" });
     }
 };
 

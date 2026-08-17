@@ -10,7 +10,7 @@ import { LoadingState } from "@/components/ui/LoadingState";
 import { ErrorState } from "@/components/ui/ErrorState";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { AcademicYear } from "@/types/api";
-import { AddGradeModal } from "./components/AddGradeModal";
+import Link from "next/link";
 import { AddSectionModal } from "./components/AddSectionModal";
 
 export default function GradesAndSectionsPage() {
@@ -22,7 +22,6 @@ export default function GradesAndSectionsPage() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
-    const [isAddGradeModalOpen, setIsAddGradeModalOpen] = useState(false);
     const [sectionModalState, setSectionModalState] = useState<{ isOpen: boolean; schoolGradeId: string; gradeName: string }>({ isOpen: false, schoolGradeId: "", gradeName: "" });
 
     // Bypass permission check for Admin testing
@@ -103,9 +102,11 @@ export default function GradesAndSectionsPage() {
                     </p>
                     <div className="flex flex-col sm:flex-row gap-3 mt-4">
                         {hasCreatePermission && (
-                            <Button leftIcon={<Plus className="w-4 h-4" />} onClick={() => setIsAddGradeModalOpen(true)}>
-                                Add Grade
-                            </Button>
+                            <Link href="/dashboard/academics/grades/create">
+                                <Button leftIcon={<Plus className="w-4 h-4" />}>
+                                    Add Grade
+                                </Button>
+                            </Link>
                         )}
                         <Button variant="outline" leftIcon={<Filter className="w-4 h-4" />}>
                             Filter
@@ -162,7 +163,7 @@ export default function GradesAndSectionsPage() {
                                                 )}
                                             </td>
                                             <td className="px-6 py-4 text-right space-x-2">
-                                                <div className="text-right mt-3 pt-3 border-t">
+                                                <div className="flex justify-end gap-2 items-center">
                                                     {hasCreatePermission && (
                                                         <Button 
                                                             variant="ghost" 
@@ -173,6 +174,11 @@ export default function GradesAndSectionsPage() {
                                                             Add Section
                                                         </Button>
                                                     )}
+                                                    <Link href={`/dashboard/academics/grades/${sg.id}`}>
+                                                        <Button variant="secondary" size="sm">
+                                                            Manage
+                                                        </Button>
+                                                    </Link>
                                                 </div>
                                             </td>
                                         </tr>
@@ -184,14 +190,7 @@ export default function GradesAndSectionsPage() {
                 </Card>
             )}
 
-            {activeYear && (
-                <AddGradeModal 
-                    isOpen={isAddGradeModalOpen}
-                    onClose={() => setIsAddGradeModalOpen(false)}
-                    onSuccess={loadData}
-                    activeYearId={activeYear.id}
-                />
-            )}
+            {/* Modal removed */}
 
             <AddSectionModal 
                 isOpen={sectionModalState.isOpen}

@@ -35,6 +35,7 @@ export async function getSchoolProfile(organizationId: string) {
 export async function updateSchoolProfile(
     organizationId: string,
     data: {
+        schoolName?: string;
         establishedYear?: number;
         contactEmail?: string;
         phoneNumber?: string;
@@ -63,4 +64,13 @@ export async function updateSchoolProfile(
             configuration: data.configuration ? (data.configuration as Prisma.InputJsonValue) : Prisma.JsonNull,
         },
     });
+
+    if (data.schoolName) {
+        await prisma.organizationUnit.update({
+            where: { id: organizationId },
+            data: { name: data.schoolName }
+        });
+    }
+    
+    return profile;
 }

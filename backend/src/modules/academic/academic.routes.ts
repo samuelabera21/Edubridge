@@ -1,15 +1,19 @@
 import { Router } from "express";
 import { requirePermission, requireScope } from "../authentication/authorization.middleware.js";
 import { 
-    getAcademicYears, 
+    getAcademicYears,
+    getAcademicYearById,
     createAcademicYear, 
+    updateAcademicYear,
     activateAcademicYear,
+    copyStructureFromPreviousYear,
     createAcademicCalendar,
     createAcademicPeriod,
     getGrades, 
     createGrade,
     getSchoolGrades, 
     createSchoolGrade,
+    getSchoolGradeDetails,
     getSections, 
     createSection,
     getSubjects,
@@ -42,12 +46,34 @@ router.post("/years", requirePermission("ACADEMIC:CREATE"), createAcademicYear);
 
 /**
  * @openapi
+ * /api/academic/years/{yearId}:
+ *   get:
+ *     tags: [Academic]
+ *     summary: Get a specific academic year with stats
+ *   put:
+ *     tags: [Academic]
+ *     summary: Update an academic year
+ */
+router.get("/years/:yearId", requirePermission("ACADEMIC:VIEW"), getAcademicYearById);
+router.put("/years/:yearId", requirePermission("ACADEMIC:UPDATE"), updateAcademicYear);
+
+/**
+ * @openapi
  * /api/academic/years/{yearId}/activate:
  *   put:
  *     tags: [Academic]
  *     summary: Activate an academic year
  */
 router.put("/years/:yearId/activate", requirePermission("ACADEMIC:UPDATE"), activateAcademicYear);
+
+/**
+ * @openapi
+ * /api/academic/years/{yearId}/copy-structure:
+ *   post:
+ *     tags: [Academic]
+ *     summary: Copy grades and sections from a previous year
+ */
+router.post("/years/:yearId/copy-structure", requirePermission("ACADEMIC:CREATE"), copyStructureFromPreviousYear);
 
 // --- Academic Calendars & Periods ---
 /**
@@ -104,6 +130,15 @@ router.get("/years/:yearId/grades", requirePermission("ACADEMIC:VIEW"), getSchoo
  *     summary: Assign a grade to an academic year
  */
 router.post("/years/:yearId/grades", requirePermission("ACADEMIC:CREATE"), createSchoolGrade);
+
+/**
+ * @openapi
+ * /api/academic/grades/{schoolGradeId}/details:
+ *   get:
+ *     tags: [Academic]
+ *     summary: Get details of a school grade including sections and enrollments
+ */
+router.get("/grades/:schoolGradeId/details", requirePermission("ACADEMIC:VIEW"), getSchoolGradeDetails);
 
 /**
  * @openapi
