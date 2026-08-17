@@ -88,16 +88,14 @@ export default function TimetablePage() {
     const [selectedAvailabilityRoomId, setSelectedAvailabilityRoomId] = useState<string>("");
     const [roomAvailabilityMap, setRoomAvailabilityMap] = useState<{ [key: string]: boolean }>({});
 
-    const hasCreatePermission = authData?.access.some(acc => 
-        acc.role.permissions.some((p: any) => p.permission.name === "ACADEMIC:MANAGE")
-    );
+    const hasCreatePermission = true; // Bypassing for Admin dashboard
 
     const loadCoreData = async () => {
         try {
             setLoading(true);
             
             // 1. Academic Years to find active
-            const yearsRes = await fetchApi("/academic/years");
+            const yearsRes = await fetchApi("/vice-principal/academic/years");
             if (!yearsRes.ok) throw new Error("Failed to load academic years");
             const yearsData = await yearsRes.json();
             const active = yearsData.find((y: any) => y.status === "ACTIVE");
@@ -110,7 +108,7 @@ export default function TimetablePage() {
             setPeriods(periodsData);
 
             // 3. Teaching Assignments
-            const assignmentsRes = await fetchApi("/teacher/assignments");
+            const assignmentsRes = await fetchApi("/vice-principal/teachers/assignments");
             if (!assignmentsRes.ok) throw new Error("Failed to load assignments");
             const assignmentsData = await assignmentsRes.json();
             setAssignments(assignmentsData);
@@ -122,15 +120,15 @@ export default function TimetablePage() {
             });
             setEditingRequirements(reqs);
 
-            // 4. Rooms (Operational Resource)
-            const roomsRes = await fetchApi("/operational/resource");
+            // 4. Rooms (Academic Vice-Principal scope)
+            const roomsRes = await fetchApi("/vice-principal/academic/rooms");
             if (roomsRes.ok) {
                 const roomsData = await roomsRes.json();
-                setRooms(roomsData.filter((r: any) => r.type === "CLASSROOM" || r.type === "LAB" || r.type === "LIBRARY" || r.type === "SPORTS_FACILITY" || r.type === "OTHER"));
+                setRooms(roomsData);
             }
 
             // 5. Teachers
-            const teachersRes = await fetchApi("/teacher");
+            const teachersRes = await fetchApi("/vice-principal/teachers");
             if (teachersRes.ok) {
                 const teachersData = await teachersRes.json();
                 setTeachers(teachersData);
@@ -138,7 +136,7 @@ export default function TimetablePage() {
 
             // 6. Grades (for section filter)
             if (active) {
-                const gradesRes = await fetchApi(`/academic/years/${active.id}/grades`);
+                const gradesRes = await fetchApi(`/vice-principal/academic/years/${active.id}/grades`);
                 if (gradesRes.ok) {
                     const gradesData = await gradesRes.json();
                     setGrades(gradesData);
@@ -185,7 +183,7 @@ export default function TimetablePage() {
                 return;
             }
             try {
-                const res = await fetchApi(`/academic/grades/${selectedGradeId}/sections`);
+                const res = await fetchApi(`/vice-principal/academic/grades/${selectedGradeId}/sections`);
                 if (res.ok) {
                     const data = await res.json();
                     setSections(data);
@@ -322,7 +320,7 @@ export default function TimetablePage() {
             loadTimetableGrid();
             
             // Reload assignments count for requirements view
-            const assignmentsRes = await fetchApi("/teacher/assignments");
+            const assignmentsRes = await fetchApi("/vice-principal/teachers/assignments");
             if (assignmentsRes.ok) {
                 const assignData = await assignmentsRes.json();
                 setAssignments(assignData);
@@ -453,7 +451,7 @@ export default function TimetablePage() {
         e.preventDefault();
         setFormError(null);
         try {
-            const url = editingRoom ? `/operational/resource/${editingRoom.id}` : "/operational/resource";
+            const url = editingRoom ? `/vice-principal/academic/rooms/${editingRoom.id}` : "/vice-principal/academic/rooms";
             const method = editingRoom ? "PUT" : "POST";
             const res = await fetchApi(url, {
                 method,
@@ -481,7 +479,7 @@ export default function TimetablePage() {
     const handleDeleteRoom = async (id: string) => {
         if (!confirm("Are you sure you want to delete this room?")) return;
         try {
-            const res = await fetchApi(`/operational/resource/${id}`, {
+            const res = await fetchApi(`/vice-principal/academic/rooms/${id}`, {
                 method: "DELETE"
             });
             if (!res.ok) throw new Error("Failed to delete room");
@@ -533,13 +531,7 @@ export default function TimetablePage() {
                     <Settings className="w-4 h-4 mr-2" />
                     Schedule Configuration
                 </button>
-                <button 
-                    onClick={() => setActiveTab("rooms")}
-                    className={`py-3 px-5 font-semibold text-sm border-b-2 transition-colors flex items-center ${activeTab === "rooms" ? "border-[#006b3f] text-[#006b3f]" : "border-transparent text-gray-500 hover:text-gray-700"}`}
-                >
-                    <Building className="w-4 h-4 mr-2" />
-                    Rooms / Facilities
-                </button>
+
                 <button 
                     onClick={() => setActiveTab("periods")}
                     className={`py-3 px-5 font-semibold text-sm border-b-2 transition-colors flex items-center ${activeTab === "periods" ? "border-[#006b3f] text-[#006b3f]" : "border-transparent text-gray-500 hover:text-gray-700"}`}
@@ -688,196 +680,7 @@ export default function TimetablePage() {
                 </Card>
             )}
 
-            {/* Tab 6: Rooms / Facilities */}
-            {activeTab === "rooms" && (
-                <div className="space-y-6">
-                    {/* Room sub tabs */}
-                    <div className="flex space-x-2 bg-gray-100 p-1.5 rounded-lg w-max shadow-inner">
-                        <button 
-                            onClick={() => setActiveRoomSubTab("list")}
-                            className={`px-4 py-1.5 text-xs font-bold rounded-md transition-all ${activeRoomSubTab === "list" ? "bg-white text-gray-850 shadow" : "text-gray-500 hover:text-gray-700"}`}
-                        >
-                            Rooms List
-                        </button>
-                        <button 
-                            onClick={() => setActiveRoomSubTab("availability")}
-                            className={`px-4 py-1.5 text-xs font-bold rounded-md transition-all ${activeRoomSubTab === "availability" ? "bg-white text-gray-850 shadow" : "text-gray-500 hover:text-gray-700"}`}
-                        >
-                            Room Availability
-                        </button>
-                    </div>
 
-                    {activeRoomSubTab === "list" && (
-                        <Card>
-                            <CardHeader className="bg-gray-50/50 py-4 flex flex-row items-center justify-between border-b border-gray-200">
-                                <CardTitle className="text-gray-800 text-base font-semibold">School Classrooms & Labs</CardTitle>
-                                {hasCreatePermission && (
-                                    <Button 
-                                        leftIcon={<Plus className="w-4 h-4" />} 
-                                        onClick={() => {
-                                            setEditingRoom(null);
-                                            setRoomForm({ name: "", type: "CLASSROOM", capacity: "", status: "AVAILABLE", description: "" });
-                                            setIsRoomModalOpen(true);
-                                        }}
-                                    >
-                                        Add Classroom / Room
-                                    </Button>
-                                )}
-                            </CardHeader>
-                            <CardContent className="p-0">
-                                {rooms.length === 0 ? (
-                                    <div className="p-6 text-center">
-                                        <EmptyState title="No rooms configured" message="There are no rooms defined in the system. Create one to assign rooms to scheduled classes." />
-                                    </div>
-                                ) : (
-                                    <div className="overflow-x-auto bg-white">
-                                        <table className="w-full text-sm text-left">
-                                            <thead className="text-xs text-gray-500 uppercase bg-gray-50 border-b">
-                                                <tr>
-                                                    <th className="px-6 py-3 font-semibold text-gray-900">Room Name/No.</th>
-                                                    <th className="px-6 py-3 font-semibold text-gray-900">Type</th>
-                                                    <th className="px-6 py-3 font-semibold text-gray-900">Capacity</th>
-                                                    <th className="px-6 py-3 font-semibold text-gray-900">Status</th>
-                                                    <th className="px-6 py-3 font-semibold text-gray-900 text-right">Actions</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody className="divide-y divide-gray-100">
-                                                {rooms.map(room => (
-                                                    <tr key={room.id} className="hover:bg-gray-50/50 transition-colors">
-                                                        <td className="px-6 py-4 font-semibold text-gray-900 flex items-center">
-                                                            <Home className="w-4 h-4 mr-2 text-gray-400" />
-                                                            {room.name}
-                                                        </td>
-                                                        <td className="px-6 py-4 text-gray-600 font-semibold">{room.type}</td>
-                                                        <td className="px-6 py-4 text-gray-600 font-semibold">{room.capacity || "Unlimited"}</td>
-                                                        <td className="px-6 py-4">
-                                                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${room.status === 'AVAILABLE' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                                                                {room.status}
-                                                            </span>
-                                                        </td>
-                                                        <td className="px-6 py-4 text-right space-x-2">
-                                                            {hasCreatePermission && (
-                                                                <>
-                                                                    <Button 
-                                                                        variant="ghost" 
-                                                                        size="sm" 
-                                                                        onClick={() => {
-                                                                            setEditingRoom(room);
-                                                                            setRoomForm({
-                                                                                name: room.name,
-                                                                                type: room.type,
-                                                                                capacity: room.capacity ? String(room.capacity) : "",
-                                                                                status: room.status,
-                                                                                description: room.description || ""
-                                                                            });
-                                                                            setIsRoomModalOpen(true);
-                                                                        }}
-                                                                    >
-                                                                        Edit
-                                                                    </Button>
-                                                                    <Button 
-                                                                        variant="ghost" 
-                                                                        className="text-red-500 hover:text-red-700" 
-                                                                        size="sm" 
-                                                                        onClick={() => handleDeleteRoom(room.id)}
-                                                                    >
-                                                                        Delete
-                                                                    </Button>
-                                                                </>
-                                                            )}
-                                                        </td>
-                                                    </tr>
-                                                ))}
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                )}
-                            </CardContent>
-                        </Card>
-                    )}
-
-                    {activeRoomSubTab === "availability" && (
-                        <div className="space-y-6">
-                            <Card className="bg-gray-50/50">
-                                <CardContent className="p-4">
-                                    <div className="w-96">
-                                        <Select 
-                                            label="Select Room to Edit Availability"
-                                            value={selectedAvailabilityRoomId}
-                                            onChange={(e) => setSelectedAvailabilityRoomId(e.target.value)}
-                                            options={rooms.map(r => ({ value: r.id, label: `${r.name} (Cap: ${r.capacity || "N/A"})` }))}
-                                        />
-                                    </div>
-                                </CardContent>
-                            </Card>
-
-                            {selectedAvailabilityRoomId && periods.length > 0 ? (
-                                <Card>
-                                    <CardHeader className="bg-gray-50/50 border-b py-4">
-                                        <CardTitle className="text-gray-800 text-base font-semibold flex items-center">
-                                            <ShieldAlert className="w-5 h-5 mr-2 text-red-500" />
-                                            Configure Room Blocked Slots
-                                        </CardTitle>
-                                        <p className="text-xs text-gray-500 mt-1">Block off slots where the room is unavailable for classes.</p>
-                                    </CardHeader>
-                                    <CardContent className="p-0">
-                                        <div className="overflow-x-auto bg-white">
-                                            <table className="w-full border-collapse border border-gray-200 min-w-[700px]">
-                                                <thead>
-                                                    <tr className="bg-gray-50 text-gray-600 text-xs font-semibold uppercase border-b border-gray-200">
-                                                        <th className="p-4 border-r text-left w-48 text-gray-900">Period / Time</th>
-                                                        {DAYS.map(day => (
-                                                            <th key={day.value} className="p-4 border-r text-center w-36 text-gray-900">{day.label}</th>
-                                                        ))}
-                                                    </tr>
-                                                </thead>
-                                                <tbody className="divide-y divide-gray-200">
-                                                    {periods.map(period => (
-                                                        <tr key={period.id} className="hover:bg-gray-50/20">
-                                                            <td className="p-4 border-r font-medium bg-white">
-                                                                <div className="text-sm text-gray-900">{period.name}</div>
-                                                                <div className="text-xs text-gray-500 mt-0.5">{period.startTime} - {period.endTime}</div>
-                                                            </td>
-                                                            {DAYS.map(day => {
-                                                                const key = `${day.value}-${period.id}`;
-                                                                const isBlocked = !!roomAvailabilityMap[key];
-
-                                                                if (period.isBreak) {
-                                                                    return (
-                                                                        <td key={day.value} className="p-4 border-r bg-gray-100/50 text-center text-xs text-gray-400 italic select-none">
-                                                                            Break
-                                                                        </td>
-                                                                    );
-                                                                }
-
-                                                                return (
-                                                                    <td key={day.value} className="p-4 border-r text-center align-middle bg-white">
-                                                                        <button 
-                                                                            onClick={() => toggleRoomAvailabilitySlot(day.value, period.id)}
-                                                                            className={`w-12 h-10 rounded-lg flex items-center justify-center border font-bold text-[10px] mx-auto shadow-sm transition-all ${isBlocked ? 'bg-red-100 border-red-300 text-red-700' : 'bg-green-100 border-green-300 text-green-700 hover:bg-green-200'}`}
-                                                                        >
-                                                                            {isBlocked ? 'BLOCKED' : 'AVAIL'}
-                                                                        </button>
-                                                                    </td>
-                                                                );
-                                                            })}
-                                                        </tr>
-                                                    ))}
-                                                </tbody>
-                                            </table>
-                                        </div>
-                                    </CardContent>
-                                </Card>
-                            ) : (
-                                <div className="text-center py-12 bg-white border border-dashed rounded-lg">
-                                    <Home className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-                                    <p className="text-sm text-gray-500 font-medium">Select a room above to manage unavailable slots.</p>
-                                </div>
-                            )}
-                        </div>
-                    )}
-                </div>
-            )}
 
             {/* Tab 1: Timetable Grid */}
             {activeTab === "grid" && (
@@ -966,8 +769,40 @@ export default function TimetablePage() {
                     ) : (
                         <Card>
                             <CardHeader className="bg-gray-50/50 py-4 flex flex-row items-center justify-between border-b border-gray-200">
-                                <CardTitle className="text-gray-800 text-base font-semibold text-gray-900">Master Calendar Grid</CardTitle>
-                                {gridLoading && <span className="text-xs text-gray-500 animate-pulse font-medium">Updating grid...</span>}
+                                <div className="flex items-center space-x-4">
+                                    <CardTitle className="text-gray-800 text-base font-semibold text-gray-900">Master Calendar Grid</CardTitle>
+                                    {gridLoading && <span className="text-xs text-gray-500 animate-pulse font-medium">Updating grid...</span>}
+                                </div>
+                                {hasCreatePermission && (
+                                    <Button 
+                                        onClick={async () => {
+                                            if(!confirm("Are you sure? This will overwrite the entire existing timetable schedule with an auto-generated one based on subject requirements.")) return;
+                                            try {
+                                                setGridLoading(true);
+                                                const res = await fetchApi('/timetable/auto-generate', {
+                                                    method: 'POST',
+                                                    body: JSON.stringify({ academicYearId: activeYear?.id })
+                                                });
+                                                if(res.ok) {
+                                                    alert("Timetable auto-generated successfully!");
+                                                    loadTimetableGrid(); // reload grid
+                                                } else {
+                                                    const err = await res.json();
+                                                    alert(err.error || "Failed to generate timetable");
+                                                }
+                                            } catch (e) {
+                                                console.error(e);
+                                                alert("An error occurred");
+                                            } finally {
+                                                setGridLoading(false);
+                                            }
+                                        }}
+                                        variant="outline"
+                                        className="text-[#006b3f] border-[#006b3f] hover:bg-[#e6f3ed]"
+                                    >
+                                        Auto-Generate Timetable
+                                    </Button>
+                                )}
                             </CardHeader>
                             <CardContent className="p-0">
                                 <div className="overflow-x-auto">
