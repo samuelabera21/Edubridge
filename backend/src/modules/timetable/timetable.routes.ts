@@ -10,7 +10,8 @@ import {
     deleteTimetable,
     getTimetableConfig,
     saveTimetableConfig,
-    updateRoomAvailability
+    updateRoomAvailability,
+    autoGenerateTimetable
 } from "./timetable.controller.js";
 import { requirePermission, requireScope } from "../authentication/authorization.middleware.js";
 
@@ -138,6 +139,18 @@ router.get("/config/:academicYearId", requirePermission("ACADEMIC:VIEW"), getTim
  *       - cookieAuth: []
  */
 router.post("/config", requirePermission("ACADEMIC:CREATE"), saveTimetableConfig);
+
+/**
+ * @openapi
+ * /api/timetable/auto-generate:
+ *   post:
+ *     tags: [Timetable]
+ *     summary: Auto-generates the timetable grid
+ *     security:
+ *       - bearerAuth: []
+ *       - cookieAuth: []
+ */
+router.post("/auto-generate", requirePermission("ACADEMIC:CREATE"), autoGenerateTimetable);
 
 /**
  * @openapi
