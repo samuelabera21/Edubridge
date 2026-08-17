@@ -80,3 +80,48 @@ export const getTimetableForTeacher = async (req: Request, res: Response) => {
         return res.status(500).json({ error: "Internal server error" });
     }
 };
+
+export const getTimetableForRoom = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        if (!organizationId) return res.status(403).json({ error: "Missing school scope" });
+
+        const { roomId } = req.params;
+        const timetable = await TimetableService.getTimetableForRoom(organizationId, roomId as string);
+        return res.json(timetable);
+    } catch (error) {
+        return res.status(500).json({ error: "Internal server error" });
+    }
+};
+
+export const updateTeacherAvailability = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        if (!organizationId) return res.status(403).json({ error: "Missing school scope" });
+
+        const { teacherId } = req.params;
+        const { availability } = req.body;
+
+        if (availability === undefined) {
+            return res.status(400).json({ error: "availability field is required" });
+        }
+
+        const teacher = await TimetableService.updateTeacherAvailability(organizationId, teacherId as string, availability);
+        return res.json(teacher);
+    } catch (error: any) {
+        return res.status(400).json({ error: error.message || "Failed to update teacher availability" });
+    }
+};
+
+export const deleteTimetable = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        if (!organizationId) return res.status(403).json({ error: "Missing school scope" });
+
+        const { id } = req.params;
+        const result = await TimetableService.deleteTimetable(organizationId, id as string);
+        return res.json(result);
+    } catch (error: any) {
+        return res.status(400).json({ error: error.message || "Failed to delete timetable entry" });
+    }
+};

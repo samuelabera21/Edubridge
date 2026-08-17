@@ -543,6 +543,7 @@ model Teacher {
   documents      Json?
   
   status         String  @default("ACTIVE")
+  availability   Json?
 
   organization OrganizationUnit     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   user         User?                @relation(fields: [userId], references: [id], onDelete: SetNull)
@@ -564,6 +565,7 @@ model TeachingAssignment {
   subjectId      String
   schoolGradeId  String
   sectionId      String?
+  periodsPerWeek Int     @default(0)
 
   teacher            Teacher            @relation(fields: [teacherId], references: [id], onDelete: Cascade)
   academicYear       AcademicYear       @relation(fields: [academicYearId], references: [id], onDelete: Cascade)
@@ -631,6 +633,7 @@ model ClassPeriod {
   name           String // e.g. "Period 1"
   startTime      String // e.g. "08:00"
   endTime        String // e.g. "08:45"
+  isBreak        Boolean @default(false)
 
   organization       OrganizationUnit    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   timetables         Timetable[]

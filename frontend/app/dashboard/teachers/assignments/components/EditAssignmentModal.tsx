@@ -22,7 +22,8 @@ export function EditAssignmentModal({ isOpen, onClose, onSuccess, assignment, ac
     const [formData, setFormData] = useState({
         subjectId: "",
         schoolGradeId: "",
-        sectionId: ""
+        sectionId: "",
+        periodsPerWeek: 0
     });
 
     useEffect(() => {
@@ -30,7 +31,8 @@ export function EditAssignmentModal({ isOpen, onClose, onSuccess, assignment, ac
             setFormData({
                 subjectId: assignment.subjectId || "",
                 schoolGradeId: assignment.schoolGradeId || "",
-                sectionId: assignment.sectionId || ""
+                sectionId: assignment.sectionId || "",
+                periodsPerWeek: assignment.periodsPerWeek || 0
             });
             loadData();
         }
@@ -67,11 +69,11 @@ export function EditAssignmentModal({ isOpen, onClose, onSuccess, assignment, ac
         }
     };
 
-    const handleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const handleChange = (e: React.ChangeEvent<HTMLSelectElement | HTMLInputElement>) => {
         const { name, value } = e.target;
         setFormData(prev => ({ 
             ...prev, 
-            [name]: value,
+            [name]: name === "periodsPerWeek" ? Number(value) : value,
             ...(name === "schoolGradeId" ? { sectionId: "" } : {}) 
         }));
     };
@@ -87,7 +89,8 @@ export function EditAssignmentModal({ isOpen, onClose, onSuccess, assignment, ac
                 body: JSON.stringify({
                     subjectId: formData.subjectId || undefined,
                     schoolGradeId: formData.schoolGradeId || undefined,
-                    sectionId: formData.sectionId || undefined
+                    sectionId: formData.sectionId || undefined,
+                    periodsPerWeek: Number(formData.periodsPerWeek)
                 }),
             });
 
@@ -182,6 +185,20 @@ export function EditAssignmentModal({ isOpen, onClose, onSuccess, assignment, ac
                             <option key={s.id} value={s.id}>{s.name}</option>
                         ))}
                     </select>
+                </div>
+
+                <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Required Weekly Periods</label>
+                    <input
+                        type="number"
+                        name="periodsPerWeek"
+                        min="0"
+                        max="20"
+                        value={formData.periodsPerWeek}
+                        onChange={handleChange}
+                        className="w-full px-3 py-2 border border-gray-300 bg-white text-gray-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#006b3f]"
+                        required
+                    />
                 </div>
 
                 <div className="flex justify-between items-center pt-4">

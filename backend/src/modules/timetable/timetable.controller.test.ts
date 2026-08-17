@@ -2,7 +2,8 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { Request, Response } from "express";
 import { 
     createClassPeriod, getClassPeriods, 
-    assignTimetable, getTimetableForSection, getTimetableForTeacher 
+    assignTimetable, getTimetableForSection, getTimetableForTeacher,
+    getTimetableForRoom, updateTeacherAvailability
 } from "./timetable.controller.js";
 import { TimetableService } from "./timetable.service.js";
 
@@ -12,7 +13,9 @@ vi.mock("./timetable.service.js", () => ({
         getClassPeriods: vi.fn(),
         assignTimetable: vi.fn(),
         getTimetableForSection: vi.fn(),
-        getTimetableForTeacher: vi.fn()
+        getTimetableForTeacher: vi.fn(),
+        getTimetableForRoom: vi.fn(),
+        updateTeacherAvailability: vi.fn()
     }
 }));
 
@@ -76,6 +79,37 @@ describe("Timetable Controller", () => {
             expect(TimetableService.assignTimetable).toHaveBeenCalledWith("school1", expect.objectContaining({ dayOfWeek: 1 }));
             expect(mockRes.status).toHaveBeenCalledWith(201);
             expect(mockRes.json).toHaveBeenCalledWith(mockTimetable);
+        });
+    });
+
+    describe("getTimetableForRoom", () => {
+        it("should return room timetable", async () => {
+            (mockReq as any).accessScope = { id: "school1" };
+            mockReq.params = { roomId: "room1" };
+            
+            const mockTimetable = [{ id: "tt1" }];
+            vi.mocked(TimetableService.getTimetableForRoom).mockResolvedValue(mockTimetable as any);
+
+            await getTimetableForRoom(mockReq as Request, mockRes as Response);
+
+            expect(TimetableService.getTimetableForRoom).toHaveBeenCalledWith("school1", "room1");
+            expect(mockRes.json).toHaveBeenCalledWith(mockTimetable);
+        });
+    });
+
+    describe("updateTeacherAvailability", () => {
+        it("should update availability successfully", async () => {
+            (mockReq as any).accessScope = { id: "school1" };
+            mockReq.params = { teacherId: "t1" };
+            mockReq.body = { availability: { blockedSlots: [] } };
+
+            const mockTeacher = { id: "t1", availability: { blockedSlots: [] } };
+            vi.mocked(TimetableService.updateTeacherAvailability).mockResolvedValue(mockTeacher as any);
+
+            await updateTeacherAvailability(mockReq as Request, mockRes as Response);
+
+            expect(TimetableService.updateTeacherAvailability).toHaveBeenCalledWith("school1", "t1", { blockedSlots: [] });
+            expect(mockRes.json).toHaveBeenCalledWith(mockTeacher);
         });
     });
 });

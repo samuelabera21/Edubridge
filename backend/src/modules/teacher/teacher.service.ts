@@ -157,7 +157,8 @@ export class TeacherService {
                 academicYearId: data.academicYearId,
                 subjectId: data.subjectId,
                 schoolGradeId: data.schoolGradeId,
-                sectionId: data.sectionId || null
+                sectionId: data.sectionId || null,
+                periodsPerWeek: data.periodsPerWeek ? Number(data.periodsPerWeek) : 0
             }
         });
 
@@ -190,7 +191,7 @@ export class TeacherService {
         });
     }
 
-    static async updateAssignment(id: string, organizationId: string, data: { subjectId?: string; schoolGradeId?: string; sectionId?: string; isPrimary?: boolean }) {
+    static async updateAssignment(id: string, organizationId: string, data: { subjectId?: string; schoolGradeId?: string; sectionId?: string; isPrimary?: boolean; periodsPerWeek?: number }) {
         const existing = await prisma.teachingAssignment.findFirst({
             where: { id, teacher: { organizationId } }
         });
@@ -217,9 +218,7 @@ export class TeacherService {
                 ...(data.subjectId && { subjectId: data.subjectId }),
                 ...(data.schoolGradeId && { schoolGradeId: data.schoolGradeId }),
                 ...(data.sectionId !== undefined && { sectionId: data.sectionId || null }),
-                // Ignore isPrimary for now since it's not in the Prisma model yet,
-                // If it is in the model, we can uncomment below:
-                // ...(data.isPrimary !== undefined && { isPrimary: data.isPrimary })
+                ...(data.periodsPerWeek !== undefined && { periodsPerWeek: Number(data.periodsPerWeek) })
             },
             include: {
                 subject: true,
