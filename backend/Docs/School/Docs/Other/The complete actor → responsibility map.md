@@ -17,7 +17,7 @@
                                │
                                ▼
                             STUDENT
-                               │
+                       $$\text{Attendance \%} = \left( \frac{\text{Classes Present} + \text{Excused}}{\text{Total Conducted Classes}} \right) \times 100$$         │
                     ┌──────────┼──────────┐
                     │          │          │
                   Learn      Attend     Participate
