@@ -188,3 +188,22 @@ export const updateRoomAvailability = async (req: Request, res: Response) => {
         return res.status(400).json({ error: error.message || "Failed to update room availability" });
     }
 };
+
+import { TimetableAutoSchedulerService } from "./timetable-auto-scheduler.service.js";
+
+export const autoGenerateTimetable = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        if (!organizationId) return res.status(403).json({ error: "Missing school scope" });
+
+        const { academicYearId } = req.body;
+        if (!academicYearId) {
+            return res.status(400).json({ error: "academicYearId is required" });
+        }
+
+        const result = await TimetableAutoSchedulerService.generateTimetable(organizationId, academicYearId);
+        return res.status(200).json(result);
+    } catch (error: any) {
+        return res.status(400).json({ error: error.message || "Failed to auto-generate timetable" });
+    }
+};
