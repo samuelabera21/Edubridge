@@ -35,12 +35,29 @@ export const getAssessments = async (req: Request, res: Response) => {
         const organizationId = (req as any).accessScope?.id;
         if (!organizationId) return res.status(403).json({ error: "Missing school scope" });
 
-        const { teachingAssignmentId } = req.query;
+        const { sectionId, academicYearId } = req.query;
 
-        const assessments = await AssessmentService.getAssessments(organizationId, teachingAssignmentId as string);
+        const assessments = await AssessmentService.getAssessments(
+            organizationId, 
+            sectionId as string, 
+            academicYearId as string
+        );
         return res.json(assessments);
     } catch (error: any) {
         return res.status(500).json({ error: "Internal server error" });
+    }
+};
+
+export const getAssessmentWithResults = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        if (!organizationId) return res.status(403).json({ error: "Missing school scope" });
+
+        const { id } = req.params;
+        const data = await AssessmentService.getAssessmentWithResults(organizationId, id as string);
+        return res.json(data);
+    } catch (error: any) {
+        return res.status(404).json({ error: error.message || "Assessment not found" });
     }
 };
 
@@ -68,6 +85,28 @@ export const recordResult = async (req: Request, res: Response) => {
     }
 };
 
+export const recordBulkResults = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        if (!organizationId) return res.status(403).json({ error: "Missing school scope" });
+
+        const { assessmentId, results } = req.body;
+        if (!assessmentId || !Array.isArray(results)) {
+            return res.status(400).json({ error: "assessmentId and results array are required" });
+        }
+
+        const savedResults = await AssessmentService.recordBulkResults(organizationId, {
+            assessmentId,
+            results,
+            gradedById: req.user?.id
+        });
+
+        return res.status(201).json({ success: true, count: savedResults.length, data: savedResults });
+    } catch (error: any) {
+        return res.status(400).json({ error: error.message || "Failed to record bulk assessment results" });
+    }
+};
+
 export const getStudentResults = async (req: Request, res: Response) => {
     try {
         const organizationId = (req as any).accessScope?.id;
@@ -80,5 +119,18 @@ export const getStudentResults = async (req: Request, res: Response) => {
         return res.json(results);
     } catch (error: any) {
         return res.status(500).json({ error: "Internal server error" });
+    }
+};
+
+export const getStudentReportCard = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        if (!organizationId) return res.status(403).json({ error: "Missing school scope" });
+
+        const { enrollmentId } = req.params;
+        const report = await AssessmentService.getStudentReportCard(organizationId, enrollmentId as string);
+        return res.json(report);
+    } catch (error: any) {
+        return res.status(500).json({ error: error.message || "Failed to generate report card" });
     }
 };
