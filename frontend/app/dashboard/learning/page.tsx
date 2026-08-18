@@ -27,7 +27,7 @@ import { AcademicYear } from "@/types/api";
 
 type SupportFlagType = "ACADEMIC" | "BEHAVIORAL" | "ATTENDANCE" | "MEDICAL" | "OTHER";
 
-export default function SupportFlagsPage() {
+export default function LearningSupportPage() {
     const { authData } = useAuth();
     const [years, setYears] = useState<AcademicYear[]>([]);
     const [activeYear, setActiveYear] = useState<AcademicYear | null>(null);
