@@ -92,10 +92,46 @@ export const getSupportFlags = async (req: Request, res: Response) => {
         const organizationId = (req as any).accessScope?.id;
         if (!organizationId) return res.status(403).json({ error: "Missing school scope" });
 
-        const { enrollmentId } = req.query;
-        const flags = await LearningService.getSupportFlags(organizationId, enrollmentId as string);
+        const { sectionId, enrollmentId } = req.query;
+        const flags = await LearningService.getSupportFlags(
+            organizationId, 
+            sectionId as string, 
+            enrollmentId as string
+        );
         return res.json(flags);
     } catch (error: any) {
         return res.status(500).json({ error: "Internal server error" });
+    }
+};
+
+export const resolveSupportFlag = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        if (!organizationId) return res.status(403).json({ error: "Missing school scope" });
+
+        const { id } = req.params;
+        const { resolution } = req.body;
+
+        if (!resolution) {
+            return res.status(400).json({ error: "resolution notes are required" });
+        }
+
+        const flag = await LearningService.resolveSupportFlag(organizationId, id as string, resolution);
+        return res.json(flag);
+    } catch (error: any) {
+        return res.status(400).json({ error: error.message || "Failed to resolve support flag" });
+    }
+};
+
+export const deleteSupportFlag = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        if (!organizationId) return res.status(403).json({ error: "Missing school scope" });
+
+        const { id } = req.params;
+        await LearningService.deleteSupportFlag(organizationId, id as string);
+        return res.json({ success: true, message: "Support flag deleted" });
+    } catch (error: any) {
+        return res.status(400).json({ error: error.message || "Failed to delete support flag" });
     }
 };
