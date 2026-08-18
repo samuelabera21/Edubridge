@@ -115,7 +115,7 @@ export class TeacherService {
         });
     }
 
-    static async assignTeacher(organizationId: string, data: { teacherId: string; academicYearId: string; subjectId: string; schoolGradeId: string; sectionId?: string; periodsPerWeek?: number }) {
+    static async assignTeacher(organizationId: string, data: { teacherId: string; academicYearId: string; subjectId: string; schoolGradeId: string; sectionId?: string; sectionIds?: string[]; periodsPerWeek?: number }) {
         const teacher = await prisma.teacher.findFirst({
             where: { id: data.teacherId, organizationId }
         });
@@ -131,48 +131,67 @@ export class TeacherService {
         });
         if (!schoolGrade) throw new Error("Invalid school grade or academic year");
 
-        if (data.sectionId) {
-            const section = await prisma.section.findFirst({
-                where: { id: data.sectionId, schoolGradeId: data.schoolGradeId }
+        const targetSectionIds: (string | null)[] = (data.sectionIds && data.sectionIds.length > 0)
+            ? data.sectionIds 
+            : [data.sectionId || null];
+
+        const createdAssignments: any[] = [];
+
+        for (const secId of targetSectionIds) {
+            if (secId) {
+                const section = await prisma.section.findFirst({
+                    where: { id: secId, schoolGradeId: data.schoolGradeId }
+                });
+                if (!section) continue;
+            }
+
+            const existing = await prisma.teachingAssignment.findFirst({
+                where: { 
+                    teacherId: data.teacherId, 
+                    academicYearId: data.academicYearId, 
+                    subjectId: data.subjectId, 
+                    sectionId: secId 
+                }
             });
-            if (!section) throw new Error("Section does not belong to this grade");
-        }
 
-        const existing = await prisma.teachingAssignment.findFirst({
-            where: { 
-                teacherId: data.teacherId, 
-                academicYearId: data.academicYearId, 
-                subjectId: data.subjectId, 
-                sectionId: data.sectionId || null 
+            if (existing) {
+                if (data.periodsPerWeek) {
+                    const updated = await prisma.teachingAssignment.update({
+                        where: { id: existing.id },
+                        data: { periodsPerWeek: Number(data.periodsPerWeek) }
+                    });
+                    createdAssignments.push(updated);
+                } else {
+                    createdAssignments.push(existing);
+                }
+                continue;
             }
-        });
 
-        if (existing) {
-            throw new Error("This exact teaching assignment already exists");
+            const assignment = await prisma.teachingAssignment.create({
+                data: {
+                    teacherId: data.teacherId,
+                    academicYearId: data.academicYearId,
+                    subjectId: data.subjectId,
+                    schoolGradeId: data.schoolGradeId,
+                    sectionId: secId,
+                    periodsPerWeek: data.periodsPerWeek ? Number(data.periodsPerWeek) : 4
+                }
+            });
+
+            createdAssignments.push(assignment);
         }
-
-        const assignment = await prisma.teachingAssignment.create({
-            data: {
-                teacherId: data.teacherId,
-                academicYearId: data.academicYearId,
-                subjectId: data.subjectId,
-                schoolGradeId: data.schoolGradeId,
-                sectionId: data.sectionId || null,
-                periodsPerWeek: data.periodsPerWeek ? Number(data.periodsPerWeek) : 0
-            }
-        });
 
         await prisma.auditLog.create({
             data: {
                 organizationId,
                 action: "TEACHING_ASSIGNMENT_CREATED",
                 resource: "TeachingAssignment",
-                resourceId: assignment.id,
-                newValue: JSON.parse(JSON.stringify(assignment)),
+                resourceId: data.teacherId,
+                newValue: { count: createdAssignments.length },
             }
         });
 
-        return assignment;
+        return createdAssignments.length === 1 ? createdAssignments[0] : createdAssignments;
     }
 
     static async getAssignments(organizationId: string, academicYearId?: string) {
