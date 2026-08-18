@@ -17,7 +17,7 @@ router.use(requireScope("SCHOOL"));
  * @openapi
  * /api/learning/activity:
  *   post:
- *     tags: [Learning, Teachers]
+ *     tags: [Learning]
  *     summary: Create a learning activity (homework, lab, reading)
  *     security:
  *       - bearerAuth: []
@@ -54,7 +54,7 @@ router.post("/activity", requirePermission("ACADEMIC:CREATE"), createActivity);
  * @openapi
  * /api/learning/activity:
  *   get:
- *     tags: [Learning, Teachers]
+ *     tags: [Learning]
  *     summary: Get all learning activities for the school or specific teaching assignment
  *     security:
  *       - bearerAuth: []
@@ -74,7 +74,7 @@ router.get("/activity", requirePermission("ACADEMIC:VIEW"), getActivities);
  * @openapi
  * /api/learning/submission:
  *   post:
- *     tags: [Learning, Teachers]
+ *     tags: [Learning]
  *     summary: Submit or grade a response for a learning activity
  *     security:
  *       - bearerAuth: []
@@ -108,7 +108,7 @@ router.post("/submission", requirePermission("ACADEMIC:CREATE"), submitActivity)
  * @openapi
  * /api/learning/support:
  *   post:
- *     tags: [Learning, Teachers]
+ *     tags: [Learning]
  *     summary: Raise a support flag for an at-risk student
  *     security:
  *       - bearerAuth: []
@@ -138,7 +138,7 @@ router.post("/support", requirePermission("ACADEMIC:CREATE"), raiseSupportFlag);
  * @openapi
  * /api/learning/support:
  *   get:
- *     tags: [Learning, Teachers]
+ *     tags: [Learning]
  *     summary: Get support flags for the school or specific student
  *     security:
  *       - bearerAuth: []

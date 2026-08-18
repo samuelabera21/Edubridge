@@ -15,7 +15,7 @@ router.use(requireScope("SCHOOL"));
  * @openapi
  * /api/attendance/student:
  *   post:
- *     tags: [Attendance, Teachers]
+ *     tags: [Attendance]
  *     summary: Record student attendance (daily or by period)
  *     security:
  *       - bearerAuth: []
@@ -50,7 +50,7 @@ router.post("/student", requirePermission("ACADEMIC:CREATE"), recordStudentAtten
  * @openapi
  * /api/attendance/student/{enrollmentId}:
  *   get:
- *     tags: [Attendance, Teachers]
+ *     tags: [Attendance]
  *     summary: Get student attendance history
  *     security:
  *       - bearerAuth: []

@@ -44,7 +44,7 @@ export async function updateSchoolProfile(
         configuration?: any;
     }
 ) {
-    return prisma.schoolProfile.upsert({
+    const profile = await prisma.schoolProfile.upsert({
         where: { organizationId },
         update: {
             establishedYear: data.establishedYear,
