@@ -4,13 +4,14 @@ import {
     getActivities,
     submitActivity,
     raiseSupportFlag,
-    getSupportFlags
+    getSupportFlags,
+    resolveSupportFlag,
+    deleteSupportFlag
 } from "./learning.controller.js";
 import { requirePermission, requireScope } from "../authentication/authorization.middleware.js";
 
 const router = Router();
 
-// Scope all learning operations to SCHOOL
 router.use(requireScope("SCHOOL"));
 
 /**
@@ -153,5 +154,8 @@ router.post("/support", requirePermission("ACADEMIC:CREATE"), raiseSupportFlag);
  *         description: List of active support flags
  */
 router.get("/support", requirePermission("ACADEMIC:VIEW"), getSupportFlags);
+router.patch("/support/:id/resolve", requirePermission("ACADEMIC:UPDATE"), resolveSupportFlag);
+router.delete("/support/:id", requirePermission("ACADEMIC:DELETE"), deleteSupportFlag);
 
 export default router;
+

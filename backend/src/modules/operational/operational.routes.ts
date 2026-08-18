@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { 
-    createResource, getResources,
+    createResource, getResources, updateResource, deleteResource,
     reportIssue, getIssues, updateIssueStatus,
     createImprovementPlan, getImprovementPlans
 } from "./operational.controller.js";
@@ -31,6 +31,25 @@ router.post("/resource", requireScope("SCHOOL"), requirePermission("OPERATIONAL:
  *       - cookieAuth: []
  */
 router.get("/resource", requireScope("SCHOOL"), requirePermission("OPERATIONAL:VIEW"), getResources);
+
+/**
+ * @openapi
+ * /api/operational/resource/{id}:
+ *   put:
+ *     tags: [Operational]
+ *     summary: Update a school resource
+ *     security:
+ *       - bearerAuth: []
+ *       - cookieAuth: []
+ *   delete:
+ *     tags: [Operational]
+ *     summary: Delete a school resource
+ *     security:
+ *       - bearerAuth: []
+ *       - cookieAuth: []
+ */
+router.put("/resource/:id", requireScope("SCHOOL"), requirePermission("OPERATIONAL:UPDATE"), updateResource);
+router.delete("/resource/:id", requireScope("SCHOOL"), requirePermission("OPERATIONAL:DELETE"), deleteResource);
 
 /**
  * @openapi

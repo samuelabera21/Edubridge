@@ -2,14 +2,16 @@ import { Router } from "express";
 import { 
     createAssessment, 
     getAssessments,
+    getAssessmentWithResults,
     recordResult,
-    getStudentResults
+    recordBulkResults,
+    getStudentResults,
+    getStudentReportCard
 } from "./assessment.controller.js";
 import { requirePermission, requireScope } from "../authentication/authorization.middleware.js";
 
 const router = Router();
 
-// Scope all assessment operations to SCHOOL
 router.use(requireScope("SCHOOL"));
 
 /**
@@ -68,6 +70,7 @@ router.post("/", requirePermission("ACADEMIC:CREATE"), createAssessment);
  *         description: List of assessments
  */
 router.get("/", requirePermission("ACADEMIC:VIEW"), getAssessments);
+router.get("/:id/results", requirePermission("ACADEMIC:VIEW"), getAssessmentWithResults);
 
 /**
  * @openapi
@@ -99,10 +102,11 @@ router.get("/", requirePermission("ACADEMIC:VIEW"), getAssessments);
  *         description: Student result recorded successfully
  */
 router.post("/result", requirePermission("ACADEMIC:CREATE"), recordResult);
+router.post("/results/bulk", requirePermission("ACADEMIC:CREATE"), recordBulkResults);
 
 /**
  * @openapi
- * /api/assessment/result/student/{enrollmentId}:
+ * /api/assessment/student/{enrollmentId}:
  *   get:
  *     tags: [Assessment]
  *     summary: Get a student's assessment results
@@ -119,6 +123,9 @@ router.post("/result", requirePermission("ACADEMIC:CREATE"), recordResult);
  *       200:
  *         description: List of student assessment results
  */
+router.get("/student/:enrollmentId", requirePermission("ACADEMIC:VIEW"), getStudentResults);
 router.get("/result/student/:enrollmentId", requirePermission("ACADEMIC:VIEW"), getStudentResults);
+router.get("/student/:enrollmentId/report-card", requirePermission("ACADEMIC:VIEW"), getStudentReportCard);
 
 export default router;
+

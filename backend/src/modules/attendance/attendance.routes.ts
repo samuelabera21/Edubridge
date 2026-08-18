@@ -1,9 +1,13 @@
 import { Router } from "express";
 import { 
     recordStudentAttendance, 
+    recordBulkStudentAttendance,
+    getSectionAttendance,
     getStudentAttendance,
     recordTeacherAttendance,
-    getTeacherAttendance
+    recordBulkTeacherAttendance,
+    getTeacherAttendance,
+    getDailyTeacherAttendance
 } from "./attendance.controller.js";
 import { requirePermission, requireScope } from "../authentication/authorization.middleware.js";
 
@@ -45,6 +49,8 @@ router.use(requireScope("SCHOOL"));
  *         description: Bad request
  */
 router.post("/student", requirePermission("ACADEMIC:CREATE"), recordStudentAttendance);
+router.post("/student/bulk", requirePermission("ACADEMIC:CREATE"), recordBulkStudentAttendance);
+router.get("/student/section/:sectionId", requirePermission("ACADEMIC:VIEW"), getSectionAttendance);
 
 /**
  * @openapi
@@ -67,40 +73,10 @@ router.post("/student", requirePermission("ACADEMIC:CREATE"), recordStudentAtten
  */
 router.get("/student/:enrollmentId", requirePermission("ACADEMIC:VIEW"), getStudentAttendance);
 
-/**
- * @openapi
- * /api/attendance/teacher:
- *   post:
- *     tags: [Attendance]
- *     summary: Record teacher attendance (daily)
- *     security:
- *       - bearerAuth: []
- *       - cookieAuth: []
- *     responses:
- *       201:
- *         description: Teacher attendance recorded successfully
- */
 router.post("/teacher", requirePermission("ACADEMIC:CREATE"), recordTeacherAttendance);
-
-/**
- * @openapi
- * /api/attendance/teacher/{teacherId}:
- *   get:
- *     tags: [Attendance]
- *     summary: Get teacher attendance history
- *     security:
- *       - bearerAuth: []
- *       - cookieAuth: []
- *     parameters:
- *       - in: path
- *         name: teacherId
- *         required: true
- *         schema:
- *           type: string
- *     responses:
- *       200:
- *         description: Teacher attendance history records
- */
+router.post("/teacher/bulk", requirePermission("ACADEMIC:CREATE"), recordBulkTeacherAttendance);
+router.get("/teacher/daily", requirePermission("ACADEMIC:VIEW"), getDailyTeacherAttendance);
 router.get("/teacher/:teacherId", requirePermission("ACADEMIC:VIEW"), getTeacherAttendance);
 
 export default router;
+

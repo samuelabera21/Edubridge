@@ -38,7 +38,6 @@ export class LearningService {
     }
 
     static async submitActivity(organizationId: string, data: { learningActivityId: string; enrollmentId: string; contentUrl?: string }) {
-        // Validate activity exists in organization
         const activity = await prisma.learningActivity.findFirst({
             where: { id: data.learningActivityId, organizationId }
         });
@@ -72,7 +71,6 @@ export class LearningService {
     }
 
     static async raiseSupportFlag(organizationId: string, data: { enrollmentId: string; type: SupportFlagType; description: string; raisedById?: string }) {
-        // Validate enrollment exists in organization
         const enrollment = await prisma.studentEnrollment.findFirst({
             where: { id: data.enrollmentId, organizationId }
         });
@@ -88,20 +86,70 @@ export class LearningService {
                 type: data.type,
                 description: data.description,
                 raisedById: data.raisedById
+            },
+            include: {
+                enrollment: {
+                    include: {
+                        student: true,
+                        schoolGrade: { include: { grade: true } },
+                        section: true
+                    }
+                },
+                raisedBy: true
             }
         });
 
         return flag;
     }
 
-    static async getSupportFlags(organizationId: string, enrollmentId?: string) {
+    static async getSupportFlags(organizationId: string, sectionId?: string, enrollmentId?: string) {
         return prisma.supportFlag.findMany({
             where: {
                 organizationId,
-                ...(enrollmentId ? { enrollmentId } : {})
+                ...(enrollmentId ? { enrollmentId } : {}),
+                ...(sectionId ? { enrollment: { sectionId } } : {})
             },
-            include: { enrollment: { include: { student: true } }, raisedBy: true },
+            include: { 
+                enrollment: { 
+                    include: { 
+                        student: true,
+                        schoolGrade: { include: { grade: true } },
+                        section: true
+                    } 
+                }, 
+                raisedBy: true 
+            },
             orderBy: { createdAt: "desc" }
         });
+    }
+
+    static async resolveSupportFlag(organizationId: string, id: string, resolution: string) {
+        const flag = await prisma.supportFlag.findFirst({ where: { id, organizationId } });
+        if (!flag) throw new Error("Support flag not found");
+
+        return prisma.supportFlag.update({
+            where: { id },
+            data: {
+                resolution,
+                resolvedAt: new Date()
+            },
+            include: {
+                enrollment: {
+                    include: {
+                        student: true,
+                        schoolGrade: { include: { grade: true } },
+                        section: true
+                    }
+                },
+                raisedBy: true
+            }
+        });
+    }
+
+    static async deleteSupportFlag(organizationId: string, id: string) {
+        const flag = await prisma.supportFlag.findFirst({ where: { id, organizationId } });
+        if (!flag) throw new Error("Support flag not found");
+
+        return prisma.supportFlag.delete({ where: { id } });
     }
 }

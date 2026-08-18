@@ -35,10 +35,26 @@ export const getAnnouncements = async (req: Request, res: Response) => {
 
         const { target } = req.query;
 
-        const announcements = await CommunicationService.getAnnouncements(organizationId, target as AnnouncementTarget);
+        const announcements = await CommunicationService.getAnnouncements(
+            organizationId, 
+            target as AnnouncementTarget
+        );
         return res.json(announcements);
     } catch (error: any) {
         return res.status(500).json({ error: "Internal server error" });
+    }
+};
+
+export const deleteAnnouncement = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        if (!organizationId) return res.status(403).json({ error: "Missing school scope" });
+
+        const { id } = req.params;
+        await CommunicationService.deleteAnnouncement(organizationId, id as string);
+        return res.json({ success: true, message: "Announcement deleted" });
+    } catch (error: any) {
+        return res.status(400).json({ error: error.message || "Failed to delete announcement" });
     }
 };
 
@@ -104,8 +120,22 @@ export const getMyMessages = async (req: Request, res: Response) => {
         if (!userId) return res.status(401).json({ error: "Unauthorized" });
 
         const { otherUserId } = req.query;
+
         const messages = await CommunicationService.getMessages(userId, otherUserId as string);
         return res.json(messages);
+    } catch (error: any) {
+        return res.status(500).json({ error: "Internal server error" });
+    }
+};
+
+export const getMessagingUsers = async (req: Request, res: Response) => {
+    try {
+        const userId = req.user?.id;
+        if (!userId) return res.status(401).json({ error: "Unauthorized" });
+
+        const organizationId = (req as any).accessScope?.id;
+        const users = await CommunicationService.getUsersForMessaging(userId);
+        return res.json(users);
     } catch (error: any) {
         return res.status(500).json({ error: "Internal server error" });
     }
