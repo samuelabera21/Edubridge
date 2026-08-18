@@ -1,46 +1,27 @@
 import { Router } from "express";
-import { getParentProfile, createParent, linkParentToStudent, getStudentParents } from "./parent.controller.js";
+import { 
+    getParentProfile, 
+    getParents,
+    createParent, 
+    linkParentToStudent, 
+    unlinkParentFromStudent,
+    getStudentParents 
+} from "./parent.controller.js";
 import { requirePermission, requireScope } from "../authentication/authorization.middleware.js";
 
 const router = Router();
 
+// Scope all parent operations to SCHOOL
+router.use(requireScope("SCHOOL"));
+
 // Parent self-service profile
-router.get("/me", requireScope("SCHOOL"), getParentProfile);
+router.get("/me", getParentProfile);
 
-/**
- * @openapi
- * /api/parent:
- *   post:
- *     tags: [Parent]
- *     summary: Create a new parent record
- *     security:
- *       - bearerAuth: []
- *       - cookieAuth: []
- */
-router.post("/", requireScope("SCHOOL"), requirePermission("USER:CREATE"), createParent);
-
-/**
- * @openapi
- * /api/parent/link:
- *   post:
- *     tags: [Parent]
- *     summary: Link a parent to a student
- *     security:
- *       - bearerAuth: []
- *       - cookieAuth: []
- */
-router.post("/link", requireScope("SCHOOL"), requirePermission("USER:UPDATE"), linkParentToStudent);
-
-/**
- * @openapi
- * /api/parent/student/{studentId}:
- *   get:
- *     tags: [Parent]
- *     summary: Get all parents for a specific student
- *     security:
- *       - bearerAuth: []
- *       - cookieAuth: []
- */
-router.get("/student/:studentId", requireScope("SCHOOL"), requirePermission("USER:VIEW"), getStudentParents);
+// Admin Parent Management & Linking APIs (use ACADEMIC permissions consistent with student/teacher modules)
+router.get("/", requirePermission("ACADEMIC:VIEW"), getParents);
+router.post("/", requirePermission("ACADEMIC:CREATE"), createParent);
+router.post("/link", requirePermission("ACADEMIC:CREATE"), linkParentToStudent);
+router.delete("/:parentId/link-student/:studentId", requirePermission("ACADEMIC:DELETE"), unlinkParentFromStudent);
+router.get("/student/:studentId", requirePermission("ACADEMIC:VIEW"), getStudentParents);
 
 export default router;
