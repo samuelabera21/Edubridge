@@ -512,6 +512,38 @@ export async function getAcademicOrganizationSections(organizationId: string, sc
     });
 }
 
+export async function getAcademicOrganizationRooms(organizationId: string) {
+    return prisma.schoolResource.findMany({
+        where: {
+            organizationId,
+            type: { in: ["CLASSROOM", "LAB", "LIBRARY", "SPORTS_FACILITY", "OTHER"] }
+        },
+        orderBy: { name: "asc" }
+    });
+}
+
+export async function createAcademicOrganizationRoom(organizationId: string, data: any) {
+    return prisma.schoolResource.create({
+        data: {
+            ...data,
+            organizationId
+        }
+    });
+}
+
+export async function updateAcademicOrganizationRoom(id: string, organizationId: string, data: any) {
+    return prisma.schoolResource.update({
+        where: { id, organizationId },
+        data
+    });
+}
+
+export async function deleteAcademicOrganizationRoom(id: string, organizationId: string) {
+    return prisma.schoolResource.delete({
+        where: { id, organizationId }
+    });
+}
+
 // ==========================================
 // STEP 2 ANOMALIES: STAFFING, WORKLOAD, TIMETABLE
 // ==========================================

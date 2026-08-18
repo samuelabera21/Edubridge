@@ -23,7 +23,11 @@ import {
     getSchoolSubjects,
     getSectionStaffingView,
     getAcademicCalendar,
-    getTimetableView
+    getTimetableView,
+    getAcademicOrganizationRooms,
+    createAcademicOrganizationRoom,
+    updateAcademicOrganizationRoom,
+    deleteAcademicOrganizationRoom
 } from "./vice-principal.controller.js";
 
 const router = Router();
@@ -58,6 +62,12 @@ router.get("/academic/sections/:sectionId/staffing", getSectionStaffingView);
 router.get("/organization/subjects", getSchoolSubjects);
 router.get("/organization/calendar", getAcademicCalendar);
 router.get("/organization/timetable", getTimetableView);
+
+// Academic Rooms Management (Bypasses Operational:View constraints for Academic Leaders)
+router.get("/academic/rooms", getAcademicOrganizationRooms);
+router.post("/academic/rooms", createAcademicOrganizationRoom);
+router.put("/academic/rooms/:roomId", updateAcademicOrganizationRoom);
+router.delete("/academic/rooms/:roomId", deleteAcademicOrganizationRoom);
 router.get("/organization/anomalies/staffing", getAcademicAnomaliesStaffing);
 router.get("/organization/anomalies/workload", getAcademicAnomaliesWorkload);
 router.get("/organization/anomalies/timetable", getAcademicAnomaliesTimetable);
