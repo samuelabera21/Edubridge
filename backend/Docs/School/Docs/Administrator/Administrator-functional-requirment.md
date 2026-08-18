@@ -1,4 +1,5 @@
 
+
 EduBridge — School Administrator / Principal Functional Requirements
 0. Role Definition
 The School Administrator / Principal is the highest operational management role inside an individual school.
