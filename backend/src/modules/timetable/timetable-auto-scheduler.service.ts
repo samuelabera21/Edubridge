@@ -103,7 +103,7 @@ export class TimetableAutoSchedulerService {
         // 4. Fetch all Teaching Assignments for this academic year (including auto-configured ones)
         const assignments = await prisma.teachingAssignment.findMany({
             where: { academicYearId },
-            include: { teacher: true }
+            include: { teacher: true, subject: true }
         });
 
         // Calculate total weekly capacity per section (e.g., 5 days * 6 periods = 30 slots)
@@ -217,14 +217,35 @@ export class TimetableAutoSchedulerService {
                         if (teacherSchedule[teacherId].has(slotKey)) continue; // Teacher busy
                         if (assignment.teacher && !isTeacherAvailable(assignment.teacher, day, period.id)) continue; // Teacher blocked
 
-                        // Try to find a room
-                        let assignedRoomId = null;
-                        const shuffledRooms = shuffleArray([...rooms]);
-                        for (const room of shuffledRooms) {
+                        // Smart Subject-Aware Room Matching:
+                        // 1. Identify if subject is Lab-oriented or General
+                        const subjName = (assignment as any).subject?.name?.toLowerCase() || "";
+                        const isLabSubject = /biology|chemistry|physics|science|computer|it|ict|lab/.test(subjName);
+
+                        // Find rooms that are NOT busy during this slotKey
+                        const availableRoomsForSlot = rooms.filter(room => {
                             if (!roomSchedule[room.id]) roomSchedule[room.id] = new Set();
-                            if (!roomSchedule[room.id]!.has(slotKey)) {
-                                assignedRoomId = room.id;
-                                break;
+                            return !roomSchedule[room.id]!.has(slotKey);
+                        });
+
+                        let assignedRoomId: string | null = null;
+
+                        if (availableRoomsForSlot.length > 0) {
+                            const shuffledAvailable = shuffleArray([...availableRoomsForSlot]);
+
+                            if (isLabSubject) {
+                                // Priority 1: Match Laboratory or rooms with "Lab" in name/type
+                                const labRoom = shuffledAvailable.find(r => 
+                                    r.type === "LAB" || /lab|laboratory|computer|science/i.test(r.name)
+                                );
+                                assignedRoomId = labRoom ? labRoom.id : shuffledAvailable[0]!.id;
+                            } else {
+                                // General Subject (Amharic, English, Math, etc.)
+                                // Priority 1: Match standard CLASSROOM (avoid Labs!)
+                                const classroom = shuffledAvailable.find(r => 
+                                    r.type === "CLASSROOM" || (/room|class/i.test(r.name) && !/lab/i.test(r.name))
+                                );
+                                assignedRoomId = classroom ? classroom.id : shuffledAvailable[0]!.id;
                             }
                         }
 
