@@ -60,7 +60,7 @@ export const assignTeacher = async (req: Request, res: Response) => {
         const organizationId = (req as any).accessScope?.id;
         if (!organizationId) return res.status(403).json({ error: "Missing school scope" });
 
-        const { teacherId, academicYearId, subjectId, schoolGradeId, sectionId } = req.body;
+        const { teacherId, academicYearId, subjectId, schoolGradeId, sectionId, sectionIds, periodsPerWeek } = req.body;
 
         if (!teacherId || !academicYearId || !subjectId || !schoolGradeId) {
             return res.status(400).json({ error: "teacherId, academicYearId, subjectId, and schoolGradeId are required" });
@@ -71,7 +71,9 @@ export const assignTeacher = async (req: Request, res: Response) => {
             academicYearId,
             subjectId,
             schoolGradeId,
-            sectionId
+            sectionId,
+            sectionIds,
+            periodsPerWeek: periodsPerWeek !== undefined ? Number(periodsPerWeek) : undefined
         });
 
         return res.status(201).json(assignment);

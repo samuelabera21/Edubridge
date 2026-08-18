@@ -1,23 +1,23 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { fetchApi } from "@/lib/api";
 import { useAuth } from "@/hooks/useAuth";
-import { GraduationCap, Plus, Filter, ClipboardList } from "lucide-react";
+import { GraduationCap, Plus, Filter, ClipboardList, Settings2 } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { LoadingState } from "@/components/ui/LoadingState";
 import { ErrorState } from "@/components/ui/ErrorState";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { AcademicYear } from "@/types/api";
-import { EditAssignmentModal } from "./components/EditAssignmentModal";
 
 export default function TeachingAssignmentsPage() {
+    const router = useRouter();
     const { authData } = useAuth();
     const [years, setYears] = useState<AcademicYear[]>([]);
     const [activeYear, setActiveYear] = useState<AcademicYear | null>(null);
     const [assignments, setAssignments] = useState<any[]>([]);
-    const [editingAssignment, setEditingAssignment] = useState<any>(null);
     
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -98,8 +98,12 @@ export default function TeachingAssignmentsPage() {
                     </p>
                 </div>
                 {hasCreatePermission && (
-                    <Button leftIcon={<Plus className="w-4 h-4" />}>
-                        Assign Teacher
+                    <Button 
+                        onClick={() => router.push("/dashboard/teachers/assignments/manage")}
+                        leftIcon={<Plus className="w-4 h-4" />}
+                        className="bg-[#006b3f] hover:bg-[#005432]"
+                    >
+                        Assign Teacher to Classes
                     </Button>
                 )}
             </div>
@@ -112,9 +116,16 @@ export default function TeachingAssignmentsPage() {
             ) : (
                 <Card>
                     <CardHeader className="bg-gray-50/50 flex flex-row items-center justify-between py-4">
-                        <CardTitle>Current Assignments</CardTitle>
+                        <CardTitle>Current School Assignments</CardTitle>
                         <div className="flex space-x-2">
-                            <Button variant="ghost" size="sm" leftIcon={<Filter className="w-4 h-4" />}>Filter</Button>
+                            <Button 
+                                variant="outline" 
+                                size="sm" 
+                                onClick={() => router.push("/dashboard/teachers/assignments/manage")}
+                                leftIcon={<Settings2 className="w-4 h-4" />}
+                            >
+                                Multi-Section Assignment Manager
+                            </Button>
                         </div>
                     </CardHeader>
                     <CardContent className="p-0">
@@ -126,6 +137,7 @@ export default function TeachingAssignmentsPage() {
                                         <th className="px-6 py-3 font-semibold">Subject</th>
                                         <th className="px-6 py-3 font-semibold">Grade</th>
                                         <th className="px-6 py-3 font-semibold">Section</th>
+                                        <th className="px-6 py-3 font-semibold">Weekly Periods</th>
                                         <th className="px-6 py-3 font-semibold text-right">Actions</th>
                                     </tr>
                                 </thead>
@@ -133,7 +145,7 @@ export default function TeachingAssignmentsPage() {
                                     {assignments.map((assignment) => (
                                         <tr key={assignment.id} className="hover:bg-gray-50/50 transition-colors">
                                             <td className="px-6 py-4">
-                                                <p className="font-medium text-gray-900">
+                                                <p className="font-semibold text-gray-900">
                                                     {assignment.teacher?.firstName} {assignment.teacher?.lastName}
                                                 </p>
                                                 <p className="text-xs text-gray-500">{assignment.teacher?.staffIdCode}</p>
@@ -144,12 +156,21 @@ export default function TeachingAssignmentsPage() {
                                             <td className="px-6 py-4 text-gray-600">
                                                 {assignment.schoolGrade?.grade?.name || "Unknown Grade"} 
                                             </td>
+                                            <td className="px-6 py-4 text-gray-600 font-medium">
+                                                {assignment.section ? `Section ${assignment.section.name}` : "All Sections"}
+                                            </td>
                                             <td className="px-6 py-4 text-gray-600">
-                                                {assignment.section ? assignment.section.name : "All Sections"}
+                                                <span className="inline-flex items-center text-xs font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-md">
+                                                    {assignment.periodsPerWeek || 5} Periods/Wk
+                                                </span>
                                             </td>
                                             <td className="px-6 py-4 text-right space-x-2">
-                                                <Button variant="ghost" size="sm" onClick={() => setEditingAssignment(assignment)}>
-                                                    Manage
+                                                <Button 
+                                                    variant="ghost" 
+                                                    size="sm" 
+                                                    onClick={() => router.push(`/dashboard/teachers/assignments/manage?teacherId=${assignment.teacherId}`)}
+                                                >
+                                                    Manage Teacher
                                                 </Button>
                                             </td>
                                         </tr>
@@ -159,19 +180,6 @@ export default function TeachingAssignmentsPage() {
                         </div>
                     </CardContent>
                 </Card>
-            )}
-
-            {activeYear && editingAssignment && (
-                <EditAssignmentModal 
-                    isOpen={!!editingAssignment}
-                    onClose={() => setEditingAssignment(null)}
-                    onSuccess={() => {
-                        setEditingAssignment(null);
-                        loadData();
-                    }}
-                    assignment={editingAssignment}
-                    activeYearId={activeYear.id}
-                />
             )}
         </div>
     );

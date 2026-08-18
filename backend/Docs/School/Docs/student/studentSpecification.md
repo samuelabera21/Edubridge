@@ -37,7 +37,7 @@ User clicks "MY DASHBOARD" in the left sidebar menu.
 ### Screen Layout & Displayed Content
 A responsive multi-widget overview grid containing real-time summaries:
 
-* **Today’s Classes Widget:** Displays a timeline of today's periods, time slots, subject names, room numbers, and teacher names. Highlights the active class in real time.
+* **Today’s Classes Widget:** Displays a timeline of today's periods, time slots, subject names,, and teacher names. Highlights the active class in real time.
 
 * **Timetable Glance Widget:** Shows a horizontal summary bar of the day's classes with an "Expand Schedule" button.
 
@@ -70,17 +70,17 @@ User clicks "MY PROFILE" in the left sidebar menu. Default sub-nav: `Student Inf
 
 #### Sub-Nav: Student Information
 * **Displayed Content:** Profile card with student ID, full legal name, date of birth, gender, photo, home address, guardian contact details, and emergency phone.
-* **Functionality:** Read-only profile view with a "Request Profile Correction" button that opens an administrative support ticket.
+
+* ***********************Functionality:** Read-only profile view with a "Request Profile Correction" button that opens an administrative support ticket.
 
 #### Sub-Nav: School
 * **Displayed Content:** Institutional card displaying School Name, Ministry School Code, Campus Address, Region/Woreda, Principal Name, and School Contact Info.
 * **Functionality:** View-only institutional directory.
 
-#### Sub-Nav: Grade
+#### Sub-Nav: Grade/section
 * **Displayed Content:** Grade Level card showing enrolled grade (e.g., Grade 9), track/stream, and Grade Coordinator details.
 * **Functionality:** Displays grade-level curriculum overview and academic expectations.
 
-#### Sub-Nav: Section
 * **Displayed Content:** Section card showing Section Code (e.g., Section 9-A), Assigned Homeroom Teacher, Classroom Number, and total student count.
 * **Functionality:** Includes a quick link button to message the homeroom teacher via `COMMUNICATION`.
 
@@ -126,20 +126,49 @@ User clicks "MY ATTENDANCE" in the left sidebar menu. Default sub-nav: `Overview
 
 ### Sub-Navigation Tabs & Displayed Content
 
-#### Sub-Nav: Overview & Calendar View
-* **Displayed Content:**
-  * **Subject-Specific Attendance Card:** Calculates percentage based on selected subject:
-   
-  * **Interactive Monthly Calendar:** Color-coded daily/period badges (`Green` = Present, `Yellow` = Late, `Red` = Unexcused Absent, `Blue` = Excused).
-* **Functionality:** Clicking any calendar day opens a popover detailing period-by-period attendance logs (e.g., *Period 2: Math [Late - 10 mins]*).
+## OVERVIEW & CALENDAR VIEW
 
-#### Sub-Nav: Absence Logs & Explanations
-* **Displayed Content:** Log table listing dates, subject names, period numbers, recording teachers, and excuse status (`Unexcused`, `Pending Review`, `Approved`).
-* **Functionality:** "Submit Absence Explanation" button opens a modal supporting date/period selection, reason selection (Medical, Family Emergency, Transportation), written explanation, and file attachment uploader (medical notes, letters).
+* **Visual Layout:** A traditional monthly calendar grid (Monday–Friday) filled with color-coded status badges for each day.
+* **Content Displayed:**
+  * **Top Metric Card:** Overall attendance percentage (e.g., `92% Attendance Rate`).
+  * **Calendar Grid Badges:**
+    * 🟢 **Green Badge:** Present for all periods.
+    * 🟡 **Yellow Badge:** Arrived late.
+    * 🔴 **Red Badge:** Absent without excuse.
+    * 🔵 **Blue Badge:** Pre-approved or excused absence.
+* **Interactive Behavior:** Tapping on a specific day (e.g., *October 14th*) opens a popover or slide-over drawer detailing the period-by-period breakdown:
+  * **Period 1 (08:00 AM) - Physics:** 🟢 Present
+  * **Period 2 (09:00 AM) - Mathematics:** 🟡 Late (12 mins)
+  * **Period 3 (10:15 AM) - Chemistry:** 🟢 Present
 
-#### Sub-Nav: Subject-Wise Breakdown
-* **Displayed Content:** Comparative bar chart and breakdown table showing attendance percentage across all enrolled subjects simultaneously.
-* **Functionality:** Automatically flags subjects where attendance drops below the required 85% minimum threshold.
+## ABSENCE LOGS & EXPLANATIONS
+
+* **Visual Layout:** A dedicated work table displaying only non-present records (absences and lateness) paired with workflow action triggers.
+* **Content Displayed:**
+  * **Table Columns:** `Date` | `Subject & Period` | `Recording Teacher` | `Status` | `Action`
+  * **Status Pills:** 
+    * `Unexcused` (Red Pill)
+    * `Pending Review` (Yellow Pill)
+    * `Approved` (Green Pill)
+* **Interactive Workflow:**
+  1. Click **"Submit Absence Explanation"**.
+  2. A modal dialog opens, enabling the user to:
+     * Select specific date(s) and period(s) missed.
+     * Select reason category (`Medical`, `Family Emergency`, `Official School Activity`).
+     * Enter a brief written explanation.
+     * Upload supporting documents/attachments (e.g., doctor’s note, signed parent letter in PDF/JPEG).
+  3. Upon submission, the record status updates to `Pending Review` pending administrative or counselor approval.
+
+## SUBJECT-WISE BREAKDOWN
+
+* **Visual Layout:** A multi-course performance dashboard featuring comparative visualizations and automated threshold alerts.
+* **Content Displayed:**
+  * **Comparative Bar Chart:** Horizontal or vertical progress bars rendering attendance percentages per enrolled course.
+  * **Warning Banners:** Prominent alert highlights on any course falling below the mandatory institutional threshold (e.g., `< 85%`).
+* **Subject Status Examples:**
+  * **Mathematics:** 96% Present — 🟢 *Good Standing*
+  * **Amharic:** 90% Present — 🟢 *Good Standing*
+  * **Chemistry:** 81% Present — 🔴 **Warning: Below 85% Minimum Requirement** *(Risk of exam disqualification)*
 
 ---
 
@@ -151,7 +180,7 @@ User clicks "MY ASSESSMENTS" in the left sidebar menu. Default sub-nav: `Tests &
 ### Sub-Navigation Tabs & Displayed Content
 
 #### Sub-Nav: Tests & Quizzes
-* **Displayed Content:** Table listing scheduled formal examinations, midterms, and quizzes with dates, time slots, locations, mark weightings (e.g., `20% of Term Grade`), and syllabus coverage.
+* **Displayed Content:** Table listing scheduled formal examinations, midterms, and quizzes with dates, subject,content,time slots, locations, mark weightings (e.g., `20% of Term Grade`), and syllabus coverage.
 * **Functionality:** Filter by subject or upcoming/past status; "Add to Calendar" button.
 
 #### Sub-Nav: Assignments
@@ -213,7 +242,7 @@ User clicks "MY SUPPORT" in the left sidebar menu. Default sub-nav: `Support Rec
 * **Displayed Content:** Assigned catch-up worksheets, foundational video lessons, and review quizzes designed to fill learning gaps.
 * **Functionality:** Completing remedial modules automatically updates the student's support progress metrics.
 
-#### Sub-Nav: Enrichment Activities
+#### ######################Sub-Nav: Enrichment Activities
 * **Displayed Content:** Advanced challenge projects, research prompts, and extension problem sets for subjects where the student excels.
 * **Functionality:** Allows students to earn academic achievement badges upon completion.
 
@@ -273,12 +302,9 @@ User clicks "LEARNING RESOURCES" in the left sidebar menu. Default sub-nav: `Rec
 ### Sub-Navigation Tabs & Displayed Content
 
 #### Sub-Nav: Recommended Resources
-* **Displayed Content:** Curated list of reading links, video tutorials, and interactive simulations recommended based on current weekly class topics.
-* **Functionality:** Subject filter dropdown and "Save to Favorites" bookmark option.
+* **Displayed Content:** Curated list of reading links, video tutorials, and interactive simulations recommended based on current weekly class topics,Digital library repository containing Electronic Textbooks, Reference Handbooks, Past National Examination Papers with answer keys, and Study Guides.
+* **Functionality:** Subject filter dropdown and "Save to Favorites" bookmark option, ull-text search bar, grade-level filtering, online PDF reader modal, and direct file download buttons.
 
-#### Sub-Nav: School & Approved Resources
-* **Displayed Content:** Digital library repository containing Electronic Textbooks, Reference Handbooks, Past National Examination Papers with answer keys, and Study Guides.
-* **Functionality:** Full-text search bar, grade-level filtering, online PDF reader modal, and direct file download buttons.
 
 #### Sub-Nav: Ministry LMS Links
 * **Displayed Content:** Grid of external resource cards pointing to official Ministry of Education learning portals, regional digital libraries, and e-learning platforms.

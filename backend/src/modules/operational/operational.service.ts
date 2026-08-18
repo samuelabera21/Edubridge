@@ -76,4 +76,35 @@ export class OperationalService {
             orderBy: { startDate: "asc" }
         });
     }
+
+    static async updateResource(id: string, organizationId: string, data: { name?: string; type?: ResourceType; capacity?: number; status?: string; description?: string }) {
+        const resource = await prisma.schoolResource.findFirst({
+            where: { id, organizationId }
+        });
+        if (!resource) throw new Error("Resource not found");
+
+        return prisma.schoolResource.update({
+            where: { id },
+            data: {
+                ...(data.name && { name: data.name }),
+                ...(data.type && { type: data.type }),
+                ...(data.capacity !== undefined && { capacity: data.capacity !== null ? Number(data.capacity) : null }),
+                ...(data.status && { status: data.status }),
+                ...(data.description !== undefined && { description: data.description })
+            }
+        });
+    }
+
+    static async deleteResource(id: string, organizationId: string) {
+        const resource = await prisma.schoolResource.findFirst({
+            where: { id, organizationId }
+        });
+        if (!resource) throw new Error("Resource not found");
+
+        await prisma.schoolResource.delete({
+            where: { id }
+        });
+
+        return { success: true };
+    }
 }

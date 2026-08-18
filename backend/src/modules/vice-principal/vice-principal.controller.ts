@@ -119,7 +119,7 @@ export async function getAiInsightsDashboard(req: Request, res: Response) {
 // ==========================================
 // STEP 2: ACADEMIC ORGANIZATION
 // ==========================================
-import { getAcademicOrganizationYears as getYearsSvc, getAcademicOrganizationGrades as getGradesSvc, getAcademicOrganizationSections as getSectionsSvc } from "./vice-principal.service.js";
+import { getAcademicOrganizationYears as getYearsSvc, getAcademicOrganizationGrades as getGradesSvc, getAcademicOrganizationSections as getSectionsSvc, getAcademicOrganizationRooms as getRoomsSvc, createAcademicOrganizationRoom as createRoomSvc, updateAcademicOrganizationRoom as updateRoomSvc, deleteAcademicOrganizationRoom as deleteRoomSvc } from "./vice-principal.service.js";
 
 export async function getAcademicOrganizationYears(req: Request, res: Response) {
     try {
@@ -168,6 +168,61 @@ export async function getAcademicOrganizationSections(req: Request, res: Respons
         res.status(500).json({ error: "Internal server error" });
     }
 }
+
+export async function getAcademicOrganizationRooms(req: Request, res: Response) {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        if (!organizationId) {
+            return res.status(403).json({ error: "Missing school scope" });
+        }
+        
+        const rooms = await getRoomsSvc(organizationId);
+        res.json(rooms);
+    } catch (error) {
+        console.error("Error fetching academic organization rooms:", error);
+        res.status(500).json({ error: "Internal server error" });
+    }
+}
+
+export async function createAcademicOrganizationRoom(req: Request, res: Response) {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        if (!organizationId) return res.status(403).json({ error: "Missing school scope" });
+        const room = await createRoomSvc(organizationId, req.body);
+        res.json(room);
+    } catch (error) {
+        console.error("Error creating room:", error);
+        res.status(500).json({ error: "Internal server error" });
+    }
+}
+
+export async function updateAcademicOrganizationRoom(req: Request, res: Response) {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        const roomId = req.params.roomId as string;
+        if (!organizationId) return res.status(403).json({ error: "Missing school scope" });
+        const room = await updateRoomSvc(roomId, organizationId, req.body);
+        res.json(room);
+    } catch (error) {
+        console.error("Error updating room:", error);
+        res.status(500).json({ error: "Internal server error" });
+    }
+}
+
+export async function deleteAcademicOrganizationRoom(req: Request, res: Response) {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        const roomId = req.params.roomId as string;
+        if (!organizationId) return res.status(403).json({ error: "Missing school scope" });
+        await deleteRoomSvc(roomId, organizationId);
+        res.status(204).send();
+    } catch (error) {
+        console.error("Error deleting room:", error);
+        res.status(500).json({ error: "Internal server error" });
+    }
+}
+
+
 
 // ==========================================
 // STEP 3: TEACHER ACADEMIC MANAGEMENT

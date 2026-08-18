@@ -1,13 +1,14 @@
 import { prisma } from "../../infrastructure/prisma/client.js";
 
 export class TimetableService {
-    static async createClassPeriod(organizationId: string, data: { name: string; startTime: string; endTime: string }) {
+    static async createClassPeriod(organizationId: string, data: { name: string; startTime: string; endTime: string; isBreak?: boolean }) {
         const period = await prisma.classPeriod.create({
             data: {
                 organizationId,
                 name: data.name,
                 startTime: data.startTime,
                 endTime: data.endTime,
+                isBreak: data.isBreak ?? false,
             }
         });
         return period;
@@ -34,8 +35,12 @@ export class TimetableService {
         });
         if (!period) throw new Error("Class period not found");
 
-        // Conflict Detection 1: Teacher Conflict
-        // Same teacher, same day, same period
+        // Constraint: Cannot assign classes to Break periods
+        if (period.isBreak) {
+            throw new Error("Cannot assign lessons during break periods");
+        }
+
+        // Conflict Detection 1: Teacher Conflict (Double-Booking)
         const teacherConflict = await prisma.timetable.findFirst({
             where: {
                 organizationId,
@@ -51,8 +56,23 @@ export class TimetableService {
             throw new Error(`Teacher conflict: The teacher is already scheduled for ${teacherConflict.teachingAssignment.subject.name} during this period on this day.`);
         }
 
-        // Conflict Detection 2: Section Conflict
-        // Same section, same day, same period
+        // Conflict Detection 2: Teacher Availability
+        const teacher = await prisma.teacher.findFirst({
+            where: { id: assignment.teacherId, organizationId }
+        });
+        if (teacher && teacher.availability) {
+            const availability = teacher.availability as any;
+            if (availability.blockedSlots && Array.isArray(availability.blockedSlots)) {
+                const isBlocked = availability.blockedSlots.some((slot: any) =>
+                    slot.dayOfWeek === data.dayOfWeek && slot.classPeriodId === data.classPeriodId
+                );
+                if (isBlocked) {
+                    throw new Error("Teacher availability conflict: The teacher is not available during this period on this day.");
+                }
+            }
+        }
+
+        // Conflict Detection 3: Section Conflict (Double-Booking)
         if (assignment.sectionId) {
             const sectionConflict = await prisma.timetable.findFirst({
                 where: {
@@ -69,7 +89,7 @@ export class TimetableService {
             }
         }
 
-        // Conflict Detection 3: Room Conflict (Optional)
+        // Conflict Detection 4: Room Conflict (Double-Booking)
         if (data.roomId) {
             const roomConflict = await prisma.timetable.findFirst({
                 where: {
@@ -83,6 +103,50 @@ export class TimetableService {
 
             if (roomConflict) {
                 throw new Error("Room conflict: Room is already booked for this period on this day.");
+            }
+
+            // Fetch room details
+            const room = await prisma.schoolResource.findFirst({
+                where: { id: data.roomId, organizationId }
+            });
+
+            // Room Availability check
+            if (room && room.availability) {
+                const availability = room.availability as any;
+                if (availability.blockedSlots && Array.isArray(availability.blockedSlots)) {
+                    const isBlocked = availability.blockedSlots.some((slot: any) => 
+                        slot.dayOfWeek === data.dayOfWeek && slot.classPeriodId === data.classPeriodId
+                    );
+                    if (isBlocked) {
+                        throw new Error(`Room availability conflict: Room ${room.name} is not available during this period on this day.`);
+                    }
+                }
+            }
+
+            // Room Capacity check
+            if (room && room.capacity !== null && assignment.sectionId) {
+                const sectionStudentsCount = await prisma.studentEnrollment.count({
+                    where: {
+                        sectionId: assignment.sectionId,
+                        status: "ENROLLED"
+                    }
+                });
+                if (sectionStudentsCount > room.capacity) {
+                    throw new Error(`Room capacity conflict: The section has ${sectionStudentsCount} students, but Room ${room.name} has a capacity of only ${room.capacity}.`);
+                }
+            }
+        }
+
+        // Conflict Detection 5: Subject Weekly Requirements
+        if (assignment.periodsPerWeek > 0) {
+            const scheduledCount = await prisma.timetable.count({
+                where: {
+                    teachingAssignmentId: data.teachingAssignmentId,
+                    academicYearId: data.academicYearId
+                }
+            });
+            if (scheduledCount >= assignment.periodsPerWeek) {
+                throw new Error(`Weekly requirement conflict: This assignment requires ${assignment.periodsPerWeek} periods per week, and ${scheduledCount} periods are already scheduled.`);
             }
         }
 
@@ -147,5 +211,71 @@ export class TimetableService {
                 { classPeriod: { startTime: "asc" } }
             ]
         });
+    }
+
+    static async getTimetableForRoom(organizationId: string, roomId: string) {
+        return prisma.timetable.findMany({
+            where: {
+                organizationId,
+                roomId
+            },
+            include: {
+                classPeriod: true,
+                teachingAssignment: {
+                    include: { subject: true, teacher: true, section: true, schoolGrade: { include: { grade: true } } }
+                }
+            },
+            orderBy: [
+                { dayOfWeek: "asc" },
+                { classPeriod: { startTime: "asc" } }
+            ]
+        });
+    }
+
+    static async updateTeacherAvailability(organizationId: string, teacherId: string, availability: any) {
+        const teacher = await prisma.teacher.findFirst({
+            where: { id: teacherId, organizationId }
+        });
+        if (!teacher) throw new Error("Teacher not found");
+
+        const updated = await prisma.teacher.update({
+            where: { id: teacherId },
+            data: { availability }
+        });
+
+        await prisma.auditLog.create({
+            data: {
+                organizationId,
+                action: "TEACHER_AVAILABILITY_UPDATED",
+                resource: "Teacher",
+                resourceId: teacherId,
+                newValue: JSON.parse(JSON.stringify(availability))
+            }
+        });
+
+        return updated;
+    }
+
+    static async deleteTimetable(organizationId: string, id: string) {
+        const entry = await prisma.timetable.findFirst({
+            where: { id, organizationId }
+        });
+        if (!entry) throw new Error("Timetable entry not found");
+
+        await prisma.timetable.delete({
+            where: { id }
+        });
+
+        await prisma.auditLog.create({
+            data: {
+                organizationId,
+                action: "TIMETABLE_DELETED",
+                resource: "Timetable",
+                resourceId: id,
+                oldValue: JSON.parse(JSON.stringify(entry))
+            }
+        });
+
+        return { success: true };
     }
 }
