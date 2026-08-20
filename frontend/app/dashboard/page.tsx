@@ -1,89 +1,49 @@
-"use client";
+import Link from "next/link";
+import { BookOpen, Home } from "lucide-react";
 
-import { useAuth } from "../../hooks/useAuth";
-import { Shield, MapPin, Key } from "lucide-react";
+export const metadata = {
+    title: "404 — Page Not Found | EduBridge",
+    description: "The page you are looking for does not exist.",
+};
 
-export default function DashboardOverview() {
-    const { authData } = useAuth(); // Already verified by layout
-
-    if (!authData) return null;
-
-    const primaryAccess = authData.access[0];
-
-    if (!primaryAccess) {
-        return (
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 text-center text-black">
-                <Shield className="h-16 w-16 text-red-500 mx-auto mb-4" />
-                <h2 className="text-2xl font-bold text-gray-900 mb-2">No Access Assigned</h2>
-                <p className="text-gray-600 max-w-md mx-auto">
-                    Your account has been created, but you have not been assigned to any organization or role yet. Please contact your system administrator.
-                </p>
-            </div>
-        );
-    }
-
+export default function DashboardNotFound() {
     return (
-        <div className="space-y-6 text-black">
-            <h1 className="text-2xl font-bold text-gray-900">Overview</h1>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Authorization Card */}
-                <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-                    <div className="flex items-center space-x-3 mb-6 border-b border-gray-100 pb-4">
-                        <div className="bg-blue-100 p-2 rounded-lg">
-                            <Key className="h-6 w-6 text-blue-700" />
-                        </div>
-                        <h2 className="text-lg font-bold text-gray-900">Current Role</h2>
-                    </div>
-                    
-                    <div className="space-y-4">
-                        <div>
-                            <p className="text-sm font-medium text-gray-500 mb-1">Assigned Role</p>
-                            <p className="font-semibold text-lg text-gray-900 bg-gray-50 inline-block px-3 py-1 rounded border border-gray-200">
-                                {primaryAccess.role.name}
-                            </p>
-                        </div>
-                        <div>
-                            <p className="text-sm font-medium text-gray-500 mb-2">Granted Permissions</p>
-                            <div className="flex flex-wrap gap-2">
-                                {primaryAccess.role.permissions.map((rp: any) => (
-                                    <span key={rp.permission.id} className="text-xs font-medium bg-blue-50 text-blue-700 px-2 py-1 rounded border border-blue-100">
-                                        {rp.permission.name}
-                                    </span>
-                                ))}
-                                {primaryAccess.role.permissions.length === 0 && (
-                                    <span className="text-sm text-gray-500 italic">No specific permissions attached</span>
-                                )}
-                            </div>
-                        </div>
-                    </div>
-                </div>
+        <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center px-6 py-20 font-sans">
 
-                {/* Scope Card */}
-                <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-                    <div className="flex items-center space-x-3 mb-6 border-b border-gray-100 pb-4">
-                        <div className="bg-green-100 p-2 rounded-lg">
-                            <MapPin className="h-6 w-6 text-green-700" />
-                        </div>
-                        <h2 className="text-lg font-bold text-gray-900">Organizational Scope</h2>
-                    </div>
-                    
-                    <div className="space-y-4">
-                        <div>
-                            <p className="text-sm font-medium text-gray-500 mb-1">Organization Name</p>
-                            <p className="font-semibold text-lg text-gray-900">
-                                {primaryAccess.scope.name}
-                            </p>
-                        </div>
-                        <div>
-                            <p className="text-sm font-medium text-gray-500 mb-1">Organization Level</p>
-                            <span className="text-xs font-bold uppercase tracking-wider bg-green-50 text-green-700 px-2 py-1 rounded border border-green-200 inline-block">
-                                {primaryAccess.scope.type}
-                            </span>
-                        </div>
-                    </div>
+            {/* EduBridge Branding */}
+            <div className="flex items-center space-x-2.5 mb-14">
+                <div className="bg-sky-600 p-2 rounded-full shadow-sm">
+                    <BookOpen className="h-5 w-5 text-white" />
                 </div>
+                <span className="text-lg font-bold text-gray-900 tracking-tight">EduBridge</span>
             </div>
+
+            {/* 404 Number */}
+            <div className="relative mb-6 select-none">
+                <span className="text-[9rem] sm:text-[12rem] font-black text-gray-100 leading-none tracking-tighter">
+                    404
+                </span>
+                {/* Sky accent line under the number */}
+                <div className="absolute bottom-4 left-1/2 -translate-x-1/2 h-1.5 w-24 rounded-full bg-sky-500 opacity-70" />
+            </div>
+
+            {/* Heading & Description */}
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 text-center mb-3">
+                Page Not Found
+            </h1>
+            <p className="text-sm sm:text-base text-gray-500 text-center max-w-md leading-relaxed mb-10">
+                The page you&apos;re looking for doesn&apos;t exist or may have been moved.
+            </p>
+
+            {/* Return to Home button */}
+            <Link
+                href="/"
+                className="inline-flex items-center space-x-2 bg-sky-600 hover:bg-sky-700 active:bg-sky-800 text-white font-semibold text-sm px-6 py-3 rounded-xl shadow-sm transition-colors duration-150"
+            >
+                <Home className="w-4 h-4" />
+                <span>Return to Home</span>
+            </Link>
+
         </div>
     );
 }

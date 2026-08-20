@@ -17,6 +17,8 @@ model User {
   email                String
   emailVerified        Boolean                @default(false)
   image                String?
+  requiresPasswordChange Boolean              @default(false)
+  isActive             Boolean                @default(true)
   observerObservations ClassroomObservation[] @relation("ObserverObservations")
 
   createdAt DateTime @default(now())

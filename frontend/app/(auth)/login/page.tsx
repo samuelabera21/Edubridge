@@ -7,32 +7,113 @@ import { fetchApi } from "../../../lib/api";
 import { Loader2 } from "lucide-react";
 
 export default function LoginPage() {
-    const [email, setEmail] = useState("");
+    const [username, setUsername] = useState("");
     const [password, setPassword] = useState("");
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
     const router = useRouter();
+
+    const resolveLoginEmail = (input: string) => {
+        const trimmed = input.trim();
+        if (trimmed.includes("@")) return trimmed;
+
+        const lower = trimmed.toLowerCase();
+        if (lower === "admin" || lower === "school_admin") return "admin@edubridge.com";
+        if (lower === "teacher") return "teacher@edubridge.com";
+        if (lower === "student") return "student@edubridge.com";
+        if (lower === "parent") return "parent@edubridge.com";
+
+        // Auto-formatted system username
+        return `${lower}@edubridge.local`;
+    };
 
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
         setError("");
         setLoading(true);
 
+        let targetEmail = username.trim();
         try {
-            const res = await fetchApi("/auth/sign-in/email", {
+            const resolveRes = await fetchApi("/authorization/resolve-username", {
                 method: "POST",
-                body: JSON.stringify({ email, password }),
+                body: JSON.stringify({ username: username.trim() }),
             });
+            if (resolveRes.ok) {
+                const resolveData = await resolveRes.json();
+                if (resolveData.email) targetEmail = resolveData.email;
+            }
+        } catch (err) {
+            console.warn("Username resolution fallback used", err);
+        }
+
+        try {
+            let res = await fetchApi("/auth/sign-in/email", {
+                method: "POST",
+                body: JSON.stringify({ email: targetEmail, password }),
+            });
+
+            // Fallback attempt with direct username as email if first attempt fails
+            if (!res.ok && !username.includes("@")) {
+                res = await fetchApi("/auth/sign-in/email", {
+                    method: "POST",
+                    body: JSON.stringify({ email: username.trim(), password }),
+                });
+            }
 
             if (!res.ok) {
                 const data = await res.json().catch(() => ({}));
-                setError(data.message || "Invalid email or password");
+                const msg = data.message || "";
+                if (msg.toLowerCase().includes("email") || msg.toLowerCase().includes("credential") || !msg) {
+                    setError("Invalid username or password. Please check your username and password.");
+                } else {
+                    setError(msg);
+                }
                 setLoading(false);
                 return;
             }
 
-            // Route protection will handle checking role in dashboard
-            router.push("/dashboard");
+            // Verify user state server-side
+            const meRes = await fetchApi("/authorization/me");
+            if (meRes.ok) {
+                const meData = await meRes.json();
+                if (meData.isActive === false || meData.user?.isActive === false) {
+                    setError("Your account is currently inactive. Please contact your administrator.");
+                    await fetchApi("/auth/sign-out", { method: "POST" });
+                    setLoading(false);
+                    return;
+                }
+
+                if (meData.requiresPasswordChange || meData.user?.requiresPasswordChange) {
+                    router.push("/change-password");
+                    return;
+                }
+
+                const roleName = meData.access?.[0]?.role?.name;
+                switch (roleName) {
+                    case "ADMIN":
+                    case "SCHOOL_ADMIN":
+                    case "ADMINISTRATOR":
+                        router.push("/dashboard/admin");
+                        return;
+                    case "TEACHER":
+                        router.push("/dashboard/teacher");
+                        return;
+                    case "STUDENT":
+                        router.push("/dashboard/student");
+                        return;
+                    case "PARENT":
+                        router.push("/dashboard/parent");
+                        return;
+                    case "VICE_PRINCIPAL":
+                        router.push("/dashboard/vice-principal");
+                        return;
+                    default:
+                        router.push("/dashboard/admin");
+                        return;
+                }
+            }
+
+            router.push("/dashboard/admin");
         } catch (err) {
             console.error(err);
             setError("A network error occurred. Please try again.");
@@ -53,13 +134,13 @@ export default function LoginPage() {
 
             <form onSubmit={handleLogin} className="space-y-5">
                 <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Username</label>
                     <input
-                        type="email"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
+                        type="text"
+                        value={username}
+                        onChange={(e) => setUsername(e.target.value)}
                         className="w-full border border-gray-300 rounded-md p-2.5 focus:ring-2 focus:ring-[#4085b3] focus:border-[#4085b3] transition-colors"
-                        placeholder="admin@edubridge.local"
+                        placeholder="Enter your username"
                         required
                         disabled={loading}
                     />
@@ -86,11 +167,8 @@ export default function LoginPage() {
                 </button>
             </form>
 
-            <div className="mt-8 text-center text-sm text-gray-600">
-                Don't have an account?{" "}
-                <Link href="/register" className="text-[#4085b3] hover:underline font-semibold">
-                    Register here
-                </Link>
+            <div className="mt-8 text-center text-xs text-gray-500">
+                Account registration is managed by your School Administrator.
             </div>
         </div>
     );

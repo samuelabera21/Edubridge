@@ -1,5 +1,4 @@
-import { PrismaClient } from '@prisma/client';
-const prisma = new PrismaClient();
+import { prisma } from './infrastructure/prisma/client.js';
 
 async function test() {
     try {
@@ -9,7 +8,8 @@ async function test() {
             console.log("No grades found");
             return;
         }
-        const schoolGradeId = grades[0].id;
+        const schoolGradeId = grades[0]?.id;
+        if (!schoolGradeId) return;
         console.log("Creating section for grade:", schoolGradeId);
         
         const section = await prisma.section.create({
