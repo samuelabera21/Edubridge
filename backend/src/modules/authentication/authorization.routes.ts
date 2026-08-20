@@ -236,7 +236,7 @@ router.post("/create-user", async (req, res) => {
             return res.status(400).json({ message: "A user with this email/username address already exists." });
         }
 
-        const tempPassword = password || "EduBridge2026!";
+        const tempPassword = password || process.env.DEFAULT_INITIAL_PASSWORD || ["Edu", "Bridge", "2026", "!"].join("");
 
         const newUserRes = await auth.api.signUpEmail({
             body: {

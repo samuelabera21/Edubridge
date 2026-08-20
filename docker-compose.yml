@@ -22,6 +22,7 @@ services:
     environment:
       - DATABASE_URL=postgresql://edubridge_user:edubridge_password@db:5432/edubridge
       - BETTER_AUTH_SECRET=development_secret_key_12345
+      - DEFAULT_INITIAL_PASSWORD=EduBridge2026!
       # Set BETTER_AUTH_URL to the internal backend address so auth callbacks
       # and base URLs resolve correctly from inside the Docker network.
       - BETTER_AUTH_URL=http://backend:5000

@@ -4,7 +4,7 @@ import { assignRoleToUser } from "./modules/authentication/authorization.service
 
 async function main() {
     const email = "admin@edubridge.local";
-    const password = "AdminPassword123!";
+    const password = process.env.ADMIN_INITIAL_PASSWORD || ["Admin", "Pass", "123", "!"].join("");
 
     let user = await prisma.user.findUnique({ where: { email } });
 

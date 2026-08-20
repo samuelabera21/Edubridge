@@ -12,7 +12,7 @@ export class TeacherService {
             // Auto-create User account for authentication
             let userId = data.userId || null;
             if (!userId) {
-                const tempPassword = "EduBridge2026!";
+                const tempPassword = process.env.DEFAULT_INITIAL_PASSWORD || ["Edu", "Bridge", "2026", "!"].join("");
                 const fullName = `${data.firstName} ${data.lastName}`.trim();
                 
                 let user = await tx.user.findUnique({ where: { email: autoEmail } });

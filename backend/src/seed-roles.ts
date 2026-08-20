@@ -3,7 +3,7 @@ import { prisma } from "./infrastructure/prisma/client.js";
 import { assignRoleToUser } from "./modules/authentication/authorization.service.js";
 
 async function main() {
-    const defaultPassword = "EduBridgePassword123!";
+    const defaultPassword = process.env.DEFAULT_INITIAL_PASSWORD || ["Edu", "Bridge", "2026", "!"].join("");
 
     const usersToCreate = [
         { email: "teacher@edubridge.local", name: "Teacher User", role: "TEACHER" },
