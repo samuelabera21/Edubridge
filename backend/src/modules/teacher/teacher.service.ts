@@ -651,7 +651,13 @@ export class TeacherService {
                 sectionId: { in: sectionIds }
             },
             include: {
-                student: true,
+                student: {
+                    include: {
+                        parents: {
+                            include: { parent: true }
+                        }
+                    }
+                },
                 section: true,
                 schoolGrade: { include: { grade: true } },
                 attendances: {
