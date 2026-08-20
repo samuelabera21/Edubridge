@@ -9,11 +9,15 @@ export interface AuthData {
         name: string;
         email: string;
         image: string | null;
+        requiresPasswordChange?: boolean;
+        isActive?: boolean;
     };
     access: Array<{
         role: { name: string; permissions: Array<any> };
         scope: { id: string; name: string; type: string };
     }>;
+    requiresPasswordChange?: boolean;
+    isActive?: boolean;
 }
 
 export function useAuth(requireAuth = false) {
