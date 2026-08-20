@@ -310,4 +310,31 @@ export const askAiAssistant = async (req: Request, res: Response) => {
     }
 };
 
+export const reportIssue = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        const userId = req.user?.id;
+        if (!organizationId || !userId) return res.status(403).json({ error: "Missing school scope or authentication" });
+
+        const issue = await TeacherService.reportIssue(userId, organizationId, req.body);
+        return res.status(201).json(issue);
+    } catch (error: any) {
+        return res.status(400).json({ error: error.message || "Failed to report issue" });
+    }
+};
+
+export const getMyIssues = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        const userId = req.user?.id;
+        if (!organizationId || !userId) return res.status(403).json({ error: "Missing school scope or authentication" });
+
+        const issues = await TeacherService.getMyIssues(userId, organizationId);
+        return res.json(issues);
+    } catch (error: any) {
+        return res.status(500).json({ error: error.message || "Failed to get reported issues" });
+    }
+};
+
+
 

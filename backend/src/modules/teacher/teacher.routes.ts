@@ -20,7 +20,9 @@ import {
     resolveSupportFlag,
     sendParentMessage,
     getClassPerformanceReport,
-    askAiAssistant
+    askAiAssistant,
+    reportIssue,
+    getMyIssues
 } from "./teacher.controller.js";
 import { createActivity, getActivities, submitActivity, raiseSupportFlag, getSupportFlags } from "../learning/learning.controller.js";
 import { recordStudentAttendance, getStudentAttendance } from "../attendance/attendance.controller.js";
@@ -411,7 +413,30 @@ router.get("/classes/:teachingAssignmentId/performance", getClassPerformanceRepo
  *       200:
  *         description: AI assistant recommendation response
  */
-router.post("/ai-assistant", askAiAssistant);
+/**
+ * @openapi
+ * /api/teacher/issues:
+ *   post:
+ *     tags: [Teachers]
+ *     summary: Report a classroom, facility, or material obstacle/issue to administration
+ *     security:
+ *       - bearerAuth: []
+ *       - cookieAuth: []
+ *     responses:
+ *       201:
+ *         description: Issue reported successfully
+ *   get:
+ *     tags: [Teachers]
+ *     summary: Get issues reported by the logged in teacher
+ *     security:
+ *       - bearerAuth: []
+ *       - cookieAuth: []
+ *     responses:
+ *       200:
+ *         description: List of reported issues
+ */
+router.post("/issues", reportIssue);
+router.get("/issues", getMyIssues);
 
 /**
  * @openapi

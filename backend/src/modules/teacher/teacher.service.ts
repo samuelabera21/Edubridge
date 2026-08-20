@@ -3,8 +3,53 @@ import { IssuePriority, SupportFlagType, ActivityType, SubmissionStatus, Attenda
 
 export class TeacherService {
     static async createTeacher(organizationId: string, data: any) {
-        // Run as a transaction so that if assignment fails, the teacher creation rolls back
         return await prisma.$transaction(async (tx) => {
+            const count = await tx.teacher.count();
+            const seq = String(count + 1).padStart(4, "0");
+            const autoEmployeeId = data.employeeId || `TCH-2026-${seq}`;
+            const autoEmail = data.email || `tch.2026.${seq}@edubridge.local`;
+
+            // Auto-create User account for authentication
+            let userId = data.userId || null;
+            if (!userId) {
+                const tempPassword = "EduBridge2026!";
+                const fullName = `${data.firstName} ${data.lastName}`.trim();
+                
+                let user = await tx.user.findUnique({ where: { email: autoEmail } });
+                if (!user) {
+                    const { auth } = await import("../authentication/auth.js");
+                    const signUpRes = await auth.api.signUpEmail({
+                        body: {
+                            email: autoEmail,
+                            password: tempPassword,
+                            name: fullName
+                        }
+                    });
+                    if (signUpRes?.user) {
+                        userId = signUpRes.user.id;
+                        await tx.user.update({
+                            where: { id: userId },
+                            data: { requiresPasswordChange: true, isActive: true }
+                        });
+                        
+                        // Assign TEACHER role
+                        let teacherRole = await tx.role.findUnique({ where: { name: "TEACHER" } });
+                        if (!teacherRole) {
+                            teacherRole = await tx.role.create({ data: { name: "TEACHER" } });
+                        }
+                        await tx.roleAssignment.create({
+                            data: {
+                                userId,
+                                roleId: teacherRole.id,
+                                scopeId: organizationId
+                            }
+                        });
+                    }
+                } else {
+                    userId = user.id;
+                }
+            }
+
             const teacher = await tx.teacher.create({
                 data: {
                     organizationId,
@@ -18,7 +63,7 @@ export class TeacherService {
                     fieldOfStudy: data.fieldOfStudy || null,
                     yearsOfExperience: data.yearsOfExperience ? parseInt(data.yearsOfExperience, 10) : null,
                     phoneNumber: data.phoneNumber || null,
-                    email: data.email || null,
+                    email: autoEmail,
                     region: data.region || null,
                     zone: data.zone || null,
                     woreda: data.woreda || null,
@@ -27,8 +72,8 @@ export class TeacherService {
                     houseNumber: data.houseNumber || null,
                     photoUrl: data.photoUrl || null,
                     documents: data.documents || null,
-                    employeeId: data.employeeId || null,
-                    userId: data.userId || null,
+                    employeeId: autoEmployeeId,
+                    userId,
                 }
             });
 
@@ -392,6 +437,8 @@ export class TeacherService {
         const teacher = await this.getTeacherByUserId(userId, organizationId);
         
         const today = new Date();
+        const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+        const endOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59, 999);
         const currentDayOfWeek = today.getDay();
 
         const todayTimetable = teacher ? await prisma.timetable.findMany({
@@ -419,29 +466,36 @@ export class TeacherService {
             orderBy: { classPeriod: { startTime: "asc" } }
         }) : [];
 
-        let todayClasses = todayTimetable.map((t, index) => ({
-            id: t.id,
-            period: index + 1,
-            time: `${t.classPeriod.startTime} - ${t.classPeriod.endTime}`,
-            subject: t.teachingAssignment.subject.name,
-            section: `Grade ${t.teachingAssignment.schoolGrade.grade.level}${t.teachingAssignment.section?.name || ''}`,
-            room: t.roomId || `Room ${12 + index}`,
-            studentCount: t.teachingAssignment.section?.studentEnrollments.length || 30,
-            status: index === 2 ? "Completed" : "Start Class",
-            sectionId: t.teachingAssignment.sectionId,
-            classPeriodId: t.classPeriodId,
-            teachingAssignmentId: t.teachingAssignmentId
-        }));
+        // Check attendance records for today to determine class completion status
+        let attendancePendingCount = 0;
+        const todayClasses = await Promise.all(todayTimetable.map(async (t, index) => {
+            const hasRecordedAttendance = await prisma.studentAttendance.findFirst({
+                where: {
+                    organizationId,
+                    classPeriodId: t.classPeriodId,
+                    date: { gte: startOfToday, lte: endOfToday }
+                }
+            });
 
-        // Default mock timetable matching reference image if live timetable is empty
-        if (todayClasses.length === 0) {
-            todayClasses = [
-                { id: "class-1", period: 1, time: "8:00 - 8:45 AM", class: "Grade 9A", subject: "Mathematics", room: "Room 12", students: 38, action: "Start Class", status: "Start Class" },
-                { id: "class-2", period: 2, time: "9:00 - 9:45 AM", class: "Grade 10B", subject: "Mathematics", room: "Room 15", students: 35, action: "Start Class", status: "Start Class" },
-                { id: "class-3", period: 3, time: "10:00 - 10:45 AM", class: "Grade 9B", subject: "Mathematics", room: "Room 12", students: 32, action: "Completed", status: "Completed" },
-                { id: "class-4", period: 4, time: "11:00 - 11:45 AM", class: "Grade 11A", subject: "Mathematics", room: "Room 18", students: 23, action: "Start Class", status: "Start Class" },
-            ] as any;
-        }
+            if (!hasRecordedAttendance) {
+                attendancePendingCount++;
+            }
+
+            return {
+                id: t.id,
+                period: index + 1,
+                time: `${t.classPeriod.startTime} - ${t.classPeriod.endTime}`,
+                subject: t.teachingAssignment.subject.name,
+                section: `Grade ${t.teachingAssignment.schoolGrade.grade.level}${t.teachingAssignment.section?.name || ''}`,
+                room: t.roomId || "Assigned Classroom",
+                studentCount: t.teachingAssignment.section?.studentEnrollments.length || 0,
+                status: hasRecordedAttendance ? "Completed" : "Start Class",
+                action: hasRecordedAttendance ? "Completed" : "Start Class",
+                sectionId: t.teachingAssignment.sectionId,
+                classPeriodId: t.classPeriodId,
+                teachingAssignmentId: t.teachingAssignmentId
+            };
+        }));
 
         const sectionIds = teacher ? teacher.assignments
             .map((a) => a.sectionId)
@@ -453,7 +507,7 @@ export class TeacherService {
                 sectionId: { in: sectionIds },
                 status: "ACTIVE"
             }
-        }) : 128;
+        }) : 0;
 
         const assignmentIds = teacher ? teacher.assignments.map((a) => a.id) : [];
         const pendingAssessmentsCount = assignmentIds.length > 0 ? await prisma.assessment.count({
@@ -461,7 +515,7 @@ export class TeacherService {
                 organizationId,
                 teachingAssignmentId: { in: assignmentIds }
             }
-        }) : 5;
+        }) : 0;
 
         const pendingSubmissionsCount = assignmentIds.length > 0 ? await prisma.submission.count({
             where: {
@@ -471,7 +525,15 @@ export class TeacherService {
                 },
                 status: "SUBMITTED"
             }
-        }) : 12;
+        }) : 0;
+
+        const upcomingActivitiesCount = assignmentIds.length > 0 ? await prisma.learningActivity.count({
+            where: {
+                organizationId,
+                teachingAssignmentId: { in: assignmentIds },
+                dueDate: { gte: startOfToday }
+            }
+        }) : 0;
 
         const supportFlags = sectionIds.length > 0 ? await prisma.supportFlag.findMany({
             where: {
@@ -488,66 +550,87 @@ export class TeacherService {
                     }
                 }
             },
-            take: 5
+            take: 10
         }) : [];
 
-        let studentsRequiringAttention = supportFlags.map((sf) => ({
+        const studentsRequiringAttention = supportFlags.map((sf) => ({
             id: sf.id,
             studentName: `${sf.enrollment.student.firstName} ${sf.enrollment.student.lastName}`,
             section: `Grade ${sf.enrollment.schoolGrade.grade.level}${sf.enrollment.section?.name || ''}`,
             reason: sf.description,
-            type: sf.type === "ACADEMIC" ? "Low Performance" : sf.type === "ATTENDANCE" ? "Frequent Absence" : "Missing Assignments",
-            detail: sf.type === "ACADEMIC" ? "Score: 45%" : sf.type === "ATTENDANCE" ? "Attendance: 65%" : "Pending: 3"
+            type: sf.type === "ACADEMIC" ? "Low Performance" : sf.type === "ATTENDANCE" ? "Frequent Absence" : "Behavioral / Support Need",
+            detail: sf.type === "ACADEMIC" ? "Academic Flag" : sf.type === "ATTENDANCE" ? "Attendance Flag" : "Support Flag"
         }));
 
-        if (studentsRequiringAttention.length === 0) {
-            studentsRequiringAttention = [
-                { id: "st-1", studentName: "Abeba Tesfaye", section: "Grade 9A", type: "Low Performance", detail: "Score: 45%" },
-                { id: "st-2", studentName: "Mekonen Alemu", section: "Grade 10B", type: "Frequent Absence", detail: "Attendance: 65%" },
-                { id: "st-3", studentName: "Sara Getachew", section: "Grade 9B", type: "Missing Assignments", detail: "Pending: 3" },
-                { id: "st-4", studentName: "Dawit Kebede", section: "Grade 11A", type: "Low Performance", detail: "Score: 48%" }
-            ] as any;
+        // Calculate class performance overview dynamically from StudentResult
+        const classPerformanceOverview = await Promise.all(
+            (teacher?.assignments || []).map(async (assignment) => {
+                const results = await prisma.studentResult.findMany({
+                    where: {
+                        assessment: {
+                            teachingAssignmentId: assignment.id
+                        }
+                    },
+                    select: { score: true }
+                });
+
+                const totalScore = results.reduce((acc, curr) => acc + curr.score, 0);
+                const averageScore = results.length > 0 ? Math.round(totalScore / results.length) : 0;
+                const className = `Grade ${assignment.schoolGrade.grade.level}${assignment.section?.name || ''} ${assignment.subject.name}`;
+
+                return {
+                    className,
+                    averageScore,
+                    teachingAssignmentId: assignment.id
+                };
+            })
+        );
+
+        const teacherDisplayName = teacher ? `Mr. ${teacher.lastName || teacher.firstName}` : "Teacher";
+
+        const recommendations: string[] = [];
+        if (studentsRequiringAttention.length > 0) {
+            recommendations.push(`${studentsRequiringAttention.length} student(s) currently require academic or support attention.`);
+        }
+        if (pendingSubmissionsCount > 0) {
+            recommendations.push(`You have ${pendingSubmissionsCount} pending student submission(s) awaiting review and feedback.`);
+        }
+        if (attendancePendingCount > 0) {
+            recommendations.push(`${attendancePendingCount} class period(s) today require attendance submission.`);
+        }
+        if (recommendations.length === 0) {
+            recommendations.push("All current teaching tasks and student attendance logs are up to date!");
         }
 
-        const classPerformanceOverview = [
-            { className: "Grade 9A", averageScore: 78 },
-            { className: "Grade 9B", averageScore: 72 },
-            { className: "Grade 10B", averageScore: 85 },
-            { className: "Grade 11A", averageScore: 90 }
-        ];
+        const priorities: string[] = [];
+        if (attendancePendingCount > 0) priorities.push("Complete today's class attendance logs");
+        if (pendingSubmissionsCount > 0) priorities.push(`Grade ${pendingSubmissionsCount} pending assignment submissions`);
+        if (studentsRequiringAttention.length > 0) priorities.push(`Review ${studentsRequiringAttention.length} active student support flags`);
+        if (priorities.length === 0) priorities.push("Prepare upcoming lesson materials and assessments");
 
         return {
             profile: teacher,
             todayClasses,
-            todayClassesCount: todayClasses.length || 4,
-            totalStudents: totalStudents || 128,
-            attendancePendingCount: 2,
-            pendingAssessmentsCount: pendingAssessmentsCount || 5,
-            pendingSubmissionsCount: pendingSubmissionsCount || 12,
-            studentsNeedAttentionCount: studentsRequiringAttention.length || 7,
-            upcomingActivitiesCount: 4,
+            todayClassesCount: todayClasses.length,
+            totalStudents,
+            attendancePendingCount,
+            pendingAssessmentsCount,
+            pendingSubmissionsCount,
+            studentsNeedAttentionCount: studentsRequiringAttention.length,
+            upcomingActivitiesCount,
             classPerformanceOverview,
             tasksOverview: {
-                attendancePending: 2,
-                pendingAssessments: pendingAssessmentsCount || 5,
-                pendingAssignments: pendingSubmissionsCount || 12,
-                studentsNeedAttention: studentsRequiringAttention.length || 7,
-                upcomingActivities: 4
+                attendancePending: attendancePendingCount,
+                pendingAssessments: pendingAssessmentsCount,
+                pendingAssignments: pendingSubmissionsCount,
+                studentsNeedAttention: studentsRequiringAttention.length,
+                upcomingActivities: upcomingActivitiesCount
             },
             studentsRequiringAttention,
             aiTeachingInsights: {
-                greeting: `Good morning, ${teacher?.firstName ? `Mr. ${teacher.firstName}` : "Mr. Yohannes"}! Here are your AI-powered insights for today.`,
-                recommendations: [
-                    "7 students in Grade 9A have shown declining performance in the last 3 assessments.",
-                    "Grade 10B has an upcoming quiz. Consider reviewing quadratic equations.",
-                    "82% of your students attended classes last week. Keep it up!",
-                    "You have 12 pending assignment submissions to review."
-                ],
-                priorities: [
-                    "Complete attendance for Grade 9A Mathematics",
-                    "Review 12 pending assignment submissions",
-                    "Review support recommendation for Abeba Tesfaye"
-                ]
+                greeting: `Good day, ${teacherDisplayName}! Here are your daily operational teaching insights.`,
+                recommendations,
+                priorities
             }
         };
     }

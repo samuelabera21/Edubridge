@@ -11,6 +11,24 @@ vi.mock("./school.service.js", () => ({
     getOrganizationHierarchy: vi.fn(),
 }));
 
+vi.mock("../../infrastructure/prisma/client.js", () => ({
+    prisma: {
+        academicYear: {
+            findFirst: vi.fn().mockResolvedValue({ id: "ay1", name: "2025-2026" }),
+            findMany: vi.fn().mockResolvedValue([]),
+        },
+        teacher: {
+            count: vi.fn().mockResolvedValue(10),
+        },
+        student: {
+            count: vi.fn().mockResolvedValue(200),
+        },
+        section: {
+            count: vi.fn().mockResolvedValue(5),
+        },
+    }
+}));
+
 describe("School Controller", () => {
     let mockReq: Partial<Request>;
     let mockRes: Partial<Response>;
@@ -101,6 +119,12 @@ describe("School Controller", () => {
             expect(mockRes.json).toHaveBeenCalledWith({
                 school: { id: "school1", type: "SCHOOL" },
                 profile: mockProfile,
+                stats: {
+                    totalTeachers: 10,
+                    totalStudents: 200,
+                    activeSections: 5,
+                },
+                academicYears: [],
             });
         });
     });
