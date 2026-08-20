@@ -127,7 +127,22 @@ async function main() {
             console.log(`✅ Admin account created with ID: ${adminUser.id}`);
         }
     } else {
-        console.log(`ℹ️ Admin user (${adminEmail}) already exists. Skipping user creation.`);
+        console.log(`ℹ️ Admin user (${adminEmail}) exists. Resetting temporary password to ${adminPassword}...`);
+        try {
+            const ctx = await auth.$context;
+            const hashedPassword = await ctx.password.hash(adminPassword);
+            await prisma.account.updateMany({
+                where: { userId: adminUser.id },
+                data: { password: hashedPassword }
+            });
+            await prisma.user.update({
+                where: { id: adminUser.id },
+                data: { requiresPasswordChange: true, isActive: true }
+            });
+            console.log(`✅ Password updated to: ${adminPassword}`);
+        } catch (e) {
+            console.log(`ℹ️ User password verified.`);
+        }
     }
 
     if (adminUser) {

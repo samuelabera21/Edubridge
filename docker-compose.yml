@@ -22,7 +22,7 @@ services:
     environment:
       - DATABASE_URL=postgresql://${POSTGRES_USER:-postgres_user}:${POSTGRES_PASSWORD:-postgres_pass}@db:5432/${POSTGRES_DB:-edubridge}
       - BETTER_AUTH_SECRET=${BETTER_AUTH_SECRET:-dev_secret_key}
-      - DEFAULT_INITIAL_PASSWORD=${DEFAULT_INITIAL_PASSWORD:-initial_pass}
+      - DEFAULT_INITIAL_PASSWORD=${DEFAULT_INITIAL_PASSWORD:-EduBridge2026!}
       # Set BETTER_AUTH_URL to the internal backend address so auth callbacks
       # and base URLs resolve correctly from inside the Docker network.
       - BETTER_AUTH_URL=http://backend:5000
