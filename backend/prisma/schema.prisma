@@ -29,6 +29,7 @@ model User {
   auditLogs          AuditLog[]
   teacher            Teacher?
   parent             Parent?
+  student            Student?
   studentAttendances StudentAttendance[]
   teacherAttendances TeacherAttendance[]
   studentResults     StudentResult[]
@@ -416,6 +417,7 @@ model AuditLog {
 model Student {
   id          String    @id @default(cuid())
   studentId   String    @unique
+  userId      String?   @unique
   firstName   String
   lastName    String
   fatherName  String?
@@ -444,6 +446,7 @@ model Student {
   emergencyContactRelation String?
   emergencyContactPhone    String?
 
+  user        User?                @relation(fields: [userId], references: [id], onDelete: SetNull)
   enrollments StudentEnrollment[]
   parents     ParentStudent[]
 

@@ -22,6 +22,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         parents: pathname.startsWith("/dashboard/parents"),
         communication: pathname.startsWith("/dashboard/communication"),
         operations: pathname.startsWith("/dashboard/operations"),
+        studentProfile: pathname.startsWith("/dashboard/student/profile"),
+        studentClasses: pathname.startsWith("/dashboard/student/classes"),
+        studentAttendance: pathname.startsWith("/dashboard/student/attendance"),
+        studentAssessments: pathname.startsWith("/dashboard/student/assessments"),
+        studentLearning: pathname.startsWith("/dashboard/student/learning"),
+        studentSupport: pathname.startsWith("/dashboard/student/support"),
+        studentCommunication: pathname.startsWith("/dashboard/student/communication"),
+        studentResources: pathname.startsWith("/dashboard/student/resources"),
+        studentAssistant: pathname.startsWith("/dashboard/student/assistant"),
     });
 
     const toggleMenu = (key: string) => {
@@ -43,6 +52,87 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
     const primaryAccess = authData.access[0];
     const roleName = primaryAccess?.role?.name || "Unassigned";
+<<<<<<< Updated upstream
+=======
+    const isTeacherRoute = (pathname === "/dashboard/teacher" || pathname.startsWith("/dashboard/teacher/")) && roleName === "TEACHER";
+    const isStudentRoute = (pathname === "/dashboard/student" || pathname.startsWith("/dashboard/student/")) && roleName === "STUDENT";
+
+    // Server-side validated role authorization check
+    const isRouteAuthorized = (() => {
+        const isAdmin = ["ADMIN", "SCHOOL_ADMIN", "ADMINISTRATOR"].includes(roleName);
+
+        // 1. /dashboard/teachers (plural) is the Admin Teacher Management route
+        if (pathname.startsWith("/dashboard/teachers")) {
+            return isAdmin;
+        }
+
+        // 2. /dashboard/teacher (singular) is strictly reserved for the TEACHER actor workspace
+        if (pathname === "/dashboard/teacher" || pathname.startsWith("/dashboard/teacher/")) {
+            return roleName === "TEACHER";
+        }
+
+        // 3. Admin routes (/dashboard/admin, /dashboard/academics, /dashboard/school) are strictly for ADMIN roles
+        if (
+            pathname.startsWith("/dashboard/admin") ||
+            pathname.startsWith("/dashboard/academics") ||
+            pathname.startsWith("/dashboard/school")
+        ) {
+            return isAdmin;
+        }
+
+        // 4. Student routes
+        if (pathname.startsWith("/dashboard/student")) {
+            return roleName === "STUDENT" || isAdmin;
+        }
+
+        // 5. Parent routes
+        if (pathname.startsWith("/dashboard/parent")) {
+            return roleName === "PARENT" || isAdmin;
+        }
+
+        // 6. Vice Principal routes
+        if (pathname.startsWith("/dashboard/vice-principal")) {
+            return roleName === "VICE_PRINCIPAL" || isAdmin;
+        }
+
+        return true;
+    })();
+
+    if (!isRouteAuthorized) {
+        const getAuthorizedRolePath = (role: string) => {
+            switch (role) {
+                case "ADMIN":
+                case "SCHOOL_ADMIN":
+                case "ADMINISTRATOR": return "/dashboard/admin";
+                case "TEACHER": return "/dashboard/teacher";
+                case "STUDENT": return "/dashboard/student";
+                case "PARENT": return "/dashboard/parent";
+                case "VICE_PRINCIPAL": return "/dashboard/vice-principal";
+                default: return "/dashboard";
+            }
+        };
+
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-[#f4f5f7] text-gray-700 p-6">
+                <div className="bg-white rounded-2xl shadow-lg border border-amber-200 p-8 max-w-md text-center space-y-4">
+                    <div className="w-12 h-12 bg-amber-100 text-amber-700 rounded-full flex items-center justify-center mx-auto">
+                        <Lock className="w-6 h-6" />
+                    </div>
+                    <h2 className="text-xl font-bold text-gray-900">403 - Forbidden Access</h2>
+                    <p className="text-sm text-gray-600">
+                        You do not have authorization to access this page ({pathname}). You are logged in as <span className="font-bold text-gray-800">{roleName}</span>.
+                    </p>
+                    <button
+                        onClick={() => router.push(getAuthorizedRolePath(roleName))}
+                        className="px-5 py-2.5 bg-blue-600 text-white font-bold text-xs rounded-xl hover:bg-blue-700 transition-colors shadow-sm"
+                    >
+                        Go to My Authorized Dashboard
+                    </button>
+                </div>
+            </div>
+        );
+    }
+>>>>>>> Stashed changes
 
     const handleLogout = async () => {
         try {
@@ -111,6 +201,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                                             <span>Dashboard</span>
                                         </div>
                                     </Link>
+<<<<<<< Updated upstream
 
                                     <Link 
                                         href="/dashboard/school/profile" 
@@ -127,6 +218,24 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                                         <button 
                                             onClick={() => toggleMenu("academics")}
                                             className="w-full flex items-center justify-between px-3 py-2.5 rounded-md text-sm text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors group"
+=======
+                                </div>
+                            </nav>
+                        </div>
+                    </aside>
+                ) : (
+                    <aside className="w-64 bg-white border-r border-gray-200 flex flex-col hidden md:flex overflow-y-auto">
+                        <div className="p-4 pt-6">
+                            <p className="text-xs text-gray-500 uppercase font-bold tracking-wider mb-4 px-2">Navigation</p>
+                            
+                            <nav className="space-y-1">
+                                {isStudentRoute && <StudentNavigation pathname={pathname} openMenus={openMenus} toggleMenu={toggleMenu} />}
+                                {["ADMIN", "SCHOOL_ADMIN", "ADMINISTRATOR"].includes(roleName) && (
+                                    <>
+                                        <Link 
+                                            href="/dashboard/admin" 
+                                            className={`flex items-center justify-between px-3 py-2.5 rounded-md text-sm transition-colors ${pathname === "/dashboard/admin" ? "bg-gray-100 text-gray-900 font-medium" : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"}`}
+>>>>>>> Stashed changes
                                         >
                                             <div className="flex items-center space-x-3">
                                                 <Calendar className="w-4 h-4 text-gray-500" />
@@ -517,3 +626,35 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
     );
 }
+<<<<<<< Updated upstream
+=======
+
+function StudentNavigation({ pathname, openMenus, toggleMenu }: { pathname: string; openMenus: Record<string, boolean>; toggleMenu: (key: string) => void }) {
+    const groups = [
+        { key: "studentProfile", label: "My Profile", icon: User, items: [["Student Information", "/dashboard/student/profile"], ["School & Placement", "/dashboard/student/profile/school"], ["Academic Year", "/dashboard/student/profile/academic-year"]] },
+        { key: "studentClasses", label: "My Classes", icon: BookOpen, items: [["Subjects", "/dashboard/student/classes"], ["Teachers", "/dashboard/student/classes/teachers"], ["Class Schedule", "/dashboard/student/classes/schedule"], ["Learning Resources", "/dashboard/student/classes/resources"]] },
+        { key: "studentAttendance", label: "My Attendance", icon: ClipboardCheck, items: [["Overview & Calendar", "/dashboard/student/attendance"], ["Absence Logs", "/dashboard/student/attendance/absences"], ["Subject Breakdown", "/dashboard/student/attendance/subjects"]] },
+        { key: "studentAssessments", label: "My Assessments", icon: FileText, items: [["Tests & Quizzes", "/dashboard/student/assessments"], ["Assignments", "/dashboard/student/assessments/assignments"], ["Results & Feedback", "/dashboard/student/assessments/results"], ["Performance Trends", "/dashboard/student/assessments/trends"]] },
+        { key: "studentLearning", label: "My Learning Activities", icon: GraduationCap, items: [["View Assignments", "/dashboard/student/learning"], ["Complete Activities", "/dashboard/student/learning/activities"], ["View Feedback", "/dashboard/student/learning/feedback"], ["Track Completion", "/dashboard/student/learning/progress"]] },
+        { key: "studentSupport", label: "My Support", icon: HeartHandshake, items: [["Recommendations", "/dashboard/student/support"], ["Remedial Activities", "/dashboard/student/support/remedial"], ["Intervention Progress", "/dashboard/student/support/progress"]] },
+        { key: "studentCommunication", label: "Communication", icon: MessageSquare, items: [["Teacher Messages", "/dashboard/student/communication"], ["Announcements", "/dashboard/student/communication/announcements"], ["Notifications", "/dashboard/student/communication/notifications"]] },
+        { key: "studentResources", label: "Learning Resources", icon: Package, items: [["Recommended Resources", "/dashboard/student/resources"], ["School Resources", "/dashboard/student/resources/school"]] },
+        { key: "studentAssistant", label: "AI Study Assistant", icon: Sparkles, items: [["Explain Concepts", "/dashboard/student/assistant"], ["Guided Practice", "/dashboard/student/assistant/practice"], ["Study Planning", "/dashboard/student/assistant/planning"]] },
+    ] as const;
+
+    return <>
+        <Link href="/dashboard/student" className={`flex items-center space-x-3 rounded-xl px-3.5 py-2.5 text-xs font-bold transition-all ${pathname === "/dashboard/student" ? "bg-[#006b3f] text-white shadow-sm" : "text-gray-700 hover:bg-gray-100"}`}>
+            <LayoutDashboard className="h-4 w-4" />
+            <span>Dashboard</span>
+        </Link>
+        {groups.map(({ key, label, icon: Icon, items }) => <div key={key} className="pt-2">
+            <button onClick={() => toggleMenu(key)} className="group flex w-full items-center justify-between rounded-md px-3 py-2.5 text-sm text-gray-600 transition-colors hover:bg-gray-50 hover:text-gray-900">
+                <span className="flex items-center space-x-3"><Icon className="h-4 w-4 text-[#006b3f]" /><span>{label}</span></span>
+                {openMenus[key] ? <ChevronDown className="h-4 w-4 text-gray-600" /> : <ChevronRight className="h-4 w-4 text-gray-400" />}
+            </button>
+            {openMenus[key] && <div className="space-y-1 py-1 pl-10 pr-3">{items.map(([itemLabel, href]) => <Link key={href} href={href} className={`block py-1.5 text-sm ${pathname === href ? "font-medium text-[#006b3f]" : "text-gray-500 hover:text-[#006b3f]"}`}>{itemLabel}</Link>)}</div>}
+        </div>)}
+    </>;
+}
+
+>>>>>>> Stashed changes

@@ -46,7 +46,62 @@ async function main() {
         process.exit(1);
     }
 
-    // 4. Assign the Role + Scope to the User
+    // 4. Create or link the domain Student record
+    let student = await prisma.student.findUnique({
+        where: { userId: user.id }
+    });
+
+    if (!student) {
+        const nameParts = user.name.trim().split(/\s+/);
+        const firstName = nameParts.shift() || "Student";
+        const lastName = nameParts.join(" ") || "User";
+
+        student = await prisma.student.create({
+            data: {
+                userId: user.id,
+                studentId: `STU-${user.id.slice(0, 8).toUpperCase()}`,
+                firstName,
+                lastName
+            }
+        });
+        console.log(`Created student profile ${student.studentId}.`);
+    } else {
+        console.log(`Student profile ${student.studentId} is already linked.`);
+    }
+
+    // Give the demo student an active enrollment when academic foundation data exists.
+    const academicYear = await prisma.academicYear.findFirst({
+        where: { organizationId: school.id },
+        orderBy: { createdAt: "desc" }
+    });
+    const schoolGrade = academicYear
+        ? await prisma.schoolGrade.findFirst({ where: { academicYearId: academicYear.id } })
+        : null;
+    const section = schoolGrade
+        ? await prisma.section.findFirst({ where: { schoolGradeId: schoolGrade.id } })
+        : null;
+
+    if (academicYear && schoolGrade) {
+        const enrollment = await prisma.studentEnrollment.findFirst({
+            where: { studentId: student.id, organizationId: school.id, academicYearId: academicYear.id }
+        });
+
+        if (!enrollment) {
+            await prisma.studentEnrollment.create({
+                data: {
+                    studentId: student.id,
+                    organizationId: school.id,
+                    academicYearId: academicYear.id,
+                    schoolGradeId: schoolGrade.id,
+                    sectionId: section?.id || null,
+                    status: "ACTIVE"
+                }
+            });
+            console.log(`Enrolled student in ${school.name}.`);
+        }
+    }
+
+    // 5. Assign the Role + Scope to the User
     const existingAssignment = await prisma.roleAssignment.findFirst({
         where: {
             userId: user.id,

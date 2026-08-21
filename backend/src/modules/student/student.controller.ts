@@ -130,9 +130,27 @@ export const getStudentProfile = async (req: Request, res: Response) => {
         const userId = req.user?.id;
         if (!organizationId || !userId) return res.status(403).json({ error: "Missing school scope or authentication" });
 
-        // TODO: Implement getStudentByUserId when userId is added to Student model
-        return res.status(404).json({ error: "Student profile not found" });
+        const student = await StudentService.getStudentByUserId(userId, organizationId);
+        if (!student) return res.status(404).json({ error: "Student profile not found" });
+
+        return res.json(student);
     } catch (error) {
+        return res.status(500).json({ error: "Internal server error" });
+    }
+};
+
+export const getStudentDashboard = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        const userId = req.user?.id;
+        if (!organizationId || !userId) return res.status(403).json({ error: "Missing school scope or authentication" });
+
+        const dashboard = await StudentService.getStudentDashboard(userId, organizationId);
+        if (!dashboard) return res.status(404).json({ error: "Student dashboard data not found" });
+
+        return res.json(dashboard);
+    } catch (error) {
+        console.error("Error fetching student dashboard:", error);
         return res.status(500).json({ error: "Internal server error" });
     }
 };
