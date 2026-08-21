@@ -8,8 +8,6 @@ import {
     Bell,
     BookOpen,
     CalendarDays,
-    ChevronDown,
-    ChevronRight,
     ClipboardCheck,
     FileText,
     GraduationCap,
@@ -20,13 +18,7 @@ import {
     User,
 } from "lucide-react";
 import { useState } from "react";
-
-type StudentNavGroup = {
-    key: string;
-    label: string;
-    icon: typeof LayoutDashboard;
-    links: { label: string; href: string }[];
-};
+import StudentSubNavigation, { type StudentNavGroup } from "./components/StudentSubNavigation";
 
 const studentNavGroups: StudentNavGroup[] = [
     {
@@ -178,48 +170,15 @@ export default function StudentNavigation() {
                         <span>Timetable</span>
                     </Link>
 
-                    {studentNavGroups.map((group) => {
-                        const Icon = group.icon;
-                        const isOpen = openGroups[group.key];
-
-                        return (
-                            <div className="pt-2" key={group.key}>
-                                <button
-                                    type="button"
-                                    onClick={() => toggleGroup(group.key)}
-                                    className="w-full flex items-center justify-between px-3 py-2 text-xs font-bold text-gray-800 hover:bg-gray-100 rounded-lg transition-colors"
-                                >
-                                    <span className="flex items-center space-x-2.5">
-                                        <Icon className="w-4 h-4 text-[#006b3f]" />
-                                        <span>{group.label}</span>
-                                    </span>
-                                    {isOpen ? (
-                                        <ChevronDown className="w-3.5 h-3.5 text-gray-400" />
-                                    ) : (
-                                        <ChevronRight className="w-3.5 h-3.5 text-gray-400" />
-                                    )}
-                                </button>
-
-                                {isOpen && (
-                                    <div className="pl-6 pt-1 space-y-1">
-                                        {group.links.map((link) => (
-                                            <Link
-                                                href={link.href}
-                                                key={`${group.key}-${link.label}`}
-                                                className={`block px-3 py-1.5 rounded-lg text-xs font-medium ${
-                                                    isActive(link.href)
-                                                        ? "bg-emerald-50 text-[#006b3f] font-bold"
-                                                        : "text-gray-600 hover:bg-gray-50"
-                                                }`}
-                                            >
-                                                {link.label}
-                                            </Link>
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
-                        );
-                    })}
+                    {studentNavGroups.map((group) => (
+                        <StudentSubNavigation
+                            key={group.key}
+                            group={group}
+                            isOpen={openGroups[group.key]}
+                            pathname={pathname}
+                            onToggle={toggleGroup}
+                        />
+                    ))}
 
                     <Link
                         href="/dashboard/student/notifications"
