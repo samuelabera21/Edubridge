@@ -6,6 +6,7 @@ import { Loader2, BookOpen, LogOut, LayoutDashboard, Building, Search, Lock, Che
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { fetchApi } from "../../lib/api";
+import StudentNavigation from "./student/StudentNavigation";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
     const { authData, loading, error } = useAuth(true);
@@ -55,7 +56,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 <<<<<<< Updated upstream
 =======
     const isTeacherRoute = (pathname === "/dashboard/teacher" || pathname.startsWith("/dashboard/teacher/")) && roleName === "TEACHER";
+<<<<<<< Updated upstream
     const isStudentRoute = (pathname === "/dashboard/student" || pathname.startsWith("/dashboard/student/")) && roleName === "STUDENT";
+=======
+    const isStudentRoute = pathname === "/dashboard/student" || pathname.startsWith("/dashboard/student/");
+>>>>>>> Stashed changes
 
     // Server-side validated role authorization check
     const isRouteAuthorized = (() => {
@@ -223,6 +228,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                             </nav>
                         </div>
                     </aside>
+                ) : isStudentRoute ? (
+                    <StudentNavigation />
                 ) : (
                     <aside className="w-64 bg-white border-r border-gray-200 flex flex-col hidden md:flex overflow-y-auto">
                         <div className="p-4 pt-6">

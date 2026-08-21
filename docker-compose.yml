@@ -5,9 +5,15 @@ services:
     image: postgres:15-alpine
     container_name: edubridge_postgres
     environment:
+<<<<<<< Updated upstream
       POSTGRES_USER: edubridge_user
       POSTGRES_PASSWORD: edubridge_password
       POSTGRES_DB: edubridge
+=======
+      POSTGRES_USER: ${POSTGRES_USER:-edubridge_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-edubridge_password}
+      POSTGRES_DB: ${POSTGRES_DB:-edubridge}
+>>>>>>> Stashed changes
     ports:
       - "5434:5432"
     volumes:
@@ -22,8 +28,14 @@ services:
     ports:
       - "5001:5000"
     environment:
+<<<<<<< Updated upstream
       - DATABASE_URL=postgresql://edubridge_user:edubridge_password@db:5432/edubridge
       - BETTER_AUTH_SECRET=development_secret_key_12345
+=======
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-edubridge_user}:${POSTGRES_PASSWORD:-edubridge_password}@db:5432/${POSTGRES_DB:-edubridge}
+      - BETTER_AUTH_SECRET=${BETTER_AUTH_SECRET:-dev_secret_key}
+      - DEFAULT_INITIAL_PASSWORD=${DEFAULT_INITIAL_PASSWORD:-EduBridge2026!}
+>>>>>>> Stashed changes
       # Set BETTER_AUTH_URL to the internal backend address so auth callbacks
       # and base URLs resolve correctly from inside the Docker network.
       - BETTER_AUTH_URL=http://backend:5000
