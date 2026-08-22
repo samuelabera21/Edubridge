@@ -66,10 +66,10 @@ router.post("/resolve-username", async (req, res) => {
 
         // 4. Standard Aliases
         const lower = input.toLowerCase();
-        if (lower === "admin" || lower === "school_admin") return res.json({ email: "admin@edubridge.com" });
-        if (lower === "teacher") return res.json({ email: "teacher@edubridge.com" });
-        if (lower === "student") return res.json({ email: "student@edubridge.com" });
-        if (lower === "parent") return res.json({ email: "parent@edubridge.com" });
+        if (lower === "admin" || lower === "school_admin") return res.json({ email: "admin@edubridge.local" });
+        if (lower === "teacher") return res.json({ email: "teacher@edubridge.local" });
+        if (lower === "student") return res.json({ email: "student@edubridge.local" });
+        if (lower === "parent") return res.json({ email: "parent@edubridge.local" });
 
         // 5. Direct user search
         const directUser = await prisma.user.findFirst({
@@ -348,4 +348,4 @@ router.post("/assign-permission", async (req, res) => {
     }
 });
 
-export default router;
+export default router;
