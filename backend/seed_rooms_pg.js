@@ -2,7 +2,7 @@ import pkg from 'pg';
 const { Client } = pkg;
 
 const client = new Client({
-  connectionString: 'postgresql://edubridge_user:edubridge_password@localhost:5434/edubridge'
+  connectionString: process.env.DATABASE_URL
 });
 
 async function seed() {

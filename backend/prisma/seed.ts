@@ -9,7 +9,10 @@ async function main() {
 
     // 1. Environmental Credentials (Development defaults with production overrides)
     const adminEmail = process.env.ADMIN_EMAIL || "admin@edubridge.local";
-    const adminPassword = process.env.ADMIN_PASSWORD || process.env.DEFAULT_INITIAL_PASSWORD || "EduBridge2026!";
+    const adminPassword = process.env.ADMIN_PASSWORD || process.env.DEFAULT_INITIAL_PASSWORD;
+    if (!adminPassword) {
+        throw new Error("ADMIN_PASSWORD or DEFAULT_INITIAL_PASSWORD must be set before seeding");
+    }
     const adminName = process.env.ADMIN_NAME || "System Administrator";
 
     // 2. Seed Default System Roles
