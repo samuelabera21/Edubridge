@@ -38,15 +38,37 @@ Subjects are also tied to the School and Academic Year. This structure must be p
 ## 4. Running the Project (Docker)
 We use Docker Compose to provide a reproducible development environment.
 
-1. Copy `.env.example` to `.env` in the root directory, `backend/`, and `frontend/`.
-2. Run the environment:
-   ```bash
-   docker-compose up --build
-   ```
-3. The services will be available at:
-   - Frontend: http://localhost:3000
-   - Backend API: http://localhost:5000
-   - Database: localhost:5433 (Postgres)
+### ⚡ First-time setup (run once after cloning)
+
+```bash
+# This creates .env automatically with secure random secrets
+bash setup.sh
+```
+
+> **What `setup.sh` does:**
+> - Creates `.env` from `.env.example` (skips if `.env` already exists)
+> - Auto-generates a random `POSTGRES_PASSWORD` and `BETTER_AUTH_SECRET`
+> - Syncs `backend/.env` with the same database credentials
+> - You never need to manually edit any `.env` file
+
+### ▶️ Start the project
+
+```bash
+docker compose up
+```
+
+> **Services available at:**
+> - **Admin Dashboard (Frontend):** http://localhost:3001
+> - **Backend API:** http://localhost:5001
+> - **Database (Postgres):** localhost:5434
+
+### 🔑 Default login credentials
+| Field | Value |
+|-------|-------|
+| Email | `admin@edubridge.local` |
+| Password | `Admin@1234` |
+
+> **⚠️ Important:** `.env` is git-ignored and will NOT be committed. Every developer must run `bash setup.sh` once after cloning or pulling on a new machine.
 
 ## 5. Database Management (Prisma)
 To run migrations or seed the database, run these commands inside the `backend` directory (or inside the backend container):

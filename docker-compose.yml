@@ -3,7 +3,7 @@ services:
     image: postgres:15-alpine
     container_name: edubridge_postgres
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-postgres_user}
+      POSTGRES_USER: ${POSTGRES_USER:-edubridge_user}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB:-edubridge}
     ports:
