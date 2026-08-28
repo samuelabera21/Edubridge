@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { fromNodeHeaders } from "better-auth/node";
+import { hashPassword } from "better-auth/crypto";
 import { auth } from "../authentication/auth.js";
 import { prisma } from "../../infrastructure/prisma/client.js";
 
@@ -211,7 +212,7 @@ router.post("/create-user", async (req, res) => {
             return res.status(403).json({ message: "Forbidden: Only administrators can create institutional users." });
         }
 
-        const { name, email, password, roleName, scopeName, scopeType } = req.body;
+        const { name, email, password, roleName, scopeName, scopeType, teacherEntityId, studentEntityId, parentEntityId } = req.body;
 
         if (!name || !roleName) {
             return res.status(400).json({ message: "Name and roleName are required." });
@@ -260,6 +261,24 @@ router.post("/create-user", async (req, res) => {
             }
         });
 
+        // Link to existing domain entity if provided
+        if (teacherEntityId) {
+            await prisma.teacher.update({
+                where: { id: teacherEntityId },
+                data: { userId: newUserId }
+            });
+        } else if (studentEntityId) {
+            await prisma.student.update({
+                where: { id: studentEntityId },
+                data: { userId: newUserId }
+            });
+        } else if (parentEntityId) {
+            await prisma.parent.update({
+                where: { id: parentEntityId },
+                data: { userId: newUserId }
+            });
+        }
+
         const targetScopeName = scopeName || "EduBridge Demo School";
         const targetScopeType = scopeType || "SCHOOL";
 
@@ -285,7 +304,7 @@ router.post("/create-user", async (req, res) => {
             user: {
                 id: newUserId,
                 name,
-                email,
+                email: targetEmail,
                 roleName,
                 requiresPasswordChange: true,
                 isActive: true
@@ -345,6 +364,281 @@ router.post("/assign-permission", async (req, res) => {
         return res.status(500).json({
             message: "Failed to assign permission",
         });
+    }
+});
+
+/**
+ * GET /api/auth/unlinked-entities
+ * Returns Teachers, Students, and Parents who do not have a User login account yet.
+ */
+router.get("/unlinked-entities", async (req, res) => {
+    try {
+        const session = await auth.api.getSession({
+            headers: fromNodeHeaders(req.headers),
+        });
+
+        if (!session) {
+            return res.status(401).json({ message: "Unauthorized" });
+        }
+
+        const teachers = await prisma.teacher.findMany({
+            where: { userId: null },
+            select: { id: true, firstName: true, lastName: true, employeeId: true, email: true }
+        });
+
+        const students = await prisma.student.findMany({
+            where: { userId: null },
+            select: { id: true, firstName: true, lastName: true, studentId: true }
+        });
+
+        const parents = await prisma.parent.findMany({
+            where: { userId: null },
+            select: { id: true, firstName: true, lastName: true, phoneNumber: true, email: true }
+        });
+
+        return res.json({
+            teachers: teachers.map(t => ({ id: t.id, name: `${t.firstName} ${t.lastName}`, identifier: t.employeeId || t.email })),
+            students: students.map(s => ({ id: s.id, name: `${s.firstName} ${s.lastName}`, identifier: s.studentId })),
+            parents: parents.map(p => ({ id: p.id, name: `${p.firstName} ${p.lastName}`, identifier: p.phoneNumber || p.email }))
+        });
+    } catch (error: any) {
+        return res.status(500).json({ message: error.message || "Failed to fetch unlinked entities." });
+    }
+});
+
+/**
+ * GET /api/auth/users
+ * Lists users in the school scope for Admin User Management.
+ * Supports optional ?role= and ?search= query params.
+ */
+router.get("/users", async (req, res) => {
+    try {
+        const session = await auth.api.getSession({
+            headers: fromNodeHeaders(req.headers),
+        });
+
+        if (!session) {
+            return res.status(401).json({ message: "Unauthorized" });
+        }
+
+        const userAccess = await getUserAccess(session.user.id);
+        const isAdmin = userAccess.some(a => ["ADMIN", "SCHOOL_ADMIN", "ADMINISTRATOR"].includes(a.role.name));
+        if (!isAdmin) {
+            return res.status(403).json({ message: "Forbidden: Only administrators can view institutional users." });
+        }
+
+        const { search, role } = req.query;
+
+        const whereClause: any = {};
+        if (search && typeof search === "string" && search.trim() !== "") {
+            const query = search.trim();
+            whereClause.OR = [
+                { name: { contains: query, mode: "insensitive" } },
+                { email: { contains: query, mode: "insensitive" } }
+            ];
+        }
+
+        if (role && typeof role === "string" && role.trim() !== "" && role.trim().toUpperCase() !== "ALL") {
+            const r = role.trim().toUpperCase();
+            if (r === "TEACHER") {
+                whereClause.AND = [
+                    ...(whereClause.AND || []),
+                    {
+                        OR: [
+                            { roleAssignments: { some: { role: { name: { equals: "TEACHER", mode: "insensitive" } } } } },
+                            { teacher: { isNot: null } }
+                        ]
+                    }
+                ];
+            } else if (r === "STUDENT") {
+                whereClause.AND = [
+                    ...(whereClause.AND || []),
+                    {
+                        OR: [
+                            { roleAssignments: { some: { role: { name: { equals: "STUDENT", mode: "insensitive" } } } } },
+                            { student: { isNot: null } }
+                        ]
+                    }
+                ];
+            } else if (r === "PARENT") {
+                whereClause.AND = [
+                    ...(whereClause.AND || []),
+                    {
+                        OR: [
+                            { roleAssignments: { some: { role: { name: { equals: "PARENT", mode: "insensitive" } } } } },
+                            { parent: { isNot: null } }
+                        ]
+                    }
+                ];
+            } else {
+                whereClause.roleAssignments = {
+                    some: {
+                        role: {
+                            name: { equals: r, mode: "insensitive" }
+                        }
+                    }
+                };
+            }
+        }
+
+        const users = await prisma.user.findMany({
+            where: whereClause,
+            include: {
+                roleAssignments: {
+                    include: {
+                        role: true,
+                        scope: true
+                    }
+                },
+                teacher: true,
+                student: true,
+                parent: true
+            },
+            orderBy: { createdAt: "desc" }
+        });
+
+        const formatted = users.map(u => {
+            let entityInfo = null;
+            if (u.teacher) {
+                entityInfo = { type: "TEACHER", id: u.teacher.id, identifier: u.teacher.employeeId || "Teacher" };
+            } else if (u.student) {
+                entityInfo = { type: "STUDENT", id: u.student.id, identifier: u.student.studentId || "Student" };
+            } else if (u.parent) {
+                entityInfo = { type: "PARENT", id: u.parent.id, identifier: u.parent.phoneNumber || "Parent" };
+            }
+
+            const roles = u.roleAssignments.map(ra => ra.role.name);
+            if (u.teacher && !roles.includes("TEACHER")) roles.push("TEACHER");
+            if (u.student && !roles.includes("STUDENT")) roles.push("STUDENT");
+            if (u.parent && !roles.includes("PARENT")) roles.push("PARENT");
+            if (roles.length === 0) roles.push("USER");
+
+            return {
+                id: u.id,
+                name: u.name,
+                email: u.email,
+                isActive: u.isActive ?? true,
+                requiresPasswordChange: u.requiresPasswordChange ?? false,
+                createdAt: u.createdAt,
+                roles,
+                scopeName: u.roleAssignments[0]?.scope?.name || "EduBridge Demo School",
+                entityInfo
+            };
+        });
+
+        return res.json({ users: formatted });
+    } catch (error: any) {
+        return res.status(500).json({ message: error.message || "Failed to fetch users." });
+    }
+});
+
+/**
+ * PATCH /api/auth/users/:id/status
+ * Toggles user active status (isActive: true/false).
+ */
+router.patch("/users/:id/status", async (req, res) => {
+    try {
+        const session = await auth.api.getSession({
+            headers: fromNodeHeaders(req.headers),
+        });
+
+        if (!session) {
+            return res.status(401).json({ message: "Unauthorized" });
+        }
+
+        const userAccess = await getUserAccess(session.user.id);
+        const isAdmin = userAccess.some(a => ["ADMIN", "SCHOOL_ADMIN", "ADMINISTRATOR"].includes(a.role.name));
+        if (!isAdmin) {
+            return res.status(403).json({ message: "Forbidden: Only administrators can update user status." });
+        }
+
+        const targetUserId = req.params.id;
+        if (targetUserId === session.user.id) {
+            return res.status(400).json({ message: "You cannot deactivate your own admin account." });
+        }
+
+        const { isActive } = req.body;
+        if (typeof isActive !== "boolean") {
+            return res.status(400).json({ message: "isActive parameter must be a boolean." });
+        }
+
+        const updated = await prisma.user.update({
+            where: { id: targetUserId },
+            data: { isActive }
+        });
+
+        await prisma.auditLog.create({
+            data: {
+                userId: session.user.id,
+                action: "USER_STATUS_UPDATED",
+                resource: "User",
+                resourceId: targetUserId,
+                newValue: { isActive }
+            }
+        });
+
+        return res.json({
+            success: true,
+            userId: targetUserId,
+            isActive: updated.isActive
+        });
+    } catch (error: any) {
+        return res.status(400).json({ message: error.message || "Failed to update user status." });
+    }
+});
+
+/**
+ * POST /api/auth/users/:id/reset-password
+ * Resets user password back to default temporary password (Admin@1234) and sets requiresPasswordChange = true.
+ */
+router.post("/users/:id/reset-password", async (req, res) => {
+    try {
+        const session = await auth.api.getSession({
+            headers: fromNodeHeaders(req.headers),
+        });
+
+        if (!session) {
+            return res.status(401).json({ message: "Unauthorized" });
+        }
+
+        const userAccess = await getUserAccess(session.user.id);
+        const isAdmin = userAccess.some(a => ["ADMIN", "SCHOOL_ADMIN", "ADMINISTRATOR"].includes(a.role.name));
+        if (!isAdmin) {
+            return res.status(403).json({ message: "Forbidden: Only administrators can reset user passwords." });
+        }
+
+        const targetUserId = req.params.id;
+        const tempPassword = req.body.password || process.env.DEFAULT_INITIAL_PASSWORD || "Admin@1234";
+
+        const hashedPassword = await hashPassword(tempPassword);
+
+        await prisma.account.updateMany({
+            where: { userId: targetUserId },
+            data: { password: hashedPassword }
+        });
+
+        await prisma.user.update({
+            where: { id: targetUserId },
+            data: { requiresPasswordChange: true }
+        });
+
+        await prisma.auditLog.create({
+            data: {
+                userId: session.user.id,
+                action: "USER_PASSWORD_RESET",
+                resource: "User",
+                resourceId: targetUserId,
+                newValue: { requiresPasswordChange: true }
+            }
+        });
+
+        return res.json({
+            success: true,
+            message: "Temporary password reset successfully.",
+            temporaryPassword: tempPassword
+        });
+    } catch (error: any) {
+        return res.status(400).json({ message: error.message || "Failed to reset password." });
     }
 });
 

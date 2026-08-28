@@ -604,6 +604,16 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                                             </div>
                                         </Link>
 
+                                        <Link 
+                                            href="/dashboard/admin/users" 
+                                            className={`flex items-center justify-between px-3 py-2.5 rounded-md text-sm transition-colors ${pathname.startsWith("/dashboard/admin/users") ? "bg-gray-100 text-gray-900 font-medium" : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"}`}
+                                        >
+                                            <div className="flex items-center space-x-3">
+                                                <Users className="w-4 h-4 text-gray-500" />
+                                                <span>User Management</span>
+                                            </div>
+                                        </Link>
+
                                         {/* Academics Group */}
                                         <div className="pt-2">
                                             <button 
