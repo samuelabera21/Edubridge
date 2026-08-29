@@ -34,7 +34,10 @@ if (Test-Path $EnvFile) {
     $rng.GetBytes($authSecretBytes)
     $authSecret = [System.BitConverter]::ToString($authSecretBytes) -replace '-', ''
 
-    $defaultPass = "Admin@1234"
+    # --- Generate DEFAULT_INITIAL_PASSWORD ---
+    $defaultPassBytes = New-Object byte[] 18
+    [System.Security.Cryptography.RandomNumberGenerator]::Fill($defaultPassBytes)
+    $defaultPass = [Convert]::ToBase64String($defaultPassBytes)
 
     # Replace blank values
     $content = $content -replace "(?m)^POSTGRES_PASSWORD=.*$", "POSTGRES_PASSWORD=$pgPass"
@@ -83,6 +86,6 @@ Write-Host "    docker compose up" -ForegroundColor White
 Write-Host ""
 Write-Host "  Then log in at: http://localhost:3001" -ForegroundColor White
 Write-Host "  Email    : admin@edubridge.local" -ForegroundColor White
-Write-Host "  Password : Admin@1234" -ForegroundColor White
+Write-Host "  Password : value configured in your .env" -ForegroundColor White
 Write-Host "==============================================" -ForegroundColor Cyan
 Write-Host ""
