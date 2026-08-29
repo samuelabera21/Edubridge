@@ -62,14 +62,37 @@ export default function StudentDashboard() {
 
     const firstName = authData?.user?.name?.split(" ")[0] || dashboard.student.name.split(" ")[0];
     const attendanceLabel = dashboard.attendance.rate === null ? "No records" : `${dashboard.attendance.rate}%`;
+    const hour = new Date().getHours();
+    const greeting = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
+    const gradeName = dashboard.enrollment.schoolGrade?.grade?.name || "Grade";
+    const sectionName = dashboard.enrollment.section?.name ? `Section ${dashboard.enrollment.section.name}` : "Section not assigned";
+    const academicYear = dashboard.enrollment.academicYear?.name || "Current academic year";
+
+    // This is the enrollment chain that defines the student's academic context:
+    // StudentEnrollment -> SchoolGrade -> Grade
+    // StudentEnrollment -> Section
+    // StudentEnrollment -> AcademicYear
 
     return (
         <div className="mx-auto w-full max-w-6xl space-y-6">
             <section className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-[#006b3f] to-sky-500 p-8 text-white shadow-lg">
-                <div className="relative z-10">
-                    <p className="mb-2 text-sm font-medium uppercase tracking-wide text-blue-100">Student dashboard</p>
-                    <h1 className="mb-2 text-3xl font-bold">Welcome back, {firstName}!</h1>
-                    <p className="text-lg text-blue-100">{dashboard.enrollment.schoolGrade.grade.name} · Section {dashboard.enrollment.section?.name || "Not assigned"} · {dashboard.enrollment.academicYear.name}</p>
+                <div className="relative z-10 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+                    <div>
+                        <p className="mb-2 text-sm font-medium uppercase tracking-wide text-blue-100">Student dashboard</p>
+                        <h1 className="mb-2 text-3xl font-bold">{greeting}, {firstName}!</h1>
+                        <p className="text-lg text-blue-100">{gradeName} · {sectionName} · {academicYear}</p>
+                    </div>
+
+                    <div className="grid gap-2 sm:grid-cols-2">
+                        <div className="rounded-xl border border-white/20 bg-white/10 px-3 py-2 backdrop-blur-sm">
+                            <p className="text-[10px] uppercase tracking-wide text-blue-100">Student ID</p>
+                            <p className="text-sm font-bold text-white">{dashboard.student.studentId}</p>
+                        </div>
+                        <div className="rounded-xl border border-white/20 bg-white/10 px-3 py-2 backdrop-blur-sm">
+                            <p className="text-[10px] uppercase tracking-wide text-blue-100">Academic year</p>
+                            <p className="text-sm font-bold text-white">{academicYear}</p>
+                        </div>
+                    </div>
                 </div>
                 <GraduationCap className="absolute -bottom-10 -right-10 h-64 w-64 -rotate-12 text-white opacity-10" />
             </section>
