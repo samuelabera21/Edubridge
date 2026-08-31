@@ -4,10 +4,19 @@ import { IssuePriority, SupportFlagType, ActivityType, SubmissionStatus, Attenda
 export class TeacherService {
     static async createTeacher(organizationId: string, data: any) {
         return await prisma.$transaction(async (tx) => {
-            const count = await tx.teacher.count();
-            const seq = String(count + 1).padStart(4, "0");
-            const autoEmployeeId = data.employeeId || `TCH-2026-${seq}`;
-            const autoEmail = data.email || `tch.2026.${seq}@edubridge.local`;
+            let seqNum = (await tx.teacher.count()) + 1;
+            let autoEmployeeId = data.employeeId || `TCH-2026-${String(seqNum).padStart(4, "0")}`;
+            while (await tx.teacher.findUnique({ where: { employeeId: autoEmployeeId } })) {
+                seqNum++;
+                autoEmployeeId = `TCH-2026-${String(seqNum).padStart(4, "0")}`;
+            }
+
+            let userSeqNum = (await tx.user.count()) + 1;
+            let autoEmail = data.email || `tch.2026.${String(userSeqNum).padStart(4, "0")}@edubridge.local`;
+            while (await tx.user.findUnique({ where: { email: autoEmail } })) {
+                userSeqNum++;
+                autoEmail = `tch.2026.${String(userSeqNum).padStart(4, "0")}@edubridge.local`;
+            }
 
             // Auto-create User account for authentication
             let userId = data.userId || null;

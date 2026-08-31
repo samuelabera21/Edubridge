@@ -107,4 +107,16 @@ export class OperationalService {
 
         return { success: true };
     }
+
+    static async updateImprovementPlanStatus(id: string, organizationId: string, status: string) {
+        const plan = await prisma.improvementPlan.findFirst({
+            where: { id, organizationId }
+        });
+        if (!plan) throw new Error("Improvement plan not found");
+
+        return prisma.improvementPlan.update({
+            where: { id },
+            data: { status }
+        });
+    }
 }

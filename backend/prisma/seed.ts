@@ -9,7 +9,10 @@ async function main() {
 
     // 1. Environmental Credentials (Development defaults with production overrides)
     const adminEmail = process.env.ADMIN_EMAIL || "admin@edubridge.local";
-    const adminPassword = process.env.ADMIN_PASSWORD || process.env.DEFAULT_INITIAL_PASSWORD || "EduBridge2026!";
+    const adminPassword = process.env.ADMIN_PASSWORD || process.env.DEFAULT_INITIAL_PASSWORD;
+    if (!adminPassword) {
+        throw new Error("ADMIN_PASSWORD or DEFAULT_INITIAL_PASSWORD must be set before seeding");
+    }
     const adminName = process.env.ADMIN_NAME || "System Administrator";
 
     // 2. Seed Default System Roles
@@ -50,7 +53,14 @@ async function main() {
         { name: "SCHOOL:UPDATE", desc: "Update School Profile" },
         { name: "ASSESSMENT:VIEW", desc: "View Assessments" },
         { name: "ASSESSMENT:CREATE", desc: "Create Assessments" },
-        { name: "ASSESSMENT:GRADE", desc: "Grade Assessments" }
+        { name: "ASSESSMENT:GRADE", desc: "Grade Assessments" },
+        { name: "OPERATIONAL:VIEW", desc: "View School Resources and Operations" },
+        { name: "OPERATIONAL:CREATE", desc: "Create School Resources and Improvement Plans" },
+        { name: "OPERATIONAL:UPDATE", desc: "Update School Resources and Plans" },
+        { name: "OPERATIONAL:DELETE", desc: "Delete School Resources" },
+        { name: "ISSUE:VIEW", desc: "View School Infrastructure Issues" },
+        { name: "ISSUE:CREATE", desc: "Report Infrastructure Issues" },
+        { name: "ISSUE:UPDATE", desc: "Update Infrastructure Issue Status" }
     ];
 
     const adminRoles = ["SCHOOL_ADMIN", "ADMIN"];
@@ -126,8 +136,8 @@ async function main() {
             });
             console.log(`✅ Admin account created with ID: ${adminUser.id}`);
         }
-    } else {
-        console.log(`ℹ️ Admin user (${adminEmail}) exists. Resetting temporary password to ${adminPassword}...`);
+    } else if (process.env.FORCE_RESET_ADMIN === "true") {
+        console.log(`⚠️ FORCE_RESET_ADMIN is active. Resetting temporary password to ${adminPassword}...`);
         try {
             const ctx = await auth.$context;
             const hashedPassword = await ctx.password.hash(adminPassword);
@@ -139,10 +149,12 @@ async function main() {
                 where: { id: adminUser.id },
                 data: { requiresPasswordChange: true, isActive: true }
             });
-            console.log(`✅ Password updated to: ${adminPassword}`);
+            console.log(`✅ Admin password reset to: ${adminPassword}`);
         } catch (e) {
             console.log(`ℹ️ User password verified.`);
         }
+    } else {
+        console.log(`ℹ️ Admin user (${adminEmail}) already exists. Retaining existing user credentials.`);
     }
 
     if (adminUser) {

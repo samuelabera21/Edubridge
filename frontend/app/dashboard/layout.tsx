@@ -6,6 +6,7 @@ import { Loader2, BookOpen, LogOut, LayoutDashboard, Building, Search, Lock, Che
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { fetchApi } from "../../lib/api";
+import StudentNavigation from "./student/StudentNavigation";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
     const { authData, loading, error } = useAuth(true);
@@ -685,6 +686,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                             </nav>
                         </div>
                     </aside>
+                ) : isStudentRoute ? (
+                    <StudentNavigation />
                 ) : (
                     <aside className="w-64 bg-white border-r border-gray-200 flex flex-col hidden md:flex overflow-y-auto">
                         <div className="p-4 pt-6">
@@ -710,6 +713,16 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                                             <div className="flex items-center space-x-3">
                                                 <Building className="w-4 h-4 text-gray-500" />
                                                 <span>School Profile</span>
+                                            </div>
+                                        </Link>
+
+                                        <Link 
+                                            href="/dashboard/admin/users" 
+                                            className={`flex items-center justify-between px-3 py-2.5 rounded-md text-sm transition-colors ${pathname.startsWith("/dashboard/admin/users") ? "bg-gray-100 text-gray-900 font-medium" : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"}`}
+                                        >
+                                            <div className="flex items-center space-x-3">
+                                                <Users className="w-4 h-4 text-gray-500" />
+                                                <span>User Management</span>
                                             </div>
                                         </Link>
 

@@ -2,7 +2,7 @@ import { Router } from "express";
 import { 
     createResource, getResources, updateResource, deleteResource,
     reportIssue, getIssues, updateIssueStatus,
-    createImprovementPlan, getImprovementPlans
+    createImprovementPlan, getImprovementPlans, updateImprovementPlanStatus
 } from "./operational.controller.js";
 import { requirePermission, requireScope } from "../authentication/authorization.middleware.js";
 
@@ -110,5 +110,6 @@ router.post("/improvement-plan", requireScope("SCHOOL"), requirePermission("OPER
  *       - cookieAuth: []
  */
 router.get("/improvement-plan", requireScope("SCHOOL"), requirePermission("OPERATIONAL:VIEW"), getImprovementPlans);
+router.patch("/improvement-plan/:id/status", requireScope("SCHOOL"), requirePermission("OPERATIONAL:UPDATE"), updateImprovementPlanStatus);
 
 export default router;

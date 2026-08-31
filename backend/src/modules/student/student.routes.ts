@@ -7,7 +7,8 @@ import {
     getEnrollments, 
     transferStudent,
     updateStudentStatus,
-    getStudentProfile 
+    getStudentProfile,
+    getStudentDashboard
 } from "./student.controller.js";
 import { requirePermission, requireScope } from "../authentication/authorization.middleware.js";
 
@@ -99,6 +100,8 @@ router.put("/enrollments/:enrollmentId/status", requireScope("SCHOOL"), requireP
  *       - cookieAuth: []
  */
 router.get("/me", requireScope("SCHOOL"), getStudentProfile);
+
+router.get("/dashboard", requireScope("SCHOOL"), getStudentDashboard);
 
 /**
  * @openapi

@@ -7,6 +7,7 @@ export class StudentService {
             data: {
                 firstName: data.firstName,
                 lastName: data.lastName,
+                userId: data.studentUserId || null,
                 fatherName: data.fatherName,
                 grandfatherName: data.grandfatherName,
                 studentId: data.studentId,
@@ -201,19 +202,23 @@ export class StudentService {
         return updated;
     }
 
-    static async getStudentByUserId(userId: string) {
+    static async getStudentByUserId(userId: string, organizationId: string) {
         return prisma.student.findFirst({
             where: { 
-                parents: {
+                userId,
+                enrollments: {
                     some: {
-                        parent: {
-                            userId
-                        }
+                        organizationId,
+                        status: { in: ["ENROLLED", "ACTIVE"] }
                     }
                 }
             },
             include: {
                 enrollments: {
+                    where: {
+                        organizationId,
+                        status: { in: ["ENROLLED", "ACTIVE"] }
+                    },
                     include: {
                         schoolGrade: { include: { grade: true } },
                         section: true,
@@ -223,5 +228,119 @@ export class StudentService {
                 }
             }
         });
+    }
+
+    static async getStudentDashboard(userId: string, organizationId: string) {
+        const student = await this.getStudentByUserId(userId, organizationId);
+        const enrollment = student?.enrollments[0];
+
+        if (!student || !enrollment) return null;
+
+        const today = new Date();
+        const todayStart = new Date(today);
+        todayStart.setHours(0, 0, 0, 0);
+        const tomorrow = new Date(todayStart);
+        tomorrow.setDate(tomorrow.getDate() + 1);
+
+        const [todayClasses, attendance, results, activities, notifications, supportFlags, announcements] = await Promise.all([
+            prisma.timetable.findMany({
+                where: {
+                    organizationId,
+                    academicYearId: enrollment.academicYearId,
+                    dayOfWeek: today.getDay(),
+                    teachingAssignment: { sectionId: enrollment.sectionId }
+                },
+                include: {
+                    classPeriod: true,
+                    teachingAssignment: {
+                        include: { subject: true, teacher: true }
+                    }
+                },
+                orderBy: { classPeriod: { startTime: "asc" } }
+            }),
+            prisma.studentAttendance.findMany({
+                where: { organizationId, enrollmentId: enrollment.id },
+                select: { status: true }
+            }),
+            prisma.studentResult.findMany({
+                where: { enrollmentId: enrollment.id, assessment: { organizationId } },
+                include: {
+                    assessment: {
+                        include: { teachingAssignment: { include: { subject: true } } }
+                    }
+                },
+                orderBy: { createdAt: "desc" },
+                take: 5
+            }),
+            prisma.learningActivity.findMany({
+                where: {
+                    organizationId,
+                    academicYearId: enrollment.academicYearId,
+                    teachingAssignment: { sectionId: enrollment.sectionId },
+                    OR: [{ dueDate: null }, { dueDate: { gte: todayStart } }]
+                },
+                include: {
+                    teachingAssignment: { include: { subject: true } },
+                    submissions: { where: { enrollmentId: enrollment.id }, select: { status: true, submittedAt: true } }
+                },
+                orderBy: [{ dueDate: "asc" }, { createdAt: "desc" }],
+                take: 5
+            }),
+            prisma.notification.findMany({
+                where: { userId },
+                orderBy: { createdAt: "desc" },
+                take: 5
+            }),
+            prisma.supportFlag.findMany({
+                where: { organizationId, enrollmentId: enrollment.id, resolvedAt: null },
+                orderBy: { createdAt: "desc" },
+                take: 5
+            }),
+            prisma.announcement.findMany({
+                where: {
+                    organizationId,
+                    OR: [
+                        { target: "ALL" },
+                        { target: "STUDENTS" },
+                        { target: "SPECIFIC_GRADE", targetId: enrollment.schoolGradeId },
+                        { target: "SPECIFIC_SECTION", targetId: enrollment.sectionId }
+                    ],
+                    AND: [{ OR: [{ expiresAt: null }, { expiresAt: { gte: todayStart } }] }]
+                },
+                orderBy: { createdAt: "desc" },
+                take: 5
+            })
+        ]);
+
+        const presentCount = attendance.filter(record => record.status === "PRESENT" || record.status === "EXCUSED").length;
+        const attendanceRate = attendance.length ? Math.round((presentCount / attendance.length) * 100) : null;
+
+        return {
+            student: {
+                id: student.id,
+                studentId: student.studentId,
+                name: [student.firstName, student.lastName].filter(Boolean).join(" "),
+                photoUrl: student.photoUrl
+            },
+            enrollment,
+            todayClasses,
+            attendance: { rate: attendanceRate, records: attendance.length },
+            recentResults: results.map(result => ({
+                id: result.id,
+                title: result.assessment.title,
+                subject: result.assessment.teachingAssignment.subject.name,
+                score: result.score,
+                maxScore: result.assessment.maxScore,
+                percentage: Math.round((result.score / result.assessment.maxScore) * 100),
+                feedback: result.feedback,
+                publishedAt: result.createdAt
+            })),
+            upcomingActivities: activities,
+            notifications,
+            supportFlags,
+            announcements,
+            generatedAt: today.toISOString(),
+            dateRange: { today: todayStart.toISOString(), tomorrow: tomorrow.toISOString() }
+        };
     }
 }
