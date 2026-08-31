@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "../../hooks/useAuth";
 import { Loader2, BookOpen, LogOut, LayoutDashboard, Building, Search, Lock, ChevronDown, ChevronRight, Calendar, Users, GraduationCap, ClipboardCheck, FileText, Settings, User, Megaphone, Bell, MessageSquare, Package, AlertOctagon, TrendingUp, HeartHandshake, BarChart2, Sparkles, Menu } from "lucide-react";
 import Link from "next/link";
@@ -23,6 +23,35 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         communication: pathname.startsWith("/dashboard/communication"),
         operations: pathname.startsWith("/dashboard/operations"),
     });
+
+    const [showProfileDropdown, setShowProfileDropdown] = useState(false);
+    const [headerCounts, setHeaderCounts] = useState<{ notifications: number; messages: number }>({
+        notifications: 0,
+        messages: 0,
+    });
+
+    const primaryAccess = authData?.access?.[0];
+    const roleName = primaryAccess?.role?.name || "Unassigned";
+    const isTeacherRoute = (pathname === "/dashboard/teacher" || pathname.startsWith("/dashboard/teacher/")) && roleName === "TEACHER";
+
+    useEffect(() => {
+        if (isTeacherRoute && authData) {
+            async function loadHeaderCounts() {
+                try {
+                    const res = await fetchApi("/teacher/dashboard-summary");
+                    if (res.ok) {
+                        const data = await res.json();
+                        const notifs = (data.attendancePendingCount || 0) + (data.studentsNeedAttentionCount || 0);
+                        const msgs = (data.pendingSubmissionsCount || 0) + (data.pendingAssessmentsCount || 0);
+                        setHeaderCounts({ notifications: notifs, messages: msgs });
+                    }
+                } catch (err) {
+                    console.error("Failed to load header counts:", err);
+                }
+            }
+            loadHeaderCounts();
+        }
+    }, [isTeacherRoute, pathname, authData]);
 
     const toggleMenu = (key: string) => {
         setOpenMenus(prev => ({ ...prev, [key]: !prev[key] }));
@@ -78,10 +107,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             </div>
         );
     }
-
-    const primaryAccess = authData.access[0];
-    const roleName = primaryAccess?.role?.name || "Unassigned";
-    const isTeacherRoute = (pathname === "/dashboard/teacher" || pathname.startsWith("/dashboard/teacher/")) && roleName === "TEACHER";
 
     // Server-side validated role authorization check
     const isRouteAuthorized = (() => {
@@ -173,23 +198,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             {/* Top Navigation Bar */}
             <header className="bg-white border-b border-gray-200 h-16 flex items-center justify-between px-6 z-10">
                 <div className="flex items-center space-x-3">
-                    {isTeacherRoute ? (
-                        <div className="flex items-center space-x-3">
-                            <div className="w-9 h-9 rounded-xl bg-blue-600 flex items-center justify-center text-white shadow-sm font-bold">
-                                <BookOpen className="w-5 h-5 text-white" />
-                            </div>
-                            <span className="text-xl font-extrabold text-blue-900 tracking-tight">Edu<span className="text-blue-600">Bridge</span></span>
+                    <div className="flex items-center space-x-2">
+                        <div className="text-[#006b3f]">
+                            <svg className="w-8 h-8" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M12 2L2 7l10 5 10-5-10-5zm0 7.5L4.5 7 12 4.25 19.5 7 12 9.5zM2 12l10 5 10-5v5l-10 5-10-5v-5z"/>
+                            </svg>
                         </div>
-                    ) : (
-                        <div className="flex items-center space-x-2">
-                            <div className="text-[#006b3f]">
-                                <svg className="w-8 h-8" viewBox="0 0 24 24" fill="currentColor">
-                                    <path d="M12 2L2 7l10 5 10-5-10-5zm0 7.5L4.5 7 12 4.25 19.5 7 12 9.5zM2 12l10 5 10-5v5l-10 5-10-5v-5z"/>
-                                </svg>
-                            </div>
-                            <span className="text-xl font-bold text-orange-500 tracking-tight">Edu<span className="text-[#006b3f]">Bridge</span></span>
-                        </div>
-                    )}
+                        <span className="text-xl font-bold text-orange-500 tracking-tight">Edu<span className="text-[#006b3f]">Bridge</span></span>
+                    </div>
                 </div>
 
                 <div className="hidden md:flex items-center space-x-5">
@@ -215,32 +231,101 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                     {/* Notification & Message Badges for Teacher Header */}
                     {isTeacherRoute && (
                         <div className="flex items-center space-x-3">
-                            <button className="relative p-2 rounded-full hover:bg-gray-100 text-gray-600 transition-colors" title="Notifications">
+                            <button 
+                                onClick={() => router.push("/dashboard/teacher/support")}
+                                className="relative p-2 rounded-full hover:bg-gray-100 text-gray-600 transition-colors cursor-pointer" 
+                                title="Notifications (Pending Tasks & Alerts)"
+                            >
                                 <Bell className="w-5 h-5 text-gray-600" />
-                                <span className="absolute top-1 right-1 w-4 h-4 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center border-2 border-white">12</span>
+                                {headerCounts.notifications > 0 && (
+                                    <span className="absolute top-1 right-1 px-1 min-w-4 h-4 bg-rose-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center border-2 border-white">
+                                        {headerCounts.notifications}
+                                    </span>
+                                )}
                             </button>
 
-                            <button className="relative p-2 rounded-full hover:bg-gray-100 text-gray-600 transition-colors" title="Messages">
+                            <button 
+                                onClick={() => router.push("/dashboard/teacher/communication/parent")}
+                                className="relative p-2 rounded-full hover:bg-gray-100 text-gray-600 transition-colors cursor-pointer" 
+                                title="Messages (Activity Submissions & Parent Requests)"
+                            >
                                 <MessageSquare className="w-5 h-5 text-gray-600" />
-                                <span className="absolute top-1 right-1 w-4 h-4 bg-blue-600 text-white text-[10px] font-bold rounded-full flex items-center justify-center border-2 border-white">27</span>
+                                {headerCounts.messages > 0 && (
+                                    <span className="absolute top-1 right-1 px-1 min-w-4 h-4 bg-[#4085b3] text-white text-[10px] font-bold rounded-full flex items-center justify-center border-2 border-white">
+                                        {headerCounts.messages}
+                                    </span>
+                                )}
                             </button>
                         </div>
                     )}
 
-                    {/* User Profile Info */}
-                    <div className="flex items-center space-x-3 border-l pl-4 border-gray-200">
-                        <div className="w-8 h-8 rounded-full bg-blue-600 border border-white flex items-center justify-center text-white font-bold text-xs shadow-sm">
-                            {authData?.user?.name ? authData.user.name.split(' ').map((n: string) => n[0]).join('') : "Y"}
-                        </div>
-                        <div className="hidden sm:block text-left">
-                            <p className="text-xs font-bold text-gray-800 leading-tight">{authData?.user?.name || "Mr. Yohannes"}</p>
-                            <p className="text-[10px] text-gray-500 font-medium leading-tight">{isTeacherRoute ? "Teacher" : roleName}</p>
-                        </div>
-                        <ChevronDown className="w-3.5 h-3.5 text-gray-400" />
-
-                        <button onClick={handleLogout} className="text-gray-400 hover:text-red-600 transition-colors ml-2" title="Logout">
-                            <LogOut className="w-4 h-4" />
+                    {/* User Profile Info & Interactive Dropdown Menu */}
+                    <div className="relative border-l pl-4 border-gray-200">
+                        <button 
+                            onClick={() => setShowProfileDropdown(!showProfileDropdown)}
+                            className="flex items-center space-x-2.5 hover:opacity-80 transition-opacity focus:outline-none cursor-pointer"
+                        >
+                            <div className="w-8 h-8 rounded-full bg-[#4085b3] border border-white flex items-center justify-center text-white font-bold text-xs shadow-2xs">
+                                {authData?.user?.name ? authData.user.name.split(' ').map((n: string) => n[0]).join('') : "Y"}
+                            </div>
+                            <div className="hidden sm:block text-left">
+                                <p className="text-xs font-bold text-gray-800 leading-tight">{authData?.user?.name || "Mr. Yohannes"}</p>
+                                <p className="text-[10px] text-gray-500 font-medium leading-tight">{isTeacherRoute ? "Teacher" : roleName}</p>
+                            </div>
+                            <ChevronDown className={`w-3.5 h-3.5 text-gray-400 transition-transform ${showProfileDropdown ? "rotate-180" : ""}`} />
                         </button>
+
+                        {/* Dropdown Menu Popup */}
+                        {showProfileDropdown && (
+                            <div 
+                                className="absolute right-0 mt-3 w-56 bg-white rounded-2xl shadow-xl border border-gray-100 py-2 z-50 text-xs font-medium text-gray-700 animate-in fade-in slide-in-from-top-2 duration-150"
+                                onMouseLeave={() => setShowProfileDropdown(false)}
+                            >
+                                {/* Header info */}
+                                <div className="px-4 py-2.5 border-b border-gray-100 bg-gray-50/50">
+                                    <p className="font-bold text-gray-900 text-xs">{authData?.user?.name || "Mr. Yohannes"}</p>
+                                    <p className="text-[10px] text-gray-500 truncate">{authData?.user?.email || "teacher@edubridge.local"}</p>
+                                    <span className="inline-block mt-1 px-2 py-0.5 bg-blue-50 text-[#4085b3] rounded font-bold text-[9px]">
+                                        {isTeacherRoute ? "TEACHER ROLE" : roleName}
+                                    </span>
+                                </div>
+
+                                {/* Links */}
+                                <div className="py-1">
+                                    <Link 
+                                        href="/dashboard/teacher/settings" 
+                                        onClick={() => setShowProfileDropdown(false)}
+                                        className="flex items-center px-4 py-2 hover:bg-gray-50 text-gray-700 space-x-2 transition-colors"
+                                    >
+                                        <User className="w-4 h-4 text-gray-500" />
+                                        <span>My Profile</span>
+                                    </Link>
+
+                                    <Link 
+                                        href="/dashboard/teacher/settings" 
+                                        onClick={() => setShowProfileDropdown(false)}
+                                        className="flex items-center px-4 py-2 hover:bg-gray-50 text-gray-700 space-x-2 transition-colors"
+                                    >
+                                        <Settings className="w-4 h-4 text-gray-500" />
+                                        <span>Account Settings</span>
+                                    </Link>
+                                </div>
+
+                                {/* Logout button */}
+                                <div className="border-t border-gray-100 pt-1 mt-1">
+                                    <button 
+                                        onClick={() => {
+                                            setShowProfileDropdown(false);
+                                            handleLogout();
+                                        }}
+                                        className="w-full flex items-center px-4 py-2 text-rose-600 hover:bg-rose-50 space-x-2 transition-colors text-left font-semibold cursor-pointer"
+                                    >
+                                        <LogOut className="w-4 h-4 text-rose-600" />
+                                        <span>Sign Out</span>
+                                    </button>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 </div>
             </header>
@@ -250,30 +335,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 {isTeacherRoute ? (
                     <aside className="w-64 bg-white border-r border-gray-200 flex flex-col hidden md:flex overflow-y-auto text-gray-800">
                         <div className="p-4 flex-1">
-                            {/* Teacher Profile Card */}
-                            <div className="mb-5 p-3.5 bg-gray-50 rounded-2xl border border-gray-200/80 flex items-center space-x-3 shadow-2xs">
-                                <div className="relative">
-                                    <div className="w-10 h-10 rounded-full bg-blue-600 border-2 border-white flex items-center justify-center font-bold text-xs text-white overflow-hidden shadow-2xs">
-                                        {authData?.user?.name ? authData.user.name.split(' ').map((n: string) => n[0]).join('') : "Y"}
-                                    </div>
-                                    <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-500 border-2 border-white rounded-full"></span>
-                                </div>
-                                <div className="min-w-0 flex-1">
-                                    <p className="text-xs font-bold text-gray-900 truncate">{authData?.user?.name || "Mr. Yohannes"}</p>
-                                    <p className="text-[10px] text-gray-500 font-medium truncate">Mathematics Teacher</p>
-                                    <span className="text-[9px] text-emerald-600 font-semibold flex items-center mt-0.5">
-                                        <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full mr-1 animate-pulse"></span> Online
-                                    </span>
-                                </div>
-                            </div>
-
-                            <nav className="space-y-1">
+                            <nav className="space-y-1 text-gray-700">
                                 {/* Active Dashboard Button */}
                                 <Link 
                                     href="/dashboard/teacher" 
-                                    className={`flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all ${
+                                    className={`flex items-center space-x-3 px-3.5 py-2 rounded-xl text-xs font-normal transition-colors ${
                                         pathname === "/dashboard/teacher" 
-                                            ? "bg-blue-600 text-white shadow-sm" 
+                                            ? "bg-[#4085b3] text-white shadow-2xs" 
                                             : "text-gray-700 hover:bg-gray-100 hover:text-gray-900"
                                     }`}
                                 >
@@ -282,13 +350,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                                 </Link>
 
                                 {/* Section 1: TEACHING ASSIGNMENTS */}
-                                <div className="pt-3">
+                                <div className="pt-2">
                                     <button 
                                         onClick={() => toggleMenu("teacherAssignments")}
-                                        className="w-full flex items-center justify-between px-3 py-2 text-xs font-bold text-gray-800 hover:bg-gray-100 rounded-lg transition-colors"
+                                        className="w-full flex items-center justify-between px-3 py-2 text-xs font-normal text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
                                     >
                                         <div className="flex items-center space-x-2.5">
-                                            <BookOpen className="w-4 h-4 text-blue-600" />
+                                            <BookOpen className="w-4 h-4 text-[#4085b3]" />
                                             <span>My Teaching Assignments</span>
                                         </div>
                                         {openMenus.teacherAssignments ? <ChevronDown className="w-3.5 h-3.5 text-gray-400" /> : <ChevronRight className="w-3.5 h-3.5 text-gray-400" />}
@@ -318,23 +386,23 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                                 <div className="pt-2">
                                     <button 
                                         onClick={() => toggleMenu("teacherStudents")}
-                                        className="w-full flex items-center justify-between px-3 py-2 text-xs font-bold text-gray-800 hover:bg-gray-100 rounded-lg transition-colors"
+                                        className="w-full flex items-center justify-between px-3 py-2 text-xs font-normal text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
                                     >
                                         <div className="flex items-center space-x-2.5">
-                                            <Users className="w-4 h-4 text-blue-600" />
+                                            <Users className="w-4 h-4 text-[#4085b3]" />
                                             <span>Student Management</span>
                                         </div>
                                         {openMenus.teacherStudents ? <ChevronDown className="w-3.5 h-3.5 text-gray-400" /> : <ChevronRight className="w-3.5 h-3.5 text-gray-400" />}
                                     </button>
                                     {openMenus.teacherStudents && (
                                         <div className="pl-6 pt-1 space-y-1">
-                                            <Link href="/dashboard/teacher/students" className={`block px-3 py-1.5 rounded-lg text-xs font-medium ${pathname === "/dashboard/teacher/students" ? "bg-blue-50 text-blue-700 font-bold" : "text-gray-600 hover:bg-gray-50"}`}>
+                                            <Link href="/dashboard/teacher/students" className={`block px-3 py-1.5 rounded-lg text-xs font-normal ${pathname === "/dashboard/teacher/students" ? "bg-blue-50 text-[#4085b3]" : "text-gray-600 hover:bg-gray-50"}`}>
                                                 View Assigned Students
                                             </Link>
-                                            <Link href="/dashboard/teacher/students" className="block px-3 py-1.5 rounded-lg text-xs font-medium text-gray-600 hover:bg-gray-50">
+                                            <Link href="/dashboard/teacher/students?tab=profile" className="block px-3 py-1.5 rounded-lg text-xs font-normal text-gray-600 hover:bg-gray-50">
                                                 Student Profiles
                                             </Link>
-                                            <Link href="/dashboard/teacher/students" className="block px-3 py-1.5 rounded-lg text-xs font-medium text-gray-600 hover:bg-gray-50">
+                                            <Link href="/dashboard/teacher/students?tab=performance" className="block px-3 py-1.5 rounded-lg text-xs font-normal text-gray-600 hover:bg-gray-50">
                                                 Student Performance
                                             </Link>
                                         </div>
@@ -345,24 +413,30 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                                 <div className="pt-2">
                                     <button 
                                         onClick={() => toggleMenu("teacherAttendance")}
-                                        className="w-full flex items-center justify-between px-3 py-2 text-xs font-bold text-gray-800 hover:bg-gray-100 rounded-lg transition-colors"
+                                        className="w-full flex items-center justify-between px-3 py-2 text-xs font-normal text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
                                     >
                                         <div className="flex items-center space-x-2.5">
-                                            <ClipboardCheck className="w-4 h-4 text-blue-600" />
+                                            <ClipboardCheck className="w-4 h-4 text-[#4085b3]" />
                                             <span>Attendance</span>
                                         </div>
                                         {openMenus.teacherAttendance ? <ChevronDown className="w-3.5 h-3.5 text-gray-400" /> : <ChevronRight className="w-3.5 h-3.5 text-gray-400" />}
                                     </button>
                                     {openMenus.teacherAttendance && (
                                         <div className="pl-6 pt-1 space-y-1">
-                                            <Link href="/dashboard/teacher/attendance" className={`block px-3 py-1.5 rounded-lg text-xs font-medium ${pathname === "/dashboard/teacher/attendance" ? "bg-blue-50 text-blue-700 font-bold" : "text-gray-600 hover:bg-gray-50"}`}>
-                                                Take Attendance
+                                            <Link href="/dashboard/teacher/attendance?tab=take" className={`block px-3 py-1.5 rounded-lg text-xs font-normal ${pathname === "/dashboard/teacher/attendance" ? "bg-blue-50 text-[#4085b3]" : "text-gray-600 hover:bg-gray-50"}`}>
+                                                Take Student Attendance
                                             </Link>
-                                            <Link href="/dashboard/teacher/attendance" className="block px-3 py-1.5 rounded-lg text-xs font-medium text-gray-600 hover:bg-gray-50">
-                                                Attendance History
+                                            <Link href="/dashboard/teacher/attendance?tab=history" className="block px-3 py-1.5 rounded-lg text-xs font-normal text-gray-600 hover:bg-gray-50">
+                                                View Attendance History
                                             </Link>
-                                            <Link href="/dashboard/teacher/attendance" className="block px-3 py-1.5 rounded-lg text-xs font-medium text-gray-600 hover:bg-gray-50">
+                                            <Link href="/dashboard/teacher/attendance?tab=take" className="block px-3 py-1.5 rounded-lg text-xs font-normal text-gray-600 hover:bg-gray-50">
                                                 Record Absence Reason
+                                            </Link>
+                                            <Link href="/dashboard/teacher/attendance?tab=repeated" className="block px-3 py-1.5 rounded-lg text-xs font-normal text-gray-600 hover:bg-gray-50">
+                                                Identify Repeated Absences
+                                            </Link>
+                                            <Link href="/dashboard/teacher/attendance?tab=repeated" className="block px-3 py-1.5 rounded-lg text-xs font-normal text-gray-600 hover:bg-gray-50">
+                                                Report Attendance Problems
                                             </Link>
                                         </div>
                                     )}
@@ -372,24 +446,33 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                                 <div className="pt-2">
                                     <button 
                                         onClick={() => toggleMenu("teacherCurriculum")}
-                                        className="w-full flex items-center justify-between px-3 py-2 text-xs font-bold text-gray-800 hover:bg-gray-100 rounded-lg transition-colors"
+                                        className="w-full flex items-center justify-between px-3 py-2 text-xs font-normal text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
                                     >
                                         <div className="flex items-center space-x-2.5">
-                                            <FileText className="w-4 h-4 text-blue-600" />
+                                            <FileText className="w-4 h-4 text-[#4085b3]" />
                                             <span>Lesson / Curriculum</span>
                                         </div>
                                         {openMenus.teacherCurriculum ? <ChevronDown className="w-3.5 h-3.5 text-gray-400" /> : <ChevronRight className="w-3.5 h-3.5 text-gray-400" />}
                                     </button>
                                     {openMenus.teacherCurriculum && (
                                         <div className="pl-6 pt-1 space-y-1">
-                                            <Link href="/dashboard/teacher/curriculum" className={`block px-3 py-1.5 rounded-lg text-xs font-medium ${pathname === "/dashboard/teacher/curriculum" ? "bg-blue-50 text-blue-700 font-bold" : "text-gray-600 hover:bg-gray-50"}`}>
+                                            <Link href="/dashboard/teacher/curriculum?tab=view" className={`block px-3 py-1.5 rounded-lg text-xs font-normal ${pathname === "/dashboard/teacher/curriculum" ? "bg-blue-50 text-[#4085b3]" : "text-gray-600 hover:bg-gray-50"}`}>
+                                                View Curriculum
+                                            </Link>
+                                            <Link href="/dashboard/teacher/curriculum?tab=log" className="block px-3 py-1.5 rounded-lg text-xs font-normal text-gray-600 hover:bg-gray-50">
                                                 Record Lesson Progress
                                             </Link>
-                                            <Link href="/dashboard/teacher/curriculum" className="block px-3 py-1.5 rounded-lg text-xs font-medium text-gray-600 hover:bg-gray-50">
+                                            <Link href="/dashboard/teacher/curriculum?tab=log" className="block px-3 py-1.5 rounded-lg text-xs font-normal text-gray-600 hover:bg-gray-50">
                                                 Record Topics Covered
                                             </Link>
-                                            <Link href="/dashboard/teacher/curriculum" className="block px-3 py-1.5 rounded-lg text-xs font-medium text-gray-600 hover:bg-gray-50">
-                                                Teaching Notes
+                                            <Link href="/dashboard/teacher/curriculum?tab=progress" className="block px-3 py-1.5 rounded-lg text-xs font-normal text-gray-600 hover:bg-gray-50">
+                                                Track Curriculum Progress
+                                            </Link>
+                                            <Link href="/dashboard/teacher/curriculum?tab=difficulties" className="block px-3 py-1.5 rounded-lg text-xs font-normal text-gray-600 hover:bg-gray-50">
+                                                Record Learning Difficulties
+                                            </Link>
+                                            <Link href="/dashboard/teacher/curriculum?tab=notes" className="block px-3 py-1.5 rounded-lg text-xs font-normal text-gray-600 hover:bg-gray-50">
+                                                Record Teaching Notes
                                             </Link>
                                         </div>
                                     )}
@@ -399,24 +482,39 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                                 <div className="pt-2">
                                     <button 
                                         onClick={() => toggleMenu("teacherAssessment")}
-                                        className="w-full flex items-center justify-between px-3 py-2 text-xs font-bold text-gray-800 hover:bg-gray-100 rounded-lg transition-colors"
+                                        className="w-full flex items-center justify-between px-3 py-2 text-xs font-normal text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
                                     >
                                         <div className="flex items-center space-x-2.5">
-                                            <GraduationCap className="w-4 h-4 text-blue-600" />
+                                            <GraduationCap className="w-4 h-4 text-[#4085b3]" />
                                             <span>Assessment & Grades</span>
                                         </div>
                                         {openMenus.teacherAssessment ? <ChevronDown className="w-3.5 h-3.5 text-gray-400" /> : <ChevronRight className="w-3.5 h-3.5 text-gray-400" />}
                                     </button>
                                     {openMenus.teacherAssessment && (
                                         <div className="pl-6 pt-1 space-y-1">
-                                            <Link href="/dashboard/teacher/assessment" className={`block px-3 py-1.5 rounded-lg text-xs font-medium ${pathname === "/dashboard/teacher/assessment" ? "bg-blue-50 text-blue-700 font-bold" : "text-gray-600 hover:bg-gray-50"}`}>
+                                            <Link href="/dashboard/teacher/assessment?type=ALL" className={`block px-3 py-1.5 rounded-lg text-xs font-normal ${pathname === "/dashboard/teacher/assessment" ? "bg-blue-50 text-[#4085b3]" : "text-gray-600 hover:bg-gray-50"}`}>
                                                 Create Assessment
                                             </Link>
-                                            <Link href="/dashboard/teacher/assessment" className="block px-3 py-1.5 rounded-lg text-xs font-medium text-gray-600 hover:bg-gray-50">
-                                                Record Test Results
+                                            <Link href="/dashboard/teacher/assessment?type=QUIZ" className="block px-3 py-1.5 rounded-lg text-xs font-normal text-gray-600 hover:bg-gray-50">
+                                                Create Quiz
                                             </Link>
-                                            <Link href="/dashboard/teacher/assessment" className="block px-3 py-1.5 rounded-lg text-xs font-medium text-gray-600 hover:bg-gray-50">
-                                                Grade & Provide Feedback
+                                            <Link href="/dashboard/teacher/assessment?type=TEST" className="block px-3 py-1.5 rounded-lg text-xs font-normal text-gray-600 hover:bg-gray-50">
+                                                Create Test
+                                            </Link>
+                                            <Link href="/dashboard/teacher/assessment?type=ASSIGNMENT" className="block px-3 py-1.5 rounded-lg text-xs font-normal text-gray-600 hover:bg-gray-50">
+                                                Create Assignment
+                                            </Link>
+                                            <Link href="/dashboard/teacher/assessment?type=PROJECT" className="block px-3 py-1.5 rounded-lg text-xs font-normal text-gray-600 hover:bg-gray-50">
+                                                Create Project
+                                            </Link>
+                                            <Link href="/dashboard/teacher/assessment?tab=conduct" className="block px-3 py-1.5 rounded-lg text-xs font-normal text-gray-600 hover:bg-gray-50">
+                                                Conduct Assessment
+                                            </Link>
+                                            <Link href="/dashboard/teacher/assessment?tab=grade" className="block px-3 py-1.5 rounded-lg text-xs font-normal text-gray-600 hover:bg-gray-50">
+                                                Record Results & Grade
+                                            </Link>
+                                            <Link href="/dashboard/teacher/assessment?tab=feedback" className="block px-3 py-1.5 rounded-lg text-xs font-normal text-gray-600 hover:bg-gray-50">
+                                                Provide Feedback
                                             </Link>
                                         </div>
                                     )}
@@ -426,21 +524,36 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                                 <div className="pt-2">
                                     <button 
                                         onClick={() => toggleMenu("teacherActivities")}
-                                        className="w-full flex items-center justify-between px-3 py-2 text-xs font-bold text-gray-800 hover:bg-gray-100 rounded-lg transition-colors"
+                                        className="w-full flex items-center justify-between px-3 py-2 text-xs font-normal text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
                                     >
                                         <div className="flex items-center space-x-2.5">
-                                            <ClipboardCheck className="w-4 h-4 text-blue-600" />
+                                            <ClipboardCheck className="w-4 h-4 text-[#4085b3]" />
                                             <span>Learning Activities</span>
                                         </div>
                                         {openMenus.teacherActivities ? <ChevronDown className="w-3.5 h-3.5 text-gray-400" /> : <ChevronRight className="w-3.5 h-3.5 text-gray-400" />}
                                     </button>
                                     {openMenus.teacherActivities && (
                                         <div className="pl-6 pt-1 space-y-1">
-                                            <Link href="/dashboard/teacher/activities" className={`block px-3 py-1.5 rounded-lg text-xs font-medium ${pathname === "/dashboard/teacher/activities" ? "bg-blue-50 text-blue-700 font-bold" : "text-gray-600 hover:bg-gray-50"}`}>
-                                                Create Coursework
+                                            <Link href="/dashboard/teacher/learning?type=HOMEWORK" className={`block px-3 py-1.5 rounded-lg text-xs font-normal ${pathname === "/dashboard/teacher/learning" ? "bg-blue-50 text-[#4085b3]" : "text-gray-600 hover:bg-gray-50"}`}>
+                                                Create Assignment
                                             </Link>
-                                            <Link href="/dashboard/teacher/activities" className="block px-3 py-1.5 rounded-lg text-xs font-medium text-gray-600 hover:bg-gray-50">
+                                            <Link href="/dashboard/teacher/learning?type=QUIZ" className="block px-3 py-1.5 rounded-lg text-xs font-normal text-gray-600 hover:bg-gray-50">
+                                                Create Quiz
+                                            </Link>
+                                            <Link href="/dashboard/teacher/learning?type=CLASS_WORK" className="block px-3 py-1.5 rounded-lg text-xs font-normal text-gray-600 hover:bg-gray-50">
+                                                Create Class Activity
+                                            </Link>
+                                            <Link href="/dashboard/teacher/learning?tab=create" className="block px-3 py-1.5 rounded-lg text-xs font-normal text-gray-600 hover:bg-gray-50">
+                                                Set Deadline
+                                            </Link>
+                                            <Link href="/dashboard/teacher/learning?tab=submissions" className="block px-3 py-1.5 rounded-lg text-xs font-normal text-gray-600 hover:bg-gray-50">
                                                 Review Submissions
+                                            </Link>
+                                            <Link href="/dashboard/teacher/learning?tab=submissions" className="block px-3 py-1.5 rounded-lg text-xs font-normal text-gray-600 hover:bg-gray-50">
+                                                Mark Completion
+                                            </Link>
+                                            <Link href="/dashboard/teacher/learning?tab=submissions" className="block px-3 py-1.5 rounded-lg text-xs font-normal text-gray-600 hover:bg-gray-50">
+                                                Give Feedback
                                             </Link>
                                         </div>
                                     )}
@@ -450,20 +563,20 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                                 <div className="pt-2">
                                     <button 
                                         onClick={() => toggleMenu("teacherSupport")}
-                                        className="w-full flex items-center justify-between px-3 py-2 text-xs font-bold text-gray-800 hover:bg-gray-100 rounded-lg transition-colors"
+                                        className="w-full flex items-center justify-between px-3 py-2 text-xs font-normal text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
                                     >
                                         <div className="flex items-center space-x-2.5">
-                                            <HeartHandshake className="w-4 h-4 text-blue-600" />
+                                            <HeartHandshake className="w-4 h-4 text-[#4085b3]" />
                                             <span>Student Support</span>
                                         </div>
                                         {openMenus.teacherSupport ? <ChevronDown className="w-3.5 h-3.5 text-gray-400" /> : <ChevronRight className="w-3.5 h-3.5 text-gray-400" />}
                                     </button>
                                     {openMenus.teacherSupport && (
                                         <div className="pl-6 pt-1 space-y-1">
-                                            <Link href="/dashboard/teacher/support" className={`block px-3 py-1.5 rounded-lg text-xs font-medium ${pathname === "/dashboard/teacher/support" ? "bg-blue-50 text-blue-700 font-bold" : "text-gray-600 hover:bg-gray-50"}`}>
+                                            <Link href="/dashboard/teacher/support" className={`block px-3 py-1.5 rounded-lg text-xs font-normal ${pathname === "/dashboard/teacher/support" ? "bg-blue-50 text-[#4085b3]" : "text-gray-600 hover:bg-gray-50"}`}>
                                                 Flag At-Risk Student
                                             </Link>
-                                            <Link href="/dashboard/teacher/support" className="block px-3 py-1.5 rounded-lg text-xs font-medium text-gray-600 hover:bg-gray-50">
+                                            <Link href="/dashboard/teacher/support" className="block px-3 py-1.5 rounded-lg text-xs font-normal text-gray-600 hover:bg-gray-50">
                                                 Monitor Interventions
                                             </Link>
                                         </div>
@@ -474,20 +587,20 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                                 <div className="pt-2">
                                     <button 
                                         onClick={() => toggleMenu("teacherParentComm")}
-                                        className="w-full flex items-center justify-between px-3 py-2 text-xs font-bold text-gray-800 hover:bg-gray-100 rounded-lg transition-colors"
+                                        className="w-full flex items-center justify-between px-3 py-2 text-xs font-normal text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
                                     >
                                         <div className="flex items-center space-x-2.5">
-                                            <Users className="w-4 h-4 text-blue-600" />
+                                            <Users className="w-4 h-4 text-[#4085b3]" />
                                             <span>Parent Communication</span>
                                         </div>
                                         {openMenus.teacherParentComm ? <ChevronDown className="w-3.5 h-3.5 text-gray-400" /> : <ChevronRight className="w-3.5 h-3.5 text-gray-400" />}
                                     </button>
                                     {openMenus.teacherParentComm && (
                                         <div className="pl-6 pt-1 space-y-1">
-                                            <Link href="/dashboard/teacher/communication/parent" className={`block px-3 py-1.5 rounded-lg text-xs font-medium ${pathname.includes("parent") ? "bg-blue-50 text-blue-700 font-bold" : "text-gray-600 hover:bg-gray-50"}`}>
+                                            <Link href="/dashboard/teacher/communication/parent" className={`block px-3 py-1.5 rounded-lg text-xs font-normal ${pathname.includes("parent") ? "bg-blue-50 text-[#4085b3]" : "text-gray-600 hover:bg-gray-50"}`}>
                                                 Send Parent Message
                                             </Link>
-                                            <Link href="/dashboard/teacher/communication/parent" className="block px-3 py-1.5 rounded-lg text-xs font-medium text-gray-600 hover:bg-gray-50">
+                                            <Link href="/dashboard/teacher/communication/parent" className="block px-3 py-1.5 rounded-lg text-xs font-normal text-gray-600 hover:bg-gray-50">
                                                 Attendance Notifications
                                             </Link>
                                         </div>
@@ -498,20 +611,20 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                                 <div className="pt-2">
                                     <button 
                                         onClick={() => toggleMenu("teacherStaffComm")}
-                                        className="w-full flex items-center justify-between px-3 py-2 text-xs font-bold text-gray-800 hover:bg-gray-100 rounded-lg transition-colors"
+                                        className="w-full flex items-center justify-between px-3 py-2 text-xs font-normal text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
                                     >
                                         <div className="flex items-center space-x-2.5">
-                                            <MessageSquare className="w-4 h-4 text-blue-600" />
+                                            <MessageSquare className="w-4 h-4 text-[#4085b3]" />
                                             <span>Teacher Communication</span>
                                         </div>
                                         {openMenus.teacherStaffComm ? <ChevronDown className="w-3.5 h-3.5 text-gray-400" /> : <ChevronRight className="w-3.5 h-3.5 text-gray-400" />}
                                     </button>
                                     {openMenus.teacherStaffComm && (
                                         <div className="pl-6 pt-1 space-y-1">
-                                            <Link href="/dashboard/teacher/communication/staff" className={`block px-3 py-1.5 rounded-lg text-xs font-medium ${pathname.includes("staff") ? "bg-blue-50 text-blue-700 font-bold" : "text-gray-600 hover:bg-gray-50"}`}>
+                                            <Link href="/dashboard/teacher/communication/staff" className={`block px-3 py-1.5 rounded-lg text-xs font-normal ${pathname.includes("staff") ? "bg-blue-50 text-[#4085b3]" : "text-gray-600 hover:bg-gray-50"}`}>
                                                 School Announcements
                                             </Link>
-                                            <Link href="/dashboard/teacher/communication/staff" className="block px-3 py-1.5 rounded-lg text-xs font-medium text-gray-600 hover:bg-gray-50">
+                                            <Link href="/dashboard/teacher/communication/staff" className="block px-3 py-1.5 rounded-lg text-xs font-normal text-gray-600 hover:bg-gray-50">
                                                 Department Communication
                                             </Link>
                                         </div>
@@ -522,20 +635,20 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                                 <div className="pt-2">
                                     <button 
                                         onClick={() => toggleMenu("teacherPD")}
-                                        className="w-full flex items-center justify-between px-3 py-2 text-xs font-bold text-gray-800 hover:bg-gray-100 rounded-lg transition-colors"
+                                        className="w-full flex items-center justify-between px-3 py-2 text-xs font-normal text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
                                     >
                                         <div className="flex items-center space-x-2.5">
-                                            <GraduationCap className="w-4 h-4 text-blue-600" />
+                                            <GraduationCap className="w-4 h-4 text-[#4085b3]" />
                                             <span>Professional Dev.</span>
                                         </div>
                                         {openMenus.teacherPD ? <ChevronDown className="w-3.5 h-3.5 text-gray-400" /> : <ChevronRight className="w-3.5 h-3.5 text-gray-400" />}
                                     </button>
                                     {openMenus.teacherPD && (
                                         <div className="pl-6 pt-1 space-y-1">
-                                            <Link href="/dashboard/teacher/pd" className={`block px-3 py-1.5 rounded-lg text-xs font-medium ${pathname === "/dashboard/teacher/pd" ? "bg-blue-50 text-blue-700 font-bold" : "text-gray-600 hover:bg-gray-50"}`}>
+                                            <Link href="/dashboard/teacher/pd" className={`block px-3 py-1.5 rounded-lg text-xs font-normal ${pathname === "/dashboard/teacher/pd" ? "bg-blue-50 text-[#4085b3]" : "text-gray-600 hover:bg-gray-50"}`}>
                                                 Training & Workshops
                                             </Link>
-                                            <Link href="/dashboard/teacher/pd" className="block px-3 py-1.5 rounded-lg text-xs font-medium text-gray-600 hover:bg-gray-50">
+                                            <Link href="/dashboard/teacher/pd" className="block px-3 py-1.5 rounded-lg text-xs font-normal text-gray-600 hover:bg-gray-50">
                                                 Certificates
                                             </Link>
                                         </div>
@@ -546,17 +659,17 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                                 <div className="pt-2 pb-4">
                                     <button 
                                         onClick={() => toggleMenu("teacherReports")}
-                                        className="w-full flex items-center justify-between px-3 py-2 text-xs font-bold text-gray-800 hover:bg-gray-100 rounded-lg transition-colors"
+                                        className="w-full flex items-center justify-between px-3 py-2 text-xs font-normal text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
                                     >
                                         <div className="flex items-center space-x-2.5">
-                                            <BarChart2 className="w-4 h-4 text-blue-600" />
+                                            <BarChart2 className="w-4 h-4 text-[#4085b3]" />
                                             <span>Teacher Reports</span>
                                         </div>
                                         {openMenus.teacherReports ? <ChevronDown className="w-3.5 h-3.5 text-gray-400" /> : <ChevronRight className="w-3.5 h-3.5 text-gray-400" />}
                                     </button>
                                     {openMenus.teacherReports && (
                                         <div className="pl-6 pt-1 space-y-1">
-                                            <Link href="/dashboard/teacher/reports" className={`block px-3 py-1.5 rounded-lg text-xs font-medium ${pathname === "/dashboard/teacher/reports" ? "bg-blue-50 text-blue-700 font-bold" : "text-gray-600 hover:bg-gray-50"}`}>
+                                            <Link href="/dashboard/teacher/reports" className={`block px-3 py-1.5 rounded-lg text-xs font-normal ${pathname === "/dashboard/teacher/reports" ? "bg-blue-50 text-[#4085b3]" : "text-gray-600 hover:bg-gray-50"}`}>
                                                 Class Attendance & Scores
                                             </Link>
                                         </div>
@@ -564,7 +677,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                                 </div>
                                 {/* Section 12: SETTINGS */}
                                 <div className="pt-4 border-t border-gray-100 mt-4 mb-4">
-                                    <Link href="/dashboard/teacher/settings" className="flex items-center space-x-2.5 px-3 py-2 text-xs font-bold text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
+                                    <Link href="/dashboard/teacher/settings" className="flex items-center space-x-2.5 px-3 py-2 text-xs font-normal text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
                                         <Settings className="w-4 h-4 text-gray-500" />
                                         <span>Settings</span>
                                     </Link>

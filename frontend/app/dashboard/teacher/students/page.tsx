@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { fetchApi } from "@/lib/api";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/Card";
 import { 
     Users, 
@@ -24,15 +25,26 @@ import {
     Filter
 } from "lucide-react";
 
-export default function StudentsPage() {
+function StudentsContent() {
+    const searchParams = useSearchParams();
+    const tabParam = searchParams.get("tab");
+
     const [students, setStudents] = useState<any[]>([]);
     const [search, setSearch] = useState("");
     const [selectedSection, setSelectedSection] = useState("ALL");
     const [selectedStudent, setSelectedStudent] = useState<any>(null);
     const [studentDetail, setStudentDetail] = useState<any>(null);
-    const [activeTab, setActiveTab] = useState<"profile" | "attendance" | "performance" | "history">("profile");
+    const [activeTab, setActiveTab] = useState<"profile" | "attendance" | "performance" | "history">(
+        (tabParam as any) || "profile"
+    );
     const [loadingDetail, setLoadingDetail] = useState(false);
     const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        if (tabParam && ["profile", "attendance", "performance", "history"].includes(tabParam)) {
+            setActiveTab(tabParam as any);
+        }
+    }, [tabParam]);
 
     useEffect(() => {
         async function loadMyStudents() {
@@ -51,10 +63,10 @@ export default function StudentsPage() {
         loadMyStudents();
     }, []);
 
-    async function handleViewStudentDetail(student: any) {
+    async function handleViewStudentDetail(student: any, initialTab?: "profile" | "attendance" | "performance" | "history") {
         setSelectedStudent(student);
         setStudentDetail(null);
-        setActiveTab("profile");
+        setActiveTab(initialTab || (tabParam as any) || "profile");
         try {
             setLoadingDetail(true);
             const studentId = student.studentId || student.student?.id;
@@ -114,7 +126,7 @@ export default function StudentsPage() {
     if (loading) {
         return (
             <div className="w-full max-w-7xl mx-auto p-12 text-center text-gray-500 min-h-[400px] flex flex-col justify-center items-center">
-                <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600 mb-4"></div>
+                <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#4085b3] mb-4"></div>
                 <p className="text-sm font-semibold text-gray-600">Loading student rosters...</p>
             </div>
         );
@@ -129,7 +141,7 @@ export default function StudentsPage() {
                         <ArrowLeft className="w-5 h-5" />
                     </Link>
                     <div>
-                        <h1 className="text-2xl font-extrabold tracking-tight text-gray-900">Student Directory & Profiles</h1>
+                        <h1 className="text-2xl font-extrabold tracking-tight text-gray-900">Student Directory & Performance</h1>
                         <p className="text-xs font-medium text-gray-500 mt-0.5">
                             Manage assigned students, inspect profiles, track attendance, and analyze academic history.
                         </p>
@@ -142,7 +154,7 @@ export default function StudentsPage() {
                         <select
                             value={selectedSection}
                             onChange={(e) => setSelectedSection(e.target.value)}
-                            className="w-full bg-white border border-gray-200 text-xs rounded-xl pl-8 pr-4 py-2.5 shadow-2xs outline-none focus:ring-2 focus:ring-blue-500 font-medium text-gray-700 appearance-none cursor-pointer"
+                            className="w-full bg-white border border-gray-200 text-xs rounded-xl pl-8 pr-4 py-2.5 shadow-2xs outline-none focus:ring-2 focus:ring-[#4085b3] font-medium text-gray-700 appearance-none cursor-pointer"
                         >
                             <option value="ALL">All Sections</option>
                             {sections.map((sec: string) => (
@@ -158,7 +170,7 @@ export default function StudentsPage() {
                             placeholder="Search student name or ID..."
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
-                            className="w-full bg-white border border-gray-200 text-xs rounded-xl pl-9 pr-4 py-2.5 shadow-2xs outline-none focus:ring-2 focus:ring-blue-500"
+                            className="w-full bg-white border border-gray-200 text-xs rounded-xl pl-9 pr-4 py-2.5 shadow-2xs outline-none focus:ring-2 focus:ring-[#4085b3]"
                         />
                         <Search className="w-4 h-4 text-gray-400 absolute left-3 top-3" />
                     </div>
@@ -169,7 +181,7 @@ export default function StudentsPage() {
             <Card>
                 <CardHeader className="flex flex-row items-center justify-between">
                     <CardTitle className="flex items-center space-x-2 text-base font-bold text-gray-900">
-                        <Users className="w-5 h-5 text-blue-600" />
+                        <Users className="w-5 h-5 text-[#4085b3]" />
                         <span>Assigned Section Students</span>
                     </CardTitle>
                     <span className="text-xs font-bold text-gray-500">
@@ -194,7 +206,7 @@ export default function StudentsPage() {
                                         <th className="py-3 px-3">Class / Section</th>
                                         <th className="py-3 px-3">Gender</th>
                                         <th className="py-3 px-3">Status</th>
-                                        <th className="py-3 px-3 text-right">Action</th>
+                                        <th className="py-3 px-3 text-right">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-50">
@@ -223,13 +235,25 @@ export default function StudentsPage() {
                                                     </span>
                                                 </td>
                                                 <td className="py-3.5 px-3 text-right">
-                                                    <button
-                                                        onClick={() => handleViewStudentDetail(item)}
-                                                        className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold text-[11px] transition-colors shadow-2xs flex items-center space-x-1 ml-auto"
-                                                    >
-                                                        <User className="w-3.5 h-3.5" />
-                                                        <span>View Profile</span>
-                                                    </button>
+                                                    <div className="flex items-center justify-end space-x-2">
+                                                        <button
+                                                            onClick={() => handleViewStudentDetail(item, "profile")}
+                                                            className="px-3 py-1.5 bg-[#4085b3] hover:bg-[#356e94] text-white rounded-lg font-bold text-[11px] transition-colors shadow-2xs flex items-center space-x-1"
+                                                            title="View Student Profile"
+                                                        >
+                                                            <User className="w-3.5 h-3.5" />
+                                                            <span>Profile</span>
+                                                        </button>
+
+                                                        <button
+                                                            onClick={() => handleViewStudentDetail(item, "performance")}
+                                                            className="px-3 py-1.5 bg-slate-700 hover:bg-slate-800 text-white rounded-lg font-bold text-[11px] transition-colors shadow-2xs flex items-center space-x-1"
+                                                            title="View Student Performance & Grades"
+                                                        >
+                                                            <Award className="w-3.5 h-3.5 text-amber-400" />
+                                                            <span>Performance</span>
+                                                        </button>
+                                                    </div>
                                                 </td>
                                             </tr>
                                         );
@@ -249,7 +273,7 @@ export default function StudentsPage() {
                         {/* Drawer Header */}
                         <div className="flex justify-between items-start border-b border-gray-100 pb-4">
                             <div className="flex items-center space-x-3">
-                                <div className="w-12 h-12 rounded-xl bg-blue-50 border border-blue-100 text-blue-600 flex items-center justify-center font-bold text-lg">
+                                <div className="w-12 h-12 rounded-xl bg-blue-50 border border-blue-100 text-[#4085b3] flex items-center justify-center font-bold text-lg">
                                     {selectedStudent.student?.firstName?.[0]}{selectedStudent.student?.lastName?.[0]}
                                 </div>
                                 <div>
@@ -271,7 +295,7 @@ export default function StudentsPage() {
                             <button
                                 onClick={() => setActiveTab("profile")}
                                 className={`pb-2.5 px-3 border-b-2 transition-colors flex items-center space-x-1.5 ${
-                                    activeTab === "profile" ? "border-blue-600 text-blue-600" : "border-transparent text-gray-500 hover:text-gray-700"
+                                    activeTab === "profile" ? "border-[#4085b3] text-[#4085b3]" : "border-transparent text-gray-500 hover:text-gray-700"
                                 }`}
                             >
                                 <User className="w-4 h-4" />
@@ -280,7 +304,7 @@ export default function StudentsPage() {
                             <button
                                 onClick={() => setActiveTab("attendance")}
                                 className={`pb-2.5 px-3 border-b-2 transition-colors flex items-center space-x-1.5 ${
-                                    activeTab === "attendance" ? "border-blue-600 text-blue-600" : "border-transparent text-gray-500 hover:text-gray-700"
+                                    activeTab === "attendance" ? "border-[#4085b3] text-[#4085b3]" : "border-transparent text-gray-500 hover:text-gray-700"
                                 }`}
                             >
                                 <Calendar className="w-4 h-4" />
@@ -289,7 +313,7 @@ export default function StudentsPage() {
                             <button
                                 onClick={() => setActiveTab("performance")}
                                 className={`pb-2.5 px-3 border-b-2 transition-colors flex items-center space-x-1.5 ${
-                                    activeTab === "performance" ? "border-blue-600 text-blue-600" : "border-transparent text-gray-500 hover:text-gray-700"
+                                    activeTab === "performance" ? "border-[#4085b3] text-[#4085b3]" : "border-transparent text-gray-500 hover:text-gray-700"
                                 }`}
                             >
                                 <Award className="w-4 h-4" />
@@ -298,7 +322,7 @@ export default function StudentsPage() {
                             <button
                                 onClick={() => setActiveTab("history")}
                                 className={`pb-2.5 px-3 border-b-2 transition-colors flex items-center space-x-1.5 ${
-                                    activeTab === "history" ? "border-blue-600 text-blue-600" : "border-transparent text-gray-500 hover:text-gray-700"
+                                    activeTab === "history" ? "border-[#4085b3] text-[#4085b3]" : "border-transparent text-gray-500 hover:text-gray-700"
                                 }`}
                             >
                                 <TrendingUp className="w-4 h-4" />
@@ -309,7 +333,7 @@ export default function StudentsPage() {
                         {/* Tab Content */}
                         {loadingDetail ? (
                             <div className="py-12 text-center text-gray-500 text-xs">
-                                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
+                                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#4085b3] mx-auto mb-2"></div>
                                 Loading student records from database...
                             </div>
                         ) : (
@@ -351,7 +375,7 @@ export default function StudentsPage() {
                                                 </div>
                                                 <div>
                                                     <p className="text-gray-500">Phone Number:</p>
-                                                    <p className="font-bold text-blue-600 flex items-center space-x-1">
+                                                    <p className="font-bold text-[#4085b3] flex items-center space-x-1">
                                                         <Phone className="w-3.5 h-3.5" />
                                                         <span>{selectedStudent.student?.emergencyContactPhone || "+251 911 000 000"}</span>
                                                     </p>
@@ -394,7 +418,7 @@ export default function StudentsPage() {
                                         </div>
 
                                         <h4 className="font-bold text-gray-900 pt-2 flex items-center space-x-1.5">
-                                            <Clock className="w-4 h-4 text-blue-600" />
+                                            <Clock className="w-4 h-4 text-[#4085b3]" />
                                             <span>Recent Attendance Records</span>
                                         </h4>
 
@@ -444,16 +468,16 @@ export default function StudentsPage() {
                                     <div className="space-y-4 text-xs">
                                         <div className="p-3.5 bg-blue-50 rounded-xl border border-blue-100 flex items-center justify-between">
                                             <div>
-                                                <p className="text-blue-600 font-bold text-[10px] uppercase">Average Assessment Score</p>
+                                                <p className="text-[#4085b3] font-bold text-[10px] uppercase">Average Assessment Score</p>
                                                 <p className="text-xl font-black text-blue-950">{avgScore !== null ? `${avgScore}%` : 'N/A'}</p>
                                             </div>
-                                            <div className="p-2.5 bg-blue-600 text-white rounded-xl">
+                                            <div className="p-2.5 bg-[#4085b3] text-white rounded-xl">
                                                 <Award className="w-6 h-6" />
                                             </div>
                                         </div>
 
                                         <h4 className="font-bold text-gray-900 pt-2 flex items-center space-x-1.5">
-                                            <FileText className="w-4 h-4 text-blue-600" />
+                                            <FileText className="w-4 h-4 text-[#4085b3]" />
                                             <span>Assessment & Evaluation History</span>
                                         </h4>
 
@@ -470,7 +494,7 @@ export default function StudentsPage() {
                                                                 <p className="text-[10px] text-gray-400 font-medium">{r.assessment?.type || 'Quiz / Exam'} • Max Points: {r.assessment?.maxScore || 100}</p>
                                                             </div>
                                                             <div className="text-right">
-                                                                <p className="font-black text-blue-700 text-sm">{r.score} / {r.assessment?.maxScore || 100}</p>
+                                                                <p className="font-black text-[#4085b3] text-sm">{r.score} / {r.assessment?.maxScore || 100}</p>
                                                                 <p className="text-[10px] font-bold text-gray-500">{pct}% Grade</p>
                                                             </div>
                                                         </div>
@@ -510,7 +534,7 @@ export default function StudentsPage() {
 
                                         <div>
                                             <h4 className="font-bold text-gray-900 mb-2 flex items-center space-x-1.5">
-                                                <BookOpen className="w-4 h-4 text-blue-600" />
+                                                <BookOpen className="w-4 h-4 text-[#4085b3]" />
                                                 <span>Activity Submissions</span>
                                             </h4>
                                             {!studentDetail?.submissions || studentDetail.submissions.length === 0 ? (
@@ -540,5 +564,18 @@ export default function StudentsPage() {
                 </div>
             )}
         </div>
+    );
+}
+
+export default function StudentsPage() {
+    return (
+        <Suspense fallback={
+            <div className="w-full max-w-7xl mx-auto p-12 text-center text-gray-500 min-h-[400px] flex flex-col justify-center items-center">
+                <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#4085b3] mb-4"></div>
+                <p className="text-sm font-semibold text-gray-600 font-sans">Loading student directory...</p>
+            </div>
+        }>
+            <StudentsContent />
+        </Suspense>
     );
 }

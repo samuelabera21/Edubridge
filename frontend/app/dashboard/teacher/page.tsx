@@ -148,44 +148,48 @@ export default function TeacherDashboard() {
 
     return (
         <div className="w-full max-w-7xl mx-auto space-y-6 text-gray-800">
-            {/* Header Title Bar & Date Badge */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            {/* Top Right Corner Date & Active Term Header */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-gray-200/80 pb-4">
                 <div>
                     <h1 className="text-2xl font-extrabold tracking-tight text-gray-900 flex items-center gap-2">
-                        Welcome back, {teacherName}! <span className="inline-block animate-bounce">👋</span>
+                        Welcome back, {teacherName}!
                     </h1>
                     <p className="text-xs font-medium text-gray-500 mt-1">
                         Teacher Operational Command Center • Assigned Classes & Live Analytics
                     </p>
                 </div>
 
-                <div className="flex flex-wrap items-center gap-3">
-                    <Link
-                        href="/dashboard/teacher/attendance"
-                        className="px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-xs flex items-center space-x-1.5 transition-colors shadow-2xs"
-                    >
-                        <ClipboardCheck className="w-4 h-4" />
-                        <span>Take Attendance</span>
-                    </Link>
-
-                    <Link
-                        href="/dashboard/teacher/assessment"
-                        className="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-xs flex items-center space-x-1.5 transition-colors shadow-2xs"
-                    >
-                        <Plus className="w-4 h-4" />
-                        <span>Create Assessment</span>
-                    </Link>
-
-                    <div className="bg-white border border-gray-100 rounded-[12px] px-3.5 py-2 shadow-[0_2px_12px_rgba(0,0,0,0.04)] flex items-center space-x-2.5 text-xs">
-                        <div className="p-1.5 bg-blue-50 text-blue-600 rounded-lg">
+                {/* Top Right Corner Date & Active Term Card */}
+                <div className="flex items-center space-x-3 self-end sm:self-auto">
+                    <div className="bg-white border border-gray-200 rounded-xl px-4 py-2 shadow-2xs flex items-center space-x-3 text-xs">
+                        <div className="p-2 bg-blue-50 text-[#4085b3] rounded-lg">
                             <Calendar className="w-4 h-4" />
                         </div>
-                        <div>
-                            <p className="font-bold text-gray-900">{formattedDate}</p>
-                            <p className="text-[10px] text-gray-500 font-medium">Active Term</p>
+                        <div className="text-right">
+                            <p className="font-bold text-gray-900 leading-tight">{formattedDate}</p>
+                            <p className="text-[10px] text-gray-500 font-semibold uppercase tracking-wider">Active Term</p>
                         </div>
                     </div>
                 </div>
+            </div>
+
+            {/* Quick Action Bar */}
+            <div className="flex flex-wrap items-center gap-3">
+                <Link
+                    href="/dashboard/teacher/attendance"
+                    className="px-3.5 py-2 bg-[#4085b3] hover:bg-[#356e94] text-white font-medium rounded-xl text-xs flex items-center space-x-1.5 transition-colors shadow-2xs"
+                >
+                    <ClipboardCheck className="w-4 h-4" />
+                    <span>Take Attendance</span>
+                </Link>
+
+                <Link
+                    href="/dashboard/teacher/assessment"
+                    className="px-3.5 py-2 bg-[#4a6b82] hover:bg-[#3d596d] text-white font-medium rounded-xl text-xs flex items-center space-x-1.5 transition-colors shadow-2xs"
+                >
+                    <Plus className="w-4 h-4" />
+                    <span>Create Assessment</span>
+                </Link>
             </div>
 
             {/* Teacher Sector in Numbers — Styled identically to Admin Dashboard */}

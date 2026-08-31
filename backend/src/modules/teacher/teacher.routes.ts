@@ -22,7 +22,11 @@ import {
     getClassPerformanceReport,
     askAiAssistant,
     reportIssue,
-    getMyIssues
+    getMyIssues,
+    getMyProfile,
+    updateMyProfile,
+    getRepeatedAbsences,
+    getCurriculumData
 } from "./teacher.controller.js";
 import { createActivity, getActivities, submitActivity, raiseSupportFlag, getSupportFlags } from "../learning/learning.controller.js";
 import { recordStudentAttendance, getStudentAttendance } from "../attendance/attendance.controller.js";
@@ -48,6 +52,9 @@ router.use(requireScope("SCHOOL"));
  *         description: Teacher dashboard summary data
  */
 router.get("/dashboard-summary", getDashboardSummary);
+
+router.get("/profile", getMyProfile);
+router.put("/profile", updateMyProfile);
 
 /**
  * @openapi
@@ -114,6 +121,9 @@ router.get("/my-students", getMyStudents);
  *         description: Detailed student profile including attendance and assessment history
  */
 router.get("/students/:studentId", getStudentDetail);
+
+router.get("/attendance/repeated-absences", getRepeatedAbsences);
+router.get("/curriculum", getCurriculumData);
 
 /**
  * @openapi
