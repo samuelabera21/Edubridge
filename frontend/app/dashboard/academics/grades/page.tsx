@@ -115,49 +115,97 @@ export default function GradesAndSectionsPage() {
                 </div>
             </div>
 
+            {/* KPI Stats */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+                <Card className="bg-emerald-50/60 border-emerald-100">
+                    <CardContent className="p-4 flex items-center space-x-3">
+                        <div className="p-2.5 bg-emerald-100 text-[#006b3f] rounded-lg">
+                            <School className="w-5 h-5" />
+                        </div>
+                        <div>
+                            <p className="text-xs font-semibold text-gray-500 uppercase">Configured Grade Levels</p>
+                            <p className="text-xl font-bold text-gray-900">{schoolGrades.length}</p>
+                        </div>
+                    </CardContent>
+                </Card>
+                <Card className="bg-blue-50/60 border-blue-100">
+                    <CardContent className="p-4 flex items-center space-x-3">
+                        <div className="p-2.5 bg-blue-100 text-blue-600 rounded-lg">
+                            <Users className="w-5 h-5" />
+                        </div>
+                        <div>
+                            <p className="text-xs font-semibold text-gray-500 uppercase">Total Active Sections</p>
+                            <p className="text-xl font-bold text-gray-900">
+                                {schoolGrades.reduce((acc, curr) => acc + (curr.sections?.length || 0), 0)}
+                            </p>
+                        </div>
+                    </CardContent>
+                </Card>
+                <Card className="bg-purple-50/60 border-purple-100">
+                    <CardContent className="p-4 flex items-center space-x-3">
+                        <div className="p-2.5 bg-purple-100 text-purple-600 rounded-lg">
+                            <GraduationCap className="w-5 h-5" />
+                        </div>
+                        <div>
+                            <p className="text-xs font-semibold text-gray-500 uppercase">Grade Level Cap</p>
+                            <p className="text-xl font-bold text-gray-900">
+                                {schoolGrades.reduce((acc, curr) => acc + (curr.capacity || 0), 0) || "N/A"} Seats
+                            </p>
+                        </div>
+                    </CardContent>
+                </Card>
+            </div>
+
             {schoolGrades.length === 0 ? (
                 <EmptyState 
                     title="No Grades Configured" 
                     message={`There are no grades assigned to the ${activeYear.name} academic year.`} 
                 />
             ) : (
-                <Card>
+                <Card className="shadow-sm">
                     <CardHeader className="bg-gray-50/50 flex flex-row items-center justify-between py-4">
-                        <CardTitle>Assigned Grades</CardTitle>
+                        <CardTitle className="text-base font-bold text-gray-900">Configured Grades & Section Allocations</CardTitle>
                     </CardHeader>
                     <CardContent className="p-0">
                         <div className="overflow-x-auto">
                             <table className="w-full text-sm text-left">
                                 <thead className="text-xs text-gray-500 uppercase bg-gray-50 border-y border-gray-200">
                                     <tr>
-                                        <th className="px-6 py-3 font-semibold">Grade Level</th>
-                                        <th className="px-6 py-3 font-semibold">Capacity</th>
-                                        <th className="px-6 py-3 font-semibold">Sections</th>
-                                        <th className="px-6 py-3 font-semibold">Status</th>
-                                        <th className="px-6 py-3 font-semibold text-right">Actions</th>
+                                        <th className="px-6 py-3.5 font-semibold">Grade Level</th>
+                                        <th className="px-6 py-3.5 font-semibold">Target Capacity</th>
+                                        <th className="px-6 py-3.5 font-semibold">Section Breakdown & Capacity</th>
+                                        <th className="px-6 py-3.5 font-semibold">Status</th>
+                                        <th className="px-6 py-3.5 font-semibold text-right">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-100">
                                     {schoolGrades.map((sg) => (
                                         <tr key={sg.id} className="hover:bg-gray-50/50 transition-colors">
-                                            <td className="px-6 py-4 font-medium text-gray-900 flex items-center">
-                                                <GraduationCap className="w-4 h-4 mr-2 text-gray-400" />
+                                            <td className="px-6 py-4 font-bold text-gray-900 flex items-center">
+                                                <GraduationCap className="w-4 h-4 mr-2 text-[#006b3f]" />
                                                 {sg.grade?.name || "Unknown"}
                                             </td>
-                                            <td className="px-6 py-4 text-gray-600">{sg.capacity || "N/A"}</td>
+                                            <td className="px-6 py-4 text-gray-600 font-medium">{sg.capacity ? `${sg.capacity} Students` : "Uncapped"}</td>
                                             <td className="px-6 py-4 text-gray-600">
-                                                <div className="flex items-center">
-                                                    <Users className="w-4 h-4 mr-1.5 text-gray-400" />
-                                                    {sg.sections?.length || 0}
-                                                </div>
+                                                {sg.sections && sg.sections.length > 0 ? (
+                                                    <div className="flex flex-wrap gap-1.5 items-center">
+                                                        {sg.sections.map((sec: any) => (
+                                                            <span key={sec.id} className="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200">
+                                                                Sec {sec.name} ({sec.capacity || 45} max)
+                                                            </span>
+                                                        ))}
+                                                    </div>
+                                                ) : (
+                                                    <span className="text-xs text-gray-400 italic">No sections added</span>
+                                                )}
                                             </td>
                                             <td className="px-6 py-4">
                                                 {activeYear?.status === "ACTIVE" ? (
-                                                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800">
                                                         Active
                                                     </span>
                                                 ) : (
-                                                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                                                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-gray-100 text-gray-800">
                                                         Inactive
                                                     </span>
                                                 )}
