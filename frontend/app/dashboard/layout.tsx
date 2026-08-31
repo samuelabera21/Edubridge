@@ -702,8 +702,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                                             </button>
                                             {openMenus.attendance && (
                                                 <div className="pl-10 pr-3 py-1 space-y-1">
+                                                    <Link href="/dashboard/attendance/overview" className={`block py-1.5 text-sm ${pathname === "/dashboard/attendance/overview" ? "text-[#006b3f] font-medium" : "text-gray-500 hover:text-[#006b3f]"}`}>Executive Overview</Link>
                                                     <Link href="/dashboard/attendance/student" className={`block py-1.5 text-sm ${pathname === "/dashboard/attendance/student" ? "text-[#006b3f] font-medium" : "text-gray-500 hover:text-[#006b3f]"}`}>Student Attendance</Link>
                                                     <Link href="/dashboard/attendance/teacher" className={`block py-1.5 text-sm ${pathname === "/dashboard/attendance/teacher" ? "text-[#006b3f] font-medium" : "text-gray-500 hover:text-[#006b3f]"}`}>Teacher Attendance</Link>
+                                                    <Link href="/dashboard/attendance/alerts" className={`block py-1.5 text-sm ${pathname === "/dashboard/attendance/alerts" ? "text-[#006b3f] font-medium" : "text-gray-500 hover:text-[#006b3f]"}`}>Absence Risk Alerts</Link>
+                                                    <Link href="/dashboard/attendance/corrections" className={`block py-1.5 text-sm ${pathname === "/dashboard/attendance/corrections" ? "text-[#006b3f] font-medium" : "text-gray-500 hover:text-[#006b3f]"}`}>Official Corrections</Link>
                                                 </div>
                                             )}
                                         </div>
