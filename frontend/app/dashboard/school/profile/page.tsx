@@ -34,6 +34,13 @@ export default function SchoolProfilePage() {
         contactEmail: "",
         phoneNumber: "",
         address: "",
+        schoolLevel: "PRIMARY",
+        ownership: "GOVERNMENT",
+        region: "Addis Ababa",
+        zone: "",
+        woreda: "",
+        kebele: "",
+        principalName: "",
     });
 
     const [configData, setConfigData] = useState({
@@ -71,6 +78,7 @@ export default function SchoolProfilePage() {
                     const activeYear = data.academicYears?.find((y: any) => y.status === "ACTIVE");
                     
                     if (data.profile || data.school) {
+                        const cfg = data.profile?.configuration || {};
                         setFormData({
                             schoolName: data.school?.name || "",
                             activeAcademicYearId: activeYear ? activeYear.id : (data.academicYears?.[0]?.id || ""),
@@ -78,12 +86,19 @@ export default function SchoolProfilePage() {
                             contactEmail: data.profile?.contactEmail || "",
                             phoneNumber: data.profile?.phoneNumber || "",
                             address: data.profile?.address || "",
+                            schoolLevel: cfg.schoolLevel || "PRIMARY",
+                            ownership: cfg.ownership || "GOVERNMENT",
+                            region: cfg.region || "Addis Ababa",
+                            zone: cfg.zone || "",
+                            woreda: cfg.woreda || "",
+                            kebele: cfg.kebele || "",
+                            principalName: cfg.principalName || "",
                         });
                         if (data.profile?.configuration) {
                             setConfigData({
-                                gradingFormat: data.profile.configuration.gradingFormat || "letter",
-                                attendancePolicy: data.profile.configuration.attendancePolicy || "daily",
-                                passingMark: data.profile.configuration.passingMark || 50
+                                gradingFormat: cfg.gradingFormat || "letter",
+                                attendancePolicy: cfg.attendancePolicy || "daily",
+                                passingMark: cfg.passingMark || 50
                             });
                         }
                     }
@@ -128,7 +143,16 @@ export default function SchoolProfilePage() {
                 contactEmail: formData.contactEmail || null,
                 phoneNumber: formData.phoneNumber || null,
                 address: formData.address || null,
-                configuration: configData
+                configuration: {
+                    ...configData,
+                    schoolLevel: formData.schoolLevel,
+                    ownership: formData.ownership,
+                    region: formData.region,
+                    zone: formData.zone,
+                    woreda: formData.woreda,
+                    kebele: formData.kebele,
+                    principalName: formData.principalName,
+                }
             };
 
             const res = await fetchApi("/school/profile", {
@@ -164,9 +188,9 @@ export default function SchoolProfilePage() {
                 <div>
                     <h1 className="text-2xl font-bold text-gray-900 flex items-center space-x-2">
                         <Building2 className="h-6 w-6 text-[#006b3f]" />
-                        <span>School Profile</span>
+                        <span>School Profile & Identity</span>
                     </h1>
-                    <p className="text-gray-500 mt-1">Manage core information and settings for {formData.schoolName}</p>
+                    <p className="text-gray-500 mt-1">Manage institutional hierarchy, location, and operational settings for {formData.schoolName}</p>
                 </div>
             </div>
 
@@ -237,7 +261,7 @@ export default function SchoolProfilePage() {
                         }`}
                     >
                         <FileText className="w-4 h-4" />
-                        <span>General Info</span>
+                        <span>General & Classification Info</span>
                     </button>
                     <button
                         onClick={() => setActiveTab("config")}
@@ -258,6 +282,44 @@ export default function SchoolProfilePage() {
                 <form onSubmit={handleSubmit} className="space-y-6">
                     {activeTab === "general" ? (
                         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                            {/* Ethiopian Educational Classification */}
+                            <div className="bg-emerald-50/60 border border-emerald-100 p-4 rounded-lg">
+                                <h3 className="font-semibold text-emerald-900 text-sm mb-1">Ethiopian Educational Classification & Identity</h3>
+                                <p className="text-xs text-emerald-700">Official level, ownership type, and head administrator registration.</p>
+                            </div>
+
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">School Level / Category</label>
+                                    <select
+                                        name="schoolLevel"
+                                        value={formData.schoolLevel}
+                                        onChange={handleChange}
+                                        disabled={!isEditing || !hasUpdatePermission || saving}
+                                        className="w-full border border-gray-300 rounded-md p-2.5 focus:ring-2 focus:ring-[#006b3f] focus:border-[#006b3f] disabled:bg-gray-50 disabled:text-gray-500 transition-colors bg-white"
+                                    >
+                                        <option value="PRIMARY">Primary School (Grades 1–8)</option>
+                                        <option value="SECONDARY">Secondary School (Grades 9–12)</option>
+                                        <option value="COMPLETE">Complete Secondary (Grades 1–12)</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">School Ownership Type</label>
+                                    <select
+                                        name="ownership"
+                                        value={formData.ownership}
+                                        onChange={handleChange}
+                                        disabled={!isEditing || !hasUpdatePermission || saving}
+                                        className="w-full border border-gray-300 rounded-md p-2.5 focus:ring-2 focus:ring-[#006b3f] focus:border-[#006b3f] disabled:bg-gray-50 disabled:text-gray-500 transition-colors bg-white"
+                                    >
+                                        <option value="GOVERNMENT">Government / Public School</option>
+                                        <option value="PRIVATE">Private School</option>
+                                        <option value="MISSION">Mission / Religious School</option>
+                                        <option value="COMMUNITY">Community School</option>
+                                    </select>
+                                </div>
+                            </div>
+
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">Organization Name</label>
@@ -270,6 +332,21 @@ export default function SchoolProfilePage() {
                                         className="w-full border border-gray-300 rounded-md p-2.5 focus:ring-2 focus:ring-[#006b3f] focus:border-[#006b3f] disabled:bg-gray-50 disabled:text-gray-500 transition-colors"
                                     />
                                 </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Head Principal / Director</label>
+                                    <input
+                                        type="text"
+                                        name="principalName"
+                                        value={formData.principalName}
+                                        onChange={handleChange}
+                                        disabled={!isEditing || !hasUpdatePermission || saving}
+                                        className="w-full border border-gray-300 rounded-md p-2.5 focus:ring-2 focus:ring-[#006b3f] focus:border-[#006b3f] disabled:bg-gray-50 disabled:text-gray-500 transition-colors"
+                                        placeholder="e.g. Dr. Abebe Bikila"
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">Active Academic Year</label>
                                     <select
@@ -287,9 +364,6 @@ export default function SchoolProfilePage() {
                                         ))}
                                     </select>
                                 </div>
-                            </div>
-
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">Established Year</label>
                                     <input
@@ -304,6 +378,64 @@ export default function SchoolProfilePage() {
                                         max={new Date().getFullYear()}
                                     />
                                 </div>
+                            </div>
+
+                            {/* Administrative Location Hierarchy */}
+                            <div className="border-t border-gray-100 pt-4">
+                                <h4 className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-3">Administrative Hierarchy & Location</h4>
+                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                                    <div>
+                                        <label className="block text-xs font-medium text-gray-700 mb-1">Region</label>
+                                        <input
+                                            type="text"
+                                            name="region"
+                                            value={formData.region}
+                                            onChange={handleChange}
+                                            disabled={!isEditing || !hasUpdatePermission || saving}
+                                            className="w-full border border-gray-300 rounded-md p-2 text-sm focus:ring-2 focus:ring-[#006b3f]"
+                                            placeholder="Addis Ababa"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-medium text-gray-700 mb-1">Zone / Sub-city</label>
+                                        <input
+                                            type="text"
+                                            name="zone"
+                                            value={formData.zone}
+                                            onChange={handleChange}
+                                            disabled={!isEditing || !hasUpdatePermission || saving}
+                                            className="w-full border border-gray-300 rounded-md p-2 text-sm focus:ring-2 focus:ring-[#006b3f]"
+                                            placeholder="Bole"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-medium text-gray-700 mb-1">Woreda</label>
+                                        <input
+                                            type="text"
+                                            name="woreda"
+                                            value={formData.woreda}
+                                            onChange={handleChange}
+                                            disabled={!isEditing || !hasUpdatePermission || saving}
+                                            className="w-full border border-gray-300 rounded-md p-2 text-sm focus:ring-2 focus:ring-[#006b3f]"
+                                            placeholder="Woreda 03"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-medium text-gray-700 mb-1">Kebele</label>
+                                        <input
+                                            type="text"
+                                            name="kebele"
+                                            value={formData.kebele}
+                                            onChange={handleChange}
+                                            disabled={!isEditing || !hasUpdatePermission || saving}
+                                            className="w-full border border-gray-300 rounded-md p-2 text-sm focus:ring-2 focus:ring-[#006b3f]"
+                                            placeholder="05"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">Contact Email</label>
                                     <input
@@ -316,31 +448,30 @@ export default function SchoolProfilePage() {
                                         placeholder="info@school.edu.et"
                                     />
                                 </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Official Phone Number</label>
+                                    <input
+                                        type="tel"
+                                        name="phoneNumber"
+                                        value={formData.phoneNumber}
+                                        onChange={handleChange}
+                                        disabled={!isEditing || !hasUpdatePermission || saving}
+                                        className="w-full border border-gray-300 rounded-md p-2.5 focus:ring-2 focus:ring-[#006b3f] focus:border-[#006b3f] disabled:bg-gray-50 disabled:text-gray-500 transition-colors"
+                                        placeholder="+251 911 000 000"
+                                    />
+                                </div>
                             </div>
 
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Official Phone Number</label>
-                                <input
-                                    type="tel"
-                                    name="phoneNumber"
-                                    value={formData.phoneNumber}
-                                    onChange={handleChange}
-                                    disabled={!isEditing || !hasUpdatePermission || saving}
-                                    className="w-full border border-gray-300 rounded-md p-2.5 focus:ring-2 focus:ring-[#006b3f] focus:border-[#006b3f] disabled:bg-gray-50 disabled:text-gray-500 transition-colors"
-                                    placeholder="+251 911 000 000"
-                                />
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Physical Address</label>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Physical Address / Description</label>
                                 <textarea
                                     name="address"
                                     value={formData.address}
                                     onChange={handleChange}
                                     disabled={!isEditing || !hasUpdatePermission || saving}
-                                    rows={3}
+                                    rows={2}
                                     className="w-full border border-gray-300 rounded-md p-2.5 focus:ring-2 focus:ring-[#006b3f] focus:border-[#006b3f] disabled:bg-gray-50 disabled:text-gray-500 transition-colors"
-                                    placeholder="Woreda, Zone, Region, Specific location details"
+                                    placeholder="Street, landmarks, and specific location details"
                                 ></textarea>
                             </div>
                         </div>

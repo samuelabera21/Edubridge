@@ -1,15 +1,13 @@
-version: '3.8'
-
 services:
   db:
     image: postgres:15-alpine
     container_name: edubridge_postgres
     environment:
-      POSTGRES_USER: edubridge_user
-      POSTGRES_PASSWORD: edubridge_password
-      POSTGRES_DB: edubridge
+      POSTGRES_USER: ${POSTGRES_USER:-edubridge_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-edubridge}
     ports:
-      - "5434:5432"
+      - "${DB_PORT:-5434}:5432"
     volumes:
       - edubridge_pgdata:/var/lib/postgresql/data
     restart: unless-stopped
@@ -20,10 +18,11 @@ services:
       dockerfile: Dockerfile.dev
     container_name: edubridge_backend
     ports:
-      - "5001:5000"
+      - "${BACKEND_PORT:-5001}:5000"
     environment:
-      - DATABASE_URL=postgresql://edubridge_user:edubridge_password@db:5432/edubridge
-      - BETTER_AUTH_SECRET=development_secret_key_12345
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-edubridge_user}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-edubridge}
+      - BETTER_AUTH_SECRET=${BETTER_AUTH_SECRET}
+      - DEFAULT_INITIAL_PASSWORD=${DEFAULT_INITIAL_PASSWORD}
       # Set BETTER_AUTH_URL to the internal backend address so auth callbacks
       # and base URLs resolve correctly from inside the Docker network.
       - BETTER_AUTH_URL=http://backend:5000
@@ -40,9 +39,9 @@ services:
       dockerfile: Dockerfile.dev
     container_name: edubridge_frontend
     ports:
-      - "3001:3000"
+      - "${FRONTEND_PORT:-3001}:3000"
     environment:
-      - NEXT_PUBLIC_API_URL=http://localhost:5001/api
+      - NEXT_PUBLIC_API_URL=http://localhost:${BACKEND_PORT:-5001}/api
       - BACKEND_URL=http://backend:5000
     volumes:
       - ./frontend:/app

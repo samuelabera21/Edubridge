@@ -154,3 +154,19 @@ export const deleteResource = async (req: Request, res: Response) => {
         return res.status(400).json({ error: error.message || "Failed to delete resource" });
     }
 };
+
+export const updateImprovementPlanStatus = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        if (!organizationId) return res.status(403).json({ error: "Missing school scope" });
+
+        const { id } = req.params;
+        const { status } = req.body;
+        if (!status) return res.status(400).json({ error: "status is required" });
+
+        const plan = await OperationalService.updateImprovementPlanStatus(id as string, organizationId, status);
+        return res.json(plan);
+    } catch (error: any) {
+        return res.status(400).json({ error: error.message || "Failed to update improvement plan status" });
+    }
+};

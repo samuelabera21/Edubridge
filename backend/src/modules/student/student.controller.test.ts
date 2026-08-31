@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { Request, Response } from "express";
 import { 
     createStudent, getStudents, enrollStudent, 
-    getEnrollments, transferStudent, updateStudentStatus
+    getEnrollments, transferStudent, updateStudentStatus, getStudentProfile
 } from "./student.controller.js";
 import { StudentService } from "./student.service.js";
 
@@ -14,6 +14,7 @@ vi.mock("./student.service.js", () => ({
         getEnrollments: vi.fn(),
         transferStudent: vi.fn(),
         updateStudentStatus: vi.fn(),
+        getStudentByUserId: vi.fn(),
     }
 }));
 
@@ -96,6 +97,40 @@ describe("Student Controller", () => {
 
             expect(StudentService.updateStudentStatus).toHaveBeenCalledWith("school1", "enr1", "DROPPED_OUT", "Left school");
             expect(mockRes.json).toHaveBeenCalledWith(mockUpdate);
+        });
+    });
+
+    describe("getStudentProfile", () => {
+        it("should return the authenticated student's scoped profile", async () => {
+            (mockReq as any).accessScope = { id: "school1" };
+            (mockReq as any).user = { id: "user1" };
+            const profile = { id: "student1", userId: "user1" };
+            vi.mocked(StudentService.getStudentByUserId).mockResolvedValue(profile as any);
+
+            await getStudentProfile(mockReq as Request, mockRes as Response);
+
+            expect(StudentService.getStudentByUserId).toHaveBeenCalledWith("user1", "school1");
+            expect(mockRes.json).toHaveBeenCalledWith(profile);
+        });
+
+        it("should return 403 when authentication context is incomplete", async () => {
+            (mockReq as any).accessScope = { id: "school1" };
+
+            await getStudentProfile(mockReq as Request, mockRes as Response);
+
+            expect(mockRes.status).toHaveBeenCalledWith(403);
+            expect(StudentService.getStudentByUserId).not.toHaveBeenCalled();
+        });
+
+        it("should return 404 when the account has no active student profile", async () => {
+            (mockReq as any).accessScope = { id: "school1" };
+            (mockReq as any).user = { id: "user1" };
+            vi.mocked(StudentService.getStudentByUserId).mockResolvedValue(null);
+
+            await getStudentProfile(mockReq as Request, mockRes as Response);
+
+            expect(mockRes.status).toHaveBeenCalledWith(404);
+            expect(mockRes.json).toHaveBeenCalledWith({ error: "Student profile not found" });
         });
     });
 });

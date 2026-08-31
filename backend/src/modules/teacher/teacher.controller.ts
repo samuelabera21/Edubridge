@@ -140,3 +140,201 @@ export const getTeacherProfile = async (req: Request, res: Response) => {
         return res.status(500).json({ error: "Internal server error" });
     }
 };
+
+export const getDashboardSummary = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        const userId = req.user?.id;
+        if (!organizationId || !userId) return res.status(403).json({ error: "Missing school scope or authentication" });
+
+        const summary = await TeacherService.getDashboardSummary(userId, organizationId);
+        return res.json(summary);
+    } catch (error: any) {
+        return res.status(500).json({ error: error.message || "Internal server error" });
+    }
+};
+
+export const getMyClasses = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        const userId = req.user?.id;
+        if (!organizationId || !userId) return res.status(403).json({ error: "Missing school scope or authentication" });
+
+        const classes = await TeacherService.getMyClasses(userId, organizationId);
+        return res.json(classes);
+    } catch (error: any) {
+        return res.status(500).json({ error: error.message || "Internal server error" });
+    }
+};
+
+export const getMyTimetable = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        const userId = req.user?.id;
+        if (!organizationId || !userId) return res.status(403).json({ error: "Missing school scope or authentication" });
+
+        const timetable = await TeacherService.getMyTimetable(userId, organizationId);
+        return res.json(timetable);
+    } catch (error: any) {
+        return res.status(500).json({ error: error.message || "Internal server error" });
+    }
+};
+
+export const getMyStudents = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        const userId = req.user?.id;
+        if (!organizationId || !userId) return res.status(403).json({ error: "Missing school scope or authentication" });
+
+        const students = await TeacherService.getMyStudents(userId, organizationId);
+        return res.json(students);
+    } catch (error: any) {
+        return res.status(500).json({ error: error.message || "Internal server error" });
+    }
+};
+
+export const getStudentDetail = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        const userId = req.user?.id;
+        if (!organizationId || !userId) return res.status(403).json({ error: "Missing school scope or authentication" });
+
+        const student = await TeacherService.getStudentDetail(userId, organizationId, req.params.studentId as string);
+        return res.json(student);
+    } catch (error: any) {
+        return res.status(400).json({ error: error.message || "Failed to get student detail" });
+    }
+};
+
+export const recordBatchAttendance = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        const userId = req.user?.id;
+        if (!organizationId || !userId) return res.status(403).json({ error: "Missing school scope or authentication" });
+
+        const result = await TeacherService.recordBatchAttendance(userId, organizationId, req.body);
+        return res.status(201).json(result);
+    } catch (error: any) {
+        return res.status(400).json({ error: error.message || "Failed to record batch attendance" });
+    }
+};
+
+export const createAssessmentWithResults = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        const userId = req.user?.id;
+        if (!organizationId || !userId) return res.status(403).json({ error: "Missing school scope or authentication" });
+
+        const assessment = await TeacherService.createAssessmentWithResults(userId, organizationId, req.body);
+        return res.status(201).json(assessment);
+    } catch (error: any) {
+        return res.status(400).json({ error: error.message || "Failed to create assessment with results" });
+    }
+};
+
+export const gradeActivitySubmission = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        const userId = req.user?.id;
+        if (!organizationId || !userId) return res.status(403).json({ error: "Missing school scope or authentication" });
+
+        const submission = await TeacherService.gradeActivitySubmission(userId, organizationId, req.params.submissionId as string, req.body);
+        return res.json(submission);
+    } catch (error: any) {
+        return res.status(400).json({ error: error.message || "Failed to grade submission" });
+    }
+};
+
+export const createStudentSupportFlag = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        const userId = req.user?.id;
+        if (!organizationId || !userId) return res.status(403).json({ error: "Missing school scope or authentication" });
+
+        const flag = await TeacherService.createStudentSupportFlag(userId, organizationId, req.body);
+        return res.status(201).json(flag);
+    } catch (error: any) {
+        return res.status(400).json({ error: error.message || "Failed to raise support flag" });
+    }
+};
+
+export const resolveSupportFlag = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        const userId = req.user?.id;
+        if (!organizationId || !userId) return res.status(403).json({ error: "Missing school scope or authentication" });
+
+        const flag = await TeacherService.resolveSupportFlag(userId, organizationId, req.params.flagId as string, req.body);
+        return res.json(flag);
+    } catch (error: any) {
+        return res.status(400).json({ error: error.message || "Failed to resolve support flag" });
+    }
+};
+
+export const sendParentMessage = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        const userId = req.user?.id;
+        if (!organizationId || !userId) return res.status(403).json({ error: "Missing school scope or authentication" });
+
+        const message = await TeacherService.sendParentMessage(userId, organizationId, req.body);
+        return res.status(201).json(message);
+    } catch (error: any) {
+        return res.status(400).json({ error: error.message || "Failed to send parent message" });
+    }
+};
+
+export const getClassPerformanceReport = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        const userId = req.user?.id;
+        if (!organizationId || !userId) return res.status(403).json({ error: "Missing school scope or authentication" });
+
+        const report = await TeacherService.getClassPerformanceReport(userId, organizationId, req.params.teachingAssignmentId as string);
+        return res.json(report);
+    } catch (error: any) {
+        return res.status(400).json({ error: error.message || "Failed to get class performance report" });
+    }
+};
+
+export const askAiAssistant = async (req: Request, res: Response) => {
+    try {
+        const { prompt, category } = req.body;
+        return res.json({
+            prompt,
+            category,
+            answer: `AI recommendation for ${category || 'teaching'}: Based on recent class analytics, focusing on concept review and interactive quizzes is recommended for optimal student outcome.`
+        });
+    } catch (error: any) {
+        return res.status(500).json({ error: error.message || "Failed to generate AI assistant response" });
+    }
+};
+
+export const reportIssue = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        const userId = req.user?.id;
+        if (!organizationId || !userId) return res.status(403).json({ error: "Missing school scope or authentication" });
+
+        const issue = await TeacherService.reportIssue(userId, organizationId, req.body);
+        return res.status(201).json(issue);
+    } catch (error: any) {
+        return res.status(400).json({ error: error.message || "Failed to report issue" });
+    }
+};
+
+export const getMyIssues = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        const userId = req.user?.id;
+        if (!organizationId || !userId) return res.status(403).json({ error: "Missing school scope or authentication" });
+
+        const issues = await TeacherService.getMyIssues(userId, organizationId);
+        return res.json(issues);
+    } catch (error: any) {
+        return res.status(500).json({ error: error.message || "Failed to get reported issues" });
+    }
+};
+
+
+

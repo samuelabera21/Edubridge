@@ -1,152 +1,136 @@
 "use client";
 
-import { useAuth } from "../../../hooks/useAuth";
+import Link from "next/link";
 import { useEffect, useState } from "react";
+import { CheckCircle2, Clock, FileText, GraduationCap, Megaphone, TriangleAlert } from "lucide-react";
+import { useAuth } from "../../../hooks/useAuth";
 import { fetchApi } from "../../../lib/api";
-import { GraduationCap, Calendar, Book, Clock } from "lucide-react";
+
+type DashboardData = {
+    student: { studentId: string; name: string };
+    enrollment: {
+        academicYear: { name: string };
+        schoolGrade: { grade: { name: string } };
+        section: { name: string } | null;
+    };
+    todayClasses: Array<{
+        id: string;
+        classPeriod: { name: string; startTime: string };
+        teachingAssignment: { subject: { name: string }; teacher: { firstName: string; lastName: string } };
+    }>;
+    attendance: { rate: number | null };
+    recentResults: Array<{ id: string; title: string; subject: string; percentage: number }>;
+    upcomingActivities: Array<{
+        id: string;
+        title: string;
+        dueDate: string | null;
+        teachingAssignment: { subject: { name: string } };
+    }>;
+    announcements: Array<{ id: string; title: string; content: string }>;
+    supportFlags: Array<{ id: string; description: string }>;
+};
 
 export default function StudentDashboard() {
     const { authData } = useAuth();
-    const [profile, setProfile] = useState<any>(null);
+    const [dashboard, setDashboard] = useState<DashboardData | null>(null);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
-        async function loadProfile() {
+        async function loadDashboard() {
             try {
-                const data = await fetchApi("/student/me");
-                setProfile(data);
-            } catch (err) {
-                console.error("Failed to load student profile:", err);
+                const response = await fetchApi("/student/dashboard");
+                if (!response.ok) throw new Error("Dashboard request failed");
+                setDashboard(await response.json());
+            } catch {
+                setError("We could not load your dashboard right now.");
             } finally {
                 setLoading(false);
             }
         }
-        
-        loadProfile();
+
+        loadDashboard();
     }, []);
 
     if (loading) {
-        return <div className="animate-pulse flex space-x-4">Loading your dashboard...</div>;
+        return <div className="mx-auto w-full max-w-6xl animate-pulse text-gray-500">Loading your dashboard...</div>;
     }
 
+    if (error || !dashboard) {
+        return <div className="mx-auto w-full max-w-6xl rounded-xl border border-red-100 bg-red-50 p-6 text-red-700">{error || "Student dashboard data not found."}</div>;
+    }
+
+    const firstName = authData?.user?.name?.split(" ")[0] || dashboard.student.name.split(" ")[0];
+    const attendanceLabel = dashboard.attendance.rate === null ? "No records" : `${dashboard.attendance.rate}%`;
+
     return (
-        <div className="w-full max-w-6xl mx-auto space-y-6">
-            {/* Welcome Banner */}
-            <div className="bg-gradient-to-r from-[#006b3f] to-sky-500 rounded-2xl p-8 text-white shadow-lg relative overflow-hidden">
+        <div className="mx-auto w-full max-w-6xl space-y-6">
+            <section className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-[#006b3f] to-sky-500 p-8 text-white shadow-lg">
                 <div className="relative z-10">
-                    <h1 className="text-3xl font-bold mb-2">
-                        Welcome back, {authData?.user?.name?.split(' ')[0] || 'Student'}! 👋
-                    </h1>
-                    <p className="text-blue-100 text-lg max-w-xl">
-                        Here is an overview of your academic progress for the {profile?.academicYear?.name || "current"} school year.
-                    </p>
+                    <p className="mb-2 text-sm font-medium uppercase tracking-wide text-blue-100">Student dashboard</p>
+                    <h1 className="mb-2 text-3xl font-bold">Welcome back, {firstName}!</h1>
+                    <p className="text-lg text-blue-100">{dashboard.enrollment.schoolGrade.grade.name} · Section {dashboard.enrollment.section?.name || "Not assigned"} · {dashboard.enrollment.academicYear.name}</p>
                 </div>
-                <GraduationCap className="absolute -right-10 -bottom-10 w-64 h-64 text-white opacity-10 transform -rotate-12" />
+                <GraduationCap className="absolute -bottom-10 -right-10 h-64 w-64 -rotate-12 text-white opacity-10" />
+            </section>
+
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+                <StatCard icon={<GraduationCap className="h-6 w-6" />} label="Student ID" value={dashboard.student.studentId} color="blue" />
+                <StatCard icon={<CheckCircle2 className="h-6 w-6" />} label="Attendance" value={attendanceLabel} color="green" />
+                <StatCard icon={<Clock className="h-6 w-6" />} label="Pending activities" value={String(dashboard.upcomingActivities.length)} color="amber" />
             </div>
 
-            {/* Quick Stats / Overview */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 flex items-center space-x-4">
-                    <div className="p-3 bg-blue-50 text-[#006b3f] rounded-lg">
-                        <GraduationCap className="w-6 h-6" />
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+                <section className="overflow-hidden rounded-xl border border-gray-100 bg-white shadow-sm lg:col-span-2">
+                    <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4">
+                        <h2 className="font-semibold text-gray-900">Today&apos;s classes</h2>
+                        <Link href="/dashboard/student/classes" className="text-sm font-medium text-[#006b3f]">View classes</Link>
                     </div>
-                    <div>
-                        <p className="text-sm font-medium text-gray-500">Current Grade</p>
-                        <p className="text-xl font-bold text-gray-900">{profile?.schoolGrade?.grade?.name || "Grade 9"}</p>
-                    </div>
-                </div>
-
-                <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 flex items-center space-x-4">
-                    <div className="p-3 bg-indigo-50 text-indigo-600 rounded-lg">
-                        <Calendar className="w-6 h-6" />
-                    </div>
-                    <div>
-                        <p className="text-sm font-medium text-gray-500">Section</p>
-                        <p className="text-xl font-bold text-gray-900">{profile?.section?.name || "Not Assigned"}</p>
-                    </div>
-                </div>
-
-                <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 flex items-center space-x-4">
-                    <div className="p-3 bg-green-50 text-green-600 rounded-lg">
-                        <Book className="w-6 h-6" />
-                    </div>
-                    <div>
-                        <p className="text-sm font-medium text-gray-500">Enrolled Subjects</p>
-                        <p className="text-xl font-bold text-gray-900">8 (Placeholder)</p>
-                    </div>
-                </div>
-
-                <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 flex items-center space-x-4">
-                    <div className="p-3 bg-amber-50 text-amber-600 rounded-lg">
-                        <Clock className="w-6 h-6" />
-                    </div>
-                    <div>
-                        <p className="text-sm font-medium text-gray-500">Attendance Rate</p>
-                        <p className="text-xl font-bold text-gray-900">95% (Placeholder)</p>
-                    </div>
-                </div>
-            </div>
-
-            {/* Main Content Area */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* Schedule Column */}
-                <div className="lg:col-span-2 space-y-6">
-                    <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-                        <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center">
-                            <h3 className="font-semibold text-gray-900">Today's Schedule</h3>
-                            <button className="text-sm text-[#006b3f] font-medium hover:text-blue-700">View Full</button>
-                        </div>
-                        <div className="p-6">
-                            <div className="space-y-4">
-                                {/* Placeholder Schedule Items */}
-                                {[
-                                    { time: "08:30 AM", subject: "Mathematics", room: "Room 101", teacher: "Mr. Abebe" },
-                                    { time: "10:15 AM", subject: "Physics", room: "Lab 2", teacher: "Ms. Sara" },
-                                    { time: "11:30 AM", subject: "English Literature", room: "Room 205", teacher: "Mr. Dawit" },
-                                ].map((cls, i) => (
-                                    <div key={i} className="flex items-start space-x-4 p-4 rounded-lg hover:bg-gray-50 transition-colors border border-gray-50">
-                                        <div className="w-20 flex-shrink-0 text-sm font-medium text-gray-500">{cls.time}</div>
-                                        <div className="flex-1">
-                                            <p className="font-semibold text-gray-900">{cls.subject}</p>
-                                            <div className="flex items-center space-x-3 mt-1 text-sm text-gray-500">
-                                                <span>{cls.teacher}</span>
-                                                <span>•</span>
-                                                <span>{cls.room}</span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                ))}
+                    <div className="space-y-3 p-6">
+                        {dashboard.todayClasses.length === 0 ? <Empty text="No classes are scheduled today." /> : dashboard.todayClasses.map((item) => (
+                            <div key={item.id} className="flex items-start gap-4 rounded-lg border border-gray-100 p-4">
+                                <div className="w-24 flex-shrink-0 text-sm font-medium text-gray-500">{item.classPeriod.startTime}</div>
+                                <div><p className="font-semibold text-gray-900">{item.teachingAssignment.subject.name}</p><p className="mt-1 text-sm text-gray-500">{item.teachingAssignment.teacher.firstName} {item.teachingAssignment.teacher.lastName} · {item.classPeriod.name}</p></div>
                             </div>
-                        </div>
+                        ))}
                     </div>
-                </div>
+                </section>
 
-                {/* Sidebar Column */}
+                <section className="overflow-hidden rounded-xl border border-gray-100 bg-white shadow-sm">
+                    <div className="border-b border-gray-100 px-6 py-4"><h2 className="font-semibold text-gray-900">Upcoming activities</h2></div>
+                    <div className="space-y-3 p-6">
+                        {dashboard.upcomingActivities.length === 0 ? <Empty text="No upcoming activities." /> : dashboard.upcomingActivities.map((activity) => (
+                            <div key={activity.id} className="rounded-lg bg-orange-50 p-3 text-sm text-orange-900"><p className="font-semibold">{activity.title}</p><p className="mt-1">{activity.teachingAssignment.subject.name} · {activity.dueDate ? new Date(activity.dueDate).toLocaleDateString() : "No due date"}</p></div>
+                        ))}
+                    </div>
+                </section>
+            </div>
+
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+                <section className="rounded-xl border border-gray-100 bg-white shadow-sm lg:col-span-2">
+                    <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4"><h2 className="font-semibold text-gray-900">Recent results</h2><FileText className="h-5 w-5 text-gray-400" /></div>
+                    <div className="divide-y divide-gray-100">
+                        {dashboard.recentResults.length === 0 ? <Empty text="No published results yet." /> : dashboard.recentResults.map((result) => <div key={result.id} className="flex items-center justify-between gap-4 px-6 py-4"><div><p className="font-medium text-gray-900">{result.title}</p><p className="text-sm text-gray-500">{result.subject}</p></div><p className="font-semibold text-[#006b3f]">{result.percentage}%</p></div>)}
+                    </div>
+                </section>
+
                 <div className="space-y-6">
-                    <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-                        <div className="px-6 py-4 border-b border-gray-100">
-                            <h3 className="font-semibold text-gray-900">Recent Assignments</h3>
-                        </div>
-                        <div className="p-6">
-                            <div className="space-y-4">
-                                <div className="p-3 rounded-lg bg-orange-50 border border-orange-100 text-orange-800 text-sm">
-                                    <span className="font-semibold block mb-1">Math Homework 4</span>
-                                    Due tomorrow at 11:59 PM
-                                </div>
-                                <div className="p-3 rounded-lg bg-gray-50 border border-gray-100 text-gray-700 text-sm">
-                                    <span className="font-semibold block mb-1">Physics Lab Report</span>
-                                    Due next Monday
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div className="bg-blue-50 rounded-xl p-6 border border-blue-100 text-center">
-                        <h4 className="font-semibold text-blue-900 mb-2">Demo Mode</h4>
-                        <p className="text-sm text-blue-700">This dashboard is a placeholder. The interactive features will be built by your team in Sprint 3 based on the foundational APIs.</p>
-                    </div>
+                    <section className="rounded-xl border border-gray-100 bg-white shadow-sm">
+                        <div className="border-b border-gray-100 px-6 py-4"><h2 className="flex items-center gap-2 font-semibold text-gray-900"><Megaphone className="h-4 w-4" /> Announcements</h2></div>
+                        <div className="space-y-3 p-6">{dashboard.announcements.length === 0 ? <Empty text="No announcements." /> : dashboard.announcements.slice(0, 3).map((item) => <div key={item.id}><p className="font-medium text-gray-900">{item.title}</p><p className="mt-1 text-sm text-gray-500">{item.content}</p></div>)}</div>
+                    </section>
+                    {dashboard.supportFlags.length > 0 && <div className="rounded-xl border border-amber-100 bg-amber-50 p-6 text-amber-900"><h2 className="flex items-center gap-2 font-semibold"><TriangleAlert className="h-4 w-4" /> Needs attention</h2><p className="mt-2 text-sm">You have {dashboard.supportFlags.length} active support notification{dashboard.supportFlags.length === 1 ? "" : "s"}.</p></div>}
                 </div>
             </div>
         </div>
     );
+}
+
+function Empty({ text }: { text: string }) {
+    return <p className="text-sm text-gray-500">{text}</p>;
+}
+
+function StatCard({ icon, label, value, color }: { icon: React.ReactNode; label: string; value: string; color: "blue" | "green" | "amber" }) {
+    const colors = { blue: "bg-blue-50 text-[#006b3f]", green: "bg-green-50 text-green-600", amber: "bg-amber-50 text-amber-600" };
+    return <div className="flex items-center space-x-4 rounded-xl border border-gray-100 bg-white p-6 shadow-sm"><div className={`rounded-lg p-3 ${colors[color]}`}>{icon}</div><div><p className="text-sm font-medium text-gray-500">{label}</p><p className="text-xl font-bold text-gray-900">{value}</p></div></div>;
 }

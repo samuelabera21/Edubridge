@@ -4,8 +4,12 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "dev": "prisma db push && nodemon --exec tsx src/index.ts",
+    "dev": "prisma db push && npx prisma db seed && nodemon --exec tsx src/index.ts",
+    "seed": "npx prisma db seed",
     "test": "vitest run"
+  },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
   },
   "keywords": [],
   "author": "",
