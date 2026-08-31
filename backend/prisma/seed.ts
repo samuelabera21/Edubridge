@@ -53,7 +53,14 @@ async function main() {
         { name: "SCHOOL:UPDATE", desc: "Update School Profile" },
         { name: "ASSESSMENT:VIEW", desc: "View Assessments" },
         { name: "ASSESSMENT:CREATE", desc: "Create Assessments" },
-        { name: "ASSESSMENT:GRADE", desc: "Grade Assessments" }
+        { name: "ASSESSMENT:GRADE", desc: "Grade Assessments" },
+        { name: "OPERATIONAL:VIEW", desc: "View School Resources and Operations" },
+        { name: "OPERATIONAL:CREATE", desc: "Create School Resources and Improvement Plans" },
+        { name: "OPERATIONAL:UPDATE", desc: "Update School Resources and Plans" },
+        { name: "OPERATIONAL:DELETE", desc: "Delete School Resources" },
+        { name: "ISSUE:VIEW", desc: "View School Infrastructure Issues" },
+        { name: "ISSUE:CREATE", desc: "Report Infrastructure Issues" },
+        { name: "ISSUE:UPDATE", desc: "Update Infrastructure Issue Status" }
     ];
 
     const adminRoles = ["SCHOOL_ADMIN", "ADMIN"];
