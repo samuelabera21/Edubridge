@@ -26,6 +26,7 @@ import {
     getMyProfile,
     updateMyProfile,
     getRepeatedAbsences,
+    getAttendanceHistory,
     getCurriculumData
 } from "./teacher.controller.js";
 import { createActivity, getActivities, submitActivity, raiseSupportFlag, getSupportFlags } from "../learning/learning.controller.js";
@@ -139,6 +140,7 @@ router.get("/curriculum", getCurriculumData);
  *         description: Attendance records saved successfully
  */
 router.post("/attendance/batch", recordBatchAttendance);
+router.get("/attendance/history", getAttendanceHistory);
 
 /**
  * @openapi
