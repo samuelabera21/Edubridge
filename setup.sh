@@ -74,6 +74,11 @@ if [ -f "$ENV_FILE" ]; then
 DATABASE_URL="postgresql://${PG_USER}:${PG_PASS_FINAL}@localhost:${DB_PORT}/${PG_DB}"
 BETTER_AUTH_SECRET="${AUTH_SEC}"
 BETTER_AUTH_URL="http://localhost:5000"
+POSTGRES_USER=${PG_USER}
+POSTGRES_PASSWORD=${PG_PASS_FINAL}
+POSTGRES_DB=${PG_DB}
+DEFAULT_INITIAL_PASSWORD=${DEFAULT_PASS}
+ADMIN_PASSWORD=${DEFAULT_PASS}
 EOF
   echo "✅  backend/.env synced with database credentials."
 fi
