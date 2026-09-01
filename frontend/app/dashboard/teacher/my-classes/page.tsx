@@ -223,9 +223,6 @@ export default function MyClassesPage() {
                     </Link>
                     <div>
                         <h1 className="text-2xl font-extrabold tracking-tight text-gray-900">My Teaching Assignments</h1>
-                        <p className="text-xs font-medium text-gray-500 mt-0.5">
-                            Data Table View — structured tabular overview of your classes, subjects, grades, and sections.
-                        </p>
                     </div>
                 </div>
             </div>
