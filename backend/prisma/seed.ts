@@ -69,7 +69,23 @@ async function main() {
             await assignPermissionToRole(roleName, p.name, p.desc);
         }
     }
-    console.log(`✅ Admin permissions attached to ${adminRoles.join(", ")}`);
+
+    const teacherPermissions = [
+        "ACADEMIC:VIEW", "ACADEMIC:CREATE", "ACADEMIC:UPDATE",
+        "TEACHER:VIEW", "STUDENT:VIEW", "STUDENT:CREATE", "STUDENT:ENROLL",
+        "ATTENDANCE:VIEW", "ATTENDANCE:RECORD",
+        "ASSESSMENT:VIEW", "ASSESSMENT:CREATE", "ASSESSMENT:GRADE",
+        "OPERATIONAL:VIEW", "OPERATIONAL:CREATE",
+        "ISSUE:VIEW", "ISSUE:CREATE"
+    ];
+    for (const permName of teacherPermissions) {
+        const found = permissions.find(p => p.name === permName);
+        if (found) {
+            await assignPermissionToRole("TEACHER", found.name, found.desc);
+        }
+    }
+
+    console.log(`✅ System permissions attached to ADMIN, SCHOOL_ADMIN, and TEACHER roles.`);
 
     // 4. Seed Default Organization Units & School Profile
     let federalUnit = await prisma.organizationUnit.findFirst({ where: { type: "FEDERAL" } });
