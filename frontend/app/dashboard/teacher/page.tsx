@@ -496,28 +496,6 @@ export default function TeacherDashboard() {
                 </div>
             </div>
 
-            {/* Bottom Banner */}
-            <div className="bg-gradient-to-r from-blue-700 via-blue-600 to-indigo-700 rounded-2xl p-6 text-white shadow-sm flex flex-col md:flex-row items-center justify-between gap-6">
-                <div className="flex items-center space-x-4">
-                    <div className="w-12 h-12 rounded-xl bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center shrink-0">
-                        <Clock className="w-6 h-6 text-blue-200" />
-                    </div>
-                    <div>
-                        <h3 className="text-base font-bold">Classroom Operations & Student Tracking</h3>
-                        <p className="text-xs text-blue-100 mt-0.5">
-                            Record attendance, input student evaluation scores, and raise support flags for struggling students.
-                        </p>
-                    </div>
-                </div>
-
-                <Link
-                    href="/dashboard/teacher/assessment"
-                    className="bg-white text-blue-700 hover:bg-blue-50 px-5 py-2.5 rounded-xl text-xs font-bold transition-all shadow-xs flex items-center space-x-2 shrink-0"
-                >
-                    <span>Manage Assessments</span>
-                    <ArrowRight className="w-4 h-4" />
-                </Link>
-            </div>
 
             {/* Attendance Modal */}
             {selectedClass && (
