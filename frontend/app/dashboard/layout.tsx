@@ -386,29 +386,17 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
                                 {/* Section 2: STUDENT MANAGEMENT */}
                                 <div className="pt-2">
-                                    <button 
-                                        onClick={() => toggleMenu("teacherStudents")}
-                                        className="w-full flex items-center justify-between px-3 py-2 text-xs font-normal text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                                    <Link 
+                                        href="/dashboard/teacher/students"
+                                        className={`w-full flex items-center space-x-2.5 px-3 py-2 text-xs font-normal rounded-lg transition-colors ${
+                                            pathname === "/dashboard/teacher/students" 
+                                                ? "bg-blue-50 text-[#4085b3] font-medium" 
+                                                : "text-gray-700 hover:bg-gray-100"
+                                        }`}
                                     >
-                                        <div className="flex items-center space-x-2.5">
-                                            <Users className="w-4 h-4 text-[#4085b3]" />
-                                            <span>Student Management</span>
-                                        </div>
-                                        {openMenus.teacherStudents ? <ChevronDown className="w-3.5 h-3.5 text-gray-400" /> : <ChevronRight className="w-3.5 h-3.5 text-gray-400" />}
-                                    </button>
-                                    {openMenus.teacherStudents && (
-                                        <div className="pl-6 pt-1 space-y-1">
-                                            <Link href="/dashboard/teacher/students" className={`block px-3 py-1.5 rounded-lg text-xs font-normal ${pathname === "/dashboard/teacher/students" ? "bg-blue-50 text-[#4085b3]" : "text-gray-600 hover:bg-gray-50"}`}>
-                                                View Assigned Students
-                                            </Link>
-                                            <Link href="/dashboard/teacher/students?tab=profile" className="block px-3 py-1.5 rounded-lg text-xs font-normal text-gray-600 hover:bg-gray-50">
-                                                Student Profiles
-                                            </Link>
-                                            <Link href="/dashboard/teacher/students?tab=performance" className="block px-3 py-1.5 rounded-lg text-xs font-normal text-gray-600 hover:bg-gray-50">
-                                                Student Performance
-                                            </Link>
-                                        </div>
-                                    )}
+                                        <Users className="w-4 h-4 text-[#4085b3]" />
+                                        <span>Student Management</span>
+                                    </Link>
                                 </div>
 
                                 {/* Section 3: ATTENDANCE */}
