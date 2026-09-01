@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useAuth } from "../../hooks/useAuth";
 import { Loader2, BookOpen, LogOut, LayoutDashboard, Building, Search, Lock, ChevronDown, ChevronRight, Calendar, Users, GraduationCap, ClipboardCheck, FileText, Settings, User, Megaphone, Bell, MessageSquare, Package, AlertOctagon, TrendingUp, HeartHandshake, BarChart2, Sparkles, Menu } from "lucide-react";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { fetchApi } from "../../lib/api";
 import StudentNavigation from "./student/StudentNavigation";
 
@@ -12,12 +12,16 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     const { authData, loading, error } = useAuth(true);
     const pathname = usePathname();
     const router = useRouter();
+    const searchParams = useSearchParams();
+    const currentTab = searchParams?.get("tab") || "take";
 
     const [openMenus, setOpenMenus] = useState<Record<string, boolean>>({
         academics: pathname.startsWith("/dashboard/academics"),
         students: pathname.startsWith("/dashboard/students"),
         teachers: pathname.startsWith("/dashboard/teachers"),
         attendance: pathname.startsWith("/dashboard/attendance"),
+        teacherAttendance: pathname.startsWith("/dashboard/teacher/attendance"),
+        teacherCurriculum: pathname.startsWith("/dashboard/teacher/curriculum"),
         assessment: pathname.startsWith("/dashboard/assessment"),
         learning: pathname.startsWith("/dashboard/learning"),
         parents: pathname.startsWith("/dashboard/parents"),
@@ -406,26 +410,61 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                                         className="w-full flex items-center justify-between px-3 py-2 text-xs font-normal text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
                                     >
                                         <div className="flex items-center space-x-2.5">
-                                            <ClipboardCheck className="w-4 h-4 text-[#4085b3]" />
-                                            <span>Attendance</span>
+                                            <ClipboardCheck className="w-4 h-4 text-[#247297]" />
+                                            <span className="font-semibold text-gray-900">Attendance</span>
                                         </div>
                                         {openMenus.teacherAttendance ? <ChevronDown className="w-3.5 h-3.5 text-gray-400" /> : <ChevronRight className="w-3.5 h-3.5 text-gray-400" />}
                                     </button>
                                     {openMenus.teacherAttendance && (
                                         <div className="pl-6 pt-1 space-y-1">
-                                            <Link href="/dashboard/teacher/attendance?tab=take" className={`block px-3 py-1.5 rounded-lg text-xs font-normal ${pathname === "/dashboard/teacher/attendance" ? "bg-blue-50 text-[#4085b3]" : "text-gray-600 hover:bg-gray-50"}`}>
+                                            <Link 
+                                                href="/dashboard/teacher/attendance?tab=take" 
+                                                className={`block px-3 py-1.5 rounded-lg text-xs transition-colors ${
+                                                    pathname === "/dashboard/teacher/attendance" && (currentTab === "take" || !searchParams?.get("tab"))
+                                                        ? "bg-blue-50 text-[#247297] font-extrabold" 
+                                                        : "text-gray-600 hover:bg-gray-50 font-normal"
+                                                }`}
+                                            >
                                                 Take Student Attendance
                                             </Link>
-                                            <Link href="/dashboard/teacher/attendance?tab=history" className="block px-3 py-1.5 rounded-lg text-xs font-normal text-gray-600 hover:bg-gray-50">
+                                            <Link 
+                                                href="/dashboard/teacher/attendance?tab=history" 
+                                                className={`block px-3 py-1.5 rounded-lg text-xs transition-colors ${
+                                                    pathname === "/dashboard/teacher/attendance" && currentTab === "history"
+                                                        ? "bg-blue-50 text-[#247297] font-extrabold" 
+                                                        : "text-gray-600 hover:bg-gray-50 font-normal"
+                                                }`}
+                                            >
                                                 View Attendance History
                                             </Link>
-                                            <Link href="/dashboard/teacher/attendance?tab=take" className="block px-3 py-1.5 rounded-lg text-xs font-normal text-gray-600 hover:bg-gray-50">
+                                            <Link 
+                                                href="/dashboard/teacher/attendance?tab=reasons" 
+                                                className={`block px-3 py-1.5 rounded-lg text-xs transition-colors ${
+                                                    pathname === "/dashboard/teacher/attendance" && currentTab === "reasons"
+                                                        ? "bg-blue-50 text-[#247297] font-extrabold" 
+                                                        : "text-gray-600 hover:bg-gray-50 font-normal"
+                                                }`}
+                                            >
                                                 Record Absence Reason
                                             </Link>
-                                            <Link href="/dashboard/teacher/attendance?tab=repeated" className="block px-3 py-1.5 rounded-lg text-xs font-normal text-gray-600 hover:bg-gray-50">
+                                            <Link 
+                                                href="/dashboard/teacher/attendance?tab=repeated" 
+                                                className={`block px-3 py-1.5 rounded-lg text-xs transition-colors ${
+                                                    pathname === "/dashboard/teacher/attendance" && currentTab === "repeated"
+                                                        ? "bg-blue-50 text-[#247297] font-extrabold" 
+                                                        : "text-gray-600 hover:bg-gray-50 font-normal"
+                                                }`}
+                                            >
                                                 Identify Repeated Absences
                                             </Link>
-                                            <Link href="/dashboard/teacher/attendance?tab=repeated" className="block px-3 py-1.5 rounded-lg text-xs font-normal text-gray-600 hover:bg-gray-50">
+                                            <Link 
+                                                href="/dashboard/teacher/attendance?tab=report" 
+                                                className={`block px-3 py-1.5 rounded-lg text-xs transition-colors ${
+                                                    pathname === "/dashboard/teacher/attendance" && currentTab === "report"
+                                                        ? "bg-blue-50 text-[#247297] font-extrabold" 
+                                                        : "text-gray-600 hover:bg-gray-50 font-normal"
+                                                }`}
+                                            >
                                                 Report Attendance Problems
                                             </Link>
                                         </div>
