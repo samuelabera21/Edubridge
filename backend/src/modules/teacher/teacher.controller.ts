@@ -258,6 +258,19 @@ export const getRepeatedAbsences = async (req: Request, res: Response) => {
     }
 };
 
+export const getAttendanceHistory = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        const userId = req.user?.id;
+        if (!organizationId || !userId) return res.status(403).json({ error: "Missing school scope or authentication" });
+
+        const history = await TeacherService.getAttendanceHistory(userId, organizationId);
+        return res.json(history);
+    } catch (error: any) {
+        return res.status(400).json({ error: error.message || "Failed to fetch attendance history" });
+    }
+};
+
 export const getCurriculumData = async (req: Request, res: Response) => {
     try {
         const organizationId = (req as any).accessScope?.id;

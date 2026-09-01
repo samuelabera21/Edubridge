@@ -835,6 +835,40 @@ export class TeacherService {
         return flagged;
     }
 
+    static async getAttendanceHistory(userId: string, organizationId: string) {
+        const teacher = await this.getTeacherByUserId(userId, organizationId);
+        if (!teacher) return [];
+
+        const sectionIds = teacher.assignments
+            .map((a) => a.sectionId)
+            .filter((id): id is string => Boolean(id));
+
+        if (sectionIds.length === 0) return [];
+
+        const logs = await prisma.studentAttendance.findMany({
+            where: {
+                organizationId,
+                enrollment: {
+                    sectionId: { in: sectionIds }
+                }
+            },
+            include: {
+                enrollment: {
+                    include: {
+                        student: true,
+                        section: true,
+                        schoolGrade: { include: { grade: true } }
+                    }
+                },
+                classPeriod: true
+            },
+            orderBy: { date: "desc" },
+            take: 100
+        });
+
+        return logs;
+    }
+
     static async getCurriculumData(userId: string, organizationId: string) {
         const teacher = await this.getTeacherByUserId(userId, organizationId);
         if (!teacher) return { overallProgressPercent: 0, unitsCompletedCount: 0, totalUnitsCount: 0, topicsCompletedCount: 0, totalTopicsCount: 0, units: [] };
