@@ -666,6 +666,7 @@ model Timetable {
   academicYear       AcademicYear       @relation(fields: [academicYearId], references: [id], onDelete: Cascade)
   teachingAssignment TeachingAssignment @relation(fields: [teachingAssignmentId], references: [id], onDelete: Cascade)
   classPeriod        ClassPeriod        @relation(fields: [classPeriodId], references: [id], onDelete: Cascade)
+  room               SchoolResource?    @relation(fields: [roomId], references: [id], onDelete: SetNull)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -975,6 +976,7 @@ model SchoolResource {
 
   organization OrganizationUnit @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   issues       Issue[]
+  timetables   Timetable[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

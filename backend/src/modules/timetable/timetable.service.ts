@@ -175,14 +175,17 @@ export class TimetableService {
         return timetable;
     }
 
-    static async getTimetableForSection(organizationId: string, sectionId: string) {
+    static async getTimetableForSection(organizationId: string, sectionId: string, academicYearId?: string) {
         return prisma.timetable.findMany({
             where: {
                 organizationId,
+                ...(academicYearId ? { academicYearId } : {}),
                 teachingAssignment: { sectionId }
             },
             include: {
                 classPeriod: true,
+                academicYear: true,
+                room: true,
                 teachingAssignment: {
                     include: { teacher: true, subject: true }
                 }

@@ -133,7 +133,7 @@ export default function StudentDashboard() {
                 <section className="rounded-xl border border-gray-100 bg-white shadow-sm lg:col-span-2">
                     <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4"><h2 className="font-semibold text-gray-900">Recent results</h2><FileText className="h-5 w-5 text-gray-400" /></div>
                     <div className="divide-y divide-gray-100">
-                        {dashboard.recentResults.length === 0 ? <Empty text="No published results yet." /> : dashboard.recentResults.map((result) => <div key={result.id} className="flex items-center justify-between gap-4 px-6 py-4"><div><p className="font-medium text-gray-900">{result.title}</p><p className="text-sm text-gray-500">{result.subject}</p></div><p className="font-semibold text-[#006b3f]">{result.percentage}%</p></div>)}
+                        {dashboard.recentResults.length === 0 ? <Empty text=" No published results yet." /> : dashboard.recentResults.map((result) => <div key={result.id} className="flex items-center justify-between gap-4 px-6 py-4"><div><p className="font-medium text-gray-900">{result.title}</p><p className="text-sm text-gray-500">{result.subject}</p></div><p className="font-semibold text-[#006b3f]">{result.percentage}%</p></div>)}
                     </div>
                 </section>
 
