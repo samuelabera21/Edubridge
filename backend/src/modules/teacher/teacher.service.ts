@@ -726,6 +726,14 @@ export class TeacherService {
         const teacher = await this.getTeacherByUserId(userId, organizationId);
         if (!teacher) throw new Error("Teacher profile not found");
 
+        let activeYearId = data.academicYearId;
+        if (!activeYearId || activeYearId === "active-year") {
+            const activeYear = await prisma.academicYear.findFirst({
+                where: { organizationId, status: "ACTIVE" }
+            }) || await prisma.academicYear.findFirst({ where: { organizationId } });
+            if (activeYear) activeYearId = activeYear.id;
+        }
+
         const targetDate = new Date(data.date);
 
         const results = [];
@@ -752,7 +760,7 @@ export class TeacherService {
                 const created = await prisma.studentAttendance.create({
                     data: {
                         organizationId,
-                        academicYearId: data.academicYearId,
+                        academicYearId: activeYearId,
                         enrollmentId: item.enrollmentId,
                         classPeriodId: data.classPeriodId || null,
                         date: targetDate,

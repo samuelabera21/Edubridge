@@ -352,6 +352,8 @@ router.post("/submissions/:submissionId/grade", gradeActivitySubmission);
  *         description: Support flag raised
  */
 router.post("/support-flag", createStudentSupportFlag);
+router.post("/support-flags", createStudentSupportFlag);
+router.get("/support-flags", getSupportFlags);
 
 /**
  * @openapi
