@@ -34,6 +34,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     const primaryAccess = authData?.access?.[0];
     const roleName = primaryAccess?.role?.name || "Unassigned";
     const isTeacherRoute = (pathname === "/dashboard/teacher" || pathname.startsWith("/dashboard/teacher/")) && roleName === "TEACHER";
+    const isStudentRoute = (pathname === "/dashboard/student" || pathname.startsWith("/dashboard/student/")) || roleName === "STUDENT";
 
     useEffect(() => {
         if (isTeacherRoute && authData) {
