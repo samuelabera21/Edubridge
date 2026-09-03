@@ -74,6 +74,11 @@ $backendEnvContent = @"
 DATABASE_URL="postgresql://${pgUser}:${pgPass}@localhost:${dbPort}/${pgDb}"
 BETTER_AUTH_SECRET="${authSec}"
 BETTER_AUTH_URL="http://localhost:5000"
+POSTGRES_USER=${pgUser}
+POSTGRES_PASSWORD=${pgPass}
+POSTGRES_DB=${pgDb}
+DEFAULT_INITIAL_PASSWORD=${defaultPass}
+ADMIN_PASSWORD=${defaultPass}
 "@
 
 Set-Content -Path $BackendEnv -Value $backendEnvContent

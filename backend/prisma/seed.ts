@@ -9,7 +9,7 @@ async function main() {
 
     // 1. Environmental Credentials (Development defaults with production overrides)
     const adminEmail = process.env.ADMIN_EMAIL || "admin@edubridge.local";
-    const adminPassword = process.env.ADMIN_PASSWORD || process.env.DEFAULT_INITIAL_PASSWORD;
+    const adminPassword = process.env.ADMIN_PASSWORD || process.env.DEFAULT_INITIAL_PASSWORD || "Admin@1234";
     if (!adminPassword) {
         throw new Error("ADMIN_PASSWORD or DEFAULT_INITIAL_PASSWORD must be set before seeding");
     }
@@ -69,7 +69,23 @@ async function main() {
             await assignPermissionToRole(roleName, p.name, p.desc);
         }
     }
-    console.log(`✅ Admin permissions attached to ${adminRoles.join(", ")}`);
+
+    const teacherPermissions = [
+        "ACADEMIC:VIEW", "ACADEMIC:CREATE", "ACADEMIC:UPDATE",
+        "TEACHER:VIEW", "STUDENT:VIEW", "STUDENT:CREATE", "STUDENT:ENROLL",
+        "ATTENDANCE:VIEW", "ATTENDANCE:RECORD",
+        "ASSESSMENT:VIEW", "ASSESSMENT:CREATE", "ASSESSMENT:GRADE",
+        "OPERATIONAL:VIEW", "OPERATIONAL:CREATE",
+        "ISSUE:VIEW", "ISSUE:CREATE"
+    ];
+    for (const permName of teacherPermissions) {
+        const found = permissions.find(p => p.name === permName);
+        if (found) {
+            await assignPermissionToRole("TEACHER", found.name, found.desc);
+        }
+    }
+
+    console.log(`✅ System permissions attached to ADMIN, SCHOOL_ADMIN, and TEACHER roles.`);
 
     // 4. Seed Default Organization Units & School Profile
     let federalUnit = await prisma.organizationUnit.findFirst({ where: { type: "FEDERAL" } });
@@ -86,18 +102,17 @@ async function main() {
         });
     }
 
-    let schoolProfile = await prisma.schoolProfile.findFirst({ where: { organizationId: schoolUnit.id } });
-    if (!schoolProfile) {
-        await prisma.schoolProfile.create({
-            data: {
-                organizationId: schoolUnit.id,
-                contactEmail: "info@edubridge.edu.et",
-                phoneNumber: "+251 911 000 000",
-                address: "Addis Ababa, Ethiopia",
-                status: "ACTIVE"
-            }
-        });
-    }
+    await prisma.schoolProfile.upsert({
+        where: { organizationId: schoolUnit.id },
+        update: {},
+        create: {
+            organizationId: schoolUnit.id,
+            contactEmail: "info@edubridge.edu.et",
+            phoneNumber: "+251 911 000 000",
+            address: "Addis Ababa, Ethiopia",
+            status: "ACTIVE"
+        }
+    });
 
     let activeAcademicYear = await prisma.academicYear.findFirst({ where: { status: "ACTIVE" } });
     if (!activeAcademicYear) {
