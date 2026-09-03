@@ -115,5 +115,18 @@ export async function updateProfileHandler(req: Request, res: Response) {
         return res.status(500).json({ message: "Internal server error" });
     }
 }
+export async function getDashboardOverviewHandler(req: Request, res: Response) {
+    try {
+        const accessScope = (req as any).accessScope;
+        if (!accessScope || accessScope.type !== "SCHOOL") {
+            return res.status(403).json({ message: "Invalid or missing school scope" });
+        }
 
-
+        const { getDashboardOverview } = await import("./school.service.js");
+        const data = await getDashboardOverview(accessScope.id);
+        return res.json(data);
+    } catch (error: any) {
+        console.error("Error fetching dashboard overview:", error);
+        return res.status(500).json({ message: error.message || "Failed to fetch dashboard overview" });
+    }
+}

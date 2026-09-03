@@ -585,6 +585,16 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                                 {["ADMIN", "SCHOOL_ADMIN", "ADMINISTRATOR"].includes(roleName) && (
                                     <>
                                         <Link 
+                                            href="/dashboard" 
+                                            className={`flex items-center justify-between px-3 py-2.5 rounded-md text-sm transition-colors ${pathname === "/dashboard" ? "bg-[#006b3f] text-white font-semibold" : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"}`}
+                                        >
+                                            <div className="flex items-center space-x-3">
+                                                <LayoutDashboard className="w-4 h-4" />
+                                                <span>1. School Dashboard</span>
+                                            </div>
+                                        </Link>
+
+                                        <Link 
                                             href="/dashboard/admin" 
                                             className={`flex items-center justify-between px-3 py-2.5 rounded-md text-sm transition-colors ${pathname === "/dashboard/admin" ? "bg-gray-100 text-gray-900 font-medium" : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"}`}
                                         >

@@ -4,13 +4,20 @@ import {
     getProfileHandler, 
     updateProfileHandler,
     getHierarchyHandler,
-    createOrganizationHandler 
+    createOrganizationHandler,
+    getDashboardOverviewHandler
 } from "./school.controller.js";
 
 const router = Router();
 
 // Apply middleware to all routes in this router
 router.use(requireScope("SCHOOL"));
+
+router.get(
+    "/dashboard-overview",
+    requirePermission("SCHOOL:VIEW"),
+    getDashboardOverviewHandler
+);
 
 /**
  * @openapi
