@@ -848,6 +848,35 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                                             )}
                                         </div>
 
+                                        {/* Reports & Analytics Group */}
+                                        <div className="pt-1">
+                                            <button 
+                                                onClick={() => toggleMenu("reports")}
+                                                className="w-full flex items-center justify-between px-3 py-2.5 rounded-md text-sm text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors group"
+                                            >
+                                                <div className="flex items-center space-x-3">
+                                                    <BarChart2 className="w-4 h-4 text-gray-500" />
+                                                    <span>Reports & Analytics</span>
+                                                </div>
+                                                {openMenus.reports ? 
+                                                    <ChevronDown className="w-4 h-4 text-gray-600" /> : 
+                                                    <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-gray-600" />
+                                                }
+                                            </button>
+                                            {openMenus.reports && (
+                                                <div className="pl-10 pr-3 py-1 space-y-1">
+                                                    <Link href="/dashboard/reports/enrollment" className={`block py-1.5 text-sm ${pathname === "/dashboard/reports/enrollment" ? "text-[#006b3f] font-medium" : "text-gray-500 hover:text-[#006b3f]"}`}>1. Enrollment Reports</Link>
+                                                    <Link href="/dashboard/reports/attendance" className={`block py-1.5 text-sm ${pathname === "/dashboard/reports/attendance" ? "text-[#006b3f] font-medium" : "text-gray-500 hover:text-[#006b3f]"}`}>2. Attendance Reports</Link>
+                                                    <Link href="/dashboard/reports/teacher" className={`block py-1.5 text-sm ${pathname === "/dashboard/reports/teacher" ? "text-[#006b3f] font-medium" : "text-gray-500 hover:text-[#006b3f]"}`}>3. Teacher Reports</Link>
+                                                    <Link href="/dashboard/reports/assessment" className={`block py-1.5 text-sm ${pathname === "/dashboard/reports/assessment" ? "text-[#006b3f] font-medium" : "text-gray-500 hover:text-[#006b3f]"}`}>4. Assessment Reports</Link>
+                                                    <Link href="/dashboard/reports/performance" className={`block py-1.5 text-sm ${pathname === "/dashboard/reports/performance" ? "text-[#006b3f] font-medium" : "text-gray-500 hover:text-[#006b3f]"}`}>5. Student Performance</Link>
+                                                    <Link href="/dashboard/reports/curriculum" className={`block py-1.5 text-sm ${pathname === "/dashboard/reports/curriculum" ? "text-[#006b3f] font-medium" : "text-gray-500 hover:text-[#006b3f]"}`}>6. Curriculum Progress</Link>
+                                                    <Link href="/dashboard/reports/support" className={`block py-1.5 text-sm ${pathname === "/dashboard/reports/support" ? "text-[#006b3f] font-medium" : "text-gray-500 hover:text-[#006b3f]"}`}>7. Student Support</Link>
+                                                    <Link href="/dashboard/reports/school-performance" className={`block py-1.5 text-sm ${pathname === "/dashboard/reports/school-performance" ? "text-[#006b3f] font-medium" : "text-gray-500 hover:text-[#006b3f]"}`}>8. School Performance</Link>
+                                                </div>
+                                            )}
+                                        </div>
+
                                         {/* Operations Group */}
                                         <div className="pt-1">
                                             <button 

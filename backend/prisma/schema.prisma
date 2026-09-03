@@ -1330,3 +1330,22 @@ model ImprovementOutcome {
 
   @@map("improvement_outcome")
 }
+
+// ============================================================
+// DOMAIN 13: REPORTS & ANALYTICS
+// ============================================================
+
+model GeneratedReport {
+  id             String   @id @default(cuid())
+  organizationId String
+  reportType     String   // ENROLLMENT, ATTENDANCE, TEACHER, ASSESSMENT, PERFORMANCE, CURRICULUM, SUPPORT, SCHOOL_PERFORMANCE
+  title          String
+  generatedBy    String   @default("School Principal")
+  fileFormat     String   @default("PDF") // PDF, CSV, XLSX
+  summaryMetrics String?  // JSON stringified key values
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@map("generated_report")
+}
