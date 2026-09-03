@@ -1201,3 +1201,53 @@ model InterventionMonitoring {
 
   @@map("intervention_monitoring")
 }
+
+// ============================================================
+// DOMAIN 10: PARENT / GUARDIAN MANAGEMENT
+// ============================================================
+
+model ParentMeeting {
+  id             String   @id @default(cuid())
+  organizationId String
+  title          String
+  meetingType    String   // PTA_GENERAL, PARENT_TEACHER_CONFERENCE, EMERGENCY_MEETING
+  scheduledDate  DateTime
+  location       String
+  agenda         String?
+  status         String   @default("SCHEDULED") // SCHEDULED, COMPLETED, CANCELLED
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@map("parent_meeting")
+}
+
+model ParentNotification {
+  id             String   @id @default(cuid())
+  organizationId String
+  parentId       String?
+  title          String
+  message        String
+  channel        String   @default("PORTAL") // PORTAL, SMS, EMAIL
+  status         String   @default("SENT") // SENT, DELIVERED, READ
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@map("parent_notification")
+}
+
+model ParentParticipation {
+  id             String   @id @default(cuid())
+  organizationId String
+  parentName     String
+  activityTitle  String
+  category       String   // VOLUNTEER, PTA_COMMITTEE, FUNDRAISING, EVENT_SUPPORT
+  hoursLogged    Float    @default(0)
+  eventDate      DateTime @default(now())
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@map("parent_participation")
+}
