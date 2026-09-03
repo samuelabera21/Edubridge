@@ -755,9 +755,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                                             </button>
                                             {openMenus.learning && (
                                                 <div className="pl-10 pr-3 py-1 space-y-1">
-                                                    <Link href="/dashboard/learning/activities" className={`block py-1.5 text-sm ${pathname === "/dashboard/learning/activities" ? "text-[#006b3f] font-medium" : "text-gray-500 hover:text-[#006b3f]"}`}>Activities</Link>
-                                                    <Link href="/dashboard/learning/submissions" className={`block py-1.5 text-sm ${pathname === "/dashboard/learning/submissions" ? "text-[#006b3f] font-medium" : "text-gray-500 hover:text-[#006b3f]"}`}>Submissions</Link>
-                                                    <Link href="/dashboard/learning/support" className={`block py-1.5 text-sm ${pathname === "/dashboard/learning/support" ? "text-[#006b3f] font-medium" : "text-gray-500 hover:text-[#006b3f]"}`}>Support Flags</Link>
+                                                    <Link href="/dashboard/support/at-risk" className={`block py-1.5 text-sm ${pathname === "/dashboard/support/at-risk" ? "text-[#006b3f] font-medium" : "text-gray-500 hover:text-[#006b3f]"}`}>1. At-Risk Students</Link>
+                                                    <Link href="/dashboard/support/learning-difficulties" className={`block py-1.5 text-sm ${pathname === "/dashboard/support/learning-difficulties" ? "text-[#006b3f] font-medium" : "text-gray-500 hover:text-[#006b3f]"}`}>2. Learning Difficulties</Link>
+                                                    <Link href="/dashboard/support/remedial" className={`block py-1.5 text-sm ${pathname === "/dashboard/support/remedial" ? "text-[#006b3f] font-medium" : "text-gray-500 hover:text-[#006b3f]"}`}>3. Remedial Programs</Link>
+                                                    <Link href="/dashboard/support/enrichment" className={`block py-1.5 text-sm ${pathname === "/dashboard/support/enrichment" ? "text-[#006b3f] font-medium" : "text-gray-500 hover:text-[#006b3f]"}`}>4. Enrichment Programs</Link>
+                                                    <Link href="/dashboard/support/intervention-plans" className={`block py-1.5 text-sm ${pathname === "/dashboard/support/intervention-plans" ? "text-[#006b3f] font-medium" : "text-gray-500 hover:text-[#006b3f]"}`}>5. Intervention Plans</Link>
+                                                    <Link href="/dashboard/support/monitoring" className={`block py-1.5 text-sm ${pathname === "/dashboard/support/monitoring" ? "text-[#006b3f] font-medium" : "text-gray-500 hover:text-[#006b3f]"}`}>6. Intervention Monitoring</Link>
+                                                    <Link href="/dashboard/support/outcomes" className={`block py-1.5 text-sm ${pathname === "/dashboard/support/outcomes" ? "text-[#006b3f] font-medium" : "text-gray-500 hover:text-[#006b3f]"}`}>7. Intervention Outcomes</Link>
                                                 </div>
                                             )}
                                         </div>
