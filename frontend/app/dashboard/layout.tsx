@@ -820,6 +820,34 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                                             )}
                                         </div>
 
+                                        {/* School Improvement Group */}
+                                        <div className="pt-1">
+                                            <button 
+                                                onClick={() => toggleMenu("improvement")}
+                                                className="w-full flex items-center justify-between px-3 py-2.5 rounded-md text-sm text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors group"
+                                            >
+                                                <div className="flex items-center space-x-3">
+                                                    <TrendingUp className="w-4 h-4 text-gray-500" />
+                                                    <span>School Improvement</span>
+                                                </div>
+                                                {openMenus.improvement ? 
+                                                    <ChevronDown className="w-4 h-4 text-gray-600" /> : 
+                                                    <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-gray-600" />
+                                                }
+                                            </button>
+                                            {openMenus.improvement && (
+                                                <div className="pl-10 pr-3 py-1 space-y-1">
+                                                    <Link href="/dashboard/improvement/problems" className={`block py-1.5 text-sm ${pathname === "/dashboard/improvement/problems" ? "text-[#006b3f] font-medium" : "text-gray-500 hover:text-[#006b3f]"}`}>1. Identify Problems</Link>
+                                                    <Link href="/dashboard/improvement/priorities" className={`block py-1.5 text-sm ${pathname === "/dashboard/improvement/priorities" ? "text-[#006b3f] font-medium" : "text-gray-500 hover:text-[#006b3f]"}`}>2. Improvement Priorities</Link>
+                                                    <Link href="/dashboard/improvement/plans" className={`block py-1.5 text-sm ${pathname === "/dashboard/improvement/plans" ? "text-[#006b3f] font-medium" : "text-gray-500 hover:text-[#006b3f]"}`}>3. Improvement Plans</Link>
+                                                    <Link href="/dashboard/improvement/activities" className={`block py-1.5 text-sm ${pathname === "/dashboard/improvement/activities" ? "text-[#006b3f] font-medium" : "text-gray-500 hover:text-[#006b3f]"}`}>4. Improvement Activities</Link>
+                                                    <Link href="/dashboard/improvement/targets" className={`block py-1.5 text-sm ${pathname === "/dashboard/improvement/targets" ? "text-[#006b3f] font-medium" : "text-gray-500 hover:text-[#006b3f]"}`}>5. KPI Targets</Link>
+                                                    <Link href="/dashboard/improvement/monitoring" className={`block py-1.5 text-sm ${pathname === "/dashboard/improvement/monitoring" ? "text-[#006b3f] font-medium" : "text-gray-500 hover:text-[#006b3f]"}`}>6. Progress Monitoring</Link>
+                                                    <Link href="/dashboard/improvement/outcomes" className={`block py-1.5 text-sm ${pathname === "/dashboard/improvement/outcomes" ? "text-[#006b3f] font-medium" : "text-gray-500 hover:text-[#006b3f]"}`}>7. Outcomes & Impact</Link>
+                                                </div>
+                                            )}
+                                        </div>
+
                                         {/* Operations Group */}
                                         <div className="pt-1">
                                             <button 

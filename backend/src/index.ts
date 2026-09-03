@@ -19,6 +19,7 @@ import vicePrincipalRoutes from "./modules/vice-principal/vice-principal.routes.
 import supportStaffRoutes from "./modules/support-staff/support-staff.routes.js";
 import committeeRoutes from "./modules/committee/committee.routes.js";
 import supportRoutes from "./modules/support/support.routes.js";
+import improvementRoutes from "./modules/improvement/improvement.routes.js";
 import swaggerUi from "swagger-ui-express";
 import { swaggerSpec } from "./swagger.js";
 
@@ -64,6 +65,7 @@ app.use("/api/vice-principal", vicePrincipalRoutes);
 app.use("/api/support-staff", supportStaffRoutes);
 app.use("/api/committee", committeeRoutes);
 app.use("/api/support", supportRoutes);
+app.use("/api/improvement", improvementRoutes);
 
 app.get("/", (_req, res) => {
     res.json({
