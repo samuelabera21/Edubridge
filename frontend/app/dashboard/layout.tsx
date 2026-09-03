@@ -906,6 +906,34 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                                             )}
                                         </div>
 
+                                        {/* Users & Permissions Group */}
+                                        <div className="pt-1">
+                                            <button 
+                                                onClick={() => toggleMenu("usersPermissions")}
+                                                className="w-full flex items-center justify-between px-3 py-2.5 rounded-md text-sm text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors group"
+                                            >
+                                                <div className="flex items-center space-x-3">
+                                                    <Lock className="w-4 h-4 text-[#006b3f]" />
+                                                    <span>Users & Permissions</span>
+                                                </div>
+                                                {openMenus.usersPermissions ? 
+                                                    <ChevronDown className="w-4 h-4 text-gray-600" /> : 
+                                                    <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-gray-600" />
+                                                }
+                                            </button>
+                                            {openMenus.usersPermissions && (
+                                                <div className="pl-10 pr-3 py-1 space-y-1">
+                                                    <Link href="/dashboard/users-permissions/school-users" className={`block py-1.5 text-sm ${pathname === "/dashboard/users-permissions/school-users" ? "text-[#006b3f] font-medium" : "text-gray-500 hover:text-[#006b3f]"}`}>1. School Users</Link>
+                                                    <Link href="/dashboard/users-permissions/roles" className={`block py-1.5 text-sm ${pathname === "/dashboard/users-permissions/roles" ? "text-[#006b3f] font-medium" : "text-gray-500 hover:text-[#006b3f]"}`}>2. Roles</Link>
+                                                    <Link href="/dashboard/users-permissions/permissions" className={`block py-1.5 text-sm ${pathname === "/dashboard/users-permissions/permissions" ? "text-[#006b3f] font-medium" : "text-gray-500 hover:text-[#006b3f]"}`}>3. Permissions</Link>
+                                                    <Link href="/dashboard/users-permissions/teacher-accounts" className={`block py-1.5 text-sm ${pathname === "/dashboard/users-permissions/teacher-accounts" ? "text-[#006b3f] font-medium" : "text-gray-500 hover:text-[#006b3f]"}`}>4. Teacher Accounts</Link>
+                                                    <Link href="/dashboard/users-permissions/student-accounts" className={`block py-1.5 text-sm ${pathname === "/dashboard/users-permissions/student-accounts" ? "text-[#006b3f] font-medium" : "text-gray-500 hover:text-[#006b3f]"}`}>5. Student Accounts</Link>
+                                                    <Link href="/dashboard/users-permissions/parent-accounts" className={`block py-1.5 text-sm ${pathname === "/dashboard/users-permissions/parent-accounts" ? "text-[#006b3f] font-medium" : "text-gray-500 hover:text-[#006b3f]"}`}>6. Parent Accounts</Link>
+                                                    <Link href="/dashboard/users-permissions/staff-accounts" className={`block py-1.5 text-sm ${pathname === "/dashboard/users-permissions/staff-accounts" ? "text-[#006b3f] font-medium" : "text-gray-500 hover:text-[#006b3f]"}`}>7. Staff Accounts</Link>
+                                                </div>
+                                            )}
+                                        </div>
+
                                         {/* Operations Group */}
                                         <div className="pt-1">
                                             <button 
