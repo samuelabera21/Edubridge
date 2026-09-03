@@ -154,3 +154,52 @@ export const getStudentDashboard = async (req: Request, res: Response) => {
         return res.status(500).json({ error: "Internal server error" });
     }
 };
+
+export const getTransfersHandler = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        if (!organizationId) return res.status(403).json({ error: "Missing school scope" });
+        const transfers = await StudentService.getTransfers(organizationId);
+        return res.json(transfers);
+    } catch (error) {
+        console.error("Error fetching transfers:", error);
+        return res.status(500).json({ error: "Internal server error" });
+    }
+};
+
+export const executeProgressionHandler = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        if (!organizationId) return res.status(403).json({ error: "Missing school scope" });
+        const result = await StudentService.executeProgression(organizationId, req.body);
+        return res.json(result);
+    } catch (error: any) {
+        console.error("Error executing progression:", error);
+        return res.status(500).json({ error: error.message || "Internal server error" });
+    }
+};
+
+export const getApprovalsHandler = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        if (!organizationId) return res.status(403).json({ error: "Missing school scope" });
+        const approvals = await StudentService.getApprovals(organizationId);
+        return res.json(approvals);
+    } catch (error) {
+        console.error("Error fetching approvals:", error);
+        return res.status(500).json({ error: "Internal server error" });
+    }
+};
+
+export const createApprovalHandler = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        if (!organizationId) return res.status(403).json({ error: "Missing school scope" });
+        const approval = await StudentService.createApprovalRequest(organizationId, { ...req.body, userId: req.user?.id });
+        return res.status(201).json(approval);
+    } catch (error) {
+        console.error("Error creating approval request:", error);
+        return res.status(500).json({ error: "Internal server error" });
+    }
+};
+
