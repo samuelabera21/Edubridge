@@ -728,7 +728,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                                             </button>
                                             {openMenus.assessment && (
                                                 <div className="pl-10 pr-3 py-1 space-y-1">
-                                                    <Link href="/dashboard/assessment" className={`block py-1.5 text-sm ${pathname === "/dashboard/assessment" ? "text-[#006b3f] font-medium" : "text-gray-500 hover:text-[#006b3f]"}`}>Assessments</Link>
+                                                    <Link href="/dashboard/assessment" className={`block py-1.5 text-sm ${pathname === "/dashboard/assessment" ? "text-[#006b3f] font-medium" : "text-gray-500 hover:text-[#006b3f]"}`}>Assessments Catalog</Link>
+                                                    <Link href="/dashboard/assessment/schedules" className={`block py-1.5 text-sm ${pathname === "/dashboard/assessment/schedules" ? "text-[#006b3f] font-medium" : "text-gray-500 hover:text-[#006b3f]"}`}>Exam Schedules</Link>
+                                                    <Link href="/dashboard/assessment/analytics" className={`block py-1.5 text-sm ${pathname === "/dashboard/assessment/analytics" ? "text-[#006b3f] font-medium" : "text-gray-500 hover:text-[#006b3f]"}`}>Performance Analytics</Link>
+                                                    <Link href="/dashboard/assessment/at-risk" className={`block py-1.5 text-sm ${pathname === "/dashboard/assessment/at-risk" ? "text-[#006b3f] font-medium" : "text-gray-500 hover:text-[#006b3f]"}`}>Academic At-Risk List</Link>
+                                                    <Link href="/dashboard/assessment/approval" className={`block py-1.5 text-sm ${pathname === "/dashboard/assessment/approval" ? "text-[#006b3f] font-medium" : "text-gray-500 hover:text-[#006b3f]"}`}>Report Cards & Approval</Link>
                                                     <Link href="/dashboard/assessment/results" className={`block py-1.5 text-sm ${pathname.startsWith("/dashboard/assessment/results") ? "text-[#006b3f] font-medium" : "text-gray-500 hover:text-[#006b3f]"}`}>Student Results</Link>
                                                 </div>
                                             )}
