@@ -22,6 +22,7 @@ import supportRoutes from "./modules/support/support.routes.js";
 import improvementRoutes from "./modules/improvement/improvement.routes.js";
 import reportsRoutes from "./modules/reports/reports.routes.js";
 import aiLeadershipRoutes from "./modules/ai-leadership/ai-leadership.routes.js";
+import schoolSettingsRoutes from "./modules/school-settings/school-settings.routes.js";
 import swaggerUi from "swagger-ui-express";
 import { swaggerSpec } from "./swagger.js";
 
@@ -70,6 +71,7 @@ app.use("/api/support", supportRoutes);
 app.use("/api/improvement", improvementRoutes);
 app.use("/api/reports", reportsRoutes);
 app.use("/api/ai-leadership", aiLeadershipRoutes);
+app.use("/api/school-settings", schoolSettingsRoutes);
 
 app.get("/", (_req, res) => {
     res.json({

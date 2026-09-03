@@ -934,6 +934,33 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                                             )}
                                         </div>
 
+                                        {/* School Settings Group */}
+                                        <div className="pt-1">
+                                            <button 
+                                                onClick={() => toggleMenu("schoolSettings")}
+                                                className="w-full flex items-center justify-between px-3 py-2.5 rounded-md text-sm text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors group"
+                                            >
+                                                <div className="flex items-center space-x-3">
+                                                    <Settings className="w-4 h-4 text-[#006b3f]" />
+                                                    <span>School Settings</span>
+                                                </div>
+                                                {openMenus.schoolSettings ? 
+                                                    <ChevronDown className="w-4 h-4 text-gray-600" /> : 
+                                                    <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-gray-600" />
+                                                }
+                                            </button>
+                                            {openMenus.schoolSettings && (
+                                                <div className="pl-10 pr-3 py-1 space-y-1">
+                                                    <Link href="/dashboard/school-settings/school-configuration" className={`block py-1.5 text-sm ${pathname === "/dashboard/school-settings/school-configuration" ? "text-[#006b3f] font-medium" : "text-gray-500 hover:text-[#006b3f]"}`}>1. School Config</Link>
+                                                    <Link href="/dashboard/school-settings/academic-configuration" className={`block py-1.5 text-sm ${pathname === "/dashboard/school-settings/academic-configuration" ? "text-[#006b3f] font-medium" : "text-gray-500 hover:text-[#006b3f]"}`}>2. Academic Config</Link>
+                                                    <Link href="/dashboard/school-settings/notification-settings" className={`block py-1.5 text-sm ${pathname === "/dashboard/school-settings/notification-settings" ? "text-[#006b3f] font-medium" : "text-gray-500 hover:text-[#006b3f]"}`}>3. Notification Rules</Link>
+                                                    <Link href="/dashboard/school-settings/integrations" className={`block py-1.5 text-sm ${pathname === "/dashboard/school-settings/integrations" ? "text-[#006b3f] font-medium" : "text-gray-500 hover:text-[#006b3f]"}`}>4. System Integrations</Link>
+                                                    <Link href="/dashboard/school-settings/audit-activity" className={`block py-1.5 text-sm ${pathname === "/dashboard/school-settings/audit-activity" ? "text-[#006b3f] font-medium" : "text-gray-500 hover:text-[#006b3f]"}`}>5. Audit Activity Log</Link>
+                                                    <Link href="/dashboard/school-settings/data-management" className={`block py-1.5 text-sm ${pathname === "/dashboard/school-settings/data-management" ? "text-[#006b3f] font-medium" : "text-gray-500 hover:text-[#006b3f]"}`}>6. Data Management</Link>
+                                                </div>
+                                            )}
+                                        </div>
+
                                         {/* Operations Group */}
                                         <div className="pt-1">
                                             <button 
