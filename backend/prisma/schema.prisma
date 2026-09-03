@@ -1349,3 +1349,22 @@ model GeneratedReport {
 
   @@map("generated_report")
 }
+
+// ============================================================
+// DOMAIN 14: AI SCHOOL LEADERSHIP
+// ============================================================
+
+model AILeadershipInsight {
+  id              String   @id @default(cuid())
+  organizationId  String
+  category        String   // SCHOOL_PERFORMANCE, ATTENDANCE, STUDENT_RISK, TRENDS, INTERVENTION, RECOMMENDATIONS, NATURAL_LANGUAGE, EXECUTIVE_SUMMARY
+  promptQuery     String?
+  responseText    String
+  confidenceScore Float    @default(0.95)
+  keyTakeaways    String?  // JSON or pipe separated text
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("ai_leadership_insight")
+}

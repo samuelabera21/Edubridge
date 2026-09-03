@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useAuth } from "../../hooks/useAuth";
-import { Loader2, BookOpen, LogOut, LayoutDashboard, Building, Search, Lock, ChevronDown, ChevronRight, Calendar, Users, GraduationCap, ClipboardCheck, FileText, Settings, User, Megaphone, Bell, MessageSquare, Package, AlertOctagon, TrendingUp, HeartHandshake, BarChart2, Sparkles, Menu } from "lucide-react";
+import { Loader2, BookOpen, LogOut, LayoutDashboard, Building, Search, Lock, ChevronDown, ChevronRight, Calendar, Users, GraduationCap, ClipboardCheck, FileText, Settings, User, Megaphone, Bell, MessageSquare, Package, AlertOctagon, TrendingUp, HeartHandshake, BarChart2, Sparkles, Menu, Brain } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { fetchApi } from "../../lib/api";
@@ -873,6 +873,35 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                                                     <Link href="/dashboard/reports/curriculum" className={`block py-1.5 text-sm ${pathname === "/dashboard/reports/curriculum" ? "text-[#006b3f] font-medium" : "text-gray-500 hover:text-[#006b3f]"}`}>6. Curriculum Progress</Link>
                                                     <Link href="/dashboard/reports/support" className={`block py-1.5 text-sm ${pathname === "/dashboard/reports/support" ? "text-[#006b3f] font-medium" : "text-gray-500 hover:text-[#006b3f]"}`}>7. Student Support</Link>
                                                     <Link href="/dashboard/reports/school-performance" className={`block py-1.5 text-sm ${pathname === "/dashboard/reports/school-performance" ? "text-[#006b3f] font-medium" : "text-gray-500 hover:text-[#006b3f]"}`}>8. School Performance</Link>
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        {/* AI School Leadership Group */}
+                                        <div className="pt-1">
+                                            <button 
+                                                onClick={() => toggleMenu("aiLeadership")}
+                                                className="w-full flex items-center justify-between px-3 py-2.5 rounded-md text-sm text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors group"
+                                            >
+                                                <div className="flex items-center space-x-3">
+                                                    <Brain className="w-4 h-4 text-purple-600" />
+                                                    <span>AI School Leadership</span>
+                                                </div>
+                                                {openMenus.aiLeadership ? 
+                                                    <ChevronDown className="w-4 h-4 text-gray-600" /> : 
+                                                    <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-gray-600" />
+                                                }
+                                            </button>
+                                            {openMenus.aiLeadership && (
+                                                <div className="pl-10 pr-3 py-1 space-y-1">
+                                                    <Link href="/dashboard/ai-leadership/school-performance" className={`block py-1.5 text-sm ${pathname === "/dashboard/ai-leadership/school-performance" ? "text-purple-600 font-medium" : "text-gray-500 hover:text-purple-600"}`}>1. Performance Analysis</Link>
+                                                    <Link href="/dashboard/ai-leadership/attendance" className={`block py-1.5 text-sm ${pathname === "/dashboard/ai-leadership/attendance" ? "text-purple-600 font-medium" : "text-gray-500 hover:text-purple-600"}`}>2. Attendance Modeling</Link>
+                                                    <Link href="/dashboard/ai-leadership/student-risk" className={`block py-1.5 text-sm ${pathname === "/dashboard/ai-leadership/student-risk" ? "text-purple-600 font-medium" : "text-gray-500 hover:text-purple-600"}`}>3. Student-Risk Insights</Link>
+                                                    <Link href="/dashboard/ai-leadership/performance-trends" className={`block py-1.5 text-sm ${pathname === "/dashboard/ai-leadership/performance-trends" ? "text-purple-600 font-medium" : "text-gray-500 hover:text-purple-600"}`}>4. Trend Detection</Link>
+                                                    <Link href="/dashboard/ai-leadership/intervention" className={`block py-1.5 text-sm ${pathname === "/dashboard/ai-leadership/intervention" ? "text-purple-600 font-medium" : "text-gray-500 hover:text-purple-600"}`}>5. Intervention Analysis</Link>
+                                                    <Link href="/dashboard/ai-leadership/improvement-recommendations" className={`block py-1.5 text-sm ${pathname === "/dashboard/ai-leadership/improvement-recommendations" ? "text-purple-600 font-medium" : "text-gray-500 hover:text-purple-600"}`}>6. SIP Recommendations</Link>
+                                                    <Link href="/dashboard/ai-leadership/natural-language" className={`block py-1.5 text-sm ${pathname === "/dashboard/ai-leadership/natural-language" ? "text-purple-600 font-medium" : "text-gray-500 hover:text-purple-600"}`}>7. Natural-Language AI</Link>
+                                                    <Link href="/dashboard/ai-leadership/executive-summaries" className={`block py-1.5 text-sm ${pathname === "/dashboard/ai-leadership/executive-summaries" ? "text-purple-600 font-medium" : "text-gray-500 hover:text-purple-600"}`}>8. Executive Summaries</Link>
                                                 </div>
                                             )}
                                         </div>
