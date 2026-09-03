@@ -21,6 +21,7 @@ import { LoadingState } from "@/components/ui/LoadingState";
 export default function InterventionPlansPage() {
     const { authData } = useAuth();
     const [loading, setLoading] = useState(true);
+    const [submitting, setSubmitting] = useState(false);
     const [plans, setPlans] = useState<any[]>([]);
     const [isModalOpen, setIsModalOpen] = useState(false);
 
@@ -36,9 +37,16 @@ export default function InterventionPlansPage() {
     const loadPlans = async () => {
         try {
             setLoading(true);
-            setPlans([]);
+            const res = await fetchApi("/support/intervention-plans");
+            if (res.ok) {
+                const data = await res.json();
+                setPlans(Array.isArray(data) ? data : []);
+            } else {
+                setPlans([]);
+            }
         } catch (err: any) {
             console.error(err);
+            setPlans([]);
         } finally {
             setLoading(false);
         }
@@ -48,34 +56,37 @@ export default function InterventionPlansPage() {
         loadPlans();
     }, []);
 
-    const handleCreatePlan = (e: React.FormEvent) => {
+    const handleCreatePlan = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!form.studentName.trim()) return;
 
-        const newPlan = {
-            id: Date.now().toString(),
-            studentName: form.studentName,
-            gradeName: form.gradeName,
-            targetScore: form.targetScore,
-            counselorName: form.counselorName,
-            reviewDate: form.reviewDate,
-            strategyNotes: form.strategyNotes,
-            status: "DRAFTED"
-        };
+        try {
+            setSubmitting(true);
+            const res = await fetchApi("/support/intervention-plans", {
+                method: "POST",
+                body: JSON.stringify(form)
+            });
 
-        setPlans(prev => [newPlan, ...prev]);
-        setIsModalOpen(false);
-        setForm({
-            studentName: "",
-            gradeName: "",
-            targetScore: "65%",
-            counselorName: "",
-            reviewDate: new Date().toISOString().split("T")[0],
-            strategyNotes: ""
-        });
+            if (res.ok) {
+                setIsModalOpen(false);
+                setForm({
+                    studentName: "",
+                    gradeName: "",
+                    targetScore: "65%",
+                    counselorName: "",
+                    reviewDate: new Date().toISOString().split("T")[0],
+                    strategyNotes: ""
+                });
+                loadPlans();
+            }
+        } catch (err: any) {
+            console.error(err);
+        } finally {
+            setSubmitting(false);
+        }
     };
 
-    if (loading) return <LoadingState message="Loading individualized student intervention plans..." />;
+    if (loading) return <LoadingState message="Loading student intervention plans from database..." />;
 
     return (
         <div className="space-y-6 text-black">
@@ -89,7 +100,7 @@ export default function InterventionPlansPage() {
                     <p className="text-emerald-800">
                         <strong>Who Uses This:</strong> School Principal, Guidance Counselors & Homeroom Teachers.
                         <br />
-                        <strong>Data Source:</strong> Tailored intervention plan documents stored in the database.
+                        <strong>Data Source:</strong> Database table `intervention_plan` queried via REST API (`/api/support/intervention-plans`).
                         <br />
                         <strong>SRS Purpose:</strong> Formulates specific academic & behavioral target goals, review frequencies, and multi-stakeholder support contracts.
                     </p>
@@ -123,7 +134,7 @@ export default function InterventionPlansPage() {
                     {plans.length === 0 ? (
                         <div className="p-12 text-center text-gray-500">
                             <Target className="w-12 h-12 mx-auto text-emerald-300 mb-2" />
-                            <p className="font-semibold text-gray-800">No active intervention plans created</p>
+                            <p className="font-semibold text-gray-800">No active intervention plans created in database</p>
                             <p className="text-xs text-gray-400 mt-1">Click "Formulate Intervention Plan" above to set target GPA scores & counselor review dates.</p>
                         </div>
                     ) : (
@@ -146,7 +157,9 @@ export default function InterventionPlansPage() {
                                             <td className="px-6 py-4 text-xs font-semibold text-[#006b3f]">{p.gradeName}</td>
                                             <td className="px-6 py-4 text-xs font-bold text-purple-700">{p.targetScore}</td>
                                             <td className="px-6 py-4 text-xs font-medium text-gray-800">{p.counselorName || "Lead Counselor"}</td>
-                                            <td className="px-6 py-4 text-xs text-gray-600">{p.reviewDate}</td>
+                                            <td className="px-6 py-4 text-xs text-gray-600">
+                                                {p.reviewDate ? new Date(p.reviewDate).toLocaleDateString() : "Pending"}
+                                            </td>
                                             <td className="px-6 py-4">
                                                 <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-800">
                                                     {p.status}
@@ -242,7 +255,7 @@ export default function InterventionPlansPage() {
 
                             <div className="flex justify-end space-x-3 pt-3 border-t">
                                 <Button type="button" variant="outline" onClick={() => setIsModalOpen(false)}>Cancel</Button>
-                                <Button type="submit" className="bg-[#006b3f] hover:bg-[#005432]">Create Plan</Button>
+                                <Button type="submit" isLoading={submitting} className="bg-[#006b3f] hover:bg-[#005432]">Create Plan</Button>
                             </div>
                         </form>
                     </div>

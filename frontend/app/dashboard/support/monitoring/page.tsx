@@ -25,9 +25,16 @@ export default function InterventionMonitoringPage() {
     const loadMonitors = async () => {
         try {
             setLoading(true);
-            setMonitors([]);
+            const res = await fetchApi("/support/monitoring");
+            if (res.ok) {
+                const data = await res.json();
+                setMonitors(Array.isArray(data) ? data : []);
+            } else {
+                setMonitors([]);
+            }
         } catch (err: any) {
             console.error(err);
+            setMonitors([]);
         } finally {
             setLoading(false);
         }
@@ -37,7 +44,7 @@ export default function InterventionMonitoringPage() {
         loadMonitors();
     }, []);
 
-    if (loading) return <LoadingState message="Loading intervention progress monitoring records..." />;
+    if (loading) return <LoadingState message="Loading intervention progress monitoring records from database..." />;
 
     return (
         <div className="space-y-6 text-black">
@@ -51,9 +58,9 @@ export default function InterventionMonitoringPage() {
                     <p className="text-purple-800">
                         <strong>Who Uses This:</strong> Guidance Counselors, Homeroom Teachers & School Principal.
                         <br />
-                        <strong>Data Source:</strong> Weekly student check-in logs & intervention status updates in database.
+                        <strong>Data Source:</strong> Database table `intervention_monitoring` queried via REST API (`/api/support/monitoring`).
                         <br />
-                        <strong>SRS Purpose:</strong> Monitors student progression across intervention milestones (`NOT_STARTED` $\rightarrow$ `IN_PROGRESS` $\rightarrow$ `TARGET_MET`) and logs attendance at tutorial sessions.
+                        <strong>SRS Purpose:</strong> Monitors student progression across intervention milestones (`NOT_STARTED` $\rightarrow$ `IN_PROGRESS` $\rightarrow$ `TARGET_MET`) and logs attendance.
                     </p>
                 </div>
             </div>
@@ -82,7 +89,7 @@ export default function InterventionMonitoringPage() {
                     {monitors.length === 0 ? (
                         <div className="p-12 text-center text-gray-500">
                             <Activity className="w-12 h-12 mx-auto text-purple-300 mb-2" />
-                            <p className="font-semibold text-gray-800">No active intervention monitoring logs found</p>
+                            <p className="font-semibold text-gray-800">No active intervention monitoring logs found in database</p>
                             <p className="text-xs text-gray-400 mt-1">When students participate in tutorial & counseling check-ins, progress logs will appear here.</p>
                         </div>
                     ) : (
@@ -108,7 +115,7 @@ export default function InterventionMonitoringPage() {
                                                     {m.status}
                                                 </span>
                                             </td>
-                                            <td className="px-6 py-4 text-xs text-gray-600">{m.lastCheckInDate}</td>
+                                            <td className="px-6 py-4 text-xs text-gray-600">{m.lastCheckInDate ? new Date(m.lastCheckInDate).toLocaleDateString() : "Recent"}</td>
                                         </tr>
                                     ))}
                                 </tbody>

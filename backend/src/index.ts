@@ -18,6 +18,7 @@ import parentRoutes from "./modules/parent/parent.routes.js";
 import vicePrincipalRoutes from "./modules/vice-principal/vice-principal.routes.js";
 import supportStaffRoutes from "./modules/support-staff/support-staff.routes.js";
 import committeeRoutes from "./modules/committee/committee.routes.js";
+import supportRoutes from "./modules/support/support.routes.js";
 import swaggerUi from "swagger-ui-express";
 import { swaggerSpec } from "./swagger.js";
 
@@ -62,6 +63,7 @@ app.use("/api/parent", parentRoutes);
 app.use("/api/vice-principal", vicePrincipalRoutes);
 app.use("/api/support-staff", supportStaffRoutes);
 app.use("/api/committee", committeeRoutes);
+app.use("/api/support", supportRoutes);
 
 app.get("/", (_req, res) => {
     res.json({

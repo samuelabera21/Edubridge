@@ -1098,3 +1098,106 @@ model TimetableConfig {
   @@unique([organizationId, academicYearId])
   @@map("timetable_config")
 }
+
+// ============================================================
+// DOMAIN 9: STUDENT SUPPORT & REMEDIAL INTERVENTIONS
+// ============================================================
+
+model LearningDifficulty {
+  id                       String   @id @default(cuid())
+  organizationId           String
+  studentId                String?
+  studentName              String
+  gradeName                String
+  conditionType            String   // DYSLEXIA, ADHD, VISUAL_IMPAIRMENT, HEARING_IMPAIRMENT, OTHER
+  accommodationNotes       String?
+  examTimeExtensionMinutes Int      @default(0)
+
+  createdAt                DateTime @default(now())
+  updatedAt                DateTime @updatedAt
+
+  @@map("learning_difficulty")
+}
+
+model RemedialProgram {
+  id             String   @id @default(cuid())
+  organizationId String
+  programTitle   String
+  subjectName    String
+  gradeName      String
+  leadTeacher    String
+  scheduleTime   String
+  enrolledCount  Int      @default(0)
+  maxCapacity    Int      @default(30)
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@map("remedial_program")
+}
+
+model EnrichmentProgram {
+  id                 String   @id @default(cuid())
+  organizationId     String
+  clubName           String
+  category           String   // STEM, OLYMPIAD, LEADERSHIP, DEBATE
+  coordinatorTeacher String?
+  meetingSchedule    String?
+  description        String?
+  memberCount        Int      @default(0)
+
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@map("enrichment_program")
+}
+
+model InterventionPlan {
+  id             String    @id @default(cuid())
+  organizationId String
+  studentId      String?
+  studentName    String
+  gradeName      String
+  targetScore    String
+  counselorName  String?
+  reviewDate     DateTime?
+  strategyNotes  String?
+  status         String    @default("DRAFTED") // DRAFTED, IN_PROGRESS, COMPLETED
+
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@map("intervention_plan")
+}
+
+model InterventionOutcome {
+  id             String   @id @default(cuid())
+  organizationId String
+  studentId      String?
+  studentName    String
+  initialScore   Float
+  postScore      Float
+  gain           Float
+  status         String   @default("IMPROVED") // IMPROVED, RESOLVED, PENDING
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@map("intervention_outcome")
+}
+
+model InterventionMonitoring {
+  id              String   @id @default(cuid())
+  organizationId  String
+  studentId       String?
+  studentName     String
+  programName     String
+  attendanceRate  Float    @default(100.0)
+  status          String   @default("IN_PROGRESS") // NOT_STARTED, IN_PROGRESS, TARGET_MET
+  lastCheckInDate DateTime @default(now())
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("intervention_monitoring")
+}

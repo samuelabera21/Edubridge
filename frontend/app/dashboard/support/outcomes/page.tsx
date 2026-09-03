@@ -25,9 +25,16 @@ export default function InterventionOutcomesPage() {
     const loadOutcomes = async () => {
         try {
             setLoading(true);
-            setOutcomes([]);
+            const res = await fetchApi("/support/outcomes");
+            if (res.ok) {
+                const data = await res.json();
+                setOutcomes(Array.isArray(data) ? data : []);
+            } else {
+                setOutcomes([]);
+            }
         } catch (err: any) {
             console.error(err);
+            setOutcomes([]);
         } finally {
             setLoading(false);
         }
@@ -37,7 +44,7 @@ export default function InterventionOutcomesPage() {
         loadOutcomes();
     }, []);
 
-    if (loading) return <LoadingState message="Calculating intervention program outcome analytics..." />;
+    if (loading) return <LoadingState message="Calculating intervention program outcome analytics from database..." />;
 
     return (
         <div className="space-y-6 text-black">
@@ -51,9 +58,9 @@ export default function InterventionOutcomesPage() {
                     <p className="text-emerald-800">
                         <strong>Who Uses This:</strong> School Principal, Academic Vice-Principal & Woreda Education Officers.
                         <br />
-                        <strong>Data Source:</strong> Comparative pre/post assessment scores & intervention completion logs in database.
+                        <strong>Data Source:</strong> Database table `intervention_outcome` queried via REST API (`/api/support/outcomes`).
                         <br />
-                        <strong>SRS Purpose:</strong> Evaluates overall success rate (% of at-risk students who successfully improved to passing scores &gt;= 50%).
+                        <strong>SRS Purpose:</strong> Evaluates overall success rate (% of at-risk students who improved to passing scores $\ge 50\%$).
                     </p>
                 </div>
             </div>
@@ -133,7 +140,7 @@ export default function InterventionOutcomesPage() {
                     {outcomes.length === 0 ? (
                         <div className="p-12 text-center text-gray-500">
                             <Award className="w-12 h-12 mx-auto text-emerald-300 mb-2" />
-                            <p className="font-semibold text-gray-800">No completed intervention evaluations available</p>
+                            <p className="font-semibold text-gray-800">No completed intervention evaluations in database</p>
                             <p className="text-xs text-gray-400 mt-1">Comparative outcome metrics will generate automatically when students complete tutorial plans and take term exams.</p>
                         </div>
                     ) : (

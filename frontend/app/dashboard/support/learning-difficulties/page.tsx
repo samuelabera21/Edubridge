@@ -21,6 +21,7 @@ import { LoadingState } from "@/components/ui/LoadingState";
 export default function LearningDifficultiesPage() {
     const { authData } = useAuth();
     const [loading, setLoading] = useState(true);
+    const [submitting, setSubmitting] = useState(false);
     const [records, setRecords] = useState<any[]>([]);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState("");
@@ -36,10 +37,16 @@ export default function LearningDifficultiesPage() {
     const loadRecords = async () => {
         try {
             setLoading(true);
-            // Fetch learning difficulties registry
-            setRecords([]);
+            const res = await fetchApi("/support/learning-difficulties");
+            if (res.ok) {
+                const data = await res.json();
+                setRecords(Array.isArray(data) ? data : []);
+            } else {
+                setRecords([]);
+            }
         } catch (err: any) {
             console.error(err);
+            setRecords([]);
         } finally {
             setLoading(false);
         }
@@ -49,32 +56,36 @@ export default function LearningDifficultiesPage() {
         loadRecords();
     }, []);
 
-    const handleCreateRecord = (e: React.FormEvent) => {
+    const handleCreateRecord = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!form.studentName.trim() || !form.gradeName.trim()) return;
 
-        const newRecord = {
-            id: Date.now().toString(),
-            studentName: form.studentName,
-            gradeName: form.gradeName,
-            conditionType: form.conditionType,
-            accommodationNotes: form.accommodationNotes,
-            examTimeExtensionMinutes: form.examTimeExtensionMinutes,
-            createdAt: new Date().toISOString().split("T")[0]
-        };
+        try {
+            setSubmitting(true);
+            const res = await fetchApi("/support/learning-difficulties", {
+                method: "POST",
+                body: JSON.stringify(form)
+            });
 
-        setRecords(prev => [newRecord, ...prev]);
-        setIsModalOpen(false);
-        setForm({
-            studentName: "",
-            gradeName: "",
-            conditionType: "DYSLEXIA",
-            accommodationNotes: "",
-            examTimeExtensionMinutes: "30"
-        });
+            if (res.ok) {
+                setIsModalOpen(false);
+                setForm({
+                    studentName: "",
+                    gradeName: "",
+                    conditionType: "DYSLEXIA",
+                    accommodationNotes: "",
+                    examTimeExtensionMinutes: "30"
+                });
+                loadRecords();
+            }
+        } catch (err: any) {
+            console.error(err);
+        } finally {
+            setSubmitting(false);
+        }
     };
 
-    if (loading) return <LoadingState message="Loading learning difficulty & accommodation records..." />;
+    if (loading) return <LoadingState message="Loading learning difficulty & accommodation records from database..." />;
 
     return (
         <div className="space-y-6 text-black">
@@ -88,9 +99,9 @@ export default function LearningDifficultiesPage() {
                     <p className="text-purple-800">
                         <strong>Who Uses This:</strong> Guidance Counselors, Special Education Staff & School Principal.
                         <br />
-                        <strong>Data Source:</strong> Individualized Education Plan (IEP) records stored in the database.
+                        <strong>Data Source:</strong> Database table `learning_difficulty` queried via REST API (`/api/support/learning-difficulties`).
                         <br />
-                        <strong>SRS Purpose:</strong> Ensures approved classroom accommodations (e.g. +30 mins extra exam time, large print, preferential seating) are granted to students with special learning needs.
+                        <strong>SRS Purpose:</strong> Ensures approved classroom accommodations (e.g. +30 mins extra exam time, large print, preferential seating) are saved and granted.
                     </p>
                 </div>
             </div>
@@ -132,7 +143,7 @@ export default function LearningDifficultiesPage() {
                     {records.length === 0 ? (
                         <div className="p-12 text-center text-gray-500">
                             <HeartHandshake className="w-12 h-12 mx-auto text-purple-300 mb-2" />
-                            <p className="font-semibold text-gray-800">No learning difficulty records registered</p>
+                            <p className="font-semibold text-gray-800">No learning difficulty records registered in database</p>
                             <p className="text-xs text-gray-400 mt-1">Click "Register IEP / Accommodation" above to record approved student learning accommodations.</p>
                         </div>
                     ) : (
@@ -244,7 +255,7 @@ export default function LearningDifficultiesPage() {
 
                             <div className="flex justify-end space-x-3 pt-3 border-t">
                                 <Button type="button" variant="outline" onClick={() => setIsModalOpen(false)}>Cancel</Button>
-                                <Button type="submit" className="bg-[#006b3f] hover:bg-[#005432]">Save Accommodation</Button>
+                                <Button type="submit" isLoading={submitting} className="bg-[#006b3f] hover:bg-[#005432]">Save Accommodation</Button>
                             </div>
                         </form>
                     </div>

@@ -20,6 +20,7 @@ import { LoadingState } from "@/components/ui/LoadingState";
 export default function EnrichmentProgramsPage() {
     const { authData } = useAuth();
     const [loading, setLoading] = useState(true);
+    const [submitting, setSubmitting] = useState(false);
     const [clubs, setClubs] = useState<any[]>([]);
     const [isModalOpen, setIsModalOpen] = useState(false);
 
@@ -34,9 +35,16 @@ export default function EnrichmentProgramsPage() {
     const loadClubs = async () => {
         try {
             setLoading(true);
-            setClubs([]);
+            const res = await fetchApi("/support/enrichment");
+            if (res.ok) {
+                const data = await res.json();
+                setClubs(Array.isArray(data) ? data : []);
+            } else {
+                setClubs([]);
+            }
         } catch (err: any) {
             console.error(err);
+            setClubs([]);
         } finally {
             setLoading(false);
         }
@@ -46,32 +54,36 @@ export default function EnrichmentProgramsPage() {
         loadClubs();
     }, []);
 
-    const handleCreateClub = (e: React.FormEvent) => {
+    const handleCreateClub = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!form.clubName.trim()) return;
 
-        const newClub = {
-            id: Date.now().toString(),
-            clubName: form.clubName,
-            category: form.category,
-            coordinatorTeacher: form.coordinatorTeacher,
-            meetingSchedule: form.meetingSchedule,
-            description: form.description,
-            memberCount: 0
-        };
+        try {
+            setSubmitting(true);
+            const res = await fetchApi("/support/enrichment", {
+                method: "POST",
+                body: JSON.stringify(form)
+            });
 
-        setClubs(prev => [newClub, ...prev]);
-        setIsModalOpen(false);
-        setForm({
-            clubName: "",
-            category: "STEM",
-            coordinatorTeacher: "",
-            meetingSchedule: "Wednesday 3:30 PM",
-            description: ""
-        });
+            if (res.ok) {
+                setIsModalOpen(false);
+                setForm({
+                    clubName: "",
+                    category: "STEM",
+                    coordinatorTeacher: "",
+                    meetingSchedule: "Wednesday 3:30 PM",
+                    description: ""
+                });
+                loadClubs();
+            }
+        } catch (err: any) {
+            console.error(err);
+        } finally {
+            setSubmitting(false);
+        }
     };
 
-    if (loading) return <LoadingState message="Loading enrichment & talent development programs..." />;
+    if (loading) return <LoadingState message="Loading enrichment & talent development programs from database..." />;
 
     return (
         <div className="space-y-6 text-black">
@@ -85,7 +97,7 @@ export default function EnrichmentProgramsPage() {
                     <p className="text-blue-800">
                         <strong>Who Uses This:</strong> School Principal, Vice-Principal & STEM Talent Coordinators.
                         <br />
-                        <strong>Data Source:</strong> Enrichment clubs & STEM olympiad competition registries.
+                        <strong>Data Source:</strong> Database table `enrichment_program` queried via REST API (`/api/support/enrichment`).
                         <br />
                         <strong>SRS Purpose:</strong> Provides advanced academic challenges (Math Olympiad, Science Fairs, Robotics, Coding) for high-performing students.
                     </p>
@@ -119,7 +131,7 @@ export default function EnrichmentProgramsPage() {
                     {clubs.length === 0 ? (
                         <div className="p-12 text-center text-gray-500">
                             <Star className="w-12 h-12 mx-auto text-amber-300 mb-2" />
-                            <p className="font-semibold text-gray-800">No enrichment programs registered</p>
+                            <p className="font-semibold text-gray-800">No enrichment programs registered in database</p>
                             <p className="text-xs text-gray-400 mt-1">Click "Register Enrichment Program" above to add Math Olympiads, Science Fairs, or Coding Clubs.</p>
                         </div>
                     ) : (
@@ -218,7 +230,7 @@ export default function EnrichmentProgramsPage() {
 
                             <div className="flex justify-end space-x-3 pt-3 border-t">
                                 <Button type="button" variant="outline" onClick={() => setIsModalOpen(false)}>Cancel</Button>
-                                <Button type="submit" className="bg-[#006b3f] hover:bg-[#005432]">Save Program</Button>
+                                <Button type="submit" isLoading={submitting} className="bg-[#006b3f] hover:bg-[#005432]">Save Program</Button>
                             </div>
                         </form>
                     </div>

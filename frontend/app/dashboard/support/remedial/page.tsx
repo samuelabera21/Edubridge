@@ -21,6 +21,7 @@ import { LoadingState } from "@/components/ui/LoadingState";
 export default function RemedialProgramsPage() {
     const { authData } = useAuth();
     const [loading, setLoading] = useState(true);
+    const [submitting, setSubmitting] = useState(false);
     const [programs, setPrograms] = useState<any[]>([]);
     const [isModalOpen, setIsModalOpen] = useState(false);
 
@@ -36,9 +37,16 @@ export default function RemedialProgramsPage() {
     const loadPrograms = async () => {
         try {
             setLoading(true);
-            setPrograms([]);
+            const res = await fetchApi("/support/remedial");
+            if (res.ok) {
+                const data = await res.json();
+                setPrograms(Array.isArray(data) ? data : []);
+            } else {
+                setPrograms([]);
+            }
         } catch (err: any) {
             console.error(err);
+            setPrograms([]);
         } finally {
             setLoading(false);
         }
@@ -48,34 +56,37 @@ export default function RemedialProgramsPage() {
         loadPrograms();
     }, []);
 
-    const handleCreateProgram = (e: React.FormEvent) => {
+    const handleCreateProgram = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!form.programTitle.trim() || !form.subjectName.trim()) return;
 
-        const newProg = {
-            id: Date.now().toString(),
-            programTitle: form.programTitle,
-            subjectName: form.subjectName,
-            leadTeacher: form.leadTeacher,
-            gradeName: form.gradeName,
-            scheduleTime: form.scheduleTime,
-            enrolledCount: 0,
-            maxCapacity: form.maxCapacity
-        };
+        try {
+            setSubmitting(true);
+            const res = await fetchApi("/support/remedial", {
+                method: "POST",
+                body: JSON.stringify(form)
+            });
 
-        setPrograms(prev => [newProg, ...prev]);
-        setIsModalOpen(false);
-        setForm({
-            programTitle: "",
-            subjectName: "",
-            leadTeacher: "",
-            gradeName: "",
-            scheduleTime: "Saturday 9:00 AM - 11:30 AM",
-            maxCapacity: "30"
-        });
+            if (res.ok) {
+                setIsModalOpen(false);
+                setForm({
+                    programTitle: "",
+                    subjectName: "",
+                    leadTeacher: "",
+                    gradeName: "",
+                    scheduleTime: "Saturday 9:00 AM - 11:30 AM",
+                    maxCapacity: "30"
+                });
+                loadPrograms();
+            }
+        } catch (err: any) {
+            console.error(err);
+        } finally {
+            setSubmitting(false);
+        }
     };
 
-    if (loading) return <LoadingState message="Loading remedial tutorial programs..." />;
+    if (loading) return <LoadingState message="Loading remedial tutorial programs from database..." />;
 
     return (
         <div className="space-y-6 text-black">
@@ -89,7 +100,7 @@ export default function RemedialProgramsPage() {
                     <p className="text-emerald-800">
                         <strong>Who Uses This:</strong> Vice-Principals, Department Heads & Remedial Lead Teachers.
                         <br />
-                        <strong>Data Source:</strong> Remedial tutorial classes & student rosters in database.
+                        <strong>Data Source:</strong> Database table `remedial_program` queried via REST API (`/api/support/remedial`).
                         <br />
                         <strong>SRS Purpose:</strong> Schedules after-school and weekend tutorial sessions to reinforce difficult concepts for struggling students.
                     </p>
@@ -123,7 +134,7 @@ export default function RemedialProgramsPage() {
                     {programs.length === 0 ? (
                         <div className="p-12 text-center text-gray-500">
                             <BookOpen className="w-12 h-12 mx-auto text-emerald-300 mb-2" />
-                            <p className="font-semibold text-gray-800">No active remedial programs found</p>
+                            <p className="font-semibold text-gray-800">No active remedial programs found in database</p>
                             <p className="text-xs text-gray-400 mt-1">Click "Create Remedial Class" above to set up Saturday or after-school tutorial classes.</p>
                         </div>
                     ) : (
@@ -231,7 +242,7 @@ export default function RemedialProgramsPage() {
 
                             <div className="flex justify-end space-x-3 pt-3 border-t">
                                 <Button type="button" variant="outline" onClick={() => setIsModalOpen(false)}>Cancel</Button>
-                                <Button type="submit" className="bg-[#006b3f] hover:bg-[#005432]">Create Class</Button>
+                                <Button type="submit" isLoading={submitting} className="bg-[#006b3f] hover:bg-[#005432]">Create Class</Button>
                             </div>
                         </form>
                     </div>
