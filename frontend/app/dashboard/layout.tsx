@@ -810,9 +810,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                                             </button>
                                             {openMenus.communication && (
                                                 <div className="pl-10 pr-3 py-1 space-y-1">
-                                                    <Link href="/dashboard/communication/announcements" className={`block py-1.5 text-sm ${pathname === "/dashboard/communication/announcements" ? "text-[#006b3f] font-medium" : "text-gray-500 hover:text-[#006b3f]"}`}>Announcements</Link>
-                                                    <Link href="/dashboard/communication/notifications" className={`block py-1.5 text-sm ${pathname === "/dashboard/communication/notifications" ? "text-[#006b3f] font-medium" : "text-gray-500 hover:text-[#006b3f]"}`}>Notifications</Link>
-                                                    <Link href="/dashboard/communication/messages" className={`block py-1.5 text-sm ${pathname === "/dashboard/communication/messages" ? "text-[#006b3f] font-medium" : "text-gray-500 hover:text-[#006b3f]"}`}>Messages</Link>
+                                                    <Link href="/dashboard/communication/announcements" className={`block py-1.5 text-sm ${pathname === "/dashboard/communication/announcements" ? "text-[#006b3f] font-medium" : "text-gray-500 hover:text-[#006b3f]"}`}>1. School Announcements</Link>
+                                                    <Link href="/dashboard/communication/teacher" className={`block py-1.5 text-sm ${pathname === "/dashboard/communication/teacher" ? "text-[#006b3f] font-medium" : "text-gray-500 hover:text-[#006b3f]"}`}>2. Teacher Communication</Link>
+                                                    <Link href="/dashboard/communication/student" className={`block py-1.5 text-sm ${pathname === "/dashboard/communication/student" ? "text-[#006b3f] font-medium" : "text-gray-500 hover:text-[#006b3f]"}`}>3. Student Communication</Link>
+                                                    <Link href="/dashboard/communication/parent" className={`block py-1.5 text-sm ${pathname === "/dashboard/communication/parent" ? "text-[#006b3f] font-medium" : "text-gray-500 hover:text-[#006b3f]"}`}>4. Parent Communication</Link>
+                                                    <Link href="/dashboard/communication/staff" className={`block py-1.5 text-sm ${pathname === "/dashboard/communication/staff" ? "text-[#006b3f] font-medium" : "text-gray-500 hover:text-[#006b3f]"}`}>5. Staff Communication</Link>
+                                                    <Link href="/dashboard/communication/notices" className={`block py-1.5 text-sm ${pathname === "/dashboard/communication/notices" ? "text-[#006b3f] font-medium" : "text-gray-500 hover:text-[#006b3f]"}`}>6. Important Notices</Link>
                                                 </div>
                                             )}
                                         </div>

@@ -8,7 +8,9 @@ import {
     markNotificationRead,
     sendMessage,
     getMyMessages,
-    getMessagingUsers
+    getMessagingUsers,
+    getImportantNotices,
+    createImportantNotice
 } from "./communication.controller.js";
 import { requirePermission, requireScope } from "../authentication/authorization.middleware.js";
 
@@ -17,10 +19,16 @@ const router = Router();
 // Scope all communication operations to SCHOOL
 router.use(requireScope("SCHOOL"));
 
-// Announcements
+// Announcements (both singular and plural)
+router.post("/announcements", requirePermission("ACADEMIC:CREATE"), createAnnouncement);
+router.get("/announcements", requirePermission("ACADEMIC:VIEW"), getAnnouncements);
 router.post("/announcement", requirePermission("ACADEMIC:CREATE"), createAnnouncement);
 router.get("/announcement", requirePermission("ACADEMIC:VIEW"), getAnnouncements);
 router.delete("/announcement/:id", requirePermission("ACADEMIC:DELETE"), deleteAnnouncement);
+
+// Important Notices & Directives
+router.get("/notices", requirePermission("ACADEMIC:VIEW"), getImportantNotices);
+router.post("/notices", requirePermission("ACADEMIC:CREATE"), createImportantNotice);
 
 // Internal/System Notifications
 router.post("/notification/system", createNotification);

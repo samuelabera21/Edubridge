@@ -890,6 +890,7 @@ enum AnnouncementTarget {
   TEACHERS
   STUDENTS
   PARENTS
+  STAFF
   SPECIFIC_GRADE
   SPECIFIC_SECTION
 }
@@ -1250,4 +1251,19 @@ model ParentParticipation {
   updatedAt      DateTime @updatedAt
 
   @@map("parent_participation")
+}
+
+model ImportantNotice {
+  id             String   @id @default(cuid())
+  organizationId String
+  title          String
+  content        String
+  noticeType     String   @default("EMERGENCY") // EMERGENCY, COMPLIANCE, SAFETY, DIRECTIVE
+  isPinned       Boolean  @default(true)
+  authorName     String   @default("School Principal")
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@map("important_notice")
 }

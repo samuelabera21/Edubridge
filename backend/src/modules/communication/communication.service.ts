@@ -117,4 +117,25 @@ export class CommunicationService {
             take: 50
         });
     }
+
+    // Domain 11.6: Important Notices & Directives
+    static async getImportantNotices(organizationId: string) {
+        return prisma.importantNotice.findMany({
+            where: { organizationId },
+            orderBy: { createdAt: "desc" }
+        });
+    }
+
+    static async createImportantNotice(organizationId: string, data: any) {
+        return prisma.importantNotice.create({
+            data: {
+                organizationId,
+                title: data.title,
+                content: data.content,
+                noticeType: data.noticeType || "EMERGENCY",
+                isPinned: true,
+                authorName: data.authorName || "School Principal"
+            }
+        });
+    }
 }

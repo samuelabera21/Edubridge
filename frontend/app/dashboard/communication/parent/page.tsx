@@ -4,21 +4,20 @@ import { useEffect, useState } from "react";
 import { fetchApi } from "@/lib/api";
 import { useAuth } from "@/hooks/useAuth";
 import { 
-    Megaphone, 
+    Users, 
     Plus, 
     Search, 
     Sparkles, 
-    Calendar, 
     User, 
+    Calendar, 
     X,
-    FileText,
-    Trash2
+    FileText
 } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { LoadingState } from "@/components/ui/LoadingState";
 
-export default function SchoolAnnouncementsPage() {
+export default function ParentBroadcastCommunicationPage() {
     const { authData } = useAuth();
     const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
@@ -28,13 +27,13 @@ export default function SchoolAnnouncementsPage() {
     const [form, setForm] = useState({
         title: "",
         content: "",
-        target: "ALL"
+        target: "PARENTS"
     });
 
     const loadAnnouncements = async () => {
         try {
             setLoading(true);
-            const res = await fetchApi("/communication/announcements");
+            const res = await fetchApi("/communication/announcements?target=PARENTS");
             if (res.ok) {
                 const data = await res.json();
                 setAnnouncements(Array.isArray(data) ? data : []);
@@ -66,7 +65,7 @@ export default function SchoolAnnouncementsPage() {
 
             if (res.ok) {
                 setIsModalOpen(false);
-                setForm({ title: "", content: "", target: "ALL" });
+                setForm({ title: "", content: "", target: "PARENTS" });
                 loadAnnouncements();
             }
         } catch (err: any) {
@@ -76,7 +75,7 @@ export default function SchoolAnnouncementsPage() {
         }
     };
 
-    if (loading) return <LoadingState message="Loading school announcements from database..." />;
+    if (loading) return <LoadingState message="Loading parent broadcast announcements from database..." />;
 
     return (
         <div className="space-y-6 text-black">
@@ -85,14 +84,14 @@ export default function SchoolAnnouncementsPage() {
                 <div className="space-y-1">
                     <span className="font-bold text-sm text-[#006b3f] flex items-center">
                         <Sparkles className="w-4 h-4 mr-1.5 text-[#006b3f]" />
-                        SRS Domain 11.1: School Announcements & Newsfeed
+                        SRS Domain 11.4: Parent & Guardian Circulars
                     </span>
                     <p className="text-emerald-800">
-                        <strong>Who Uses This:</strong> School Principal, Vice-Principal & Communication Officers.
+                        <strong>Who Uses This:</strong> School Principal, Vice-Principal & PTA Liaisons.
                         <br />
-                        <strong>Data Source:</strong> Database table `announcement` queried via REST API (`/api/communication/announcements`).
+                        <strong>Data Source:</strong> Database table `announcement` filtered by `target=PARENTS` via REST API.
                         <br />
-                        <strong>SRS Purpose:</strong> School-wide news broadcast, holiday notices, and official administrative announcements.
+                        <strong>SRS Purpose:</strong> General PTA assembly circulars, report card distribution schedules, and school fee deadline broadcasts.
                     </p>
                 </div>
             </div>
@@ -101,13 +100,13 @@ export default function SchoolAnnouncementsPage() {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
                     <h1 className="text-2xl font-bold text-gray-900 flex items-center space-x-2">
-                        <Megaphone className="w-7 h-7 text-[#006b3f]" />
-                        <span>1. School Announcements & General News</span>
+                        <Users className="w-7 h-7 text-[#006b3f]" />
+                        <span>4. Parent Broadcast Circulars</span>
                     </h1>
-                    <p className="text-sm text-gray-500 mt-1">Official school broadcasts for teachers, students, parents, and administrative staff.</p>
+                    <p className="text-sm text-gray-500 mt-1">Official announcements and administrative notices broadcast to parents and guardians.</p>
                 </div>
                 <Button onClick={() => setIsModalOpen(true)} leftIcon={<Plus className="w-4 h-4" />} className="bg-[#006b3f] hover:bg-[#005432]">
-                    Post Announcement
+                    Post Parent Circular
                 </Button>
             </div>
 
@@ -116,9 +115,9 @@ export default function SchoolAnnouncementsPage() {
                 {announcements.length === 0 ? (
                     <Card className="shadow-sm">
                         <CardContent className="p-12 text-center text-gray-500">
-                            <Megaphone className="w-12 h-12 mx-auto text-emerald-300 mb-2" />
-                            <p className="font-semibold text-gray-800">No school announcements posted yet</p>
-                            <p className="text-xs text-gray-400 mt-1">Click "Post Announcement" above to broadcast a new announcement to the school.</p>
+                            <Users className="w-12 h-12 mx-auto text-emerald-300 mb-2" />
+                            <p className="font-semibold text-gray-800">No parent circulars posted yet</p>
+                            <p className="text-xs text-gray-400 mt-1">Click "Post Parent Circular" above to broadcast notices to parents.</p>
                         </CardContent>
                     </Card>
                 ) : (
@@ -128,7 +127,7 @@ export default function SchoolAnnouncementsPage() {
                                 <div className="space-y-1">
                                     <div className="flex items-center space-x-2">
                                         <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800">
-                                            {item.target || "ALL SCHOOL"}
+                                            PARENTS ONLY
                                         </span>
                                         <span className="text-xs text-gray-400">
                                             {new Date(item.createdAt).toLocaleDateString()}
@@ -137,12 +136,8 @@ export default function SchoolAnnouncementsPage() {
                                     <CardTitle className="text-lg font-bold text-gray-900">{item.title}</CardTitle>
                                 </div>
                             </CardHeader>
-                            <CardContent className="py-4 text-sm text-gray-700 space-y-3">
+                            <CardContent className="py-4 text-sm text-gray-700">
                                 <p className="whitespace-pre-line leading-relaxed">{item.content}</p>
-                                <div className="text-xs text-gray-500 flex items-center pt-2 border-t border-gray-50">
-                                    <User className="w-3.5 h-3.5 mr-1 text-gray-400" />
-                                    Posted by: <span className="font-semibold ml-1 text-gray-700">{item.author?.name || "School Principal"}</span>
-                                </div>
                             </CardContent>
                         </Card>
                     ))
@@ -154,44 +149,30 @@ export default function SchoolAnnouncementsPage() {
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 animate-in fade-in duration-200">
                     <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6 space-y-4">
                         <div className="flex justify-between items-center border-b pb-3">
-                            <h3 className="text-lg font-bold text-gray-900">Post School Announcement</h3>
+                            <h3 className="text-lg font-bold text-gray-900">Post Parent Circular</h3>
                             <button onClick={() => setIsModalOpen(false)} className="text-gray-400 hover:text-gray-600"><X className="w-5 h-5" /></button>
                         </div>
 
                         <form onSubmit={handleCreateAnnouncement} className="space-y-4">
                             <div>
-                                <label className="block text-xs font-semibold text-gray-700 uppercase mb-1">Announcement Title *</label>
+                                <label className="block text-xs font-semibold text-gray-700 uppercase mb-1">Circular Title *</label>
                                 <input
                                     type="text"
                                     required
                                     value={form.title}
                                     onChange={(e) => setForm({ ...form, title: e.target.value })}
-                                    placeholder="e.g. End of Semester Examination Schedule & Holidays"
+                                    placeholder="e.g. Q1 Report Card Pick-up & PTA Meeting Schedule"
                                     className="w-full border border-gray-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-[#006b3f]"
                                 />
                             </div>
 
                             <div>
-                                <label className="block text-xs font-semibold text-gray-700 uppercase mb-1">Target Audience</label>
-                                <select
-                                    value={form.target}
-                                    onChange={(e) => setForm({ ...form, target: e.target.value })}
-                                    className="w-full border border-gray-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-[#006b3f] bg-white"
-                                >
-                                    <option value="ALL">Entire School Community (All)</option>
-                                    <option value="TEACHERS">Teaching Staff Only</option>
-                                    <option value="STUDENTS">Students Only</option>
-                                    <option value="PARENTS">Parents & Guardians Only</option>
-                                </select>
-                            </div>
-
-                            <div>
-                                <label className="block text-xs font-semibold text-gray-700 uppercase mb-1">Announcement Message *</label>
+                                <label className="block text-xs font-semibold text-gray-700 uppercase mb-1">Circular Message *</label>
                                 <textarea
                                     required
                                     value={form.content}
                                     onChange={(e) => setForm({ ...form, content: e.target.value })}
-                                    placeholder="Write your announcement details here..."
+                                    placeholder="Write instructions for parents here..."
                                     rows={4}
                                     className="w-full border border-gray-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-[#006b3f]"
                                 />
@@ -199,7 +180,7 @@ export default function SchoolAnnouncementsPage() {
 
                             <div className="flex justify-end space-x-3 pt-3 border-t">
                                 <Button type="button" variant="outline" onClick={() => setIsModalOpen(false)}>Cancel</Button>
-                                <Button type="submit" isLoading={submitting} className="bg-[#006b3f] hover:bg-[#005432]">Publish Announcement</Button>
+                                <Button type="submit" isLoading={submitting} className="bg-[#006b3f] hover:bg-[#005432]">Publish Circular</Button>
                             </div>
                         </form>
                     </div>
