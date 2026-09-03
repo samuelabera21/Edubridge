@@ -36,8 +36,12 @@ else
     AUTH_SECRET="edubridge-auth-secret-$(date +%s)-local-dev"
   fi
 
-  # --- Set DEFAULT_INITIAL_PASSWORD ---
-  DEFAULT_PASS="Admin@1234"
+  # --- Generate DEFAULT_INITIAL_PASSWORD ---
+  if command -v openssl &> /dev/null; then
+    DEFAULT_PASS=$(openssl rand -base64 18)
+  else
+    DEFAULT_PASS="edubridge_$(date +%s)_local"
+  fi
 
   # --- Write values into .env (cross-platform sed) ---
   if [[ "$OSTYPE" == "darwin"* ]]; then
@@ -85,6 +89,6 @@ echo "    docker compose up"
 echo ""
 echo "  Then log in at: http://localhost:3001"
 echo "  Email    : admin@edubridge.local"
-echo "  Password : Admin@1234"
+echo "  Password : value configured in your .env"
 echo "=============================================="
 echo ""
