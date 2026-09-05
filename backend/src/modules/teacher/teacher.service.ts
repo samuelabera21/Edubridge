@@ -3,16 +3,49 @@ import { IssuePriority, SupportFlagType, ActivityType, SubmissionStatus, Attenda
 
 export class TeacherService {
     static async createTeacher(organizationId: string, data: any) {
+        // 1. Strict Identity Validation
+        if (!data.firstName || typeof data.firstName !== "string" || !data.firstName.trim()) {
+            throw new Error("First / Given Name is required");
+        }
+        if (!data.lastName || typeof data.lastName !== "string" || !data.lastName.trim()) {
+            throw new Error("Last Name is required");
+        }
+        if (!data.fatherName || typeof data.fatherName !== "string" || !data.fatherName.trim()) {
+            throw new Error("Father's Name is required");
+        }
+        if (!data.gender || !["MALE", "FEMALE"].includes(data.gender.toUpperCase())) {
+            throw new Error("Valid Gender is required (MALE or FEMALE)");
+        }
+
         return await prisma.$transaction(async (tx) => {
+            // Check uniqueness of staffIdCode / employeeId within this school
+            if (data.staffIdCode) {
+                const existingStaff = await tx.teacher.findFirst({
+                    where: { organizationId, staffIdCode: data.staffIdCode.trim() }
+                });
+                if (existingStaff) {
+                    throw new Error(`Teacher with Staff Code "${data.staffIdCode}" already exists in this school`);
+                }
+            }
+
+            if (data.employeeId) {
+                const existingEmp = await tx.teacher.findFirst({
+                    where: { employeeId: data.employeeId.trim() }
+                });
+                if (existingEmp) {
+                    throw new Error(`Teacher with Employee ID "${data.employeeId}" already exists`);
+                }
+            }
+
             let seqNum = (await tx.teacher.count()) + 1;
-            let autoEmployeeId = data.employeeId || `TCH-2026-${String(seqNum).padStart(4, "0")}`;
+            let autoEmployeeId = data.employeeId ? data.employeeId.trim() : `TCH-2026-${String(seqNum).padStart(4, "0")}`;
             while (await tx.teacher.findUnique({ where: { employeeId: autoEmployeeId } })) {
                 seqNum++;
                 autoEmployeeId = `TCH-2026-${String(seqNum).padStart(4, "0")}`;
             }
 
             let userSeqNum = (await tx.user.count()) + 1;
-            let autoEmail = data.email || `tch.2026.${String(userSeqNum).padStart(4, "0")}@edubridge.local`;
+            let autoEmail = data.email ? data.email.trim().toLowerCase() : `tch.2026.${String(userSeqNum).padStart(4, "0")}@edubridge.local`;
             while (await tx.user.findUnique({ where: { email: autoEmail } })) {
                 userSeqNum++;
                 autoEmail = `tch.2026.${String(userSeqNum).padStart(4, "0")}@edubridge.local`;
@@ -22,7 +55,7 @@ export class TeacherService {
             let userId = data.userId || null;
             if (!userId) {
                 const tempPassword = process.env.DEFAULT_INITIAL_PASSWORD || ["Edu", "Bridge", "2026", "!"].join("");
-                const fullName = `${data.firstName} ${data.lastName}`.trim();
+                const fullName = `${data.firstName} ${data.fatherName} ${data.lastName}`.trim();
                 
                 let user = await tx.user.findUnique({ where: { email: autoEmail } });
                 if (!user) {
@@ -62,17 +95,32 @@ export class TeacherService {
             const teacher = await tx.teacher.create({
                 data: {
                     organizationId,
-                    firstName: data.firstName,
-                    lastName: data.lastName,
-                    fatherName: data.fatherName || null,
-                    grandfatherName: data.grandfatherName || null,
-                    gender: data.gender || null,
+                    firstName: data.firstName.trim(),
+                    lastName: data.lastName.trim(),
+                    fatherName: data.fatherName.trim(),
+                    grandfatherName: data.grandfatherName ? data.grandfatherName.trim() : null,
+                    gender: data.gender.toUpperCase(),
                     dateOfBirth: data.dateOfBirth ? new Date(data.dateOfBirth) : null,
+                    nationality: data.nationality ? data.nationality.trim() : "Ethiopian",
+                    nationalIdNumber: data.nationalIdNumber ? data.nationalIdNumber.trim() : null,
+
+                    employeeId: autoEmployeeId,
+                    staffIdCode: data.staffIdCode ? data.staffIdCode.trim() : null,
+                    userId,
+
                     qualification: data.qualification || null,
                     fieldOfStudy: data.fieldOfStudy || null,
                     yearsOfExperience: data.yearsOfExperience ? parseInt(data.yearsOfExperience, 10) : null,
-                    phoneNumber: data.phoneNumber || null,
+
+                    phoneNumber: data.phoneNumber ? data.phoneNumber.trim() : null,
                     email: autoEmail,
+
+                    // Employment lifecycle
+                    employmentType: data.employmentType || "PERMANENT",
+                    employmentStatus: data.employmentStatus || "ACTIVE",
+                    joiningDate: data.joiningDate ? new Date(data.joiningDate) : new Date(),
+                    jobTitle: data.jobTitle ? data.jobTitle.trim() : "Teacher",
+
                     region: data.region || null,
                     zone: data.zone || null,
                     woreda: data.woreda || null,
@@ -80,60 +128,100 @@ export class TeacherService {
                     kebele: data.kebele || null,
                     houseNumber: data.houseNumber || null,
                     photoUrl: data.photoUrl || null,
-                    documents: data.documents || null,
-                    employeeId: autoEmployeeId,
-                    userId,
                 }
             });
+
+            // Process Structured Qualifications
+            if (Array.isArray(data.qualifications) && data.qualifications.length > 0) {
+                for (const q of data.qualifications) {
+                    if (!q.qualificationLevel || !q.qualificationTitle || !q.fieldOfStudy || !q.institution || !q.graduationYear) {
+                        throw new Error("Qualification requires level, title, field of study, institution, and graduation year");
+                    }
+                    const gradYear = parseInt(q.graduationYear, 10);
+                    if (isNaN(gradYear) || gradYear < 1950 || gradYear > new Date().getFullYear() + 1) {
+                        throw new Error(`Invalid graduation year: ${q.graduationYear}`);
+                    }
+
+                    await tx.teacherQualification.create({
+                        data: {
+                            teacherId: teacher.id,
+                            qualificationLevel: q.qualificationLevel,
+                            qualificationTitle: q.qualificationTitle.trim(),
+                            fieldOfStudy: q.fieldOfStudy.trim(),
+                            institution: q.institution.trim(),
+                            graduationYear: gradYear,
+                            credentialNumber: q.credentialNumber ? q.credentialNumber.trim() : null,
+                            country: q.country ? q.country.trim() : "Ethiopia",
+                            documentUrl: q.documentUrl || null,
+                            verificationStatus: "PENDING",
+                            equivalencyStatus: q.equivalencyStatus || "NOT_REQUIRED",
+                            isHighest: q.isHighest || false
+                        }
+                    });
+                }
+            }
+
+            // Process Subject Specializations
+            if (Array.isArray(data.specializations) && data.specializations.length > 0) {
+                for (const s of data.specializations) {
+                    if (!s.subjectId) continue;
+                    // Validate subject belongs to this school
+                    const subject = await tx.subject.findFirst({
+                        where: { id: s.subjectId, organizationId }
+                    });
+                    if (!subject) {
+                        throw new Error(`Subject with ID ${s.subjectId} does not belong to this school`);
+                    }
+
+                    await tx.teacherSpecialization.create({
+                        data: {
+                            teacherId: teacher.id,
+                            subjectId: s.subjectId,
+                            cycle: s.cycle || null,
+                            isPrimary: s.isPrimary ?? true,
+                            verified: false,
+                            notes: s.notes || null
+                        }
+                    });
+                }
+            }
+
+            // Process Supporting Documents
+            if (Array.isArray(data.teacherDocuments) && data.teacherDocuments.length > 0) {
+                for (const doc of data.teacherDocuments) {
+                    if (!doc.fileUrl) continue;
+                    await tx.teacherDocument.create({
+                        data: {
+                            teacherId: teacher.id,
+                            documentType: doc.documentType || "OTHER",
+                            title: doc.title || "Supporting Document",
+                            fileUrl: doc.fileUrl,
+                            uploadedById: data.actorUserId || null,
+                            verificationStatus: "PENDING"
+                        }
+                    });
+                }
+            }
 
             await tx.auditLog.create({
                 data: {
                     organizationId,
-                    action: "TEACHER_CREATED",
+                    action: "TEACHER_REGISTERED",
                     resource: "Teacher",
                     resourceId: teacher.id,
                     newValue: JSON.parse(JSON.stringify(teacher)),
-                    userId: data.userId || null
+                    userId: data.actorUserId || null
                 }
             });
 
-            // Initial Assignment handling
-            if (data.initialAssignment && data.initialAssignment.academicYearId && data.initialAssignment.subjectId && data.initialAssignment.schoolGradeId) {
-                // Validate subject belongs to school
-                const subject = await tx.subject.findFirst({
-                    where: { id: data.initialAssignment.subjectId, organizationId }
-                });
-                if (!subject) throw new Error("Subject not found in this school");
-
-                // Validate grade belongs to school and academic year
-                const schoolGrade = await tx.schoolGrade.findFirst({
-                    where: { id: data.initialAssignment.schoolGradeId, academicYearId: data.initialAssignment.academicYearId, academicYear: { organizationId } }
-                });
-                if (!schoolGrade) throw new Error("Invalid school grade or academic year");
-
-                const assignment = await tx.teachingAssignment.create({
-                    data: {
-                        teacherId: teacher.id,
-                        academicYearId: data.initialAssignment.academicYearId,
-                        subjectId: data.initialAssignment.subjectId,
-                        schoolGradeId: data.initialAssignment.schoolGradeId,
-                        sectionId: data.initialAssignment.sectionId || null
-                    }
-                });
-
-                await tx.auditLog.create({
-                    data: {
-                        organizationId,
-                        action: "TEACHING_ASSIGNMENT_CREATED",
-                        resource: "TeachingAssignment",
-                        resourceId: assignment.id,
-                        newValue: JSON.parse(JSON.stringify(assignment)),
-                        userId: data.userId || null
-                    }
-                });
-            }
-
-            return teacher;
+            return tx.teacher.findUnique({
+                where: { id: teacher.id },
+                include: {
+                    qualifications: true,
+                    specializations: { include: { subject: true } },
+                    teacherDocuments: true
+                }
+            });
         });
     }
 
@@ -141,13 +229,31 @@ export class TeacherService {
         return prisma.teacher.findFirst({
             where: { id: teacherId, organizationId },
             include: {
+                qualifications: {
+                    include: { verifiedBy: { select: { id: true, name: true, email: true } } },
+                    orderBy: { graduationYear: "desc" }
+                },
+                specializations: {
+                    include: { subject: true }
+                },
+                teacherDocuments: {
+                    include: {
+                        uploadedBy: { select: { id: true, name: true } },
+                        verifiedBy: { select: { id: true, name: true } }
+                    },
+                    orderBy: { createdAt: "desc" }
+                },
+                homeroomSections: {
+                    include: { schoolGrade: { include: { grade: true } } }
+                },
                 assignments: {
                     include: {
                         subject: true,
                         schoolGrade: { include: { grade: true } },
                         section: true,
                         academicYear: true
-                    }
+                    },
+                    orderBy: { createdAt: "desc" }
                 }
             }
         });
@@ -157,19 +263,278 @@ export class TeacherService {
         return prisma.teacher.findMany({
             where: { organizationId },
             include: {
+                qualifications: {
+                    orderBy: { graduationYear: "desc" }
+                },
+                specializations: {
+                    include: { subject: true }
+                },
+                homeroomSections: {
+                    include: { schoolGrade: { include: { grade: true } } }
+                },
                 assignments: {
                     include: {
                         subject: true,
                         schoolGrade: { include: { grade: true } },
-                        section: true
+                        section: true,
+                        academicYear: true
                     }
                 }
             },
-            orderBy: { createdAt: "desc" }
+            orderBy: [{ lastName: "asc" }, { firstName: "asc" }]
         });
     }
 
-    static async assignTeacher(organizationId: string, data: { teacherId: string; academicYearId: string; subjectId: string; schoolGradeId: string; sectionId?: string; sectionIds?: string[]; periodsPerWeek?: number }) {
+    /**
+     * Add a qualification to an existing teacher
+     */
+    static async addTeacherQualification(organizationId: string, teacherId: string, data: any, actorUserId?: string) {
+        const teacher = await prisma.teacher.findFirst({
+            where: { id: teacherId, organizationId }
+        });
+        if (!teacher) throw new Error("Teacher not found in this school");
+
+        if (!data.qualificationLevel || !data.qualificationTitle || !data.fieldOfStudy || !data.institution || !data.graduationYear) {
+            throw new Error("Qualification requires level, title, field of study, institution, and graduation year");
+        }
+
+        const gradYear = parseInt(data.graduationYear, 10);
+        if (isNaN(gradYear) || gradYear < 1950 || gradYear > new Date().getFullYear() + 1) {
+            throw new Error(`Invalid graduation year: ${data.graduationYear}`);
+        }
+
+        const qual = await prisma.teacherQualification.create({
+            data: {
+                teacherId,
+                qualificationLevel: data.qualificationLevel,
+                qualificationTitle: data.qualificationTitle.trim(),
+                fieldOfStudy: data.fieldOfStudy.trim(),
+                institution: data.institution.trim(),
+                graduationYear: gradYear,
+                credentialNumber: data.credentialNumber ? data.credentialNumber.trim() : null,
+                country: data.country ? data.country.trim() : "Ethiopia",
+                documentUrl: data.documentUrl || null,
+                verificationStatus: "PENDING",
+                equivalencyStatus: data.equivalencyStatus || "NOT_REQUIRED",
+                isHighest: data.isHighest || false
+            }
+        });
+
+        await prisma.auditLog.create({
+            data: {
+                organizationId,
+                action: "TEACHER_QUALIFICATION_ADDED",
+                resource: "TeacherQualification",
+                resourceId: qual.id,
+                newValue: JSON.parse(JSON.stringify(qual)),
+                userId: actorUserId || null
+            }
+        });
+
+        return qual;
+    }
+
+    /**
+     * Administrative credential verification (Principal / School Admin only)
+     */
+    static async verifyTeacherQualification(
+        organizationId: string,
+        teacherId: string,
+        qualificationId: string,
+        data: { verificationStatus: "VERIFIED" | "REJECTED"; verificationNotes?: string },
+        actorUserId: string,
+        actorRoles: string[]
+    ) {
+        const isAdminOrPrincipal = actorRoles.some(r => ["ADMIN", "SCHOOL_ADMIN", "PRINCIPAL"].includes(r));
+        if (!isAdminOrPrincipal) {
+            throw new Error("Unauthorized: Only School Administrators or Principals can verify teacher qualifications");
+        }
+
+        const teacher = await prisma.teacher.findFirst({
+            where: { id: teacherId, organizationId }
+        });
+        if (!teacher) throw new Error("Teacher not found in this school");
+
+        // Teacher cannot self-verify
+        if (teacher.userId && teacher.userId === actorUserId) {
+            throw new Error("Teachers are not permitted to verify their own qualifications");
+        }
+
+        const qual = await prisma.teacherQualification.findFirst({
+            where: { id: qualificationId, teacherId }
+        });
+        if (!qual) throw new Error("Qualification record not found");
+
+        const updated = await prisma.teacherQualification.update({
+            where: { id: qualificationId },
+            data: {
+                verificationStatus: data.verificationStatus,
+                verificationNotes: data.verificationNotes || null,
+                verifiedById: actorUserId,
+                verifiedAt: new Date()
+            },
+            include: { verifiedBy: { select: { id: true, name: true, email: true } } }
+        });
+
+        await prisma.auditLog.create({
+            data: {
+                organizationId,
+                action: data.verificationStatus === "VERIFIED" ? "TEACHER_QUALIFICATION_VERIFIED" : "TEACHER_QUALIFICATION_REJECTED",
+                resource: "TeacherQualification",
+                resourceId: qual.id,
+                oldValue: JSON.parse(JSON.stringify(qual)),
+                newValue: JSON.parse(JSON.stringify(updated)),
+                userId: actorUserId
+            }
+        });
+
+        return updated;
+    }
+
+    /**
+     * Add supporting document to teacher
+     */
+    static async addTeacherDocument(organizationId: string, teacherId: string, data: any, actorUserId?: string) {
+        const teacher = await prisma.teacher.findFirst({
+            where: { id: teacherId, organizationId }
+        });
+        if (!teacher) throw new Error("Teacher not found in this school");
+
+        if (!data.fileUrl || !data.title) {
+            throw new Error("Document title and file reference are required");
+        }
+
+        const doc = await prisma.teacherDocument.create({
+            data: {
+                teacherId,
+                documentType: data.documentType || "OTHER",
+                title: data.title.trim(),
+                fileUrl: data.fileUrl.trim(),
+                uploadedById: actorUserId || null,
+                verificationStatus: "PENDING"
+            }
+        });
+
+        await prisma.auditLog.create({
+            data: {
+                organizationId,
+                action: "TEACHER_DOCUMENT_ADDED",
+                resource: "TeacherDocument",
+                resourceId: doc.id,
+                newValue: JSON.parse(JSON.stringify(doc)),
+                userId: actorUserId || null
+            }
+        });
+
+        return doc;
+    }
+
+    /**
+     * Verify supporting document (Admin/Principal only)
+     */
+    static async verifyTeacherDocument(
+        organizationId: string,
+        teacherId: string,
+        documentId: string,
+        data: { verificationStatus: "VERIFIED" | "REJECTED"; verificationNotes?: string },
+        actorUserId: string,
+        actorRoles: string[]
+    ) {
+        const isAdminOrPrincipal = actorRoles.some(r => ["ADMIN", "SCHOOL_ADMIN", "PRINCIPAL"].includes(r));
+        if (!isAdminOrPrincipal) {
+            throw new Error("Unauthorized: Only School Administrators or Principals can verify documents");
+        }
+
+        const teacher = await prisma.teacher.findFirst({
+            where: { id: teacherId, organizationId }
+        });
+        if (!teacher) throw new Error("Teacher not found in this school");
+
+        const doc = await prisma.teacherDocument.findFirst({
+            where: { id: documentId, teacherId }
+        });
+        if (!doc) throw new Error("Document record not found");
+
+        const updated = await prisma.teacherDocument.update({
+            where: { id: documentId },
+            data: {
+                verificationStatus: data.verificationStatus,
+                verificationNotes: data.verificationNotes || null,
+                verifiedById: actorUserId,
+                verifiedAt: new Date()
+            }
+        });
+
+        await prisma.auditLog.create({
+            data: {
+                organizationId,
+                action: data.verificationStatus === "VERIFIED" ? "TEACHER_DOCUMENT_VERIFIED" : "TEACHER_DOCUMENT_REJECTED",
+                resource: "TeacherDocument",
+                resourceId: doc.id,
+                oldValue: JSON.parse(JSON.stringify(doc)),
+                newValue: JSON.parse(JSON.stringify(updated)),
+                userId: actorUserId
+            }
+        });
+
+        return updated;
+    }
+
+    /**
+     * Update employment status (Preserving historical allocations and records)
+     */
+    static async updateTeacherEmploymentStatus(
+        organizationId: string,
+        teacherId: string,
+        data: { employmentStatus: any; reason?: string },
+        actorUserId?: string
+    ) {
+        const teacher = await prisma.teacher.findFirst({
+            where: { id: teacherId, organizationId }
+        });
+        if (!teacher) throw new Error("Teacher not found in this school");
+
+        const validStatuses = ["ACTIVE", "ON_LEAVE", "TRANSFERRED", "RESIGNED", "RETIRED", "INACTIVE"];
+        if (!validStatuses.includes(data.employmentStatus)) {
+            throw new Error(`Invalid employment status: ${data.employmentStatus}`);
+        }
+
+        const updated = await prisma.teacher.update({
+            where: { id: teacherId },
+            data: {
+                employmentStatus: data.employmentStatus
+            }
+        });
+
+        await prisma.auditLog.create({
+            data: {
+                organizationId,
+                action: "TEACHER_EMPLOYMENT_STATUS_CHANGED",
+                resource: "Teacher",
+                resourceId: teacher.id,
+                oldValue: { employmentStatus: teacher.employmentStatus },
+                newValue: { employmentStatus: data.employmentStatus, reason: data.reason || null },
+                userId: actorUserId || null
+            }
+        });
+
+        return updated;
+    }
+
+    /**
+     * Propose or create teaching assignment with strict validation and auto-derived weeklyPeriods
+     */
+    static async assignTeacher(organizationId: string, data: {
+        teacherId: string;
+        academicYearId: string;
+        subjectId: string;
+        schoolGradeId: string;
+        sectionId?: string;
+        sectionIds?: string[];
+        periodsPerWeek?: number;
+        status?: "DRAFT" | "PROPOSED" | "APPROVED" | "ACTIVE";
+        userId?: string;
+    }) {
         const teacher = await prisma.teacher.findFirst({
             where: { id: data.teacherId, organizationId }
         });
@@ -181,43 +546,95 @@ export class TeacherService {
         if (!subject) throw new Error("Subject not found in this school");
 
         const schoolGrade = await prisma.schoolGrade.findFirst({
-            where: { id: data.schoolGradeId, academicYearId: data.academicYearId, academicYear: { organizationId } }
+            where: {
+                id: data.schoolGradeId,
+                academicYearId: data.academicYearId,
+                academicYear: { organizationId }
+            },
+            include: {
+                academicYear: true,
+                grade: true,
+                gradeSubjects: {
+                    where: { subjectId: data.subjectId }
+                }
+            }
         });
-        if (!schoolGrade) throw new Error("Invalid school grade or academic year");
+        if (!schoolGrade) throw new Error("Invalid school grade or academic year for this school");
+
+        // Protect COMPLETED or ARCHIVED academic years
+        if (schoolGrade.academicYear.status === "COMPLETED" || schoolGrade.academicYear.status === "ARCHIVED") {
+            throw new Error(`Cannot assign teacher: Academic year ${schoolGrade.academicYear.name} is ${schoolGrade.academicYear.status} and locked`);
+        }
+
+        // STEP 2 CURRICULUM INTEGRATION:
+        // Derive weekly periods from SchoolGradeSubject if configured
+        const gradeSubject = schoolGrade.gradeSubjects[0];
+        let derivedPeriods = data.periodsPerWeek ? Number(data.periodsPerWeek) : (gradeSubject?.weeklyPeriods || 0);
 
         const targetSectionIds: (string | null)[] = (data.sectionIds && data.sectionIds.length > 0)
             ? data.sectionIds 
             : [data.sectionId || null];
 
         const createdAssignments: any[] = [];
+        const assignmentStatus = data.status || "PROPOSED";
 
         for (const secId of targetSectionIds) {
             if (secId) {
                 const section = await prisma.section.findFirst({
                     where: { id: secId, schoolGradeId: data.schoolGradeId }
                 });
-                if (!section) continue;
+                if (!section) throw new Error(`Section does not belong to grade ${schoolGrade.grade.name}`);
+
+                // DUPLICATE ACTIVE TEACHER PREVENTION:
+                // Check if another teacher is ALREADY active or proposed for this exact section + subject in this year
+                if (assignmentStatus === "ACTIVE" || assignmentStatus === "APPROVED") {
+                    const conflictingTeacher = await prisma.teachingAssignment.findFirst({
+                        where: {
+                            academicYearId: data.academicYearId,
+                            schoolGradeId: data.schoolGradeId,
+                            subjectId: data.subjectId,
+                            sectionId: secId,
+                            status: { in: ["ACTIVE", "APPROVED"] },
+                            teacherId: { not: data.teacherId }
+                        },
+                        include: { teacher: true }
+                    });
+
+                    if (conflictingTeacher) {
+                        throw new Error(
+                            `Section ${section.name} already has an active teacher (${conflictingTeacher.teacher.firstName} ${conflictingTeacher.teacher.lastName}) for ${subject.name}. End the existing assignment before assigning a new active teacher.`
+                        );
+                    }
+                }
             }
 
+            // Check if this teacher already has an existing assignment for this section and subject
             const existing = await prisma.teachingAssignment.findFirst({
                 where: { 
                     teacherId: data.teacherId, 
                     academicYearId: data.academicYearId, 
                     subjectId: data.subjectId, 
-                    sectionId: secId 
+                    schoolGradeId: data.schoolGradeId,
+                    sectionId: secId,
+                    status: { not: "ENDED" }
                 }
             });
 
             if (existing) {
-                if (data.periodsPerWeek) {
-                    const updated = await prisma.teachingAssignment.update({
-                        where: { id: existing.id },
-                        data: { periodsPerWeek: Number(data.periodsPerWeek) }
-                    });
-                    createdAssignments.push(updated);
-                } else {
-                    createdAssignments.push(existing);
-                }
+                const updated = await prisma.teachingAssignment.update({
+                    where: { id: existing.id },
+                    data: {
+                        periodsPerWeek: derivedPeriods,
+                        status: assignmentStatus
+                    },
+                    include: {
+                        teacher: true,
+                        subject: true,
+                        schoolGrade: { include: { grade: true } },
+                        section: true
+                    }
+                });
+                createdAssignments.push(updated);
                 continue;
             }
 
@@ -228,7 +645,15 @@ export class TeacherService {
                     subjectId: data.subjectId,
                     schoolGradeId: data.schoolGradeId,
                     sectionId: secId,
-                    periodsPerWeek: data.periodsPerWeek ? Number(data.periodsPerWeek) : 4
+                    periodsPerWeek: derivedPeriods,
+                    status: assignmentStatus,
+                    proposedById: data.userId || null
+                },
+                include: {
+                    teacher: true,
+                    subject: true,
+                    schoolGrade: { include: { grade: true } },
+                    section: true
                 }
             });
 
@@ -238,52 +663,147 @@ export class TeacherService {
         await prisma.auditLog.create({
             data: {
                 organizationId,
-                action: "TEACHING_ASSIGNMENT_CREATED",
+                action: "TEACHING_ASSIGNMENTS_PROPOSED",
                 resource: "TeachingAssignment",
                 resourceId: data.teacherId,
-                newValue: { count: createdAssignments.length },
+                newValue: { count: createdAssignments.length, status: assignmentStatus },
+                userId: data.userId || null
             }
         });
 
         return createdAssignments.length === 1 ? createdAssignments[0] : createdAssignments;
     }
 
-    static async getAssignments(organizationId: string, academicYearId?: string) {
+    static async getAssignments(organizationId: string, academicYearId?: string, status?: string) {
         return prisma.teachingAssignment.findMany({
             where: {
                 teacher: { organizationId },
-                ...(academicYearId ? { academicYearId: String(academicYearId) } : {})
+                ...(academicYearId ? { academicYearId: String(academicYearId) } : {}),
+                ...(status ? { status: status as any } : {})
             },
             include: {
                 teacher: true,
                 subject: true,
                 schoolGrade: { include: { grade: true } },
-                section: true
+                section: true,
+                academicYear: true
             },
             orderBy: { createdAt: "desc" }
         });
     }
 
-    static async updateAssignment(id: string, organizationId: string, data: { subjectId?: string; schoolGradeId?: string; sectionId?: string; isPrimary?: boolean; periodsPerWeek?: number }) {
+    /**
+     * Propose assignment (Vice Principal)
+     */
+    static async proposeAssignment(id: string, organizationId: string, userId?: string) {
+        const assignment = await prisma.teachingAssignment.findFirst({
+            where: { id, teacher: { organizationId } }
+        });
+        if (!assignment) throw new Error("Teaching assignment not found");
+
+        return prisma.teachingAssignment.update({
+            where: { id },
+            data: {
+                status: "PROPOSED",
+                proposedById: userId || null
+            }
+        });
+    }
+
+    /**
+     * Approve assignment (Principal)
+     */
+    static async approveAssignment(id: string, organizationId: string, userId?: string) {
+        const assignment = await prisma.teachingAssignment.findFirst({
+            where: { id, teacher: { organizationId } }
+        });
+        if (!assignment) throw new Error("Teaching assignment not found");
+
+        const updated = await prisma.teachingAssignment.update({
+            where: { id },
+            data: {
+                status: "ACTIVE", // Moves to operational active state
+                approvedById: userId || null,
+                approvedAt: new Date()
+            }
+        });
+
+        await prisma.auditLog.create({
+            data: {
+                organizationId,
+                action: "TEACHING_ASSIGNMENT_APPROVED",
+                resource: "TeachingAssignment",
+                resourceId: id,
+                newValue: { status: "ACTIVE" },
+                userId: userId || null
+            }
+        });
+
+        return updated;
+    }
+
+    /**
+     * Reject assignment proposal with reasons (Principal)
+     */
+    static async rejectAssignment(id: string, organizationId: string, rejectionReason: string, userId?: string) {
+        const assignment = await prisma.teachingAssignment.findFirst({
+            where: { id, teacher: { organizationId } }
+        });
+        if (!assignment) throw new Error("Teaching assignment not found");
+
+        return prisma.teachingAssignment.update({
+            where: { id },
+            data: {
+                status: "REJECTED",
+                rejectionReason
+            }
+        });
+    }
+
+    /**
+     * End teaching assignment safely without deleting historical student assessments
+     */
+    static async endAssignment(id: string, organizationId: string, userId?: string) {
         const existing = await prisma.teachingAssignment.findFirst({
             where: { id, teacher: { organizationId } }
         });
         if (!existing) throw new Error("Teaching assignment not found");
 
-        if (data.schoolGradeId) {
-            const schoolGrade = await prisma.schoolGrade.findFirst({
-                where: { id: data.schoolGradeId, academicYearId: existing.academicYearId, academicYear: { organizationId } }
-            });
-            if (!schoolGrade) throw new Error("Invalid school grade for this academic year");
-        }
+        const updated = await prisma.teachingAssignment.update({
+            where: { id },
+            data: {
+                status: "ENDED",
+                effectiveEndDate: new Date()
+            }
+        });
 
-        if (data.sectionId) {
-            const gradeId = data.schoolGradeId || existing.schoolGradeId;
-            const section = await prisma.section.findFirst({
-                where: { id: data.sectionId, schoolGradeId: gradeId }
-            });
-            if (!section) throw new Error("Section does not belong to the selected grade");
-        }
+        await prisma.auditLog.create({
+            data: {
+                organizationId,
+                action: "TEACHING_ASSIGNMENT_ENDED",
+                resource: "TeachingAssignment",
+                resourceId: id,
+                oldValue: { status: existing.status },
+                newValue: { status: "ENDED" },
+                userId: userId || null
+            }
+        });
+
+        return updated;
+    }
+
+    static async updateAssignment(id: string, organizationId: string, data: {
+        subjectId?: string;
+        schoolGradeId?: string;
+        sectionId?: string;
+        periodsPerWeek?: number;
+        status?: "DRAFT" | "PROPOSED" | "APPROVED" | "ACTIVE" | "ENDED";
+        userId?: string;
+    }) {
+        const existing = await prisma.teachingAssignment.findFirst({
+            where: { id, teacher: { organizationId } }
+        });
+        if (!existing) throw new Error("Teaching assignment not found");
 
         const assignment = await prisma.teachingAssignment.update({
             where: { id },
@@ -291,7 +811,8 @@ export class TeacherService {
                 ...(data.subjectId && { subjectId: data.subjectId }),
                 ...(data.schoolGradeId && { schoolGradeId: data.schoolGradeId }),
                 ...(data.sectionId !== undefined && { sectionId: data.sectionId || null }),
-                ...(data.periodsPerWeek !== undefined && { periodsPerWeek: Number(data.periodsPerWeek) })
+                ...(data.periodsPerWeek !== undefined && { periodsPerWeek: Number(data.periodsPerWeek) }),
+                ...(data.status && { status: data.status as any })
             },
             include: {
                 subject: true,
@@ -307,17 +828,30 @@ export class TeacherService {
                 resource: "TeachingAssignment",
                 resourceId: assignment.id,
                 newValue: JSON.parse(JSON.stringify(assignment)),
+                userId: data.userId || null
             }
         });
 
         return assignment;
     }
 
-    static async deleteAssignment(id: string, organizationId: string) {
+    /**
+     * Delete assignment only if it's in DRAFT/REJECTED state; otherwise end it safely
+     */
+    static async deleteAssignment(id: string, organizationId: string, userId?: string) {
         const existing = await prisma.teachingAssignment.findFirst({
-            where: { id, teacher: { organizationId } }
+            where: { id, teacher: { organizationId } },
+            include: {
+                assessments: true,
+                timetables: true
+            }
         });
         if (!existing) throw new Error("Teaching assignment not found");
+
+        if (existing.assessments.length > 0 || existing.timetables.length > 0) {
+            // Cannot delete because downstream records exist; end it safely instead
+            return this.endAssignment(id, organizationId, userId);
+        }
 
         await prisma.teachingAssignment.delete({ where: { id } });
 
@@ -328,6 +862,74 @@ export class TeacherService {
                 resource: "TeachingAssignment",
                 resourceId: id,
                 oldValue: JSON.parse(JSON.stringify(existing)),
+                userId: userId || null
+            }
+        });
+    }
+
+    // ==========================================
+    // TEACHER SPECIALIZATION MANAGEMENT
+    // ==========================================
+    static async getTeacherSpecializations(teacherId: string, organizationId: string) {
+        const teacher = await prisma.teacher.findFirst({
+            where: { id: teacherId, organizationId }
+        });
+        if (!teacher) throw new Error("Teacher not found");
+
+        return prisma.teacherSpecialization.findMany({
+            where: { teacherId },
+            include: { subject: true }
+        });
+    }
+
+    static async addTeacherSpecialization(teacherId: string, organizationId: string, data: {
+        subjectId: string;
+        cycle?: "PRIMARY_FIRST_CYCLE" | "PRIMARY_SECOND_CYCLE" | "SECONDARY_FIRST_CYCLE" | "SECONDARY_SECOND_CYCLE";
+        isPrimary?: boolean;
+        verified?: boolean;
+        notes?: string;
+    }) {
+        const teacher = await prisma.teacher.findFirst({
+            where: { id: teacherId, organizationId }
+        });
+        if (!teacher) throw new Error("Teacher not found");
+
+        const subject = await prisma.subject.findFirst({
+            where: { id: data.subjectId, organizationId }
+        });
+        if (!subject) throw new Error("Subject not found");
+
+        return prisma.teacherSpecialization.upsert({
+            where: {
+                teacherId_subjectId: { teacherId, subjectId: data.subjectId }
+            },
+            update: {
+                cycle: data.cycle || null,
+                isPrimary: data.isPrimary ?? true,
+                verified: data.verified ?? false,
+                notes: data.notes || null
+            },
+            create: {
+                teacherId,
+                subjectId: data.subjectId,
+                cycle: data.cycle || null,
+                isPrimary: data.isPrimary ?? true,
+                verified: data.verified ?? false,
+                notes: data.notes || null
+            },
+            include: { subject: true }
+        });
+    }
+
+    static async removeTeacherSpecialization(teacherId: string, subjectId: string, organizationId: string) {
+        const teacher = await prisma.teacher.findFirst({
+            where: { id: teacherId, organizationId }
+        });
+        if (!teacher) throw new Error("Teacher not found");
+
+        return prisma.teacherSpecialization.delete({
+            where: {
+                teacherId_subjectId: { teacherId, subjectId }
             }
         });
     }

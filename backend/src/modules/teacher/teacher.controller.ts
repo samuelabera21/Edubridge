@@ -1,28 +1,152 @@
 import { Request, Response } from "express";
 import { TeacherService } from "./teacher.service.js";
+import { prisma } from "../../infrastructure/prisma/client.js";
 
 // Create a Teacher profile attached to an organization
 export const createTeacher = async (req: Request, res: Response) => {
     try {
         const organizationId = (req as any).accessScope?.id;
         if (!organizationId) return res.status(403).json({ error: "Missing school scope" });
-
-        const { firstName, lastName, employeeId } = req.body;
-
-        if (!firstName || !lastName) {
-            return res.status(400).json({ error: "firstName and lastName are required" });
-        }
+        const actorUserId = (req as any).user?.id;
 
         const teacher = await TeacherService.createTeacher(organizationId, {
-            ...req.body
+            ...req.body,
+            actorUserId
         });
 
         return res.status(201).json(teacher);
     } catch (error: any) {
         if (error?.code === 'P2002') {
-            return res.status(400).json({ error: "A teacher with this information already exists." });
+            return res.status(400).json({ error: "A teacher with this Employee ID or unique field already exists." });
         }
         return res.status(400).json({ error: error.message || "Failed to create teacher" });
+    }
+};
+
+export const addTeacherQualification = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        if (!organizationId) return res.status(403).json({ error: "Missing school scope" });
+        const actorUserId = (req as any).user?.id;
+
+        const qualification = await TeacherService.addTeacherQualification(
+            organizationId,
+            req.params.id as string,
+            req.body,
+            actorUserId
+        );
+        return res.status(201).json(qualification);
+    } catch (error: any) {
+        return res.status(400).json({ error: error.message || "Failed to add qualification" });
+    }
+};
+
+export const verifyTeacherQualification = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        if (!organizationId) return res.status(403).json({ error: "Missing school scope" });
+        const actorUserId = (req as any).user?.id;
+        if (!actorUserId) return res.status(401).json({ error: "Unauthorized" });
+
+        const roleAssignments = await prisma.roleAssignment.findMany({
+            where: { userId: actorUserId },
+            include: { role: true }
+        });
+        const actorRoles = roleAssignments.map(ra => ra.role.name);
+
+        const { verificationStatus, verificationNotes } = req.body;
+        if (!verificationStatus || !["VERIFIED", "REJECTED"].includes(verificationStatus)) {
+            return res.status(400).json({ error: "verificationStatus must be 'VERIFIED' or 'REJECTED'" });
+        }
+
+        const result = await TeacherService.verifyTeacherQualification(
+            organizationId,
+            req.params.id as string,
+            req.params.qualificationId as string,
+            { verificationStatus, verificationNotes },
+            actorUserId,
+            actorRoles
+        );
+        return res.json(result);
+    } catch (error: any) {
+        if (error.message?.includes("Unauthorized") || error.message?.includes("not permitted")) {
+            return res.status(403).json({ error: error.message });
+        }
+        return res.status(400).json({ error: error.message || "Failed to verify qualification" });
+    }
+};
+
+export const addTeacherDocument = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        if (!organizationId) return res.status(403).json({ error: "Missing school scope" });
+        const actorUserId = (req as any).user?.id;
+
+        const document = await TeacherService.addTeacherDocument(
+            organizationId,
+            req.params.id as string,
+            req.body,
+            actorUserId
+        );
+        return res.status(201).json(document);
+    } catch (error: any) {
+        return res.status(400).json({ error: error.message || "Failed to add document" });
+    }
+};
+
+export const verifyTeacherDocument = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        if (!organizationId) return res.status(403).json({ error: "Missing school scope" });
+        const actorUserId = (req as any).user?.id;
+        if (!actorUserId) return res.status(401).json({ error: "Unauthorized" });
+
+        const roleAssignments = await prisma.roleAssignment.findMany({
+            where: { userId: actorUserId },
+            include: { role: true }
+        });
+        const actorRoles = roleAssignments.map(ra => ra.role.name);
+
+        const { verificationStatus, verificationNotes } = req.body;
+        if (!verificationStatus || !["VERIFIED", "REJECTED"].includes(verificationStatus)) {
+            return res.status(400).json({ error: "verificationStatus must be 'VERIFIED' or 'REJECTED'" });
+        }
+
+        const result = await TeacherService.verifyTeacherDocument(
+            organizationId,
+            req.params.id as string,
+            req.params.documentId as string,
+            { verificationStatus, verificationNotes },
+            actorUserId,
+            actorRoles
+        );
+        return res.json(result);
+    } catch (error: any) {
+        if (error.message?.includes("Unauthorized")) {
+            return res.status(403).json({ error: error.message });
+        }
+        return res.status(400).json({ error: error.message || "Failed to verify document" });
+    }
+};
+
+export const updateTeacherEmploymentStatus = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        if (!organizationId) return res.status(403).json({ error: "Missing school scope" });
+        const actorUserId = (req as any).user?.id;
+
+        const { employmentStatus, reason } = req.body;
+        if (!employmentStatus) return res.status(400).json({ error: "employmentStatus is required" });
+
+        const result = await TeacherService.updateTeacherEmploymentStatus(
+            organizationId,
+            req.params.id as string,
+            { employmentStatus, reason },
+            actorUserId
+        );
+        return res.json(result);
+    } catch (error: any) {
+        return res.status(400).json({ error: error.message || "Failed to update employment status" });
     }
 };
 
@@ -60,7 +184,7 @@ export const assignTeacher = async (req: Request, res: Response) => {
         const organizationId = (req as any).accessScope?.id;
         if (!organizationId) return res.status(403).json({ error: "Missing school scope" });
 
-        const { teacherId, academicYearId, subjectId, schoolGradeId, sectionId, sectionIds, periodsPerWeek } = req.body;
+        const { teacherId, academicYearId, subjectId, schoolGradeId, sectionId, sectionIds, periodsPerWeek, status } = req.body;
 
         if (!teacherId || !academicYearId || !subjectId || !schoolGradeId) {
             return res.status(400).json({ error: "teacherId, academicYearId, subjectId, and schoolGradeId are required" });
@@ -73,12 +197,121 @@ export const assignTeacher = async (req: Request, res: Response) => {
             schoolGradeId,
             sectionId,
             sectionIds,
-            periodsPerWeek: periodsPerWeek !== undefined ? Number(periodsPerWeek) : undefined
+            periodsPerWeek: periodsPerWeek !== undefined ? Number(periodsPerWeek) : undefined,
+            status: status as any,
+            userId: req.user?.id
         });
 
         return res.status(201).json(assignment);
     } catch (error: any) {
         return res.status(400).json({ error: error.message || "Failed to assign teacher" });
+    }
+};
+
+// Bulk propose teaching assignments
+export const bulkProposeAssignments = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        if (!organizationId) return res.status(403).json({ error: "Missing school scope" });
+
+        const { assignments } = req.body;
+        if (!Array.isArray(assignments) || assignments.length === 0) {
+            return res.status(400).json({ error: "Assignments list cannot be empty" });
+        }
+
+        const results = [];
+        for (const item of assignments) {
+            const created = await TeacherService.assignTeacher(organizationId, {
+                ...item,
+                status: "PROPOSED",
+                userId: req.user?.id
+            });
+            results.push(created);
+        }
+
+        return res.status(201).json({ count: results.length, assignments: results });
+    } catch (error: any) {
+        return res.status(400).json({ error: error.message || "Bulk assignment proposal failed" });
+    }
+};
+
+// Lifecycle: Propose assignment
+export const proposeAssignment = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        if (!organizationId) return res.status(403).json({ error: "Missing school scope" });
+
+        const id = req.params.id as string;
+        const result = await TeacherService.proposeAssignment(id, organizationId, req.user?.id);
+        return res.json(result);
+    } catch (error: any) {
+        return res.status(400).json({ error: error.message || "Failed to propose assignment" });
+    }
+};
+
+// Lifecycle: Approve assignment
+export const approveAssignment = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        if (!organizationId) return res.status(403).json({ error: "Missing school scope" });
+
+        const id = req.params.id as string;
+        const result = await TeacherService.approveAssignment(id, organizationId, req.user?.id);
+        return res.json(result);
+    } catch (error: any) {
+        return res.status(400).json({ error: error.message || "Failed to approve assignment" });
+    }
+};
+
+// Lifecycle: Bulk approve assignments
+export const bulkApproveAssignments = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        if (!organizationId) return res.status(403).json({ error: "Missing school scope" });
+
+        const { assignmentIds } = req.body;
+        if (!Array.isArray(assignmentIds) || assignmentIds.length === 0) {
+            return res.status(400).json({ error: "assignmentIds must be a non-empty array" });
+        }
+
+        const approved = [];
+        for (const id of assignmentIds) {
+            const res = await TeacherService.approveAssignment(id, organizationId, req.user?.id);
+            approved.push(res);
+        }
+
+        return res.json({ count: approved.length, approved });
+    } catch (error: any) {
+        return res.status(400).json({ error: error.message || "Bulk approval failed" });
+    }
+};
+
+// Lifecycle: Reject assignment
+export const rejectAssignment = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        if (!organizationId) return res.status(403).json({ error: "Missing school scope" });
+
+        const id = req.params.id as string;
+        const { rejectionReason } = req.body;
+        const result = await TeacherService.rejectAssignment(id, organizationId, rejectionReason || "Proposal rejected by Principal", req.user?.id);
+        return res.json(result);
+    } catch (error: any) {
+        return res.status(400).json({ error: error.message || "Failed to reject assignment" });
+    }
+};
+
+// Lifecycle: End assignment safely
+export const endAssignment = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        if (!organizationId) return res.status(403).json({ error: "Missing school scope" });
+
+        const id = req.params.id as string;
+        const result = await TeacherService.endAssignment(id, organizationId, req.user?.id);
+        return res.json(result);
+    } catch (error: any) {
+        return res.status(400).json({ error: error.message || "Failed to end assignment" });
     }
 };
 
@@ -88,9 +321,9 @@ export const getAssignments = async (req: Request, res: Response) => {
         const organizationId = (req as any).accessScope?.id;
         if (!organizationId) return res.status(403).json({ error: "Missing school scope" });
 
-        const { academicYearId } = req.query;
+        const { academicYearId, status } = req.query;
 
-        const assignments = await TeacherService.getAssignments(organizationId, academicYearId as string);
+        const assignments = await TeacherService.getAssignments(organizationId, academicYearId as string, status as string);
         return res.json(assignments);
     } catch (error) {
         return res.status(500).json({ error: "Internal server error" });
@@ -104,7 +337,7 @@ export const updateAssignment = async (req: Request, res: Response) => {
         if (!organizationId) return res.status(403).json({ error: "Missing school scope" });
 
         const id = req.params.id as string;
-        const assignment = await TeacherService.updateAssignment(id, organizationId, req.body);
+        const assignment = await TeacherService.updateAssignment(id, organizationId, { ...req.body, userId: req.user?.id });
         return res.json(assignment);
     } catch (error: any) {
         return res.status(400).json({ error: error.message || "Failed to update assignment" });
@@ -118,10 +351,132 @@ export const deleteAssignment = async (req: Request, res: Response) => {
         if (!organizationId) return res.status(403).json({ error: "Missing school scope" });
 
         const id = req.params.id as string;
-        await TeacherService.deleteAssignment(id, organizationId);
+        await TeacherService.deleteAssignment(id, organizationId, req.user?.id);
         return res.status(204).send();
     } catch (error: any) {
         return res.status(400).json({ error: error.message || "Failed to delete assignment" });
+    }
+};
+
+// ==========================================
+// TEACHER SPECIALIZATION & HOMEROOM
+// ==========================================
+export const getTeacherSpecializations = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        if (!organizationId) return res.status(403).json({ error: "Missing school scope" });
+
+        const teacherId = req.params.id as string;
+        const specs = await TeacherService.getTeacherSpecializations(teacherId, organizationId);
+        return res.json(specs);
+    } catch (error: any) {
+        return res.status(400).json({ error: error.message || "Failed to fetch teacher specializations" });
+    }
+};
+
+export const addTeacherSpecialization = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        if (!organizationId) return res.status(403).json({ error: "Missing school scope" });
+
+        const teacherId = req.params.id as string;
+        const spec = await TeacherService.addTeacherSpecialization(teacherId, organizationId, req.body);
+        return res.status(201).json(spec);
+    } catch (error: any) {
+        return res.status(400).json({ error: error.message || "Failed to add specialization" });
+    }
+};
+
+export const removeTeacherSpecialization = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        if (!organizationId) return res.status(403).json({ error: "Missing school scope" });
+
+        const { id, subjectId } = req.params;
+        await TeacherService.removeTeacherSpecialization(id as string, subjectId as string, organizationId);
+        return res.status(204).send();
+    } catch (error: any) {
+        return res.status(400).json({ error: error.message || "Failed to remove specialization" });
+    }
+};
+
+// Assign homeroom teacher to section
+export const setHomeroomTeacher = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        if (!organizationId) return res.status(403).json({ error: "Missing school scope" });
+
+        const sectionId = req.params.sectionId as string;
+        const { teacherId } = req.body;
+
+        const { StaffingService } = await import("../academic/staffing.service.js");
+        const updated = await StaffingService.setSectionHomeroomTeacher(organizationId, sectionId, teacherId || null, req.user?.id);
+        return res.json(updated);
+    } catch (error: any) {
+        return res.status(400).json({ error: error.message || "Failed to assign homeroom teacher" });
+    }
+};
+
+// Staffing Intelligence Endpoints
+export const getStaffingDemand = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        if (!organizationId) return res.status(403).json({ error: "Missing school scope" });
+
+        const { academicYearId } = req.query;
+        if (!academicYearId) return res.status(400).json({ error: "academicYearId is required" });
+
+        const { StaffingService } = await import("../academic/staffing.service.js");
+        const demand = await StaffingService.getStaffingDemand(organizationId, academicYearId as string);
+        return res.json(demand);
+    } catch (error: any) {
+        return res.status(400).json({ error: error.message || "Failed to calculate staffing demand" });
+    }
+};
+
+export const getSectionCoverage = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        if (!organizationId) return res.status(403).json({ error: "Missing school scope" });
+
+        const { academicYearId, schoolGradeId } = req.query;
+        if (!academicYearId) return res.status(400).json({ error: "academicYearId is required" });
+
+        const { StaffingService } = await import("../academic/staffing.service.js");
+        const coverage = await StaffingService.getSectionCoverageMatrix(organizationId, academicYearId as string, schoolGradeId as string);
+        return res.json(coverage);
+    } catch (error: any) {
+        return res.status(400).json({ error: error.message || "Failed to fetch coverage matrix" });
+    }
+};
+
+export const getFacultyWorkload = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        if (!organizationId) return res.status(403).json({ error: "Missing school scope" });
+
+        const { academicYearId } = req.query;
+        if (!academicYearId) return res.status(400).json({ error: "academicYearId is required" });
+
+        const { StaffingService } = await import("../academic/staffing.service.js");
+        const workload = await StaffingService.getFacultyWorkload(organizationId, academicYearId as string);
+        return res.json(workload);
+    } catch (error: any) {
+        return res.status(400).json({ error: error.message || "Failed to calculate faculty workload" });
+    }
+};
+
+// Evaluate teacher qualification/specialization against subject
+export const evaluateTeacherMatch = async (req: Request, res: Response) => {
+    try {
+        const { teacherId, subjectId } = req.query;
+        if (!teacherId || !subjectId) return res.status(400).json({ error: "teacherId and subjectId are required" });
+
+        const { StaffingService } = await import("../academic/staffing.service.js");
+        const evaluation = await StaffingService.evaluateSpecializationMatch(teacherId as string, subjectId as string);
+        return res.json(evaluation);
+    } catch (error: any) {
+        return res.status(400).json({ error: error.message || "Failed to evaluate teacher match" });
     }
 };
 

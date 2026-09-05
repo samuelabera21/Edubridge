@@ -92,36 +92,57 @@ export default function TeachersDirectoryPage() {
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-100">
-                                    {teachers.map((teacher) => (
-                                        <tr key={teacher.id} className="hover:bg-gray-50/50 transition-colors">
-                                            <td className="px-6 py-4 font-medium text-gray-900 flex items-center">
-                                                <div className="h-8 w-8 rounded-full bg-[#006b3f]/10 flex items-center justify-center mr-3">
-                                                    <User className="w-4 h-4 text-[#006b3f]" />
-                                                </div>
-                                                <div>
-                                                    <p>{teacher.firstName} {teacher.lastName}</p>
-                                                </div>
-                                            </td>
-                                            <td className="px-6 py-4 text-gray-600">{teacher.employeeId || "N/A"}</td>
-                                            <td className="px-6 py-4 text-gray-600">{teacher.qualification || "Not specified"}</td>
-                                            <td className="px-6 py-4">
-                                                {teacher.status === "ACTIVE" ? (
-                                                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                                        Active
+                                    {teachers.map((teacher) => {
+                                        const primaryQual = teacher.qualifications?.[0];
+                                        const qualSummary = primaryQual 
+                                            ? `${primaryQual.qualificationLevel} - ${primaryQual.qualificationTitle}`
+                                            : teacher.qualification || "Unspecified";
+                                        const empStatus = teacher.employmentStatus || teacher.status || "ACTIVE";
+
+                                        return (
+                                            <tr key={teacher.id} className="hover:bg-gray-50/50 transition-colors">
+                                                <td className="px-6 py-4 font-medium text-gray-900 flex items-center">
+                                                    <div className="h-8 w-8 rounded-full bg-[#006b3f]/10 flex items-center justify-center mr-3 font-bold text-[#006b3f] text-xs">
+                                                        {teacher.firstName[0]}
+                                                    </div>
+                                                    <div>
+                                                        <p className="font-semibold">{teacher.firstName} {teacher.fatherName} {teacher.lastName}</p>
+                                                        <p className="text-xs text-gray-500">{teacher.jobTitle || "Teacher"} &bull; {teacher.employmentType?.replace("_", " ")}</p>
+                                                    </div>
+                                                </td>
+                                                <td className="px-6 py-4 text-gray-600 font-mono text-xs">
+                                                    {teacher.staffIdCode || teacher.employeeId || "N/A"}
+                                                </td>
+                                                <td className="px-6 py-4 text-gray-600 text-xs">
+                                                    <span className="font-medium text-gray-800">{qualSummary}</span>
+                                                    {teacher.qualifications?.length > 1 && (
+                                                        <span className="text-[10px] text-gray-400 ml-1.5 font-normal">
+                                                            (+{teacher.qualifications.length - 1} more)
+                                                        </span>
+                                                    )}
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase ${
+                                                        empStatus === "ACTIVE" 
+                                                            ? "bg-emerald-100 text-emerald-800" 
+                                                            : empStatus === "ON_LEAVE"
+                                                            ? "bg-amber-100 text-amber-800"
+                                                            : "bg-gray-100 text-gray-700"
+                                                    }`}>
+                                                        {empStatus}
                                                     </span>
-                                                ) : (
-                                                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-                                                        {teacher.status}
-                                                    </span>
-                                                )}
-                                            </td>
-                                            <td className="px-6 py-4 text-right space-x-2">
-                                                <Link href={`/dashboard/teachers/${teacher.id}`}>
-                                                    <Button variant="ghost" size="sm">View Profile</Button>
-                                                </Link>
-                                            </td>
-                                        </tr>
-                                    ))}
+                                                </td>
+                                                <td className="px-6 py-4 text-right space-x-2">
+                                                    <Link href={`/dashboard/teachers/${teacher.id}`}>
+                                                        <Button variant="ghost" size="sm" className="text-xs">View Profile</Button>
+                                                    </Link>
+                                                    <Link href={`/dashboard/teachers/assignments/manage?teacherId=${teacher.id}`}>
+                                                        <Button variant="outline" size="sm" className="text-xs text-[#006b3f]">Assign</Button>
+                                                    </Link>
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
                                 </tbody>
                             </table>
                         </div>

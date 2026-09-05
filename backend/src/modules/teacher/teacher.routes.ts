@@ -4,11 +4,25 @@ import {
     getTeachers,
     getTeacherById,
     assignTeacher, 
+    bulkProposeAssignments,
+    proposeAssignment,
+    approveAssignment,
+    bulkApproveAssignments,
+    rejectAssignment,
+    endAssignment,
     getAssignments, 
     getTeacherProfile,
     getDashboardSummary,
     updateAssignment,
     deleteAssignment,
+    getTeacherSpecializations,
+    addTeacherSpecialization,
+    removeTeacherSpecialization,
+    setHomeroomTeacher,
+    getStaffingDemand,
+    getSectionCoverage,
+    getFacultyWorkload,
+    evaluateTeacherMatch,
     getMyClasses,
     getMyTimetable,
     getMyStudents,
@@ -27,7 +41,12 @@ import {
     updateMyProfile,
     getRepeatedAbsences,
     getAttendanceHistory,
-    getCurriculumData
+    getCurriculumData,
+    addTeacherQualification,
+    verifyTeacherQualification,
+    addTeacherDocument,
+    verifyTeacherDocument,
+    updateTeacherEmploymentStatus
 } from "./teacher.controller.js";
 import { createActivity, getActivities, submitActivity, raiseSupportFlag, getSupportFlags } from "../learning/learning.controller.js";
 import { recordStudentAttendance, getStudentAttendance } from "../attendance/attendance.controller.js";
@@ -519,45 +538,46 @@ router.get("/", requirePermission("ACADEMIC:VIEW"), getTeachers);
  *       200:
  *         description: List of teaching assignments
  */
-router.post("/assignments", requirePermission("ACADEMIC:CREATE"), assignTeacher);
-router.get("/assignments", requirePermission("ACADEMIC:VIEW"), getAssignments);
+// ============================================================
+// STEP 3: STAFFING & INSTRUCTIONAL ALLOCATION ENDPOINTS
+// ============================================================
 
-/**
- * @openapi
- * /api/teacher/assignments/{id}:
- *   put:
- *     tags: [Teachers]
- *     summary: Update a teaching assignment
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *     security:
- *       - bearerAuth: []
- *       - cookieAuth: []
- *     responses:
- *       200:
- *         description: Teaching assignment updated
- *   delete:
- *     tags: [Teachers]
- *     summary: Delete a teaching assignment
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *     security:
- *       - bearerAuth: []
- *       - cookieAuth: []
- *     responses:
- *       204:
- *         description: Teaching assignment deleted
- */
+// Staffing Intelligence & Demand Analytics
+router.get("/staffing/demand", requirePermission("ACADEMIC:VIEW"), getStaffingDemand);
+router.get("/staffing/coverage", requirePermission("ACADEMIC:VIEW"), getSectionCoverage);
+router.get("/staffing/workload", requirePermission("ACADEMIC:VIEW"), getFacultyWorkload);
+router.get("/staffing/evaluate-match", requirePermission("ACADEMIC:VIEW"), evaluateTeacherMatch);
+
+// Section Homeroom Allocation
+router.post("/sections/:sectionId/homeroom", requirePermission("ACADEMIC:CREATE"), setHomeroomTeacher);
+
+// Assignment Lifecycle & Operations
+router.post("/assignments", requirePermission("ACADEMIC:CREATE"), assignTeacher);
+router.post("/assignments/bulk-propose", requirePermission("ACADEMIC:CREATE"), bulkProposeAssignments);
+router.post("/assignments/bulk-approve", requirePermission("ACADEMIC:UPDATE"), bulkApproveAssignments);
+router.post("/assignments/:id/propose", requirePermission("ACADEMIC:CREATE"), proposeAssignment);
+router.post("/assignments/:id/approve", requirePermission("ACADEMIC:UPDATE"), approveAssignment);
+router.post("/assignments/:id/reject", requirePermission("ACADEMIC:UPDATE"), rejectAssignment);
+router.post("/assignments/:id/end", requirePermission("ACADEMIC:UPDATE"), endAssignment);
+router.get("/assignments", requirePermission("ACADEMIC:VIEW"), getAssignments);
 router.put("/assignments/:id", requirePermission("ACADEMIC:UPDATE"), updateAssignment);
 router.delete("/assignments/:id", requirePermission("ACADEMIC:DELETE"), deleteAssignment);
+
+// Teacher Specialization Management
+router.get("/:id/specializations", requirePermission("ACADEMIC:VIEW"), getTeacherSpecializations);
+router.post("/:id/specializations", requirePermission("ACADEMIC:CREATE"), addTeacherSpecialization);
+router.delete("/:id/specializations/:subjectId", requirePermission("ACADEMIC:DELETE"), removeTeacherSpecialization);
+
+// STEP 3A: Professional Qualifications & Credential Verification
+router.post("/:id/qualifications", requirePermission("TEACHER:UPDATE"), addTeacherQualification);
+router.post("/:id/qualifications/:qualificationId/verify", requirePermission("ACADEMIC:MANAGE"), verifyTeacherQualification);
+
+// Supporting Documents
+router.post("/:id/documents", requirePermission("TEACHER:UPDATE"), addTeacherDocument);
+router.post("/:id/documents/:documentId/verify", requirePermission("ACADEMIC:MANAGE"), verifyTeacherDocument);
+
+// Employment Status Lifecycle
+router.put("/:id/employment-status", requirePermission("TEACHER:UPDATE"), updateTeacherEmploymentStatus);
 
 /**
  * @openapi
