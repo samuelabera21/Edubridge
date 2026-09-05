@@ -26,8 +26,8 @@ const studentNavGroups: StudentNavGroup[] = [
         label: "My Profile",
         icon: User,
         links: [
-            { label: "Student Information", href: "/dashboard/student/profile" },
-            { label: "School and Enrollment", href: "/dashboard/student/profile" },
+            { label: "Student Information", href: "/dashboard/student/profile/information" },
+            { label: "School and Enrollment", href: "/dashboard/student/profile/enrollment" },
         ],
     },
     {
