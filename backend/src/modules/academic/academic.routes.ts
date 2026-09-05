@@ -9,10 +9,19 @@ import {
     copyStructureFromPreviousYear,
     getAcademicCalendar,
     createAcademicCalendar,
+    publishCalendar,
+    unpublishCalendar,
     getAcademicPeriods,
     createAcademicPeriod,
     updateAcademicPeriod,
     deleteAcademicPeriod,
+    getCalendarEvents,
+    getCalendarEventById,
+    createCalendarEvent,
+    updateCalendarEvent,
+    deleteCalendarEvent,
+    getSuggestedHolidays,
+    confirmSuggestedHoliday,
     getGrades, 
     createGrade,
     getSchoolGrades, 
@@ -48,10 +57,23 @@ router.post("/years/:yearId/copy-structure", requirePermission("ACADEMIC:CREATE"
 // --- Academic Calendars & Periods ---
 router.get("/years/:yearId/calendar", requirePermission("ACADEMIC:VIEW"), getAcademicCalendar);
 router.post("/years/:yearId/calendar", requirePermission("ACADEMIC:CREATE"), createAcademicCalendar);
+router.post("/calendars/:calendarId/publish", requirePermission("ACADEMIC:MANAGE"), publishCalendar);
+router.post("/calendars/:calendarId/unpublish", requirePermission("ACADEMIC:MANAGE"), unpublishCalendar);
+
 router.get("/calendars/:calendarId/periods", requirePermission("ACADEMIC:VIEW"), getAcademicPeriods);
 router.post("/calendars/:calendarId/periods", requirePermission("ACADEMIC:CREATE"), createAcademicPeriod);
 router.put("/calendars/periods/:periodId", requirePermission("ACADEMIC:UPDATE"), updateAcademicPeriod);
 router.delete("/calendars/periods/:periodId", requirePermission("ACADEMIC:MANAGE"), deleteAcademicPeriod);
+
+// --- Calendar Events & Ethiopian Holidays (Step 2.1) ---
+router.get("/calendars/:calendarId/events", requirePermission("ACADEMIC:VIEW"), getCalendarEvents);
+router.post("/calendars/:calendarId/events", requirePermission("ACADEMIC:CREATE"), createCalendarEvent);
+router.get("/calendars/events/:eventId", requirePermission("ACADEMIC:VIEW"), getCalendarEventById);
+router.put("/calendars/events/:eventId", requirePermission("ACADEMIC:UPDATE"), updateCalendarEvent);
+router.delete("/calendars/events/:eventId", requirePermission("ACADEMIC:MANAGE"), deleteCalendarEvent);
+
+router.get("/years/:yearId/suggested-holidays", requirePermission("ACADEMIC:VIEW"), getSuggestedHolidays);
+router.post("/calendars/:calendarId/confirm-holiday", requirePermission("ACADEMIC:CREATE"), confirmSuggestedHoliday);
 
 // --- Grades & Sections ---
 router.get("/grades", requirePermission("ACADEMIC:VIEW"), getGrades);

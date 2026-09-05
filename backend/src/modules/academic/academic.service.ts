@@ -1,4 +1,5 @@
 import { prisma } from "../../infrastructure/prisma/client.js";
+import { getSuggestedEthiopianHolidays, SuggestedHoliday } from "./ethiopian-calendar.util.js";
 
 export const VALID_ACADEMIC_YEAR_STATUSES = ["PLANNED", "ACTIVE", "COMPLETED", "ARCHIVED"] as const;
 export type AcademicYearStatusType = typeof VALID_ACADEMIC_YEAR_STATUSES[number];
@@ -243,7 +244,16 @@ export class AcademicService {
         return prisma.academicCalendar.findUnique({
             where: { academicYearId },
             include: {
+                academicYear: true,
                 periods: {
+                    orderBy: { startDate: 'asc' }
+                },
+                events: {
+                    include: {
+                        academicPeriod: true,
+                        createdBy: { select: { id: true, name: true, email: true } },
+                        updatedBy: { select: { id: true, name: true, email: true } }
+                    },
                     orderBy: { startDate: 'asc' }
                 }
             }
@@ -257,16 +267,111 @@ export class AcademicService {
         if (!year) throw new Error("Academic Year not found");
 
         const existing = await prisma.academicCalendar.findUnique({
-            where: { academicYearId }
+            where: { academicYearId },
+            include: {
+                academicYear: true,
+                periods: true,
+                events: true
+            }
         });
         if (existing) {
             return existing;
         }
 
         return prisma.academicCalendar.create({
-            data: { academicYearId, description },
-            include: { periods: true }
+            data: {
+                academicYearId,
+                description,
+                status: "DRAFT"
+            },
+            include: {
+                academicYear: true,
+                periods: true,
+                events: true
+            }
         });
+    }
+
+    static async publishCalendar(organizationId: string, calendarId: string, userId?: string) {
+        const calendar = await prisma.academicCalendar.findUnique({
+            where: { id: calendarId },
+            include: { academicYear: true, periods: true }
+        });
+        if (!calendar || calendar.academicYear.organizationId !== organizationId) {
+            throw new Error("Academic calendar not found or access denied");
+        }
+
+        if (calendar.periods.length === 0) {
+            throw new Error("Cannot publish academic calendar without at least one academic period (semester/term)");
+        }
+
+        const oldValue = { status: calendar.status, publishedAt: calendar.publishedAt };
+        const updated = await prisma.academicCalendar.update({
+            where: { id: calendarId },
+            data: {
+                status: "PUBLISHED",
+                publishedAt: new Date(),
+                publishedById: userId || null
+            },
+            include: {
+                academicYear: true,
+                periods: { orderBy: { startDate: 'asc' } },
+                events: { orderBy: { startDate: 'asc' } }
+            }
+        });
+
+        // Audit Log
+        await prisma.auditLog.create({
+            data: {
+                organizationId,
+                userId: userId || null,
+                action: "CALENDAR_PUBLISHED",
+                resource: "ACADEMIC_CALENDAR",
+                resourceId: calendarId,
+                oldValue: oldValue as any,
+                newValue: { status: "PUBLISHED", publishedAt: updated.publishedAt } as any
+            }
+        });
+
+        return updated;
+    }
+
+    static async unpublishCalendar(organizationId: string, calendarId: string, userId?: string) {
+        const calendar = await prisma.academicCalendar.findUnique({
+            where: { id: calendarId },
+            include: { academicYear: true }
+        });
+        if (!calendar || calendar.academicYear.organizationId !== organizationId) {
+            throw new Error("Academic calendar not found or access denied");
+        }
+
+        const oldValue = { status: calendar.status };
+        const updated = await prisma.academicCalendar.update({
+            where: { id: calendarId },
+            data: {
+                status: "REVIEW"
+            },
+            include: {
+                academicYear: true,
+                periods: { orderBy: { startDate: 'asc' } },
+                events: { orderBy: { startDate: 'asc' } }
+            }
+        });
+
+        // Audit Log
+        await prisma.auditLog.create({
+            data: {
+                organizationId,
+                userId: userId || null,
+                action: "CALENDAR_UNPUBLISHED",
+                resource: "ACADEMIC_CALENDAR",
+                resourceId: calendarId,
+                oldValue: oldValue as any,
+                newValue: { status: "REVIEW" } as any
+            }
+        });
+
+        return updated;
     }
 
     static async getAcademicPeriods(organizationId: string, academicCalendarId: string) {
@@ -287,7 +392,7 @@ export class AcademicService {
     static async createAcademicPeriod(
         organizationId: string,
         academicCalendarId: string,
-        data: { name: string; startDate: Date | string; endDate: Date | string; type: string }
+        data: { name: string; startDate: Date | string; endDate: Date | string; type?: string }
     ) {
         const calendar = await prisma.academicCalendar.findUnique({
             where: { id: academicCalendarId },
@@ -343,7 +448,8 @@ export class AcademicService {
     static async updateAcademicPeriod(
         organizationId: string,
         periodId: string,
-        data: { name?: string; startDate?: Date | string; endDate?: Date | string; type?: string }
+        data: { name?: string; startDate?: Date | string; endDate?: Date | string; type?: string },
+        userId?: string
     ) {
         const period = await prisma.academicPeriod.findUnique({
             where: { id: periodId },
@@ -389,7 +495,14 @@ export class AcademicService {
             }
         }
 
-        return prisma.academicPeriod.update({
+        const oldValue = {
+            name: period.name,
+            startDate: period.startDate,
+            endDate: period.endDate,
+            type: period.type
+        };
+
+        const updated = await prisma.academicPeriod.update({
             where: { id: periodId },
             data: {
                 ...(data.name ? { name: data.name.trim() } : {}),
@@ -398,15 +511,37 @@ export class AcademicService {
                 ...(data.type ? { type: data.type } : {})
             }
         });
+
+        if (period.academicCalendar.status === "PUBLISHED") {
+            await prisma.auditLog.create({
+                data: {
+                    organizationId,
+                    userId: userId || null,
+                    action: "ACADEMIC_PERIOD_UPDATED",
+                    resource: "ACADEMIC_PERIOD",
+                    resourceId: periodId,
+                    oldValue: oldValue as any,
+                    newValue: {
+                        name: updated.name,
+                        startDate: updated.startDate,
+                        endDate: updated.endDate,
+                        type: updated.type
+                    } as any
+                }
+            });
+        }
+
+        return updated;
     }
 
-    static async deleteAcademicPeriod(organizationId: string, periodId: string) {
+    static async deleteAcademicPeriod(organizationId: string, periodId: string, userId?: string) {
         const period = await prisma.academicPeriod.findUnique({
             where: { id: periodId },
             include: {
                 academicCalendar: {
                     include: { academicYear: true }
-                }
+                },
+                events: true
             }
         });
 
@@ -414,9 +549,488 @@ export class AcademicService {
             throw new Error("Academic period not found or access denied");
         }
 
+        // Block deletion if examinations or other events are explicitly bound to this period
+        if (period.events.length > 0) {
+            throw new Error(`Cannot delete period "${period.name}" because it has ${period.events.length} associated calendar event(s)/examination(s). Remove or reassign them first.`);
+        }
+
+        if (period.academicCalendar.status === "PUBLISHED") {
+            await prisma.auditLog.create({
+                data: {
+                    organizationId,
+                    userId: userId || null,
+                    action: "ACADEMIC_PERIOD_DELETED",
+                    resource: "ACADEMIC_PERIOD",
+                    resourceId: periodId,
+                    oldValue: {
+                        name: period.name,
+                        startDate: period.startDate,
+                        endDate: period.endDate
+                    } as any
+                }
+            });
+        }
+
         return prisma.academicPeriod.delete({
             where: { id: periodId }
         });
+    }
+
+    // --- Calendar Events (Exams, Holidays, Breaks, Events) ---
+    static async getCalendarEvents(
+        organizationId: string,
+        calendarId: string,
+        filters?: { category?: string; type?: string; academicPeriodId?: string }
+    ) {
+        const calendar = await prisma.academicCalendar.findUnique({
+            where: { id: calendarId },
+            include: { academicYear: true }
+        });
+        if (!calendar || calendar.academicYear.organizationId !== organizationId) {
+            throw new Error("Academic calendar not found or access denied");
+        }
+
+        return prisma.calendarEvent.findMany({
+            where: {
+                academicCalendarId: calendarId,
+                ...(filters?.category ? { category: filters.category as any } : {}),
+                ...(filters?.type ? { type: filters.type as any } : {}),
+                ...(filters?.academicPeriodId ? { academicPeriodId: filters.academicPeriodId } : {})
+            },
+            include: {
+                academicPeriod: true,
+                createdBy: { select: { id: true, name: true, email: true } },
+                updatedBy: { select: { id: true, name: true, email: true } }
+            },
+            orderBy: { startDate: 'asc' }
+        });
+    }
+
+    static async getCalendarEventById(organizationId: string, eventId: string) {
+        const event = await prisma.calendarEvent.findUnique({
+            where: { id: eventId },
+            include: {
+                academicCalendar: {
+                    include: { academicYear: true }
+                },
+                academicPeriod: true,
+                createdBy: { select: { id: true, name: true, email: true } },
+                updatedBy: { select: { id: true, name: true, email: true } }
+            }
+        });
+
+        if (!event || event.academicCalendar.academicYear.organizationId !== organizationId) {
+            throw new Error("Calendar event not found or access denied");
+        }
+
+        return event;
+    }
+
+    static async createCalendarEvent(
+        organizationId: string,
+        calendarId: string,
+        data: {
+            title: string;
+            category: "ACADEMIC_PERIOD" | "EXAMINATION" | "HOLIDAY_BREAK" | "SCHOOL_EVENT";
+            type: string;
+            startDate: Date | string;
+            endDate: Date | string;
+            isAllDay?: boolean;
+            isSchoolClosed?: boolean;
+            isExternal?: boolean;
+            academicPeriodId?: string;
+            description?: string;
+            source?: "SYSTEM" | "SCHOOL" | "IMPORTED";
+            isConfigurable?: boolean;
+            status?: string;
+            metadata?: any;
+        },
+        userId?: string
+    ) {
+        const calendar = await prisma.academicCalendar.findUnique({
+            where: { id: calendarId },
+            include: {
+                academicYear: true,
+                periods: true,
+                events: true
+            }
+        });
+        if (!calendar || calendar.academicYear.organizationId !== organizationId) {
+            throw new Error("Academic calendar not found or access denied");
+        }
+
+        const startDate = new Date(data.startDate);
+        const endDate = new Date(data.endDate);
+
+        if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+            throw new Error("Invalid startDate or endDate format");
+        }
+
+        if (startDate > endDate) {
+            throw new Error("Event startDate must be at or before endDate");
+        }
+
+        // Validate academic year bounds unless isExternal is set
+        if (!data.isExternal) {
+            const yearStart = new Date(calendar.academicYear.startDate);
+            const yearEnd = new Date(calendar.academicYear.endDate);
+            if (startDate < yearStart || endDate > yearEnd) {
+                throw new Error(
+                    `Calendar event dates (${startDate.toISOString().split('T')[0]} to ${endDate.toISOString().split('T')[0]}) must fall within academic year boundary (${yearStart.toISOString().split('T')[0]} to ${yearEnd.toISOString().split('T')[0]})`
+                );
+            }
+        }
+
+        // Validate examination containment in academic period
+        const isExam = data.category === "EXAMINATION" || ["MIDTERM_EXAM", "FINAL_EXAM", "MAKEUP_EXAM"].includes(data.type);
+        if (isExam && data.academicPeriodId) {
+            const period = calendar.periods.find(p => p.id === data.academicPeriodId);
+            if (!period) {
+                throw new Error("Selected academic period not found in this calendar");
+            }
+            const pStart = new Date(period.startDate);
+            const pEnd = new Date(period.endDate);
+            if (startDate < pStart || endDate > pEnd) {
+                throw new Error(
+                    `Examination dates (${startDate.toISOString().split('T')[0]} to ${endDate.toISOString().split('T')[0]}) must fall within ${period.name} dates (${pStart.toISOString().split('T')[0]} to ${pEnd.toISOString().split('T')[0]})`
+                );
+            }
+        }
+
+        // Soft conflict warnings detection
+        const warnings: string[] = [];
+        const evStart = startDate.getTime();
+        const evEnd = endDate.getTime();
+
+        for (const ex of calendar.events) {
+            const exStart = new Date(ex.startDate).getTime();
+            const exEnd = new Date(ex.endDate).getTime();
+            const overlaps = evStart <= exEnd && evEnd >= exStart;
+
+            if (overlaps) {
+                if (ex.isSchoolClosed && !data.isSchoolClosed) {
+                    warnings.push(`This event coincides with scheduled school closure: "${ex.title}" (${new Date(ex.startDate).toISOString().slice(0, 10)})`);
+                }
+                if (ex.category === "EXAMINATION" && !isExam) {
+                    warnings.push(`This event coincides with scheduled examination window: "${ex.title}" (${new Date(ex.startDate).toISOString().slice(0, 10)})`);
+                }
+                if (isExam && ex.category !== "EXAMINATION" && !ex.isSchoolClosed) {
+                    warnings.push(`Notice: Scheduled event "${ex.title}" occurs during this examination window`);
+                }
+            }
+        }
+
+        const event = await prisma.calendarEvent.create({
+            data: {
+                academicCalendarId: calendarId,
+                academicPeriodId: data.academicPeriodId || null,
+                title: data.title.trim(),
+                category: data.category,
+                type: data.type as any,
+                startDate,
+                endDate,
+                isAllDay: data.isAllDay ?? true,
+                isSchoolClosed: data.isSchoolClosed ?? false,
+                isExternal: data.isExternal ?? false,
+                description: data.description || null,
+                source: data.source || "SCHOOL",
+                isConfigurable: data.isConfigurable ?? true,
+                status: data.status || "CONFIRMED",
+                metadata: data.metadata || undefined,
+                createdById: userId || null,
+                updatedById: userId || null
+            },
+            include: {
+                academicPeriod: true,
+                createdBy: { select: { id: true, name: true, email: true } },
+                updatedBy: { select: { id: true, name: true, email: true } }
+            }
+        });
+
+        if (calendar.status === "PUBLISHED") {
+            await prisma.auditLog.create({
+                data: {
+                    organizationId,
+                    userId: userId || null,
+                    action: "CALENDAR_EVENT_CREATED",
+                    resource: "CALENDAR_EVENT",
+                    resourceId: event.id,
+                    newValue: {
+                        title: event.title,
+                        category: event.category,
+                        type: event.type,
+                        startDate: event.startDate,
+                        endDate: event.endDate
+                    } as any
+                }
+            });
+        }
+
+        return { event, warnings };
+    }
+
+    static async updateCalendarEvent(
+        organizationId: string,
+        eventId: string,
+        data: {
+            title?: string;
+            category?: "ACADEMIC_PERIOD" | "EXAMINATION" | "HOLIDAY_BREAK" | "SCHOOL_EVENT";
+            type?: string;
+            startDate?: Date | string;
+            endDate?: Date | string;
+            isAllDay?: boolean;
+            isSchoolClosed?: boolean;
+            isExternal?: boolean;
+            academicPeriodId?: string | null;
+            description?: string | null;
+            status?: string;
+            metadata?: any;
+        },
+        userId?: string
+    ) {
+        const event = await prisma.calendarEvent.findUnique({
+            where: { id: eventId },
+            include: {
+                academicCalendar: {
+                    include: {
+                        academicYear: true,
+                        periods: true,
+                        events: true
+                    }
+                }
+            }
+        });
+
+        if (!event || event.academicCalendar.academicYear.organizationId !== organizationId) {
+            throw new Error("Calendar event not found or access denied");
+        }
+
+        const effectiveStart = data.startDate ? new Date(data.startDate) : new Date(event.startDate);
+        const effectiveEnd = data.endDate ? new Date(data.endDate) : new Date(event.endDate);
+
+        if (isNaN(effectiveStart.getTime()) || isNaN(effectiveEnd.getTime())) {
+            throw new Error("Invalid startDate or endDate format");
+        }
+
+        if (effectiveStart > effectiveEnd) {
+            throw new Error("Event startDate must be at or before endDate");
+        }
+
+        const isExternal = data.isExternal !== undefined ? data.isExternal : event.isExternal;
+        if (!isExternal) {
+            const yearStart = new Date(event.academicCalendar.academicYear.startDate);
+            const yearEnd = new Date(event.academicCalendar.academicYear.endDate);
+            if (effectiveStart < yearStart || effectiveEnd > yearEnd) {
+                throw new Error("Calendar event dates must fall within academic year boundary");
+            }
+        }
+
+        const targetCategory = data.category || event.category;
+        const targetType = data.type || event.type;
+        const targetPeriodId = data.academicPeriodId !== undefined ? data.academicPeriodId : event.academicPeriodId;
+        const isExam = targetCategory === "EXAMINATION" || ["MIDTERM_EXAM", "FINAL_EXAM", "MAKEUP_EXAM"].includes(targetType);
+
+        if (isExam && targetPeriodId) {
+            const period = event.academicCalendar.periods.find(p => p.id === targetPeriodId);
+            if (!period) {
+                throw new Error("Selected academic period not found in this calendar");
+            }
+            const pStart = new Date(period.startDate);
+            const pEnd = new Date(period.endDate);
+            if (effectiveStart < pStart || effectiveEnd > pEnd) {
+                throw new Error(`Examination dates must fall within ${period.name} dates`);
+            }
+        }
+
+        // Soft warnings
+        const warnings: string[] = [];
+        const evStart = effectiveStart.getTime();
+        const evEnd = effectiveEnd.getTime();
+
+        for (const ex of event.academicCalendar.events) {
+            if (ex.id === eventId) continue;
+            const exStart = new Date(ex.startDate).getTime();
+            const exEnd = new Date(ex.endDate).getTime();
+            const overlaps = evStart <= exEnd && evEnd >= exStart;
+
+            if (overlaps) {
+                const closureState = data.isSchoolClosed !== undefined ? data.isSchoolClosed : event.isSchoolClosed;
+                if (ex.isSchoolClosed && !closureState) {
+                    warnings.push(`This event coincides with scheduled school closure: "${ex.title}"`);
+                }
+                if (ex.category === "EXAMINATION" && !isExam) {
+                    warnings.push(`This event coincides with scheduled examination window: "${ex.title}"`);
+                }
+            }
+        }
+
+        const oldValue = {
+            title: event.title,
+            startDate: event.startDate,
+            endDate: event.endDate,
+            category: event.category,
+            type: event.type,
+            isSchoolClosed: event.isSchoolClosed
+        };
+
+        const updated = await prisma.calendarEvent.update({
+            where: { id: eventId },
+            data: {
+                ...(data.title ? { title: data.title.trim() } : {}),
+                ...(data.category ? { category: data.category } : {}),
+                ...(data.type ? { type: data.type as any } : {}),
+                startDate: effectiveStart,
+                endDate: effectiveEnd,
+                ...(data.isAllDay !== undefined ? { isAllDay: data.isAllDay } : {}),
+                ...(data.isSchoolClosed !== undefined ? { isSchoolClosed: data.isSchoolClosed } : {}),
+                ...(data.isExternal !== undefined ? { isExternal: data.isExternal } : {}),
+                ...(data.academicPeriodId !== undefined ? { academicPeriodId: data.academicPeriodId } : {}),
+                ...(data.description !== undefined ? { description: data.description } : {}),
+                ...(data.status ? { status: data.status } : {}),
+                ...(data.metadata !== undefined ? { metadata: data.metadata } : {}),
+                updatedById: userId || null
+            },
+            include: {
+                academicPeriod: true,
+                createdBy: { select: { id: true, name: true, email: true } },
+                updatedBy: { select: { id: true, name: true, email: true } }
+            }
+        });
+
+        if (event.academicCalendar.status === "PUBLISHED") {
+            await prisma.auditLog.create({
+                data: {
+                    organizationId,
+                    userId: userId || null,
+                    action: "CALENDAR_EVENT_UPDATED",
+                    resource: "CALENDAR_EVENT",
+                    resourceId: eventId,
+                    oldValue: oldValue as any,
+                    newValue: {
+                        title: updated.title,
+                        startDate: updated.startDate,
+                        endDate: updated.endDate,
+                        category: updated.category,
+                        type: updated.type,
+                        isSchoolClosed: updated.isSchoolClosed
+                    } as any
+                }
+            });
+        }
+
+        return { event: updated, warnings };
+    }
+
+    static async deleteCalendarEvent(organizationId: string, eventId: string, userId?: string) {
+        const event = await prisma.calendarEvent.findUnique({
+            where: { id: eventId },
+            include: {
+                academicCalendar: {
+                    include: { academicYear: true }
+                }
+            }
+        });
+
+        if (!event || event.academicCalendar.academicYear.organizationId !== organizationId) {
+            throw new Error("Calendar event not found or access denied");
+        }
+
+        if (event.academicCalendar.status === "PUBLISHED") {
+            await prisma.auditLog.create({
+                data: {
+                    organizationId,
+                    userId: userId || null,
+                    action: "CALENDAR_EVENT_DELETED",
+                    resource: "CALENDAR_EVENT",
+                    resourceId: eventId,
+                    oldValue: {
+                        title: event.title,
+                        category: event.category,
+                        type: event.type,
+                        startDate: event.startDate,
+                        endDate: event.endDate
+                    } as any
+                }
+            });
+        }
+
+        return prisma.calendarEvent.delete({
+            where: { id: eventId }
+        });
+    }
+
+    // --- Ethiopian Holiday Suggestions & Confirmation ---
+    static async getSuggestedHolidays(organizationId: string, academicYearId: string) {
+        const year = await prisma.academicYear.findUnique({
+            where: { id: academicYearId, organizationId },
+            include: {
+                academicCalendar: {
+                    include: {
+                        events: {
+                            where: { category: "HOLIDAY_BREAK" }
+                        }
+                    }
+                }
+            }
+        });
+        if (!year) throw new Error("Academic Year not found");
+
+        const suggestions = getSuggestedEthiopianHolidays(new Date(year.startDate), new Date(year.endDate));
+        const existingHolidayEvents = year.academicCalendar?.events || [];
+
+        return suggestions.map(sug => {
+            const matched = existingHolidayEvents.find(
+                ex => ex.title.toLowerCase().includes(sug.title.toLowerCase().slice(0, 8)) ||
+                      (new Date(ex.startDate).toISOString().slice(0, 10) === sug.suggestedStartDate)
+            );
+
+            return {
+                ...sug,
+                isAdded: !!matched,
+                existingEventId: matched ? matched.id : null
+            };
+        });
+    }
+
+    static async confirmSuggestedHoliday(
+        organizationId: string,
+        calendarId: string,
+        data: {
+            title: string;
+            startDate?: string | Date;
+            endDate?: string | Date;
+            suggestedStartDate?: string;
+            suggestedEndDate?: string;
+            type?: string;
+            isSchoolClosed?: boolean;
+            description?: string;
+        },
+        userId?: string
+    ) {
+        const start = data.startDate || data.suggestedStartDate;
+        const end = data.endDate || data.suggestedEndDate;
+        if (!start || !end) {
+            throw new Error("Start date and end date are required for holiday confirmation");
+        }
+
+        const result = await this.createCalendarEvent(
+            organizationId,
+            calendarId,
+            {
+                title: data.title,
+                category: "HOLIDAY_BREAK",
+                type: data.type || "PUBLIC_HOLIDAY",
+                startDate: new Date(start),
+                endDate: new Date(end),
+                isAllDay: true,
+                isSchoolClosed: data.isSchoolClosed ?? true,
+                isExternal: false,
+                source: "IMPORTED",
+                description: data.description || "Suggested Ethiopian holiday confirmed by administrator."
+            },
+            userId
+        );
+        return result.event;
     }
 
     // --- Grades ---
