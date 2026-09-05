@@ -518,15 +518,40 @@ export default function AcademicCalendarPage() {
     const filteredEvents = useMemo(() => {
         if (!calendar?.events) return [];
         return calendar.events.filter(ev => {
-            if (categoryFilter !== "ALL" && ev.category !== categoryFilter) {
+            if (categoryFilter === "CLOSURES") {
+                if (!ev.isSchoolClosed) return false;
+            } else if (categoryFilter !== "ALL" && ev.category !== categoryFilter) {
                 return false;
             }
-            if (periodFilter !== "ALL" && ev.academicPeriodId !== periodFilter) {
+
+            if (periodFilter !== "ALL") {
+                if (ev.academicPeriodId === periodFilter) return true;
+                const selectedPeriod = calendar.periods.find(p => p.id === periodFilter);
+                if (selectedPeriod && !ev.academicPeriodId) {
+                    const pStart = selectedPeriod.startDate.slice(0, 10);
+                    const pEnd = selectedPeriod.endDate.slice(0, 10);
+                    const evStart = ev.startDate.slice(0, 10);
+                    const evEnd = ev.endDate.slice(0, 10);
+                    return evStart <= pEnd && evEnd >= pStart;
+                }
                 return false;
             }
             return true;
         }).sort((a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime());
-    }, [calendar?.events, categoryFilter, periodFilter]);
+    }, [calendar?.events, calendar?.periods, categoryFilter, periodFilter]);
+
+    // Current month events count based on active filters
+    const currentMonthEventsCount = useMemo(() => {
+        const year = currentMonthDate.getFullYear();
+        const month = currentMonthDate.getMonth();
+        const startOfMonth = new Date(year, month, 1).toISOString().slice(0, 10);
+        const endOfMonth = new Date(year, month + 1, 0).toISOString().slice(0, 10);
+        return filteredEvents.filter(ev => {
+            const s = ev.startDate.slice(0, 10);
+            const e = ev.endDate.slice(0, 10);
+            return s <= endOfMonth && e >= startOfMonth;
+        }).length;
+    }, [currentMonthDate, filteredEvents]);
 
     // Unadded holiday count
     const pendingHolidayCount = useMemo(() => {
@@ -593,11 +618,16 @@ export default function AcademicCalendarPage() {
         for (let i = startingDayOfWeek - 1; i >= 0; i--) {
             const d = new Date(year, month - 1, prevMonthLastDay - i);
             const dStr = d.toISOString().slice(0, 10);
+            const dayEvents = filteredEvents.filter(ev => {
+                const s = ev.startDate.slice(0, 10);
+                const e = ev.endDate.slice(0, 10);
+                return dStr >= s && dStr <= e;
+            });
             days.push({
                 date: d,
                 dateStr: dStr,
                 isCurrentMonth: false,
-                events: []
+                events: dayEvents
             });
         }
 
@@ -605,7 +635,7 @@ export default function AcademicCalendarPage() {
         for (let d = 1; d <= totalDays; d++) {
             const dateObj = new Date(year, month, d);
             const dStr = dateObj.toISOString().slice(0, 10);
-            const dayEvents = (calendar?.events || []).filter(ev => {
+            const dayEvents = filteredEvents.filter(ev => {
                 const s = ev.startDate.slice(0, 10);
                 const e = ev.endDate.slice(0, 10);
                 return dStr >= s && dStr <= e;
@@ -624,16 +654,21 @@ export default function AcademicCalendarPage() {
         for (let i = 1; i <= remaining; i++) {
             const d = new Date(year, month + 1, i);
             const dStr = d.toISOString().slice(0, 10);
+            const dayEvents = filteredEvents.filter(ev => {
+                const s = ev.startDate.slice(0, 10);
+                const e = ev.endDate.slice(0, 10);
+                return dStr >= s && dStr <= e;
+            });
             days.push({
                 date: d,
                 dateStr: dStr,
                 isCurrentMonth: false,
-                events: []
+                events: dayEvents
             });
         }
 
         return days;
-    }, [currentMonthDate, calendar?.events]);
+    }, [currentMonthDate, filteredEvents]);
 
     const handlePrevMonth = () => {
         setCurrentMonthDate(prev => new Date(prev.getFullYear(), prev.getMonth() - 1, 1));
@@ -847,18 +882,19 @@ export default function AcademicCalendarPage() {
                         </div>
 
                         {/* Filter Selectors */}
-                        <div className="flex items-center gap-3">
+                        <div className="flex flex-wrap items-center gap-3">
                             <div className="flex items-center space-x-1.5 text-xs text-gray-500">
                                 <Filter className="w-3.5 h-3.5 text-gray-400" />
                                 <span className="font-semibold">Category:</span>
                                 <select
                                     value={categoryFilter}
                                     onChange={(e) => setCategoryFilter(e.target.value)}
-                                    className="bg-white border border-gray-200 rounded-md px-2 py-1 text-xs text-gray-800 font-medium"
+                                    className="bg-white border border-gray-200 rounded-md px-2 py-1 text-xs text-gray-800 font-medium shadow-xs"
                                 >
                                     <option value="ALL">All Categories</option>
                                     <option value="EXAMINATION">Examinations</option>
                                     <option value="HOLIDAY_BREAK">Holidays & Breaks</option>
+                                    <option value="CLOSURES">School Closures Only</option>
                                     <option value="SCHOOL_EVENT">School Events</option>
                                 </select>
                             </div>
@@ -868,7 +904,7 @@ export default function AcademicCalendarPage() {
                                 <select
                                     value={periodFilter}
                                     onChange={(e) => setPeriodFilter(e.target.value)}
-                                    className="bg-white border border-gray-200 rounded-md px-2 py-1 text-xs text-gray-800 font-medium"
+                                    className="bg-white border border-gray-200 rounded-md px-2 py-1 text-xs text-gray-800 font-medium shadow-xs"
                                 >
                                     <option value="ALL">All Semesters</option>
                                     {calendar.periods.map(p => (
@@ -876,6 +912,16 @@ export default function AcademicCalendarPage() {
                                     ))}
                                 </select>
                             </div>
+
+                            {(categoryFilter !== "ALL" || periodFilter !== "ALL") && (
+                                <button
+                                    onClick={() => { setCategoryFilter("ALL"); setPeriodFilter("ALL"); }}
+                                    className="text-xs text-red-600 hover:text-red-800 font-medium px-2 py-1 rounded hover:bg-red-50 border border-transparent hover:border-red-200 transition-colors flex items-center gap-1"
+                                >
+                                    <X className="w-3 h-3" />
+                                    Clear Filters
+                                </button>
+                            )}
                         </div>
                     </div>
 
@@ -883,14 +929,26 @@ export default function AcademicCalendarPage() {
                     {viewMode === "month" && (
                         <Card className="shadow-sm border border-gray-200 overflow-hidden">
                             {/* Month Navigation Header */}
-                            <div className="flex items-center justify-between px-6 py-4 bg-white border-b border-gray-100">
-                                <div className="flex items-center space-x-3">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-6 py-4 bg-white border-b border-gray-100">
+                                <div className="flex flex-wrap items-center gap-2.5">
                                     <h2 className="text-lg font-bold text-gray-900">
                                         {currentMonthDate.toLocaleString("default", { month: "long" })} {currentMonthDate.getFullYear()}
                                     </h2>
-                                    <span className="text-xs px-2 py-0.5 rounded-md bg-gray-100 text-gray-600 font-medium">
-                                        {filteredEvents.length} events
+                                    <span className="text-xs px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 font-semibold">
+                                        {currentMonthEventsCount} event{currentMonthEventsCount === 1 ? "" : "s"}
                                     </span>
+                                    {(categoryFilter !== "ALL" || periodFilter !== "ALL") && (
+                                        <span className="text-xs px-2 py-0.5 rounded-md bg-amber-50 text-amber-900 border border-amber-200 font-medium flex items-center gap-1.5">
+                                            <span>Filtered: {categoryFilter === "CLOSURES" ? "Closures" : categoryFilter.replace("_", " ")}</span>
+                                            <button
+                                                onClick={() => { setCategoryFilter("ALL"); setPeriodFilter("ALL"); }}
+                                                className="text-amber-900 hover:text-red-700 font-bold hover:underline"
+                                                title="Reset filters"
+                                            >
+                                                ✕
+                                            </button>
+                                        </span>
+                                    )}
                                 </div>
                                 <div className="flex items-center space-x-2">
                                     <button
