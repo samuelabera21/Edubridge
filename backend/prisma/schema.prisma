@@ -325,6 +325,7 @@ model SchoolGrade {
   academicYear AcademicYear @relation(fields: [academicYearId], references: [id], onDelete: Cascade)
   grade        Grade        @relation(fields: [gradeId], references: [id], onDelete: Cascade)
   sections     Section[]
+  gradeSubjects SchoolGradeSubject[]
 
   classroomObservations ClassroomObservation[]
 
@@ -364,6 +365,7 @@ model Subject {
 
   organization   OrganizationUnit @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   schoolSubjects SchoolSubject[]
+  gradeSubjects  SchoolGradeSubject[]
 
   classroomObservations ClassroomObservation[]
 
@@ -388,6 +390,22 @@ model SchoolSubject {
 
   @@unique([academicYearId, subjectId])
   @@map("school_subject")
+}
+
+model SchoolGradeSubject {
+  id            String   @id @default(cuid())
+  schoolGradeId String
+  subjectId     String
+  weeklyPeriods Int?
+
+  schoolGrade   SchoolGrade @relation(fields: [schoolGradeId], references: [id], onDelete: Cascade)
+  subject       Subject     @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  @@unique([schoolGradeId, subjectId])
+  @@map("school_grade_subject")
 }
 
 // ============================================================
@@ -891,6 +909,7 @@ enum AnnouncementTarget {
   TEACHERS
   STUDENTS
   PARENTS
+  STAFF
   SPECIFIC_GRADE
   SPECIFIC_SECTION
 }
@@ -1099,4 +1118,291 @@ model TimetableConfig {
 
   @@unique([organizationId, academicYearId])
   @@map("timetable_config")
+}
+
+// ============================================================
+// DOMAIN 9: STUDENT SUPPORT & REMEDIAL INTERVENTIONS
+// ============================================================
+
+model LearningDifficulty {
+  id                       String   @id @default(cuid())
+  organizationId           String
+  studentId                String?
+  studentName              String
+  gradeName                String
+  conditionType            String   // DYSLEXIA, ADHD, VISUAL_IMPAIRMENT, HEARING_IMPAIRMENT, OTHER
+  accommodationNotes       String?
+  examTimeExtensionMinutes Int      @default(0)
+
+  createdAt                DateTime @default(now())
+  updatedAt                DateTime @updatedAt
+
+  @@map("learning_difficulty")
+}
+
+model RemedialProgram {
+  id             String   @id @default(cuid())
+  organizationId String
+  programTitle   String
+  subjectName    String
+  gradeName      String
+  leadTeacher    String
+  scheduleTime   String
+  enrolledCount  Int      @default(0)
+  maxCapacity    Int      @default(30)
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@map("remedial_program")
+}
+
+model EnrichmentProgram {
+  id                 String   @id @default(cuid())
+  organizationId     String
+  clubName           String
+  category           String   // STEM, OLYMPIAD, LEADERSHIP, DEBATE
+  coordinatorTeacher String?
+  meetingSchedule    String?
+  description        String?
+  memberCount        Int      @default(0)
+
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@map("enrichment_program")
+}
+
+model InterventionPlan {
+  id             String    @id @default(cuid())
+  organizationId String
+  studentId      String?
+  studentName    String
+  gradeName      String
+  targetScore    String
+  counselorName  String?
+  reviewDate     DateTime?
+  strategyNotes  String?
+  status         String    @default("DRAFTED") // DRAFTED, IN_PROGRESS, COMPLETED
+
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@map("intervention_plan")
+}
+
+model InterventionOutcome {
+  id             String   @id @default(cuid())
+  organizationId String
+  studentId      String?
+  studentName    String
+  initialScore   Float
+  postScore      Float
+  gain           Float
+  status         String   @default("IMPROVED") // IMPROVED, RESOLVED, PENDING
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@map("intervention_outcome")
+}
+
+model InterventionMonitoring {
+  id              String   @id @default(cuid())
+  organizationId  String
+  studentId       String?
+  studentName     String
+  programName     String
+  attendanceRate  Float    @default(100.0)
+  status          String   @default("IN_PROGRESS") // NOT_STARTED, IN_PROGRESS, TARGET_MET
+  lastCheckInDate DateTime @default(now())
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("intervention_monitoring")
+}
+
+// ============================================================
+// DOMAIN 10: PARENT / GUARDIAN MANAGEMENT
+// ============================================================
+
+model ParentMeeting {
+  id             String   @id @default(cuid())
+  organizationId String
+  title          String
+  meetingType    String   // PTA_GENERAL, PARENT_TEACHER_CONFERENCE, EMERGENCY_MEETING
+  scheduledDate  DateTime
+  location       String
+  agenda         String?
+  status         String   @default("SCHEDULED") // SCHEDULED, COMPLETED, CANCELLED
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@map("parent_meeting")
+}
+
+model ParentNotification {
+  id             String   @id @default(cuid())
+  organizationId String
+  parentId       String?
+  title          String
+  message        String
+  channel        String   @default("PORTAL") // PORTAL, SMS, EMAIL
+  status         String   @default("SENT") // SENT, DELIVERED, READ
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@map("parent_notification")
+}
+
+model ParentParticipation {
+  id             String   @id @default(cuid())
+  organizationId String
+  parentName     String
+  activityTitle  String
+  category       String   // VOLUNTEER, PTA_COMMITTEE, FUNDRAISING, EVENT_SUPPORT
+  hoursLogged    Float    @default(0)
+  eventDate      DateTime @default(now())
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@map("parent_participation")
+}
+
+model ImportantNotice {
+  id             String   @id @default(cuid())
+  organizationId String
+  title          String
+  content        String
+  noticeType     String   @default("EMERGENCY") // EMERGENCY, COMPLIANCE, SAFETY, DIRECTIVE
+  isPinned       Boolean  @default(true)
+  authorName     String   @default("School Principal")
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@map("important_notice")
+}
+
+// ============================================================
+// DOMAIN 12: SCHOOL IMPROVEMENT MANAGEMENT
+// ============================================================
+
+model SchoolProblem {
+  id             String   @id @default(cuid())
+  organizationId String
+  problemTitle   String
+  category       String   // ACADEMIC, INFRASTRUCTURE, ATTENDANCE, GOVERNANCE
+  severity       String   @default("HIGH") // CRITICAL, HIGH, MEDIUM, LOW
+  description    String?
+  status         String   @default("OPEN") // OPEN, IN_REVIEW, RESOLVED
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@map("school_problem")
+}
+
+model ImprovementActivity {
+  id                String    @id @default(cuid())
+  organizationId    String
+  improvementPlanId String?
+  activityTitle     String
+  assignedTeam      String
+  dueDate           DateTime?
+  status            String    @default("PENDING") // PENDING, IN_PROGRESS, COMPLETED
+
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  @@map("improvement_activity")
+}
+
+model ImprovementTarget {
+  id             String   @id @default(cuid())
+  organizationId String
+  metricTitle    String
+  baselineValue  Float
+  targetValue    Float
+  currentValue   Float
+  unit           String   @default("%")
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@map("improvement_target")
+}
+
+model ImprovementOutcome {
+  id                 String   @id @default(cuid())
+  organizationId     String
+  planTitle          String
+  achievedPercentage Float    @default(100.0)
+  impactRating       String   @default("EXCELLENT") // EXCELLENT, SATISFACTORY, NEEDS_WORK
+  notes              String?
+
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@map("improvement_outcome")
+}
+
+// ============================================================
+// DOMAIN 13: REPORTS & ANALYTICS
+// ============================================================
+
+model GeneratedReport {
+  id             String   @id @default(cuid())
+  organizationId String
+  reportType     String   // ENROLLMENT, ATTENDANCE, TEACHER, ASSESSMENT, PERFORMANCE, CURRICULUM, SUPPORT, SCHOOL_PERFORMANCE
+  title          String
+  generatedBy    String   @default("School Principal")
+  fileFormat     String   @default("PDF") // PDF, CSV, XLSX
+  summaryMetrics String?  // JSON stringified key values
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@map("generated_report")
+}
+
+// ============================================================
+// DOMAIN 14: AI SCHOOL LEADERSHIP
+// ============================================================
+
+model AILeadershipInsight {
+  id              String   @id @default(cuid())
+  organizationId  String
+  category        String   // SCHOOL_PERFORMANCE, ATTENDANCE, STUDENT_RISK, TRENDS, INTERVENTION, RECOMMENDATIONS, NATURAL_LANGUAGE, EXECUTIVE_SUMMARY
+  promptQuery     String?
+  responseText    String
+  confidenceScore Float    @default(0.95)
+  keyTakeaways    String?  // JSON or pipe separated text
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("ai_leadership_insight")
+}
+
+// ============================================================
+// DOMAIN 16: SCHOOL SETTINGS
+// ============================================================
+
+model SchoolSetting {
+  id             String   @id @default(cuid())
+  organizationId String
+  category       String   // SCHOOL, ACADEMIC, NOTIFICATION, INTEGRATION, DATA
+  key            String
+  value          String
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@unique([organizationId, key])
+  @@map("school_setting")
 }

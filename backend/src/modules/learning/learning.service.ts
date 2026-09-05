@@ -152,4 +152,21 @@ export class LearningService {
 
         return prisma.supportFlag.delete({ where: { id } });
     }
+
+    static async getActivitySubmissions(organizationId: string, learningActivityId: string) {
+        return prisma.submission.findMany({
+            where: {
+                learningActivityId,
+                activity: { organizationId }
+            },
+            include: {
+                enrollment: {
+                    include: {
+                        student: true
+                    }
+                }
+            },
+            orderBy: { submittedAt: "desc" }
+        });
+    }
 }

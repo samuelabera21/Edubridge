@@ -22,7 +22,12 @@ import {
     getClassPerformanceReport,
     askAiAssistant,
     reportIssue,
-    getMyIssues
+    getMyIssues,
+    getMyProfile,
+    updateMyProfile,
+    getRepeatedAbsences,
+    getAttendanceHistory,
+    getCurriculumData
 } from "./teacher.controller.js";
 import { createActivity, getActivities, submitActivity, raiseSupportFlag, getSupportFlags } from "../learning/learning.controller.js";
 import { recordStudentAttendance, getStudentAttendance } from "../attendance/attendance.controller.js";
@@ -48,6 +53,9 @@ router.use(requireScope("SCHOOL"));
  *         description: Teacher dashboard summary data
  */
 router.get("/dashboard-summary", getDashboardSummary);
+
+router.get("/profile", getMyProfile);
+router.put("/profile", updateMyProfile);
 
 /**
  * @openapi
@@ -115,6 +123,9 @@ router.get("/my-students", getMyStudents);
  */
 router.get("/students/:studentId", getStudentDetail);
 
+router.get("/attendance/repeated-absences", getRepeatedAbsences);
+router.get("/curriculum", getCurriculumData);
+
 /**
  * @openapi
  * /api/teacher/attendance/batch:
@@ -129,6 +140,7 @@ router.get("/students/:studentId", getStudentDetail);
  *         description: Attendance records saved successfully
  */
 router.post("/attendance/batch", recordBatchAttendance);
+router.get("/attendance/history", getAttendanceHistory);
 
 /**
  * @openapi
@@ -342,6 +354,8 @@ router.post("/submissions/:submissionId/grade", gradeActivitySubmission);
  *         description: Support flag raised
  */
 router.post("/support-flag", createStudentSupportFlag);
+router.post("/support-flags", createStudentSupportFlag);
+router.get("/support-flags", getSupportFlags);
 
 /**
  * @openapi

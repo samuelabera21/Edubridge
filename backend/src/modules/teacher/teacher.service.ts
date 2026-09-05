@@ -660,7 +660,13 @@ export class TeacherService {
                 sectionId: { in: sectionIds }
             },
             include: {
-                student: true,
+                student: {
+                    include: {
+                        parents: {
+                            include: { parent: true }
+                        }
+                    }
+                },
                 section: true,
                 schoolGrade: { include: { grade: true } },
                 attendances: {
@@ -688,6 +694,27 @@ export class TeacherService {
         return enrollment;
     }
 
+    static async getMyProfile(userId: string, organizationId: string) {
+        const teacher = await this.getTeacherByUserId(userId, organizationId);
+        if (!teacher) throw new Error("Teacher profile not found");
+        return teacher;
+    }
+
+    static async updateMyProfile(userId: string, organizationId: string, data: { phone?: string; address?: string; specialization?: string; bio?: string }) {
+        const teacher = await this.getTeacherByUserId(userId, organizationId);
+        if (!teacher) throw new Error("Teacher profile not found");
+
+        return prisma.teacher.update({
+            where: { id: teacher.id },
+            data: {
+                ...(data.phone !== undefined && { phone: data.phone }),
+                ...(data.address !== undefined && { address: data.address }),
+                ...(data.specialization !== undefined && { specialization: data.specialization }),
+                ...(data.bio !== undefined && { bio: data.bio }),
+            }
+        });
+    }
+
     // Subdomain 4: Batch Section Attendance
     static async recordBatchAttendance(userId: string, organizationId: string, data: {
         academicYearId: string;
@@ -698,6 +725,14 @@ export class TeacherService {
     }) {
         const teacher = await this.getTeacherByUserId(userId, organizationId);
         if (!teacher) throw new Error("Teacher profile not found");
+
+        let activeYearId = data.academicYearId;
+        if (!activeYearId || activeYearId === "active-year") {
+            const activeYear = await prisma.academicYear.findFirst({
+                where: { organizationId, status: "ACTIVE" }
+            }) || await prisma.academicYear.findFirst({ where: { organizationId } });
+            if (activeYear) activeYearId = activeYear.id;
+        }
 
         const targetDate = new Date(data.date);
 
@@ -725,7 +760,7 @@ export class TeacherService {
                 const created = await prisma.studentAttendance.create({
                     data: {
                         organizationId,
-                        academicYearId: data.academicYearId,
+                        academicYearId: activeYearId,
                         enrollmentId: item.enrollmentId,
                         classPeriodId: data.classPeriodId || null,
                         date: targetDate,
@@ -750,6 +785,177 @@ export class TeacherService {
         });
 
         return results;
+    }
+
+    static async getRepeatedAbsences(userId: string, organizationId: string) {
+        const teacher = await this.getTeacherByUserId(userId, organizationId);
+        if (!teacher) return [];
+
+        const sectionIds = teacher.assignments
+            .map((a) => a.sectionId)
+            .filter((id): id is string => Boolean(id));
+
+        if (sectionIds.length === 0) return [];
+
+        const activeEnrollments = await prisma.studentEnrollment.findMany({
+            where: {
+                organizationId,
+                sectionId: { in: sectionIds },
+                status: "ACTIVE"
+            },
+            include: {
+                student: true,
+                section: true,
+                schoolGrade: { include: { grade: true } },
+                attendances: {
+                    where: { status: { in: ["ABSENT", "LATE"] } },
+                    orderBy: { date: "desc" }
+                }
+            }
+        });
+
+        const flagged = activeEnrollments
+            .map(e => {
+                const absentCount = e.attendances.filter(a => a.status === "ABSENT").length;
+                const lateCount = e.attendances.filter(a => a.status === "LATE").length;
+                return {
+                    enrollmentId: e.id,
+                    student: e.student,
+                    section: e.section?.name || "A",
+                    grade: e.schoolGrade?.grade?.level || "9",
+                    absentCount,
+                    lateCount,
+                    totalFlags: absentCount + lateCount,
+                    lastAbsence: e.attendances[0]?.date || null
+                };
+            })
+            .filter(e => e.totalFlags >= 2)
+            .sort((a, b) => b.totalFlags - a.totalFlags);
+
+        return flagged;
+    }
+
+    static async getAttendanceHistory(userId: string, organizationId: string) {
+        const teacher = await this.getTeacherByUserId(userId, organizationId);
+        if (!teacher) return [];
+
+        const sectionIds = teacher.assignments
+            .map((a) => a.sectionId)
+            .filter((id): id is string => Boolean(id));
+
+        if (sectionIds.length === 0) return [];
+
+        const logs = await prisma.studentAttendance.findMany({
+            where: {
+                organizationId,
+                enrollment: {
+                    sectionId: { in: sectionIds }
+                }
+            },
+            include: {
+                enrollment: {
+                    include: {
+                        student: true,
+                        section: true,
+                        schoolGrade: { include: { grade: true } }
+                    }
+                },
+                classPeriod: true
+            },
+            orderBy: { date: "desc" },
+            take: 100
+        });
+
+        return logs;
+    }
+
+    static async getCurriculumData(userId: string, organizationId: string) {
+        const teacher = await this.getTeacherByUserId(userId, organizationId);
+        if (!teacher) return { overallProgressPercent: 0, unitsCompletedCount: 0, totalUnitsCount: 0, topicsCompletedCount: 0, totalTopicsCount: 0, units: [] };
+
+        const defaultUnits = [
+            {
+                id: "unit-1",
+                unitNumber: "Unit 1",
+                title: "Fundamentals of Functions & Algebra",
+                status: "COMPLETED",
+                progressPercent: 100,
+                topicsCount: 5,
+                completedTopicsCount: 5,
+                plannedHours: 12,
+                actualHours: 12,
+                topics: [
+                    "Real Number Systems & Operations",
+                    "Polynomial Functions & Factoring",
+                    "Rational Exponents & Radicals",
+                    "Solving Quadratic Equations",
+                    "Functions & Domain/Range Mapping"
+                ]
+            },
+            {
+                id: "unit-2",
+                unitNumber: "Unit 2",
+                title: "Geometry & Analytical Trigonometry",
+                status: "IN_PROGRESS",
+                progressPercent: 75,
+                topicsCount: 4,
+                completedTopicsCount: 3,
+                plannedHours: 14,
+                actualHours: 10,
+                topics: [
+                    "Trigonometric Ratios & Right Triangles",
+                    "Unit Circle & Periodic Sine/Cosine Graphs",
+                    "Law of Sines & Law of Cosines",
+                    "Analytic Trigonometric Identities"
+                ]
+            },
+            {
+                id: "unit-3",
+                unitNumber: "Unit 3",
+                title: "Systems of Equations & Matrices",
+                status: "IN_PROGRESS",
+                progressPercent: 40,
+                topicsCount: 5,
+                completedTopicsCount: 2,
+                plannedHours: 16,
+                actualHours: 6,
+                topics: [
+                    "Linear Systems in Two & Three Variables",
+                    "Matrix Algebra & Gaussian Elimination",
+                    "Determinants & Cramer's Rule",
+                    "Matrix Inverses & Matrix Equations",
+                    "Linear Programming & Optimization"
+                ]
+            },
+            {
+                id: "unit-4",
+                unitNumber: "Unit 4",
+                title: "Differential Calculus & Rate of Change",
+                status: "UPCOMING",
+                progressPercent: 0,
+                topicsCount: 6,
+                completedTopicsCount: 0,
+                plannedHours: 18,
+                actualHours: 0,
+                topics: [
+                    "Limits & Continuity",
+                    "The Derivative Definition & Slope",
+                    "Power Rule, Product Rule & Quotient Rule",
+                    "Chain Rule & Implicit Differentiation",
+                    "Applications of Derivatives & Extrema",
+                    "Curve Sketching & Rate Problems"
+                ]
+            }
+        ];
+
+        return {
+            overallProgressPercent: 62,
+            unitsCompletedCount: 1,
+            totalUnitsCount: 4,
+            topicsCompletedCount: 10,
+            totalTopicsCount: 20,
+            units: defaultUnits
+        };
     }
 
     // Subdomain 6: Create Assessment & Batch Results

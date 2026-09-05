@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { fetchApi } from "@/lib/api";
-import { ArrowLeft, Users, UserCheck, Layers, LayoutGrid, Calendar, Settings, Copy, Save } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
+import { ArrowLeft, Users, UserCheck, Layers, LayoutGrid, Calendar, Settings, Copy, Save, CheckCircle2, AlertCircle, X } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/Card";
 import { LoadingState } from "@/components/ui/LoadingState";
@@ -11,19 +12,26 @@ import { ErrorState } from "@/components/ui/ErrorState";
 import { AcademicYear } from "@/types/api";
 
 export default function AcademicYearDetailsPage() {
+    const { authData } = useAuth();
     const params = useParams();
     const router = useRouter();
     const yearId = params.id as string;
 
+    const hasUpdatePermission = authData?.access.some(acc => 
+        ["ADMIN", "SCHOOL_ADMIN"].includes(acc.role.name) ||
+        acc.role.permissions.some((p: any) => p.permission?.name === "ACADEMIC:UPDATE")
+    );
+
     const [year, setYear] = useState<AcademicYear | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [notification, setNotification] = useState<{ type: "success" | "error"; message: string } | null>(null);
 
     // Form states
     const [name, setName] = useState("");
     const [startDate, setStartDate] = useState("");
     const [endDate, setEndDate] = useState("");
-    const [status, setStatus] = useState("DRAFT");
+    const [status, setStatus] = useState("PLANNED");
     const [saving, setSaving] = useState(false);
 
     // Copy states
@@ -32,6 +40,38 @@ export default function AcademicYearDetailsPage() {
     const [copying, setCopying] = useState(false);
 
     const [activeTab, setActiveTab] = useState<"overview" | "settings">("overview");
+
+    const getAvailableStatusOptions = (currentStatus?: string) => {
+        switch (currentStatus) {
+            case "PLANNED":
+                return [
+                    { value: "PLANNED", label: "PLANNED - Planning phase" },
+                    { value: "ACTIVE", label: "ACTIVE - Current operational year" },
+                    { value: "ARCHIVED", label: "ARCHIVED - Cancelled before start" }
+                ];
+            case "ACTIVE":
+                return [
+                    { value: "ACTIVE", label: "ACTIVE - Current operational year" },
+                    { value: "COMPLETED", label: "COMPLETED - Year finished" }
+                ];
+            case "COMPLETED":
+                return [
+                    { value: "COMPLETED", label: "COMPLETED - Year finished" },
+                    { value: "ARCHIVED", label: "ARCHIVED - Read-only history" }
+                ];
+            case "ARCHIVED":
+                return [
+                    { value: "ARCHIVED", label: "ARCHIVED - Read-only history" }
+                ];
+            default:
+                return [
+                    { value: "PLANNED", label: "PLANNED - Planning phase" },
+                    { value: "ACTIVE", label: "ACTIVE - Current operational year" },
+                    { value: "COMPLETED", label: "COMPLETED - Year finished" },
+                    { value: "ARCHIVED", label: "ARCHIVED - Read-only history" }
+                ];
+        }
+    };
 
     const loadYear = async () => {
         try {
@@ -73,31 +113,42 @@ export default function AcademicYearDetailsPage() {
 
     const handleUpdate = async (e: React.FormEvent) => {
         e.preventDefault();
+        setNotification(null);
+
+        if (new Date(startDate) >= new Date(endDate)) {
+            setNotification({ type: "error", message: "Start date must be before end date." });
+            return;
+        }
+
         try {
             setSaving(true);
             const res = await fetchApi(`/academic/years/${yearId}`, {
                 method: "PUT",
                 body: JSON.stringify({ name, startDate, endDate, status }),
             });
+            const data = await res.json();
             if (!res.ok) {
-                const errData = await res.json();
-                throw new Error(errData.error || "Failed to update academic year");
+                throw new Error(data.error || "Failed to update academic year");
             }
-            alert("Academic year updated successfully!");
+            setNotification({ type: "success", message: "Academic year updated successfully!" });
             loadYear();
         } catch (err: any) {
-            alert(err.message);
+            setNotification({ type: "error", message: err.message || "Failed to update academic year" });
         } finally {
             setSaving(false);
         }
     };
 
     const handleCopyStructure = async () => {
-        if (!selectedPrevYear) return alert("Please select a previous year to copy from");
+        if (!selectedPrevYear) {
+            setNotification({ type: "error", message: "Please select a previous year to copy from." });
+            return;
+        }
         if (!confirm("Are you sure you want to copy grades and sections from the selected year? This cannot be undone.")) return;
         
         try {
             setCopying(true);
+            setNotification(null);
             const res = await fetchApi(`/academic/years/${yearId}/copy-structure`, {
                 method: "POST",
                 body: JSON.stringify({ previousYearId: selectedPrevYear }),
@@ -105,39 +156,64 @@ export default function AcademicYearDetailsPage() {
             const data = await res.json();
             if (!res.ok) throw new Error(data.error || "Failed to copy structure");
             
-            alert(data.message || "Structure copied successfully!");
+            setNotification({ type: "success", message: data.message || "Structure copied successfully!" });
             loadYear(); // reload stats
         } catch (err: any) {
-            alert(err.message);
+            setNotification({ type: "error", message: err.message || "Failed to copy structure" });
         } finally {
             setCopying(false);
         }
     };
 
     const handleActivate = async () => {
-        if (!confirm("Are you sure you want to activate this academic year? Other active years will be marked as completed.")) return;
+        if (!confirm("Are you sure you want to activate this academic year? Any currently active year will be marked as completed.")) return;
         try {
+            setNotification(null);
             const res = await fetchApi(`/academic/years/${yearId}/activate`, {
                 method: "PUT",
             });
-            if (!res.ok) throw new Error("Failed to activate");
-            alert("Academic year activated!");
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || "Failed to activate");
+            setNotification({ type: "success", message: "Academic year activated successfully!" });
             loadYear();
         } catch (err: any) {
-            alert(err.message);
+            setNotification({ type: "error", message: err.message || "Failed to activate academic year" });
         }
-    }
+    };
 
     if (loading) return <LoadingState message="Loading academic year details..." />;
     if (error || !year) return <ErrorState message={error || "Academic Year not found"} onRetry={() => router.back()} />;
 
     return (
         <div className="space-y-6 max-w-7xl mx-auto pb-12">
+            {notification && (
+                <div className={`p-4 rounded-xl border flex items-center justify-between transition-all ${
+                    notification.type === "success" 
+                        ? "bg-emerald-50 text-emerald-800 border-emerald-200" 
+                        : "bg-red-50 text-red-800 border-red-200"
+                }`}>
+                    <div className="flex items-center space-x-3">
+                        {notification.type === "success" ? (
+                            <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
+                        ) : (
+                            <AlertCircle className="w-5 h-5 text-red-600 shrink-0" />
+                        )}
+                        <p className="text-sm font-medium">{notification.message}</p>
+                    </div>
+                    <button 
+                        onClick={() => setNotification(null)}
+                        className="p-1 text-gray-500 hover:text-gray-700 rounded-lg hover:bg-black/5"
+                    >
+                        <X className="w-4 h-4" />
+                    </button>
+                </div>
+            )}
+
             <div className="flex items-center justify-between">
                 <Button variant="ghost" leftIcon={<ArrowLeft className="w-4 h-4" />} onClick={() => router.back()}>
                     Back to Academic Years
                 </Button>
-                {year.status !== "ACTIVE" && (
+                {hasUpdatePermission && year.status === "PLANNED" && (
                     <Button onClick={handleActivate} variant="secondary" className="text-green-600 border-green-600 hover:bg-green-50">
                         Set as Active Year
                     </Button>
@@ -155,7 +231,8 @@ export default function AcademicYearDetailsPage() {
                         <div className="flex items-center">
                             <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                                 year.status === 'ACTIVE' ? 'bg-green-100 text-green-800' : 
-                                year.status === 'COMPLETED' ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-800'
+                                year.status === 'COMPLETED' ? 'bg-blue-100 text-blue-800' : 
+                                year.status === 'PLANNED' ? 'bg-amber-100 text-amber-800' : 'bg-gray-100 text-gray-700'
                             }`}>
                                 {year.status}
                             </span>
@@ -327,16 +404,23 @@ export default function AcademicYearDetailsPage() {
                                 <select 
                                     value={status}
                                     onChange={(e) => setStatus(e.target.value)}
-                                    className="w-full rounded-lg border border-gray-300 p-2.5 focus:ring-[#006b3f] focus:border-[#006b3f]"
+                                    disabled={!hasUpdatePermission || year.status === "ARCHIVED"}
+                                    className="w-full rounded-lg border border-gray-300 p-2.5 focus:ring-[#006b3f] focus:border-[#006b3f] disabled:bg-gray-100 disabled:cursor-not-allowed"
                                 >
-                                    <option value="DRAFT">DRAFT - Planning phase</option>
-                                    <option value="ACTIVE">ACTIVE - Current operational year</option>
-                                    <option value="COMPLETED">COMPLETED - Year finished</option>
-                                    <option value="ARCHIVED">ARCHIVED - Read-only history</option>
+                                    {getAvailableStatusOptions(year.status).map(opt => (
+                                        <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                    ))}
                                 </select>
+                                {year.status === "ARCHIVED" && (
+                                    <p className="text-xs text-amber-600 mt-1">Archived academic years are locked and cannot be modified.</p>
+                                )}
                             </div>
                             <div className="pt-4 border-t border-gray-100 flex justify-end">
-                                <Button type="submit" disabled={saving} leftIcon={<Save className="w-4 h-4" />}>
+                                <Button 
+                                    type="submit" 
+                                    disabled={saving || !hasUpdatePermission || year.status === "ARCHIVED"} 
+                                    leftIcon={<Save className="w-4 h-4" />}
+                                >
                                     {saving ? "Saving..." : "Save Changes"}
                                 </Button>
                             </div>

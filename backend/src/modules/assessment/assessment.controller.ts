@@ -134,3 +134,39 @@ export const getStudentReportCard = async (req: Request, res: Response) => {
         return res.status(500).json({ error: error.message || "Failed to generate report card" });
     }
 };
+
+export const getSubjectAnalytics = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        if (!organizationId) return res.status(403).json({ error: "Missing school scope" });
+
+        const analytics = await AssessmentService.getSubjectAnalytics(organizationId);
+        return res.json(analytics);
+    } catch (error: any) {
+        return res.status(500).json({ error: error.message || "Failed to fetch subject analytics" });
+    }
+};
+
+export const getAtRiskStudents = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        if (!organizationId) return res.status(403).json({ error: "Missing school scope" });
+
+        const students = await AssessmentService.getAtRiskStudents(organizationId);
+        return res.json(students);
+    } catch (error: any) {
+        return res.status(500).json({ error: error.message || "Failed to fetch at-risk students" });
+    }
+};
+
+export const getGradebookApprovals = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        if (!organizationId) return res.status(403).json({ error: "Missing school scope" });
+
+        const gradebooks = await AssessmentService.getGradebookApprovals(organizationId);
+        return res.json(gradebooks);
+    } catch (error: any) {
+        return res.status(500).json({ error: error.message || "Failed to fetch gradebook approvals" });
+    }
+};

@@ -66,6 +66,9 @@ export const updateAcademicYear = async (req: Request, res: Response) => {
         const year = await AcademicService.updateAcademicYear(organizationId, req.params.yearId as string, req.body);
         res.json(year);
     } catch (error: any) {
+        if (error.message === "Academic Year not found") {
+            return res.status(404).json({ error: error.message });
+        }
         handlePrismaError(error, res, "Invalid request or duplicate academic year name");
     }
 };
@@ -93,9 +96,24 @@ export const activateAcademicYear = async (req: Request, res: Response) => {
 
         const year = await AcademicService.activateAcademicYear(organizationId, req.params.yearId as string);
         res.json(year);
-    } catch (error) {
-        console.error("Error activating academic year:", error);
-        res.status(500).json({ error: "Internal server error" });
+    } catch (error: any) {
+        if (error.message === "Academic Year not found") {
+            return res.status(404).json({ error: error.message });
+        }
+        res.status(400).json({ error: error.message || "Failed to activate academic year" });
+    }
+};
+
+// --- Academic Calendars & Periods ---
+export const getAcademicCalendar = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        if (!organizationId) return res.status(403).json({ error: "Missing school scope" });
+        
+        const calendar = await AcademicService.getAcademicCalendar(organizationId, req.params.yearId as string);
+        res.json(calendar);
+    } catch (error: any) {
+        res.status(404).json({ error: error.message || "Academic year not found" });
     }
 };
 
@@ -104,10 +122,26 @@ export const createAcademicCalendar = async (req: Request, res: Response) => {
         const organizationId = (req as any).accessScope?.id;
         if (!organizationId) return res.status(403).json({ error: "Missing school scope" });
         
-        const calendar = await AcademicService.createAcademicCalendar(req.params.yearId as string, req.body.description);
+        const calendar = await AcademicService.createAcademicCalendar(
+            organizationId,
+            req.params.yearId as string,
+            req.body.description
+        );
         res.status(201).json(calendar);
     } catch (error: any) {
         handlePrismaError(error, res, "Invalid request");
+    }
+};
+
+export const getAcademicPeriods = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        if (!organizationId) return res.status(403).json({ error: "Missing school scope" });
+        
+        const periods = await AcademicService.getAcademicPeriods(organizationId, req.params.calendarId as string);
+        res.json(periods);
+    } catch (error: any) {
+        res.status(404).json({ error: error.message || "Calendar not found" });
     }
 };
 
@@ -116,10 +150,42 @@ export const createAcademicPeriod = async (req: Request, res: Response) => {
         const organizationId = (req as any).accessScope?.id;
         if (!organizationId) return res.status(403).json({ error: "Missing school scope" });
         
-        const period = await AcademicService.createAcademicPeriod(req.params.calendarId as string, req.body);
+        const period = await AcademicService.createAcademicPeriod(
+            organizationId,
+            req.params.calendarId as string,
+            req.body
+        );
         res.status(201).json(period);
     } catch (error: any) {
-        handlePrismaError(error, res, "Invalid request");
+        handlePrismaError(error, res, error.message || "Invalid request");
+    }
+};
+
+export const updateAcademicPeriod = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        if (!organizationId) return res.status(403).json({ error: "Missing school scope" });
+
+        const period = await AcademicService.updateAcademicPeriod(
+            organizationId,
+            req.params.periodId as string,
+            req.body
+        );
+        res.json(period);
+    } catch (error: any) {
+        handlePrismaError(error, res, error.message || "Invalid request");
+    }
+};
+
+export const deleteAcademicPeriod = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        if (!organizationId) return res.status(403).json({ error: "Missing school scope" });
+
+        await AcademicService.deleteAcademicPeriod(organizationId, req.params.periodId as string);
+        res.json({ message: "Academic period deleted successfully" });
+    } catch (error: any) {
+        res.status(400).json({ error: error.message || "Failed to delete academic period" });
     }
 };
 
@@ -144,7 +210,7 @@ export const createGrade = async (req: Request, res: Response) => {
         const grade = await AcademicService.createGrade(organizationId, req.body);
         res.status(201).json(grade);
     } catch (error: any) {
-        handlePrismaError(error, res, "Invalid request");
+        handlePrismaError(error, res, error.message || "Invalid request");
     }
 };
 
@@ -165,10 +231,26 @@ export const createSchoolGrade = async (req: Request, res: Response) => {
         const organizationId = (req as any).accessScope?.id;
         if (!organizationId) return res.status(403).json({ error: "Missing school scope" });
         
-        const sg = await AcademicService.createSchoolGrade(req.params.yearId as string, req.body.gradeId);
+        const sg = await AcademicService.createSchoolGrade(
+            organizationId,
+            req.params.yearId as string,
+            req.body.gradeId
+        );
         res.status(201).json(sg);
     } catch (error: any) {
-        handlePrismaError(error, res, "Invalid request");
+        handlePrismaError(error, res, error.message || "Invalid request");
+    }
+};
+
+export const deleteSchoolGrade = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        if (!organizationId) return res.status(403).json({ error: "Missing school scope" });
+
+        await AcademicService.deleteSchoolGrade(organizationId, req.params.schoolGradeId as string);
+        res.json({ message: "School grade removed successfully from this academic year" });
+    } catch (error: any) {
+        res.status(400).json({ error: error.message || "Failed to remove school grade" });
     }
 };
 
@@ -201,24 +283,52 @@ export const getSections = async (req: Request, res: Response) => {
 
 export const createSection = async (req: Request, res: Response) => {
     try {
-        console.log("createSection START", req.params.schoolGradeId, req.body);
         const organizationId = (req as any).accessScope?.id;
         if (!organizationId) {
-            console.log("createSection NO ORG ID");
             return res.status(403).json({ error: "Missing school scope" });
         }
         
-        console.log("Calling AcademicService.createSection");
-        const section = await AcademicService.createSection(req.params.schoolGradeId as string, req.body.name, req.body.capacity);
-        console.log("createSection SUCCESS", section);
+        const section = await AcademicService.createSection(
+            organizationId,
+            req.params.schoolGradeId as string,
+            req.body.name,
+            req.body.capacity
+        );
         res.status(201).json(section);
     } catch (error: any) {
-        console.error("createSection ERROR:", error);
-        handlePrismaError(error, res, "Invalid request or a section with this name already exists");
+        handlePrismaError(error, res, error.message || "Invalid request or section already exists");
     }
 };
 
-// --- Subjects ---
+export const updateSection = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        if (!organizationId) return res.status(403).json({ error: "Missing school scope" });
+
+        const section = await AcademicService.updateSection(
+            organizationId,
+            req.params.sectionId as string,
+            req.body
+        );
+        res.json(section);
+    } catch (error: any) {
+        handlePrismaError(error, res, error.message || "Invalid request");
+    }
+};
+
+export const deleteSection = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        if (!organizationId) return res.status(403).json({ error: "Missing school scope" });
+
+        await AcademicService.deleteSection(organizationId, req.params.sectionId as string);
+        res.json({ message: "Section deleted successfully" });
+    } catch (error: any) {
+        res.status(400).json({ error: error.message || "Failed to delete section" });
+    }
+};
+
+// --- Subjects Master & Academic Year Offerings ---
 export const getSubjects = async (req: Request, res: Response) => {
     try {
         const organizationId = (req as any).accessScope?.id;
@@ -239,7 +349,19 @@ export const createSubject = async (req: Request, res: Response) => {
         const subject = await AcademicService.createSubject(organizationId, req.body);
         res.status(201).json(subject);
     } catch (error: any) {
-        handlePrismaError(error, res, "Invalid request");
+        handlePrismaError(error, res, error.message || "Invalid request");
+    }
+};
+
+export const getSchoolSubjects = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        if (!organizationId) return res.status(403).json({ error: "Missing school scope" });
+
+        const schoolSubjects = await AcademicService.getSchoolSubjects(organizationId, req.params.yearId as string);
+        res.json(schoolSubjects);
+    } catch (error: any) {
+        res.status(404).json({ error: error.message || "Academic year not found" });
     }
 };
 
@@ -248,9 +370,78 @@ export const createSchoolSubject = async (req: Request, res: Response) => {
         const organizationId = (req as any).accessScope?.id;
         if (!organizationId) return res.status(403).json({ error: "Missing school scope" });
         
-        const ss = await AcademicService.createSchoolSubject(req.params.yearId as string, req.body.subjectId);
+        const ss = await AcademicService.createSchoolSubject(
+            organizationId,
+            req.params.yearId as string,
+            req.body.subjectId
+        );
         res.status(201).json(ss);
     } catch (error: any) {
-        handlePrismaError(error, res, "Invalid request");
+        handlePrismaError(error, res, error.message || "Invalid request");
+    }
+};
+
+export const deleteSchoolSubject = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        if (!organizationId) return res.status(403).json({ error: "Missing school scope" });
+
+        await AcademicService.deleteSchoolSubject(
+            organizationId,
+            req.params.yearId as string,
+            req.params.subjectId as string
+        );
+        res.json({ message: "Subject removed from academic year" });
+    } catch (error: any) {
+        res.status(400).json({ error: error.message || "Failed to remove subject" });
+    }
+};
+
+// --- Grade-Specific Curriculum & Weekly Periods ---
+export const getSchoolGradeSubjects = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        if (!organizationId) return res.status(403).json({ error: "Missing school scope" });
+
+        const gradeSubjects = await AcademicService.getSchoolGradeSubjects(
+            organizationId,
+            req.params.schoolGradeId as string
+        );
+        res.json(gradeSubjects);
+    } catch (error: any) {
+        res.status(404).json({ error: error.message || "Grade not found" });
+    }
+};
+
+export const assignSubjectToGrade = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        if (!organizationId) return res.status(403).json({ error: "Missing school scope" });
+
+        const gradeSubject = await AcademicService.assignSubjectToGrade(
+            organizationId,
+            req.params.schoolGradeId as string,
+            req.body.subjectId,
+            req.body.weeklyPeriods
+        );
+        res.status(201).json(gradeSubject);
+    } catch (error: any) {
+        handlePrismaError(error, res, error.message || "Invalid request");
+    }
+};
+
+export const removeSubjectFromGrade = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        if (!organizationId) return res.status(403).json({ error: "Missing school scope" });
+
+        await AcademicService.removeSubjectFromGrade(
+            organizationId,
+            req.params.schoolGradeId as string,
+            req.params.subjectId as string
+        );
+        res.json({ message: "Subject removed from grade" });
+    } catch (error: any) {
+        res.status(400).json({ error: error.message || "Failed to remove subject from grade" });
     }
 };

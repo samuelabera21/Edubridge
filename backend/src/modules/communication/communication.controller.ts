@@ -140,3 +140,37 @@ export const getMessagingUsers = async (req: Request, res: Response) => {
         return res.status(500).json({ error: "Internal server error" });
     }
 };
+
+// Domain 11.6: Important Notices & Directives
+export const getImportantNotices = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        if (!organizationId) return res.status(403).json({ error: "Missing school scope" });
+
+        const notices = await CommunicationService.getImportantNotices(organizationId);
+        return res.json(notices);
+    } catch (error: any) {
+        return res.status(500).json({ error: "Failed to fetch important notices" });
+    }
+};
+
+export const createImportantNotice = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        if (!organizationId) return res.status(403).json({ error: "Missing school scope" });
+
+        const { title, content, noticeType } = req.body;
+        if (!title || !content) {
+            return res.status(400).json({ error: "title and content are required" });
+        }
+
+        const notice = await CommunicationService.createImportantNotice(organizationId, {
+            title,
+            content,
+            noticeType
+        });
+        return res.status(201).json(notice);
+    } catch (error: any) {
+        return res.status(400).json({ error: error.message || "Failed to publish notice" });
+    }
+};

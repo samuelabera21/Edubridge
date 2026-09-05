@@ -206,6 +206,32 @@ export const getStudentDetail = async (req: Request, res: Response) => {
     }
 };
 
+export const getMyProfile = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        const userId = req.user?.id;
+        if (!organizationId || !userId) return res.status(403).json({ error: "Missing school scope or authentication" });
+
+        const profile = await TeacherService.getMyProfile(userId, organizationId);
+        return res.json(profile);
+    } catch (error: any) {
+        return res.status(400).json({ error: error.message || "Failed to get teacher profile" });
+    }
+};
+
+export const updateMyProfile = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        const userId = req.user?.id;
+        if (!organizationId || !userId) return res.status(403).json({ error: "Missing school scope or authentication" });
+
+        const updated = await TeacherService.updateMyProfile(userId, organizationId, req.body);
+        return res.json(updated);
+    } catch (error: any) {
+        return res.status(400).json({ error: error.message || "Failed to update teacher profile" });
+    }
+};
+
 export const recordBatchAttendance = async (req: Request, res: Response) => {
     try {
         const organizationId = (req as any).accessScope?.id;
@@ -216,6 +242,45 @@ export const recordBatchAttendance = async (req: Request, res: Response) => {
         return res.status(201).json(result);
     } catch (error: any) {
         return res.status(400).json({ error: error.message || "Failed to record batch attendance" });
+    }
+};
+
+export const getRepeatedAbsences = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        const userId = req.user?.id;
+        if (!organizationId || !userId) return res.status(403).json({ error: "Missing school scope or authentication" });
+
+        const data = await TeacherService.getRepeatedAbsences(userId, organizationId);
+        return res.json(data);
+    } catch (error: any) {
+        return res.status(400).json({ error: error.message || "Failed to fetch repeated absences" });
+    }
+};
+
+export const getAttendanceHistory = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        const userId = req.user?.id;
+        if (!organizationId || !userId) return res.status(403).json({ error: "Missing school scope or authentication" });
+
+        const history = await TeacherService.getAttendanceHistory(userId, organizationId);
+        return res.json(history);
+    } catch (error: any) {
+        return res.status(400).json({ error: error.message || "Failed to fetch attendance history" });
+    }
+};
+
+export const getCurriculumData = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        const userId = req.user?.id;
+        if (!organizationId || !userId) return res.status(403).json({ error: "Missing school scope or authentication" });
+
+        const data = await TeacherService.getCurriculumData(userId, organizationId);
+        return res.json(data);
+    } catch (error: any) {
+        return res.status(400).json({ error: error.message || "Failed to fetch curriculum data" });
     }
 };
 

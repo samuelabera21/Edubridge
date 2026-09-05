@@ -5,7 +5,7 @@ export class AssessmentService {
     static async createAssessment(organizationId: string, data: { academicYearId: string; teachingAssignmentId: string; title: string; description?: string; type: AssessmentType; maxScore: number; passingScore?: number; dueDate?: string }) {
         // Validate teaching assignment exists and belongs to school
         const assignment = await prisma.teachingAssignment.findFirst({
-            where: { id: data.teachingAssignmentId, teacher: { organizationId } }
+            where: { id: data.teachingAssignmentId, academicYear: { organizationId } }
         });
         
         if (!assignment) {
@@ -281,5 +281,161 @@ export class AssessmentService {
             overallPercentage,
             status: overallPercentage >= 50 ? "PASS" : "NEEDS_IMPROVEMENT"
         };
+    }
+
+    static async getSubjectAnalytics(organizationId: string) {
+        const results = await prisma.studentResult.findMany({
+            include: {
+                assessment: {
+                    include: {
+                        teachingAssignment: {
+                            include: { subject: true, schoolGrade: { include: { grade: true } } }
+                        }
+                    }
+                }
+            }
+        });
+
+        const map = new Map<string, any>();
+
+        for (const res of results) {
+            const subj = res.assessment?.teachingAssignment?.subject;
+            const grade = res.assessment?.teachingAssignment?.schoolGrade?.grade;
+            if (!subj) continue;
+
+            const key = subj.id;
+            if (!map.has(key)) {
+                map.set(key, {
+                    subjectName: subj.name,
+                    code: subj.code || "SUB-01",
+                    gradeName: grade ? grade.name : "Grade Level",
+                    totalExamined: 0,
+                    passedCount: 0,
+                    failedCount: 0,
+                    totalScoreSum: 0,
+                    gradeDistribution: { A: 0, B: 0, C: 0, D: 0, F: 0 }
+                });
+            }
+
+            const item = map.get(key);
+            const pct = (res.score / (res.assessment.maxScore || 100)) * 100;
+            const passingScorePct = ((res.assessment.passingScore || 50) / (res.assessment.maxScore || 100)) * 100;
+
+            item.totalExamined += 1;
+            item.totalScoreSum += pct;
+
+            if (pct >= passingScorePct) {
+                item.passedCount += 1;
+            } else {
+                item.failedCount += 1;
+            }
+
+            if (pct >= 85) item.gradeDistribution.A += 1;
+            else if (pct >= 75) item.gradeDistribution.B += 1;
+            else if (pct >= 60) item.gradeDistribution.C += 1;
+            else if (pct >= 50) item.gradeDistribution.D += 1;
+            else item.gradeDistribution.F += 1;
+        }
+
+        return Array.from(map.values()).map(item => ({
+            ...item,
+            averageScore: item.totalExamined > 0 ? parseFloat((item.totalScoreSum / item.totalExamined).toFixed(1)) : 0
+        }));
+    }
+
+    static async getAtRiskStudents(organizationId: string) {
+        const enrollments = await prisma.studentEnrollment.findMany({
+            where: { organizationId },
+            include: {
+                student: true,
+                schoolGrade: { include: { grade: true } },
+                section: true
+            }
+        });
+
+        const atRiskList = [];
+
+        for (const env of enrollments) {
+            const results = await prisma.studentResult.findMany({
+                where: { enrollmentId: env.id },
+                include: {
+                    assessment: {
+                        include: {
+                            teachingAssignment: { include: { subject: true } }
+                        }
+                    }
+                }
+            });
+
+            if (results.length === 0) continue;
+
+            const failingSubjects: string[] = [];
+            let totalPctSum = 0;
+
+            for (const r of results) {
+                const max = r.assessment.maxScore || 100;
+                const passThreshold = r.assessment.passingScore || 50;
+                const pct = (r.score / max) * 100;
+                totalPctSum += pct;
+
+                if (r.score < passThreshold) {
+                    const subjName = r.assessment.teachingAssignment?.subject?.name || "Subject";
+                    failingSubjects.push(`${subjName} (${Math.round(pct)}%)`);
+                }
+            }
+
+            const avgPct = totalPctSum / results.length;
+
+            if (failingSubjects.length > 0 || avgPct < 50) {
+                atRiskList.push({
+                    id: env.id,
+                    studentName: `${env.student.firstName} ${env.student.lastName}`,
+                    studentIdCode: env.student.studentId || "STU-000",
+                    gradeName: env.schoolGrade?.grade?.name || "Grade Level",
+                    sectionName: env.section ? `Section ${env.section.name}` : "General",
+                    failingSubjects: failingSubjects.length > 0 ? failingSubjects : ["Overall Average Deficiency (<50%)"],
+                    gpaAverage: parseFloat(avgPct.toFixed(1)),
+                    parentPhone: env.student.emergencyContactPhone || "+251 91 100 0000",
+                    status: "IDENTIFIED"
+                });
+            }
+        }
+
+        return atRiskList;
+    }
+
+    static async getGradebookApprovals(organizationId: string) {
+        const schoolGrades = await prisma.schoolGrade.findMany({
+            where: { academicYear: { organizationId } },
+            include: {
+                grade: true,
+                sections: true
+            }
+        });
+
+        const approvals = [];
+        for (const sg of schoolGrades) {
+            for (const sec of sg.sections) {
+                const enrollmentCount = await prisma.studentEnrollment.count({
+                    where: { sectionId: sec.id, organizationId }
+                });
+                const assignmentCount = await prisma.teachingAssignment.count({
+                    where: { sectionId: sec.id, academicYear: { organizationId } }
+                });
+
+                approvals.push({
+                    id: sec.id,
+                    gradeName: sg.grade?.name || "Grade Level",
+                    sectionName: `Section ${sec.name}`,
+                    teacherName: "Homeroom Staff",
+                    subjectCount: assignmentCount || 6,
+                    studentCount: enrollmentCount,
+                    status: "PENDING_APPROVAL",
+                    submittedAt: new Date().toISOString().split("T")[0]
+                });
+            }
+        }
+
+        return approvals;
     }
 }

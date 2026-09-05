@@ -122,3 +122,72 @@ export const getStudentParents = async (req: Request, res: Response) => {
         return res.status(500).json({ error: "Internal server error" });
     }
 };
+
+// Domain 10: Meetings
+export const getMeetings = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        if (!organizationId) return res.status(403).json({ error: "Missing school scope" });
+        const items = await ParentService.getMeetings(organizationId);
+        return res.json(items);
+    } catch (error: any) {
+        return res.status(500).json({ error: error.message || "Failed to fetch meetings" });
+    }
+};
+
+export const createMeeting = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        if (!organizationId) return res.status(403).json({ error: "Missing school scope" });
+        const item = await ParentService.createMeeting(organizationId, req.body);
+        return res.status(201).json(item);
+    } catch (error: any) {
+        return res.status(400).json({ error: error.message || "Failed to create meeting" });
+    }
+};
+
+// Domain 10: Notifications
+export const getNotifications = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        if (!organizationId) return res.status(403).json({ error: "Missing school scope" });
+        const items = await ParentService.getNotifications(organizationId);
+        return res.json(items);
+    } catch (error: any) {
+        return res.status(500).json({ error: error.message || "Failed to fetch notifications" });
+    }
+};
+
+export const createNotification = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        if (!organizationId) return res.status(403).json({ error: "Missing school scope" });
+        const item = await ParentService.createNotification(organizationId, req.body);
+        return res.status(201).json(item);
+    } catch (error: any) {
+        return res.status(400).json({ error: error.message || "Failed to send notification" });
+    }
+};
+
+// Domain 10: Participation
+export const getParticipations = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        if (!organizationId) return res.status(403).json({ error: "Missing school scope" });
+        const items = await ParentService.getParticipations(organizationId);
+        return res.json(items);
+    } catch (error: any) {
+        return res.status(500).json({ error: error.message || "Failed to fetch participations" });
+    }
+};
+
+export const createParticipation = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        if (!organizationId) return res.status(403).json({ error: "Missing school scope" });
+        const item = await ParentService.createParticipation(organizationId, req.body);
+        return res.status(201).json(item);
+    } catch (error: any) {
+        return res.status(400).json({ error: error.message || "Failed to record participation" });
+    }
+};
