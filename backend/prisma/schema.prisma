@@ -325,6 +325,7 @@ model SchoolGrade {
   academicYear AcademicYear @relation(fields: [academicYearId], references: [id], onDelete: Cascade)
   grade        Grade        @relation(fields: [gradeId], references: [id], onDelete: Cascade)
   sections     Section[]
+  gradeSubjects SchoolGradeSubject[]
 
   classroomObservations ClassroomObservation[]
 
@@ -364,6 +365,7 @@ model Subject {
 
   organization   OrganizationUnit @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   schoolSubjects SchoolSubject[]
+  gradeSubjects  SchoolGradeSubject[]
 
   classroomObservations ClassroomObservation[]
 
@@ -388,6 +390,22 @@ model SchoolSubject {
 
   @@unique([academicYearId, subjectId])
   @@map("school_subject")
+}
+
+model SchoolGradeSubject {
+  id            String   @id @default(cuid())
+  schoolGradeId String
+  subjectId     String
+  weeklyPeriods Int?
+
+  schoolGrade   SchoolGrade @relation(fields: [schoolGradeId], references: [id], onDelete: Cascade)
+  subject       Subject     @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  @@unique([schoolGradeId, subjectId])
+  @@map("school_grade_subject")
 }
 
 // ============================================================
