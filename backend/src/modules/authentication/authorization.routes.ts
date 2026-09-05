@@ -268,10 +268,51 @@ router.post("/create-user", async (req, res) => {
                 data: { userId: newUserId }
             });
         } else if (studentEntityId) {
-            await prisma.student.update({
+            const student = await prisma.student.update({
                 where: { id: studentEntityId },
                 data: { userId: newUserId }
             });
+
+            // A student dashboard requires an active enrollment in the target school.
+            const school = await prisma.organizationUnit.findFirst({
+                where: { name: scopeName || "EduBridge Demo School", type: "SCHOOL" }
+            });
+            const academicYear = school
+                ? await prisma.academicYear.findFirst({
+                    where: { organizationId: school.id },
+                    orderBy: { createdAt: "desc" }
+                })
+                : null;
+            const schoolGrade = academicYear
+                ? await prisma.schoolGrade.findFirst({ where: { academicYearId: academicYear.id } })
+                : null;
+
+            if (school && academicYear && schoolGrade) {
+                const enrollment = await prisma.studentEnrollment.findFirst({
+                    where: {
+                        studentId: student.id,
+                        organizationId: school.id,
+                        academicYearId: academicYear.id,
+                        status: { in: ["ENROLLED", "ACTIVE"] }
+                    }
+                });
+
+                if (!enrollment) {
+                    const section = await prisma.section.findFirst({
+                        where: { schoolGradeId: schoolGrade.id }
+                    });
+                    await prisma.studentEnrollment.create({
+                        data: {
+                            studentId: student.id,
+                            organizationId: school.id,
+                            academicYearId: academicYear.id,
+                            schoolGradeId: schoolGrade.id,
+                            sectionId: section?.id || null,
+                            status: "ACTIVE"
+                        }
+                    });
+                }
+            }
         } else if (parentEntityId) {
             await prisma.parent.update({
                 where: { id: parentEntityId },
