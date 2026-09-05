@@ -42,6 +42,8 @@ model User {
   receivedMessages   Message[]           @relation("ReceivedMessages")
   reportedIssues     Issue[]             @relation("ReportedIssues")
   assignedIssues     Issue[]             @relation("AssignedIssues")
+  createdCalendarEvents CalendarEvent[]   @relation("CreatedCalendarEvents")
+  updatedCalendarEvents CalendarEvent[]   @relation("UpdatedCalendarEvents")
 
   @@unique([email])
   @@map("user")
@@ -270,13 +272,62 @@ enum AcademicYearStatus {
   ARCHIVED
 }
 
+enum CalendarStatus {
+  DRAFT
+  REVIEW
+  PUBLISHED
+  ARCHIVED
+}
+
+enum CalendarEventCategory {
+  ACADEMIC_PERIOD
+  EXAMINATION
+  HOLIDAY_BREAK
+  SCHOOL_EVENT
+}
+
+enum CalendarEventType {
+  // Academic Periods
+  SEMESTER
+  TERM
+  QUARTER
+  // Examinations
+  MIDTERM_EXAM
+  FINAL_EXAM
+  MAKEUP_EXAM
+  NATIONAL_EXAM
+  REGIONAL_EXAM
+  // Holidays & Breaks
+  PUBLIC_HOLIDAY
+  SCHOOL_HOLIDAY
+  MIDYEAR_BREAK
+  TERM_BREAK
+  OTHER_BREAK
+  // School Events
+  REGISTRATION
+  ORIENTATION
+  SCHOOL_EVENT
+  MEETING
+  OTHER
+}
+
+enum CalendarEventSource {
+  SYSTEM
+  SCHOOL
+  IMPORTED
+}
+
 model AcademicCalendar {
-  id             String  @id @default(cuid())
-  academicYearId String  @unique
+  id             String         @id @default(cuid())
+  academicYearId String         @unique
   description    String?
+  status         CalendarStatus @default(DRAFT)
+  publishedAt    DateTime?
+  publishedById  String?
 
   academicYear AcademicYear     @relation(fields: [academicYearId], references: [id], onDelete: Cascade)
   periods      AcademicPeriod[]
+  events       CalendarEvent[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -293,11 +344,49 @@ model AcademicPeriod {
   type               String // e.g. SEMESTER, TERM
 
   academicCalendar AcademicCalendar @relation(fields: [academicCalendarId], references: [id], onDelete: Cascade)
+  events           CalendarEvent[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@map("academic_period")
+}
+
+model CalendarEvent {
+  id                 String                @id @default(cuid())
+  academicCalendarId String
+  academicPeriodId   String?               // Optional link to parent Semester/Term
+  title              String
+  category           CalendarEventCategory
+  type               CalendarEventType
+  startDate          DateTime
+  endDate            DateTime
+  isAllDay           Boolean               @default(true)
+  isSchoolClosed     Boolean               @default(false)
+  isExternal         Boolean               @default(false) // e.g. national exams
+  description        String?               @db.Text
+  source             CalendarEventSource   @default(SCHOOL)
+  isConfigurable     Boolean               @default(true)
+  status             String                @default("CONFIRMED") // CONFIRMED, TENTATIVE, CANCELLED
+  metadata           Json?                 // for external links, religious holiday details, etc.
+
+  createdById        String?
+  updatedById        String?
+
+  academicCalendar   AcademicCalendar      @relation(fields: [academicCalendarId], references: [id], onDelete: Cascade)
+  academicPeriod     AcademicPeriod?       @relation(fields: [academicPeriodId], references: [id], onDelete: SetNull)
+  createdBy          User?                 @relation("CreatedCalendarEvents", fields: [createdById], references: [id], onDelete: SetNull)
+  updatedBy          User?                 @relation("UpdatedCalendarEvents", fields: [updatedById], references: [id], onDelete: SetNull)
+
+  createdAt          DateTime              @default(now())
+  updatedAt          DateTime              @updatedAt
+
+  @@index([academicCalendarId])
+  @@index([startDate, endDate])
+  @@index([type])
+  @@index([category])
+  @@index([academicPeriodId])
+  @@map("calendar_event")
 }
 
 model Grade {

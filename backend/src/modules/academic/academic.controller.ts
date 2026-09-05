@@ -189,6 +189,158 @@ export const deleteAcademicPeriod = async (req: Request, res: Response) => {
     }
 };
 
+// --- Calendar Lifecycle & Events (Step 2.1) ---
+export const publishCalendar = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        if (!organizationId) return res.status(403).json({ error: "Missing school scope" });
+        const userId = (req as any).user?.id || (req as any).user?.userId;
+
+        const calendar = await AcademicService.publishCalendar(
+            organizationId,
+            req.params.calendarId as string,
+            userId
+        );
+        res.json(calendar);
+    } catch (error: any) {
+        res.status(400).json({ error: error.message || "Failed to publish calendar" });
+    }
+};
+
+export const unpublishCalendar = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        if (!organizationId) return res.status(403).json({ error: "Missing school scope" });
+        const userId = (req as any).user?.id || (req as any).user?.userId;
+
+        const calendar = await AcademicService.unpublishCalendar(
+            organizationId,
+            req.params.calendarId as string,
+            userId
+        );
+        res.json(calendar);
+    } catch (error: any) {
+        res.status(400).json({ error: error.message || "Failed to unpublish calendar" });
+    }
+};
+
+export const getCalendarEvents = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        if (!organizationId) return res.status(403).json({ error: "Missing school scope" });
+
+        const events = await AcademicService.getCalendarEvents(
+            organizationId,
+            req.params.calendarId as string,
+            req.query
+        );
+        res.json(events);
+    } catch (error: any) {
+        res.status(400).json({ error: error.message || "Failed to fetch calendar events" });
+    }
+};
+
+export const getCalendarEventById = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        if (!organizationId) return res.status(403).json({ error: "Missing school scope" });
+
+        const event = await AcademicService.getCalendarEventById(
+            organizationId,
+            req.params.eventId as string
+        );
+        res.json(event);
+    } catch (error: any) {
+        res.status(404).json({ error: error.message || "Calendar event not found" });
+    }
+};
+
+export const createCalendarEvent = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        if (!organizationId) return res.status(403).json({ error: "Missing school scope" });
+        const userId = (req as any).user?.id || (req as any).user?.userId;
+
+        const result = await AcademicService.createCalendarEvent(
+            organizationId,
+            req.params.calendarId as string,
+            req.body,
+            userId
+        );
+        res.status(201).json(result);
+    } catch (error: any) {
+        handlePrismaError(error, res, error.message || "Invalid calendar event data");
+    }
+};
+
+export const updateCalendarEvent = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        if (!organizationId) return res.status(403).json({ error: "Missing school scope" });
+        const userId = (req as any).user?.id || (req as any).user?.userId;
+
+        const result = await AcademicService.updateCalendarEvent(
+            organizationId,
+            req.params.eventId as string,
+            req.body,
+            userId
+        );
+        res.json(result);
+    } catch (error: any) {
+        handlePrismaError(error, res, error.message || "Invalid calendar event data");
+    }
+};
+
+export const deleteCalendarEvent = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        if (!organizationId) return res.status(403).json({ error: "Missing school scope" });
+        const userId = (req as any).user?.id || (req as any).user?.userId;
+
+        await AcademicService.deleteCalendarEvent(
+            organizationId,
+            req.params.eventId as string,
+            userId
+        );
+        res.json({ message: "Calendar event deleted successfully" });
+    } catch (error: any) {
+        res.status(400).json({ error: error.message || "Failed to delete calendar event" });
+    }
+};
+
+export const getSuggestedHolidays = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        if (!organizationId) return res.status(403).json({ error: "Missing school scope" });
+
+        const suggestions = await AcademicService.getSuggestedHolidays(
+            organizationId,
+            req.params.yearId as string
+        );
+        res.json(suggestions);
+    } catch (error: any) {
+        res.status(400).json({ error: error.message || "Failed to get holiday suggestions" });
+    }
+};
+
+export const confirmSuggestedHoliday = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        if (!organizationId) return res.status(403).json({ error: "Missing school scope" });
+        const userId = (req as any).user?.id || (req as any).user?.userId;
+
+        const event = await AcademicService.confirmSuggestedHoliday(
+            organizationId,
+            req.params.calendarId as string,
+            req.body,
+            userId
+        );
+        res.status(201).json(event);
+    } catch (error: any) {
+        handlePrismaError(error, res, error.message || "Failed to confirm holiday");
+    }
+};
+
 // --- Grades & Sections ---
 export const getGrades = async (req: Request, res: Response) => {
     try {
