@@ -94,25 +94,22 @@ export async function updateProfileHandler(req: Request, res: Response) {
         });
 
         if (data.activeAcademicYearId) {
-            // Set all to COMPLETED
-            await prisma.academicYear.updateMany({
-                where: { organizationId: accessScope.id, id: { not: data.activeAcademicYearId } },
-                data: { status: "COMPLETED" }
+            const currentActive = await prisma.academicYear.findFirst({
+                where: { organizationId: accessScope.id, status: "ACTIVE" }
             });
-            // Set selected to ACTIVE
-            await prisma.academicYear.update({
-                where: { id: data.activeAcademicYearId },
-                data: { status: "ACTIVE" }
-            });
+            if (!currentActive || currentActive.id !== data.activeAcademicYearId) {
+                const { AcademicService } = await import("../academic/academic.service.js");
+                await AcademicService.activateAcademicYear(accessScope.id, data.activeAcademicYearId);
+            }
         }
 
         return res.json({
             message: "Profile updated successfully",
             profile,
         });
-    } catch (error) {
+    } catch (error: any) {
         console.error("Error updating school profile:", error);
-        return res.status(500).json({ message: "Internal server error" });
+        return res.status(400).json({ message: error.message || "Failed to update profile" });
     }
 }
 export async function getDashboardOverviewHandler(req: Request, res: Response) {
