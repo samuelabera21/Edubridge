@@ -71,7 +71,7 @@ async function main() {
     }
 
     const teacherPermissions = [
-        "ACADEMIC:VIEW", "ACADEMIC:CREATE", "ACADEMIC:UPDATE",
+        "ACADEMIC:VIEW",
         "TEACHER:VIEW", "STUDENT:VIEW", "STUDENT:CREATE", "STUDENT:ENROLL",
         "ATTENDANCE:VIEW", "ATTENDANCE:RECORD",
         "ASSESSMENT:VIEW", "ASSESSMENT:CREATE", "ASSESSMENT:GRADE",
@@ -85,7 +85,23 @@ async function main() {
         }
     }
 
-    console.log(`✅ System permissions attached to ADMIN, SCHOOL_ADMIN, and TEACHER roles.`);
+    // Explicitly clean up any historical ACADEMIC:CREATE / ACADEMIC:UPDATE permissions attached to TEACHER
+    const teacherRole = await prisma.role.findUnique({ where: { name: "TEACHER" } });
+    if (teacherRole) {
+        const writePerms = await prisma.permission.findMany({
+            where: { name: { in: ["ACADEMIC:CREATE", "ACADEMIC:UPDATE"] } }
+        });
+        if (writePerms.length > 0) {
+            await prisma.rolePermission.deleteMany({
+                where: {
+                    roleId: teacherRole.id,
+                    permissionId: { in: writePerms.map(p => p.id) }
+                }
+            });
+        }
+    }
+
+    console.log(`✅ System permissions attached to ADMIN, SCHOOL_ADMIN, and TEACHER roles (Academic write restricted from TEACHER).`);
 
     // 4. Seed Default Organization Units & School Profile
     let federalUnit = await prisma.organizationUnit.findFirst({ where: { type: "FEDERAL" } });

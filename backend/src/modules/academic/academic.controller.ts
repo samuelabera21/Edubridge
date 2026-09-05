@@ -66,6 +66,9 @@ export const updateAcademicYear = async (req: Request, res: Response) => {
         const year = await AcademicService.updateAcademicYear(organizationId, req.params.yearId as string, req.body);
         res.json(year);
     } catch (error: any) {
+        if (error.message === "Academic Year not found") {
+            return res.status(404).json({ error: error.message });
+        }
         handlePrismaError(error, res, "Invalid request or duplicate academic year name");
     }
 };
@@ -93,9 +96,11 @@ export const activateAcademicYear = async (req: Request, res: Response) => {
 
         const year = await AcademicService.activateAcademicYear(organizationId, req.params.yearId as string);
         res.json(year);
-    } catch (error) {
-        console.error("Error activating academic year:", error);
-        res.status(500).json({ error: "Internal server error" });
+    } catch (error: any) {
+        if (error.message === "Academic Year not found") {
+            return res.status(404).json({ error: error.message });
+        }
+        res.status(400).json({ error: error.message || "Failed to activate academic year" });
     }
 };
 

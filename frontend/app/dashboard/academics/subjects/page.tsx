@@ -21,8 +21,10 @@ export default function SubjectsPage() {
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState<string>("");
 
-    // Bypass permission check for Admin testing
-    const hasCreatePermission = true;
+    const hasCreatePermission = authData?.access.some(acc => 
+        ["ADMIN", "SCHOOL_ADMIN"].includes(acc.role.name) ||
+        acc.role.permissions.some((p: any) => p.permission?.name === "ACADEMIC:CREATE")
+    );
 
     const loadData = async () => {
         try {

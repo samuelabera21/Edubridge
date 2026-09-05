@@ -1,5 +1,15 @@
 import { prisma } from "../../infrastructure/prisma/client.js";
 
+export const VALID_ACADEMIC_YEAR_STATUSES = ["PLANNED", "ACTIVE", "COMPLETED", "ARCHIVED"] as const;
+export type AcademicYearStatusType = typeof VALID_ACADEMIC_YEAR_STATUSES[number];
+
+export const ALLOWED_STATUS_TRANSITIONS: Record<string, string[]> = {
+    PLANNED: ["ACTIVE", "ARCHIVED"],
+    ACTIVE: ["COMPLETED"],
+    COMPLETED: ["ARCHIVED"],
+    ARCHIVED: [] // terminal
+};
+
 export class AcademicService {
     // --- Academic Years ---
     static async getAcademicYears(organizationId: string) {
@@ -50,17 +60,51 @@ export class AcademicService {
 
         const updateData: any = {};
         if (data.name !== undefined) updateData.name = data.name;
-        if (data.startDate !== undefined) updateData.startDate = data.startDate;
-        if (data.endDate !== undefined) updateData.endDate = data.endDate;
+
+        let effectiveStartDate = year.startDate;
+        let effectiveEndDate = year.endDate;
+
+        if (data.startDate !== undefined) {
+            const parsedStart = new Date(data.startDate);
+            if (isNaN(parsedStart.getTime())) throw new Error("Invalid startDate");
+            effectiveStartDate = parsedStart;
+            updateData.startDate = parsedStart;
+        }
+
+        if (data.endDate !== undefined) {
+            const parsedEnd = new Date(data.endDate);
+            if (isNaN(parsedEnd.getTime())) throw new Error("Invalid endDate");
+            effectiveEndDate = parsedEnd;
+            updateData.endDate = parsedEnd;
+        }
+
+        if (effectiveStartDate >= effectiveEndDate) {
+            throw new Error("startDate must be before endDate");
+        }
         
         if (data.status !== undefined) {
-            updateData.status = data.status;
-            // If changing to active, ensure others are completed
-            if (data.status === "ACTIVE") {
-                await prisma.academicYear.updateMany({
-                    where: { organizationId, status: "ACTIVE", id: { not: yearId } },
-                    data: { status: "COMPLETED" }
-                });
+            if (data.status === "DRAFT") {
+                throw new Error("DRAFT status is invalid. Use PLANNED, ACTIVE, COMPLETED, or ARCHIVED.");
+            }
+            if (!VALID_ACADEMIC_YEAR_STATUSES.includes(data.status)) {
+                throw new Error(`Invalid status: ${data.status}`);
+            }
+
+            if (data.status !== year.status) {
+                const allowed = ALLOWED_STATUS_TRANSITIONS[year.status] || [];
+                if (!allowed.includes(data.status)) {
+                    throw new Error(`Cannot transition academic year from ${year.status} to ${data.status}`);
+                }
+
+                updateData.status = data.status;
+
+                // If changing to active, ensure other active years in this school are completed
+                if (data.status === "ACTIVE") {
+                    await prisma.academicYear.updateMany({
+                        where: { organizationId, status: "ACTIVE", id: { not: yearId } },
+                        data: { status: "COMPLETED" }
+                    });
+                }
             }
         }
 
@@ -121,27 +165,67 @@ export class AcademicService {
         return { message: `Copied ${totalGradesAdded} grades and ${totalSectionsAdded} sections.` };
     }
 
-    static async createAcademicYear(organizationId: string, data: { name: string; startDate: Date; endDate: Date; status: any }) {
+    static async createAcademicYear(organizationId: string, data: { name: string; startDate: Date; endDate: Date; status?: any }) {
+        const startDate = new Date(data.startDate);
+        const endDate = new Date(data.endDate);
+
+        if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+            throw new Error("Invalid startDate or endDate");
+        }
+
+        if (startDate >= endDate) {
+            throw new Error("startDate must be before endDate");
+        }
+
+        const status = data.status || "PLANNED";
+        if (status === "DRAFT") {
+            throw new Error("DRAFT status is invalid. Use PLANNED, ACTIVE, COMPLETED, or ARCHIVED.");
+        }
+        if (!VALID_ACADEMIC_YEAR_STATUSES.includes(status)) {
+            throw new Error(`Invalid status: ${status}`);
+        }
+
+        if (status === "COMPLETED" || status === "ARCHIVED") {
+            throw new Error(`Cannot create a new academic year with status ${status}`);
+        }
+
+        if (status === "ACTIVE") {
+            await prisma.academicYear.updateMany({
+                where: { organizationId, status: "ACTIVE" },
+                data: { status: "COMPLETED" }
+            });
+        }
+
         return prisma.academicYear.create({
             data: {
                 organizationId,
                 name: data.name,
-                startDate: data.startDate,
-                endDate: data.endDate,
-                status: data.status
+                startDate,
+                endDate,
+                status
             }
         });
     }
 
     static async activateAcademicYear(organizationId: string, yearId: string) {
-        // Ensure no other year is ACTIVE for this organization
+        const year = await prisma.academicYear.findUnique({ where: { id: yearId } });
+        if (!year || year.organizationId !== organizationId) {
+            throw new Error("Academic Year not found");
+        }
+
+        if (year.status === "ACTIVE") {
+            return year;
+        }
+
+        if (year.status !== "PLANNED") {
+            throw new Error(`Cannot activate academic year with status ${year.status}`);
+        }
+
+        // Demote existing active academic years in the same school scope
         await prisma.academicYear.updateMany({
-            where: { organizationId, status: "ACTIVE" },
+            where: { organizationId, status: "ACTIVE", id: { not: yearId } },
             data: { status: "COMPLETED" }
         });
-        
-        const year = await prisma.academicYear.findUnique({ where: { id: yearId } });
-        if (!year || year.organizationId !== organizationId) throw new Error("Academic Year not found");
 
         return prisma.academicYear.update({
             where: { id: yearId },

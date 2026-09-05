@@ -20,8 +20,10 @@ export default function AcademicYearsPage() {
     const [error, setError] = useState<string | null>(null);
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 
-    // Bypass permission check for Admin testing
-    const hasCreatePermission = true; 
+    const hasCreatePermission = authData?.access.some(acc => 
+        ["ADMIN", "SCHOOL_ADMIN"].includes(acc.role.name) ||
+        acc.role.permissions.some((p: any) => p.permission?.name === "ACADEMIC:CREATE")
+    );
 
     const loadYears = async () => {
         try {
@@ -107,14 +109,19 @@ export default function AcademicYearsPage() {
                                                         <CheckCircle className="w-3 h-3 mr-1" /> Active
                                                     </span>
                                                 )}
-                                                {year.status === "DRAFT" && (
-                                                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-                                                        <Clock className="w-3 h-3 mr-1" /> Draft
+                                                {year.status === "PLANNED" && (
+                                                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
+                                                        <Clock className="w-3 h-3 mr-1" /> Planned
                                                     </span>
                                                 )}
                                                 {year.status === "COMPLETED" && (
                                                     <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                                                         Completed
+                                                    </span>
+                                                )}
+                                                {year.status === "ARCHIVED" && (
+                                                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-700">
+                                                        Archived
                                                     </span>
                                                 )}
                                             </td>
