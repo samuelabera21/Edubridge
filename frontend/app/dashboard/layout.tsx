@@ -1297,12 +1297,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
                 {/* Main Content Area */}
                 <main className="flex-1 flex flex-col overflow-y-auto">
-                    {/* Blue Banner for non-teacher dashboards */}
-                    {!isTeacherRoute && (
-                        <div className="bg-blue-500 text-white px-8 py-5">
-                            <h1 className="text-2xl font-bold tracking-wide">The hub for quality education in Ethiopia</h1>
-                        </div>
-                    )}
                     
                     {/* Page Content Padding */}
                     <div className={isTeacherRoute ? "p-4 md:p-6" : "p-6 md:p-8"}>
