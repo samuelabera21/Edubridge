@@ -94,13 +94,13 @@ interface WorkspaceData {
     academicYear: AcademicYearItem;
     schoolGrade: {
         id: string;
-        grade: {
+        grade?: {
             id: string;
             name: string;
             code?: string;
             stage?: string;
         };
-    };
+    } | null;
     summary: {
         totalEnrolled: number;
         totalPlaced: number;
@@ -246,6 +246,7 @@ function PlacementWorkspaceContent() {
         async function loadGradesForYear() {
             try {
                 setWorkspaceLoading(true);
+                setWorkspace(null);
                 const res = await fetchApi(`/academic/years/${selectedYearId}/grades`);
                 if (!res.ok) throw new Error("Failed to load grades for academic year");
                 const gradesData: SchoolGradeItem[] = await res.json();
@@ -259,6 +260,8 @@ function PlacementWorkspaceContent() {
                 setSelectedGradeId(initialGrade);
             } catch (err: any) {
                 setErrorMessage(err.message || "Failed to load grades");
+                setGrades([]);
+                setSelectedGradeId("");
             } finally {
                 setWorkspaceLoading(false);
             }
@@ -301,6 +304,7 @@ function PlacementWorkspaceContent() {
     // Check if current academic year is locked
     const currentYear = years.find(y => y.id === selectedYearId);
     const isYearLocked = currentYear?.status === "COMPLETED" || currentYear?.status === "ARCHIVED";
+    const currentGradeName = workspace?.schoolGrade?.grade?.name || grades.find(g => g.id === selectedGradeId)?.grade?.name || "Grade";
 
     // Filtered unplaced students
     const filteredUnplacedStudents = useMemo(() => {
@@ -632,7 +636,7 @@ function PlacementWorkspaceContent() {
             </div>
 
             {/* Placement KPI Summary Cards */}
-            {workspace && (
+            {workspace && workspace.schoolGrade && (
                 <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3.5">
                     {/* Total Enrolled */}
                     <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-xs">
@@ -644,7 +648,7 @@ function PlacementWorkspaceContent() {
                             <span className="text-2xl font-bold text-slate-900">{workspace.summary.totalEnrolled}</span>
                             <span className="text-xs text-slate-500">students</span>
                         </div>
-                        <p className="text-[11px] text-slate-400 mt-1">Total intake for {workspace.schoolGrade.grade.name}</p>
+                        <p className="text-[11px] text-slate-400 mt-1">Total intake for {currentGradeName}</p>
                     </div>
 
                     {/* Placed in Sections */}
@@ -731,7 +735,7 @@ function PlacementWorkspaceContent() {
             {/* Main Content Workspace Layout: Unplaced Cohort (Left) & Grade Sections (Right) */}
             {workspaceLoading ? (
                 <LoadingState message="Loading placement cohort and section rosters..." />
-            ) : !workspace ? (
+            ) : !workspace || !workspace.schoolGrade ? (
                 <EmptyState 
                     title="No Grade Selected" 
                     message="Please select an academic year and grade cohort to load the placement workspace." 
@@ -752,7 +756,7 @@ function PlacementWorkspaceContent() {
                                         </span>
                                     </div>
                                     <p className="text-xs text-slate-500 mt-0.5">
-                                        Students officially enrolled in {workspace.schoolGrade.grade.name} who have not yet been assigned to a classroom section.
+                                        Students officially enrolled in {workspace.schoolGrade?.grade?.name || currentGradeName} who have not yet been assigned to a classroom section.
                                     </p>
                                 </div>
                             </div>
@@ -854,7 +858,7 @@ function PlacementWorkspaceContent() {
                                     </h3>
                                     <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
                                         {workspace.unplacedStudents.length === 0 
-                                            ? `Every student enrolled in ${workspace.schoolGrade.grade.name} is currently assigned to a section.` 
+                                            ? `Every student enrolled in ${workspace.schoolGrade?.grade?.name || currentGradeName} is currently assigned to a section.` 
                                             : "Try adjusting your search query or gender filter."}
                                     </p>
                                 </div>
@@ -970,7 +974,7 @@ function PlacementWorkspaceContent() {
                                 <div>
                                     <h2 className="text-sm font-bold text-slate-900">Configured Sections</h2>
                                     <p className="text-xs text-slate-500 mt-0.5">
-                                        Real-time section occupancy and official rosters for {workspace.schoolGrade.grade.name}.
+                                        Real-time section occupancy and official rosters for {workspace.schoolGrade?.grade?.name || currentGradeName}.
                                     </p>
                                 </div>
                                 <span className="text-xs font-semibold px-2 py-0.5 rounded bg-slate-200 text-slate-700">
@@ -984,7 +988,7 @@ function PlacementWorkspaceContent() {
                                     <Layers className="w-10 h-10 text-slate-300 mx-auto mb-2" />
                                     <p className="text-xs font-semibold text-slate-700">No Sections Found</p>
                                     <p className="text-[11px] text-slate-500 mt-1">
-                                        Configure sections for {workspace.schoolGrade.grade.name} in School Configuration (Step 2).
+                                        Configure sections for {workspace.schoolGrade?.grade?.name || currentGradeName} in School Configuration (Step 2).
                                     </p>
                                 </div>
                             ) : (
