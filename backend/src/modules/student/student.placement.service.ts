@@ -773,6 +773,44 @@ export class StudentPlacementService {
         const maleCount = enrollments.filter(e => e.student.gender?.toUpperCase() === "MALE").length;
         const femaleCount = enrollments.filter(e => e.student.gender?.toUpperCase() === "FEMALE").length;
 
+        const stats = {
+            totalStudents: enrollments.length,
+            totalEnrolled: enrollments.length,
+            capacity: section.capacity,
+            remainingCapacity: section.capacity !== null ? Math.max(0, section.capacity - enrollments.length) : null,
+            remainingSeats: section.capacity !== null ? Math.max(0, section.capacity - enrollments.length) : null,
+            isFull: section.capacity !== null ? enrollments.length >= section.capacity : false,
+            occupancyPercentage: section.capacity ? Math.min(100, Math.round((enrollments.length / section.capacity) * 100)) : null,
+            maleStudents: maleCount,
+            maleCount,
+            femaleStudents: femaleCount,
+            femaleCount
+        };
+
+        const rosterList = enrollments.map((enr, idx) => ({
+            rollNumber: idx + 1,
+            enrollmentId: enr.id,
+            studentId: enr.student.studentId,
+            fullName: `${enr.student.firstName} ${enr.student.fatherName || enr.student.lastName} ${enr.student.grandfatherName || ""}`.trim(),
+            firstName: enr.student.firstName,
+            fatherName: enr.student.fatherName,
+            grandfatherName: enr.student.grandfatherName,
+            gender: enr.student.gender,
+            dateOfBirth: enr.student.dateOfBirth,
+            enrollmentType: enr.enrollmentType,
+            status: enr.status,
+            enrollmentDate: enr.enrollmentDate,
+            student: {
+                id: enr.student.id,
+                studentId: enr.student.studentId,
+                firstName: enr.student.firstName,
+                fatherName: enr.student.fatherName || enr.student.lastName || "",
+                grandfatherName: enr.student.grandfatherName || "",
+                gender: enr.student.gender,
+                dateOfBirth: enr.student.dateOfBirth
+            }
+        }));
+
         return {
             section: {
                 id: section.id,
@@ -783,34 +821,31 @@ export class StudentPlacementService {
                 gradeLevel: section.schoolGrade.grade.level,
                 academicYearName: section.schoolGrade.academicYear.name,
                 academicYearStatus: section.schoolGrade.academicYear.status,
+                schoolGrade: {
+                    id: section.schoolGrade.id,
+                    grade: {
+                        id: section.schoolGrade.grade.id,
+                        name: section.schoolGrade.grade.name,
+                        level: section.schoolGrade.grade.level
+                    },
+                    academicYear: {
+                        id: section.schoolGrade.academicYear.id,
+                        name: section.schoolGrade.academicYear.name,
+                        status: section.schoolGrade.academicYear.status
+                    }
+                },
                 homeroomTeacher: section.homeroomTeacher ? {
                     id: section.homeroomTeacher.id,
-                    name: `${section.homeroomTeacher.firstName} ${section.homeroomTeacher.lastName}`.trim()
+                    name: `${section.homeroomTeacher.firstName} ${section.homeroomTeacher.lastName}`.trim(),
+                    firstName: section.homeroomTeacher.firstName,
+                    fatherName: section.homeroomTeacher.lastName,
+                    email: section.homeroomTeacher.email
                 } : null
             },
-            statistics: {
-                totalEnrolled: enrollments.length,
-                capacity: section.capacity,
-                remainingSeats: section.capacity !== null ? Math.max(0, section.capacity - enrollments.length) : null,
-                isFull: section.capacity !== null ? enrollments.length >= section.capacity : false,
-                occupancyPercentage: section.capacity ? Math.min(100, Math.round((enrollments.length / section.capacity) * 100)) : null,
-                maleCount,
-                femaleCount
-            },
-            students: enrollments.map((enr, idx) => ({
-                rollNumber: idx + 1,
-                enrollmentId: enr.id,
-                studentId: enr.student.studentId,
-                fullName: `${enr.student.firstName} ${enr.student.fatherName || enr.student.lastName} ${enr.student.grandfatherName || ""}`.trim(),
-                firstName: enr.student.firstName,
-                fatherName: enr.student.fatherName,
-                grandfatherName: enr.student.grandfatherName,
-                gender: enr.student.gender,
-                dateOfBirth: enr.student.dateOfBirth,
-                enrollmentType: enr.enrollmentType,
-                status: enr.status,
-                enrollmentDate: enr.enrollmentDate
-            }))
+            stats,
+            statistics: stats,
+            roster: rosterList,
+            students: rosterList
         };
     }
 

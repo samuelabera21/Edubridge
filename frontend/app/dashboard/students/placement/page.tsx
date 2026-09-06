@@ -1123,126 +1123,152 @@ function PlacementWorkspaceContent() {
                 ) : !rosterData ? (
                     <EmptyState title="Roster Unavailable" message="Could not load classroom roster." />
                 ) : (
-                    <div className="space-y-4 text-xs">
-                        {/* Printable Header Info */}
-                        <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                            <div>
-                                <div className="text-base font-bold text-slate-900 flex items-center gap-2">
-                                    <span>{rosterData.section.schoolGrade.grade.name} — Section {rosterData.section.name}</span>
-                                    <span className="text-xs px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 font-semibold">
-                                        {rosterData.stats.totalStudents} Enrolled
-                                    </span>
+                    (() => {
+                        const sec = rosterData.section as any;
+                        const sectionName = sec?.name || "";
+                        const gradeName = sec?.gradeName || sec?.schoolGrade?.grade?.name || "Grade";
+                        const yearName = sec?.academicYearName || sec?.schoolGrade?.academicYear?.name || "Academic Year";
+                        const teacherName = sec?.homeroomTeacher?.name || (sec?.homeroomTeacher ? `${sec.homeroomTeacher.firstName || ""} ${sec.homeroomTeacher.fatherName || sec.homeroomTeacher.lastName || ""}`.trim() : "Unassigned");
+                        const stats: any = rosterData.stats || (rosterData as any).statistics || {
+                            totalStudents: 0,
+                            maleStudents: 0,
+                            femaleStudents: 0,
+                            remainingCapacity: null
+                        };
+                        const rosterList: any[] = rosterData.roster || (rosterData as any).students || [];
+
+                        return (
+                            <div className="space-y-4 text-xs">
+                                {/* Printable Header Info */}
+                                <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                                    <div>
+                                        <div className="text-base font-bold text-slate-900 flex items-center gap-2">
+                                            <span>{gradeName} — Section {sectionName}</span>
+                                            <span className="text-xs px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 font-semibold">
+                                                {stats.totalStudents ?? stats.totalEnrolled ?? rosterList.length} Enrolled
+                                            </span>
+                                        </div>
+                                        <p className="text-slate-500 mt-1">
+                                            Academic Year: <strong className="text-slate-700">{yearName}</strong> • 
+                                            Homeroom Teacher: <strong className="text-slate-700">{teacherName}</strong>
+                                        </p>
+                                    </div>
+
+                                    <div className="flex items-center gap-2">
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() => window.print()}
+                                            className="text-xs border-slate-300 hover:bg-slate-100"
+                                            leftIcon={<Printer className="w-3.5 h-3.5" />}
+                                        >
+                                            Print Roster
+                                        </Button>
+                                    </div>
                                 </div>
-                                <p className="text-slate-500 mt-1">
-                                    Academic Year: <strong className="text-slate-700">{rosterData.section.schoolGrade.academicYear.name}</strong> • 
-                                    Homeroom Teacher: <strong className="text-slate-700">{rosterData.section.homeroomTeacher ? `${rosterData.section.homeroomTeacher.firstName} ${rosterData.section.homeroomTeacher.fatherName}` : "Unassigned"}</strong>
-                                </p>
-                            </div>
 
-                            <div className="flex items-center gap-2">
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => window.print()}
-                                    className="text-xs border-slate-300 hover:bg-slate-100"
-                                    leftIcon={<Printer className="w-3.5 h-3.5" />}
-                                >
-                                    Print Roster
-                                </Button>
-                            </div>
-                        </div>
+                                {/* Gender and Capacity breakdown stats */}
+                                <div className="grid grid-cols-4 gap-2 text-center">
+                                    <div className="p-2.5 rounded-lg bg-slate-100 text-slate-800">
+                                        <span className="block text-[10px] text-slate-500 uppercase font-bold">Total Roll</span>
+                                        <span className="text-base font-bold">{stats.totalStudents ?? stats.totalEnrolled ?? rosterList.length}</span>
+                                    </div>
+                                    <div className="p-2.5 rounded-lg bg-blue-50 text-blue-800 border border-blue-100">
+                                        <span className="block text-[10px] text-blue-600 uppercase font-bold">Male</span>
+                                        <span className="text-base font-bold">{stats.maleStudents ?? stats.maleCount ?? 0}</span>
+                                    </div>
+                                    <div className="p-2.5 rounded-lg bg-purple-50 text-purple-800 border border-purple-100">
+                                        <span className="block text-[10px] text-purple-600 uppercase font-bold">Female</span>
+                                        <span className="text-base font-bold">{stats.femaleStudents ?? stats.femaleCount ?? 0}</span>
+                                    </div>
+                                    <div className="p-2.5 rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-100">
+                                        <span className="block text-[10px] text-emerald-600 uppercase font-bold">Seats Left</span>
+                                        <span className="text-base font-bold">
+                                            {(stats.remainingCapacity ?? stats.remainingSeats) !== null && (stats.remainingCapacity ?? stats.remainingSeats) !== undefined 
+                                                ? (stats.remainingCapacity ?? stats.remainingSeats) 
+                                                : "∞"}
+                                        </span>
+                                    </div>
+                                </div>
 
-                        {/* Gender and Capacity breakdown stats */}
-                        <div className="grid grid-cols-4 gap-2 text-center">
-                            <div className="p-2.5 rounded-lg bg-slate-100 text-slate-800">
-                                <span className="block text-[10px] text-slate-500 uppercase font-bold">Total Roll</span>
-                                <span className="text-base font-bold">{rosterData.stats.totalStudents}</span>
-                            </div>
-                            <div className="p-2.5 rounded-lg bg-blue-50 text-blue-800 border border-blue-100">
-                                <span className="block text-[10px] text-blue-600 uppercase font-bold">Male</span>
-                                <span className="text-base font-bold">{rosterData.stats.maleStudents}</span>
-                            </div>
-                            <div className="p-2.5 rounded-lg bg-purple-50 text-purple-800 border border-purple-100">
-                                <span className="block text-[10px] text-purple-600 uppercase font-bold">Female</span>
-                                <span className="text-base font-bold">{rosterData.stats.femaleStudents}</span>
-                            </div>
-                            <div className="p-2.5 rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-100">
-                                <span className="block text-[10px] text-emerald-600 uppercase font-bold">Seats Left</span>
-                                <span className="text-base font-bold">
-                                    {rosterData.stats.remainingCapacity !== null ? rosterData.stats.remainingCapacity : "∞"}
-                                </span>
-                            </div>
-                        </div>
-
-                        {/* Roster Table */}
-                        {rosterData.roster.length === 0 ? (
-                            <div className="p-8 text-center text-slate-500">
-                                No students are currently placed in Section {rosterData.section.name}.
-                            </div>
-                        ) : (
-                            <div className="border border-slate-200 rounded-lg overflow-hidden max-h-[50vh] overflow-y-auto">
-                                <table className="w-full text-left border-collapse text-xs">
-                                    <thead className="bg-slate-50 sticky top-0 border-b border-slate-200">
-                                        <tr className="text-slate-600 font-semibold">
-                                            <th className="py-2 px-3 w-12 text-center">Roll</th>
-                                            <th className="py-2 px-3">Student Name</th>
-                                            <th className="py-2 px-3">Student ID</th>
-                                            <th className="py-2 px-3">Gender</th>
-                                            <th className="py-2 px-3">Intake</th>
-                                            <th className="py-2 px-3 text-right">Actions</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-slate-100">
-                                        {rosterData.roster.map((r) => {
-                                            const fullName = `${r.student.firstName} ${r.student.fatherName} ${r.student.grandfatherName || ""}`.trim();
-                                            return (
-                                                <tr key={r.enrollmentId} className="hover:bg-slate-50/60">
-                                                    <td className="py-2 px-3 text-center font-bold text-slate-500">
-                                                        {r.rollNumber}
-                                                    </td>
-                                                    <td className="py-2 px-3 font-semibold text-slate-900">
-                                                        {fullName}
-                                                    </td>
-                                                    <td className="py-2 px-3 font-mono text-slate-600">
-                                                        {r.student.studentId}
-                                                    </td>
-                                                    <td className="py-2 px-3">
-                                                        <span className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${
-                                                            r.student.gender === "FEMALE" ? "bg-purple-50 text-purple-700" : "bg-blue-50 text-blue-700"
-                                                        }`}>
-                                                            {r.student.gender || "—"}
-                                                        </span>
-                                                    </td>
-                                                    <td className="py-2 px-3 text-slate-500">
-                                                        {r.enrollmentType}
-                                                    </td>
-                                                    <td className="py-2 px-3 text-right">
-                                                        <div className="inline-flex items-center gap-1.5">
-                                                            <button
-                                                                onClick={() => openPlacementHistory(r.enrollmentId, fullName, r.student.studentId)}
-                                                                title="View placement history audit trail"
-                                                                className="p-1 rounded text-slate-400 hover:text-slate-700 hover:bg-slate-100"
-                                                            >
-                                                                <Clock className="w-3.5 h-3.5" />
-                                                            </button>
-                                                            <button
-                                                                onClick={() => openReassignModal(r, { id: rosterData.section.id, name: rosterData.section.name })}
-                                                                disabled={isYearLocked}
-                                                                title={isYearLocked ? "Academic year closed" : "Reassign to another section"}
-                                                                className="px-2 py-1 rounded text-[11px] font-medium text-[#4085b3] hover:bg-[#4085b3]/10 border border-[#4085b3]/30 disabled:opacity-50"
-                                                            >
-                                                                Reassign
-                                                            </button>
-                                                        </div>
-                                                    </td>
+                                {/* Roster Table */}
+                                {rosterList.length === 0 ? (
+                                    <div className="p-8 text-center text-slate-500">
+                                        No students are currently placed in Section {sectionName}.
+                                    </div>
+                                ) : (
+                                    <div className="border border-slate-200 rounded-lg overflow-hidden max-h-[50vh] overflow-y-auto">
+                                        <table className="w-full text-left border-collapse text-xs">
+                                            <thead className="bg-slate-50 sticky top-0 border-b border-slate-200">
+                                                <tr className="text-slate-600 font-semibold">
+                                                    <th className="py-2 px-3 w-12 text-center">Roll</th>
+                                                    <th className="py-2 px-3">Student Name</th>
+                                                    <th className="py-2 px-3">Student ID</th>
+                                                    <th className="py-2 px-3">Gender</th>
+                                                    <th className="py-2 px-3">Intake</th>
+                                                    <th className="py-2 px-3 text-right">Actions</th>
                                                 </tr>
-                                            );
-                                        })}
-                                    </tbody>
-                                </table>
+                                            </thead>
+                                            <tbody className="divide-y divide-slate-100">
+                                                {rosterList.map((r, idx) => {
+                                                    const studentObj = r.student || r;
+                                                    const firstName = studentObj?.firstName || r.firstName || "";
+                                                    const fatherName = studentObj?.fatherName || r.fatherName || "";
+                                                    const grandfatherName = studentObj?.grandfatherName || r.grandfatherName || "";
+                                                    const fullName = r.fullName || `${firstName} ${fatherName} ${grandfatherName}`.trim() || "Student";
+                                                    const studentId = studentObj?.studentId || r.studentId || "—";
+                                                    const gender = studentObj?.gender || r.gender || "—";
+
+                                                    return (
+                                                        <tr key={r.enrollmentId || idx} className="hover:bg-slate-50/60">
+                                                            <td className="py-2 px-3 text-center font-bold text-slate-500">
+                                                                {r.rollNumber || (idx + 1)}
+                                                            </td>
+                                                            <td className="py-2 px-3 font-semibold text-slate-900">
+                                                                {fullName}
+                                                            </td>
+                                                            <td className="py-2 px-3 font-mono text-slate-600">
+                                                                {studentId}
+                                                            </td>
+                                                            <td className="py-2 px-3">
+                                                                <span className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${
+                                                                    gender === "FEMALE" ? "bg-purple-50 text-purple-700" : "bg-blue-50 text-blue-700"
+                                                                }`}>
+                                                                    {gender}
+                                                                </span>
+                                                            </td>
+                                                            <td className="py-2 px-3 text-slate-500">
+                                                                {r.enrollmentType}
+                                                            </td>
+                                                            <td className="py-2 px-3 text-right">
+                                                                <div className="inline-flex items-center gap-1.5">
+                                                                    <button
+                                                                        onClick={() => openPlacementHistory(r.enrollmentId, fullName, studentId)}
+                                                                        title="View placement history audit trail"
+                                                                        className="p-1 rounded text-slate-400 hover:text-slate-700 hover:bg-slate-100"
+                                                                    >
+                                                                        <Clock className="w-3.5 h-3.5" />
+                                                                    </button>
+                                                                    <button
+                                                                        onClick={() => openReassignModal(r, { id: sec.id, name: sectionName })}
+                                                                        disabled={isYearLocked}
+                                                                        title={isYearLocked ? "Academic year closed" : "Reassign to another section"}
+                                                                        className="px-2 py-1 rounded text-[11px] font-medium text-[#4085b3] hover:bg-[#4085b3]/10 border border-[#4085b3]/30 disabled:opacity-50"
+                                                                    >
+                                                                        Reassign
+                                                                    </button>
+                                                                </div>
+                                                            </td>
+                                                        </tr>
+                                                    );
+                                                })}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                )}
                             </div>
-                        )}
-                    </div>
+                        );
+                    })()
                 )}
             </Modal>
 
