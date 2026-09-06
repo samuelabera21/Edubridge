@@ -5,6 +5,7 @@ import { Modal } from "@/components/ui/Modal";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { fetchApi } from "@/lib/api";
+import { BookOpen, Clock, AlertCircle } from "lucide-react";
 
 interface AddSubjectModalProps {
     isOpen: boolean;
@@ -13,9 +14,10 @@ interface AddSubjectModalProps {
     schoolGradeId?: string;
     gradeName?: string;
     academicYearId?: string;
+    existingSubjectIds?: string[];
 }
 
-const STANDARD_ETHIOPIAN_SUBJECTS = [
+const ETHIOPIAN_PRESETS = [
     { name: "Mathematics", code: "MATH-101", defaultPeriods: 5 },
     { name: "English", code: "ENG-101", defaultPeriods: 5 },
     { name: "Amharic", code: "AMH-101", defaultPeriods: 4 },
@@ -38,13 +40,14 @@ export function AddSubjectModal({
     onSuccess,
     schoolGradeId,
     gradeName,
-    academicYearId
+    academicYearId,
+    existingSubjectIds = [],
 }: AddSubjectModalProps) {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [masterSubjects, setMasterSubjects] = useState<{ id: string; name: string; code?: string }[]>([]);
 
-    const [mode, setMode] = useState<"EXISTING" | "NEW">("EXISTING");
+    const [mode, setMode] = useState<"CATALOG" | "NEW">("CATALOG");
     const [selectedMasterId, setSelectedMasterId] = useState("");
     const [customName, setCustomName] = useState("");
     const [customCode, setCustomCode] = useState("");
@@ -52,8 +55,11 @@ export function AddSubjectModal({
 
     useEffect(() => {
         if (isOpen) {
-            loadMasterSubjects();
             setError(null);
+            setCustomName("");
+            setCustomCode("");
+            setWeeklyPeriods(5);
+            loadMasterSubjects();
         }
     }, [isOpen]);
 
@@ -62,9 +68,12 @@ export function AddSubjectModal({
             const res = await fetchApi("/academic/subjects");
             if (res.ok) {
                 const data = await res.json();
-                setMasterSubjects(data);
-                if (data.length > 0) {
-                    setSelectedMasterId(data[0].id);
+                const list = Array.isArray(data) ? data : [];
+                setMasterSubjects(list);
+                if (list.length > 0) {
+                    // Pick the first unassigned subject, if any
+                    const unassigned = list.find(s => !existingSubjectIds.includes(s.id));
+                    setSelectedMasterId(unassigned ? unassigned.id : list[0].id);
                 } else {
                     setMode("NEW");
                 }
@@ -74,11 +83,16 @@ export function AddSubjectModal({
         }
     };
 
-    const handleSelectPreset = (preset: { name: string; code: string; defaultPeriods: number }) => {
-        setCustomName(preset.name);
-        setCustomCode(preset.code);
-        setWeeklyPeriods(preset.defaultPeriods);
+    const handlePresetChange = (presetName: string) => {
+        const preset = ETHIOPIAN_PRESETS.find(p => p.name === presetName);
+        if (preset) {
+            setCustomName(preset.name);
+            setCustomCode(preset.code);
+            setWeeklyPeriods(preset.defaultPeriods);
+        }
     };
+
+    const isAlreadyAssigned = existingSubjectIds.includes(selectedMasterId);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -88,41 +102,41 @@ export function AddSubjectModal({
         try {
             let targetSubjectId = selectedMasterId;
 
-            // If new subject mode, create master subject first
+            // If creating a new subject definition
             if (mode === "NEW") {
                 if (!customName.trim()) throw new Error("Subject name is required");
                 const sRes = await fetchApi("/academic/subjects", {
                     method: "POST",
                     body: JSON.stringify({
                         name: customName.trim(),
-                        code: customCode.trim() || undefined
-                    })
+                        code: customCode.trim() || undefined,
+                    }),
                 });
 
                 if (!sRes.ok) {
                     const sErr = await sRes.json();
-                    throw new Error(sErr.error || "Failed to create master subject");
+                    throw new Error(sErr.error || "Failed to create subject");
                 }
 
                 const newSub = await sRes.json();
                 targetSubjectId = newSub.id;
             }
 
-            if (!targetSubjectId) throw new Error("Please select a subject");
+            if (!targetSubjectId) throw new Error("Please select or define a subject");
 
             // If assigning to a specific grade
             if (schoolGradeId) {
                 const periodsNum = Number(weeklyPeriods);
-                if (isNaN(periodsNum) || periodsNum < 1) {
-                    throw new Error("Weekly periods must be at least 1");
+                if (isNaN(periodsNum) || periodsNum < 1 || periodsNum > 25) {
+                    throw new Error("Weekly periods must be between 1 and 25");
                 }
 
                 const assignRes = await fetchApi(`/academic/grades/school-grades/${schoolGradeId}/subjects`, {
                     method: "POST",
                     body: JSON.stringify({
                         subjectId: targetSubjectId,
-                        weeklyPeriods: periodsNum
-                    })
+                        weeklyPeriods: periodsNum,
+                    }),
                 });
 
                 if (!assignRes.ok) {
@@ -130,15 +144,14 @@ export function AddSubjectModal({
                     throw new Error(aErr.error || "Failed to assign subject to grade");
                 }
             } else if (academicYearId) {
-                // Otherwise assign to academic year offering
                 const yearRes = await fetchApi(`/academic/years/${academicYearId}/subjects`, {
                     method: "POST",
-                    body: JSON.stringify({ subjectId: targetSubjectId })
+                    body: JSON.stringify({ subjectId: targetSubjectId }),
                 });
 
                 if (!yearRes.ok) {
                     const yErr = await yearRes.json();
-                    throw new Error(yErr.error || "Failed to offer subject in academic year");
+                    throw new Error(yErr.error || "Failed to add subject to academic year");
                 }
             }
 
@@ -159,113 +172,155 @@ export function AddSubjectModal({
         >
             <form onSubmit={handleSubmit} className="space-y-4">
                 {error && (
-                    <div className="p-3 bg-red-100 text-red-700 rounded-md text-sm">
-                        {error}
+                    <div className="p-3 bg-rose-50 border border-rose-200 text-rose-800 rounded-lg text-xs flex items-start space-x-2">
+                        <AlertCircle className="w-4 h-4 text-rose-600 flex-shrink-0 mt-0.5" />
+                        <span>{error}</span>
                     </div>
                 )}
 
-                {/* Mode toggle */}
-                <div className="flex space-x-2 bg-gray-100 p-1 rounded-lg">
+                {/* Clean Segmented Mode Selector */}
+                <div className="flex bg-gray-100 p-1 rounded-lg">
                     <button
                         type="button"
-                        onClick={() => setMode("EXISTING")}
-                        className={`flex-1 py-1 text-xs font-semibold rounded-md transition-colors ${
-                            mode === "EXISTING" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-900"
+                        onClick={() => setMode("CATALOG")}
+                        className={`flex-1 py-1.5 text-xs font-semibold rounded-md transition-all cursor-pointer ${
+                            mode === "CATALOG" 
+                                ? "bg-white text-gray-900 shadow-xs" 
+                                : "text-gray-500 hover:text-gray-900"
                         }`}
                     >
-                        Select From Catalog
+                        Select from Catalog
                     </button>
                     <button
                         type="button"
                         onClick={() => setMode("NEW")}
-                        className={`flex-1 py-1 text-xs font-semibold rounded-md transition-colors ${
-                            mode === "NEW" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-900"
+                        className={`flex-1 py-1.5 text-xs font-semibold rounded-md transition-all cursor-pointer ${
+                            mode === "NEW" 
+                                ? "bg-white text-gray-900 shadow-xs" 
+                                : "text-gray-500 hover:text-gray-900"
                         }`}
                     >
                         Define New Subject
                     </button>
                 </div>
 
-                {mode === "EXISTING" ? (
+                {mode === "CATALOG" ? (
                     masterSubjects.length === 0 ? (
-                        <div className="p-3 bg-amber-50 border border-amber-200 rounded text-amber-800 text-xs">
-                            No subjects found in catalog. Switch to "Define New Subject" to add one.
+                        <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg text-center text-xs text-gray-500">
+                            No subjects found in catalog. Switch to "Define New Subject" to create one.
                         </div>
                     ) : (
-                        <div className="space-y-1">
-                            <label className="text-xs font-semibold text-gray-700">Select Subject</label>
+                        <div className="space-y-2">
+                            <label className="block text-xs font-semibold text-gray-700">
+                                Select Subject <span className="text-rose-500">*</span>
+                            </label>
                             <select
                                 value={selectedMasterId}
                                 onChange={(e) => setSelectedMasterId(e.target.value)}
-                                className="w-full p-2 border rounded-md bg-white text-gray-900 text-sm focus:ring-2 focus:ring-[#006b3f]"
+                                className="w-full text-xs border border-gray-300 rounded-lg px-3 py-2 bg-white text-gray-900 focus:ring-2 focus:ring-[#4085b3] focus:border-[#4085b3] outline-none cursor-pointer"
                                 required
                             >
-                                {masterSubjects.map((s) => (
-                                    <option key={s.id} value={s.id}>
-                                        {s.name} {s.code ? `(${s.code})` : ""}
-                                    </option>
-                                ))}
+                                {masterSubjects.map((s) => {
+                                    const assigned = existingSubjectIds.includes(s.id);
+                                    return (
+                                        <option key={s.id} value={s.id}>
+                                            {s.name} {s.code ? `(${s.code})` : ""} {assigned ? "• (Already Assigned - Will Update)" : ""}
+                                        </option>
+                                    );
+                                })}
                             </select>
+
+                            {isAlreadyAssigned && (
+                                <p className="text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded-md p-2">
+                                    Notice: This subject is already assigned to {gradeName || "this grade"}. Submitting will update its weekly period load.
+                                </p>
+                            )}
                         </div>
                     )
                 ) : (
                     <div className="space-y-3">
-                        <Input
-                            label="Subject Name"
-                            placeholder="e.g. Physics, Economics"
-                            value={customName}
-                            onChange={(e) => setCustomName(e.target.value)}
-                            required
-                        />
-                        <Input
-                            label="Subject Code"
-                            placeholder="e.g. PHYS-101"
-                            value={customCode}
-                            onChange={(e) => setCustomCode(e.target.value)}
-                        />
+                        {/* Ethiopian Preset Dropdown */}
                         <div>
-                            <label className="block text-[10px] uppercase font-bold text-gray-500 mb-1">Ethiopian Curriculum Presets</label>
-                            <div className="flex flex-wrap gap-1">
-                                {STANDARD_ETHIOPIAN_SUBJECTS.map((p) => (
-                                    <button
-                                        key={p.name}
-                                        type="button"
-                                        onClick={() => handleSelectPreset(p)}
-                                        className="px-2 py-0.5 text-xs rounded bg-gray-100 hover:bg-[#006b3f] hover:text-white transition-colors"
-                                    >
-                                        {p.name}
-                                    </button>
+                            <label className="block text-xs font-semibold text-gray-700 mb-1">
+                                Curriculum Standard Preset <span className="text-gray-400 font-normal">(Optional)</span>
+                            </label>
+                            <select
+                                onChange={(e) => handlePresetChange(e.target.value)}
+                                defaultValue=""
+                                className="w-full text-xs border border-gray-300 rounded-lg px-3 py-2 bg-white text-gray-700 focus:ring-2 focus:ring-[#4085b3] focus:border-[#4085b3] outline-none cursor-pointer"
+                            >
+                                <option value="" disabled>Choose preset to autofill...</option>
+                                {ETHIOPIAN_PRESETS.map((p) => (
+                                    <option key={p.name} value={p.name}>
+                                        {p.name} ({p.code}) &bull; {p.defaultPeriods} p/wk
+                                    </option>
                                 ))}
-                            </div>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label className="block text-xs font-semibold text-gray-700 mb-1">
+                                Subject Name <span className="text-rose-500">*</span>
+                            </label>
+                            <input
+                                type="text"
+                                placeholder="e.g. Physics, Economics"
+                                value={customName}
+                                onChange={(e) => setCustomName(e.target.value)}
+                                className="w-full px-3 py-2 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4085b3] focus:border-[#4085b3] outline-none"
+                                required
+                            />
+                        </div>
+
+                        <div>
+                            <label className="block text-xs font-semibold text-gray-700 mb-1">
+                                Subject Code <span className="text-gray-400 font-normal">(Optional)</span>
+                            </label>
+                            <input
+                                type="text"
+                                placeholder="e.g. PHYS-101"
+                                value={customCode}
+                                onChange={(e) => setCustomCode(e.target.value)}
+                                className="w-full px-3 py-2 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4085b3] focus:border-[#4085b3] outline-none"
+                            />
                         </div>
                     </div>
                 )}
 
-                {/* Configurable Weekly Periods when assigning to Grade */}
+                {/* Weekly Periods when assigning to Grade */}
                 {schoolGradeId && (
                     <div>
-                        <Input
-                            label="Weekly Instructional Periods"
-                            type="number"
-                            min={1}
-                            max={15}
-                            value={weeklyPeriods}
-                            onChange={(e) => setWeeklyPeriods(e.target.value)}
-                            required
-                        />
-                        <p className="text-xs text-gray-500 -mt-2 mb-2">
-                            Configurable number of weekly class periods for this grade according to MoE general education syllabus.
-                        </p>
+                        <label className="block text-xs font-semibold text-gray-700 mb-1">
+                            Weekly Instructional Periods <span className="text-rose-500">*</span>
+                        </label>
+                        <div className="relative">
+                            <Clock className="w-3.5 h-3.5 absolute left-3 top-2.5 text-gray-400" />
+                            <input
+                                type="number"
+                                min={1}
+                                max={25}
+                                value={weeklyPeriods}
+                                onChange={(e) => setWeeklyPeriods(e.target.value)}
+                                placeholder="5"
+                                className="w-full pl-8 pr-3 py-2 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4085b3] focus:border-[#4085b3] outline-none"
+                                required
+                            />
+                        </div>
                     </div>
                 )}
 
-                <div className="flex justify-end gap-3 pt-4 border-t">
-                    <Button type="button" variant="ghost" onClick={onClose}>
+                {/* Action Buttons */}
+                <div className="flex justify-end gap-2 pt-3 border-t border-gray-100">
+                    <Button type="button" variant="outline" onClick={onClose} disabled={loading} className="text-xs">
                         Cancel
                     </Button>
-                    <Button type="submit" isLoading={loading}>
-                        {schoolGradeId ? "Assign to Grade" : "Add to Catalog"}
-                    </Button>
+                    <button
+                        type="submit"
+                        disabled={loading}
+                        className="px-4 py-2 text-xs font-semibold text-white bg-[#4085b3] hover:bg-[#2b6a94] rounded-lg transition-colors cursor-pointer disabled:opacity-50"
+                    >
+                        {loading ? "Saving..." : schoolGradeId ? (isAlreadyAssigned ? "Update Load" : "Assign to Grade") : "Add to Catalog"}
+                    </button>
                 </div>
             </form>
         </Modal>
