@@ -109,7 +109,7 @@ export default function RoomsPage() {
                         setRoomForm({ name: "", type: "CLASSROOM", capacity: "", status: "AVAILABLE", description: "" });
                         setIsRoomModalOpen(true);
                     }}
-                    className="flex items-center space-x-2 bg-[#006b3f] hover:bg-[#005a34] text-white px-4 py-2 rounded-md transition-colors"
+                    className="flex items-center space-x-2 bg-[#4085b3] hover:bg-[#32698e] text-white px-4 py-2 rounded-md transition-colors"
                 >
                     <Plus className="w-4 h-4" />
                     <span>Add Room</span>
@@ -162,7 +162,7 @@ export default function RoomsPage() {
                                         <div className="flex items-center justify-end space-x-2">
                                             <button
                                                 onClick={() => openEditModal(room)}
-                                                className="p-1.5 text-gray-400 hover:text-[#006b3f] hover:bg-green-50 rounded-md transition-colors"
+                                                className="p-1.5 text-gray-400 hover:text-[#4085b3] hover:bg-green-50 rounded-md transition-colors"
                                                 title="Edit"
                                             >
                                                 <Edit2 className="w-4 h-4" />
@@ -209,7 +209,7 @@ export default function RoomsPage() {
                                         required
                                         value={roomForm.name}
                                         onChange={e => setRoomForm({ ...roomForm, name: e.target.value })}
-                                        className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#006b3f]"
+                                        className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#4085b3]"
                                         placeholder="e.g. Room 101, Science Lab A"
                                     />
                                 </div>
@@ -219,7 +219,7 @@ export default function RoomsPage() {
                                     <select
                                         value={roomForm.type}
                                         onChange={e => setRoomForm({ ...roomForm, type: e.target.value })}
-                                        className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#006b3f]"
+                                        className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#4085b3]"
                                     >
                                         <option value="CLASSROOM">Regular Classroom</option>
                                         <option value="LAB">Laboratory</option>
@@ -236,7 +236,7 @@ export default function RoomsPage() {
                                         min="1"
                                         value={roomForm.capacity}
                                         onChange={e => setRoomForm({ ...roomForm, capacity: e.target.value })}
-                                        className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#006b3f]"
+                                        className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#4085b3]"
                                         placeholder="e.g. 30"
                                     />
                                 </div>
@@ -246,7 +246,7 @@ export default function RoomsPage() {
                                     <select
                                         value={roomForm.status}
                                         onChange={e => setRoomForm({ ...roomForm, status: e.target.value })}
-                                        className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#006b3f]"
+                                        className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#4085b3]"
                                     >
                                         <option value="AVAILABLE">Available</option>
                                         <option value="MAINTENANCE">Under Maintenance</option>
@@ -259,7 +259,7 @@ export default function RoomsPage() {
                                     <textarea
                                         value={roomForm.description}
                                         onChange={e => setRoomForm({ ...roomForm, description: e.target.value })}
-                                        className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#006b3f]"
+                                        className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#4085b3]"
                                         rows={2}
                                         placeholder="Optional details..."
                                     />
@@ -278,7 +278,7 @@ export default function RoomsPage() {
                             <button
                                 type="submit"
                                 form="roomForm"
-                                className="px-4 py-2 text-sm bg-[#006b3f] text-white hover:bg-[#005a34] rounded-md font-medium transition-colors"
+                                className="px-4 py-2 text-sm bg-[#4085b3] text-white hover:bg-[#32698e] rounded-md font-medium transition-colors"
                             >
                                 Save Room
                             </button>

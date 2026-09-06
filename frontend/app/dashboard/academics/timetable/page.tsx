@@ -500,7 +500,7 @@ export default function TimetablePage() {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
                     <h1 className="text-xl font-bold text-gray-900 flex items-center">
-                        <Clock className="w-6 h-6 mr-2 text-[#006b3f]" />
+                        <Clock className="w-6 h-6 mr-2 text-[#4085b3]" />
                         Ethiopian MoE Curriculum Timetable & Scheduler
                     </h1>
                     <p className="text-sm text-gray-500 mt-1">
@@ -508,7 +508,7 @@ export default function TimetablePage() {
                     </p>
                 </div>
                 {activeYear && (
-                    <div className="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold bg-[#e6f3ed] text-[#006b3f] border border-[#c2e5d5]">
+                    <div className="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold bg-sky-50 text-[#4085b3] border border-sky-200">
                         <Calendar className="w-3.5 h-3.5 mr-1" />
                         Active Calendar: {activeYear.name}
                     </div>
@@ -519,14 +519,14 @@ export default function TimetablePage() {
             <div className="flex flex-wrap border-b border-gray-200 gap-1">
                 <button 
                     onClick={() => setActiveTab("grid")}
-                    className={`py-3 px-5 font-semibold text-sm border-b-2 transition-colors flex items-center ${activeTab === "grid" ? "border-[#006b3f] text-[#006b3f]" : "border-transparent text-gray-500 hover:text-gray-700"}`}
+                    className={`py-3 px-5 font-semibold text-sm border-b-2 transition-colors flex items-center ${activeTab === "grid" ? "border-[#4085b3] text-[#4085b3]" : "border-transparent text-gray-500 hover:text-gray-700"}`}
                 >
                     <BookOpen className="w-4 h-4 mr-2" />
                     Master Timetable Grid
                 </button>
                 <button 
                     onClick={() => setActiveTab("config")}
-                    className={`py-3 px-5 font-semibold text-sm border-b-2 transition-colors flex items-center ${activeTab === "config" ? "border-[#006b3f] text-[#006b3f]" : "border-transparent text-gray-500 hover:text-gray-700"}`}
+                    className={`py-3 px-5 font-semibold text-sm border-b-2 transition-colors flex items-center ${activeTab === "config" ? "border-[#4085b3] text-[#4085b3]" : "border-transparent text-gray-500 hover:text-gray-700"}`}
                 >
                     <Settings className="w-4 h-4 mr-2" />
                     Schedule Configuration
@@ -534,21 +534,21 @@ export default function TimetablePage() {
 
                 <button 
                     onClick={() => setActiveTab("periods")}
-                    className={`py-3 px-5 font-semibold text-sm border-b-2 transition-colors flex items-center ${activeTab === "periods" ? "border-[#006b3f] text-[#006b3f]" : "border-transparent text-gray-500 hover:text-gray-700"}`}
+                    className={`py-3 px-5 font-semibold text-sm border-b-2 transition-colors flex items-center ${activeTab === "periods" ? "border-[#4085b3] text-[#4085b3]" : "border-transparent text-gray-500 hover:text-gray-700"}`}
                 >
                     <Clock className="w-4 h-4 mr-2" />
                     Period Configurator
                 </button>
                 <button 
                     onClick={() => setActiveTab("requirements")}
-                    className={`py-3 px-5 font-semibold text-sm border-b-2 transition-colors flex items-center ${activeTab === "requirements" ? "border-[#006b3f] text-[#006b3f]" : "border-transparent text-gray-500 hover:text-gray-700"}`}
+                    className={`py-3 px-5 font-semibold text-sm border-b-2 transition-colors flex items-center ${activeTab === "requirements" ? "border-[#4085b3] text-[#4085b3]" : "border-transparent text-gray-500 hover:text-gray-700"}`}
                 >
                     <ClipboardList className="w-4 h-4 mr-2" />
                     Subject Requirements
                 </button>
                 <button 
                     onClick={() => setActiveTab("availability")}
-                    className={`py-3 px-5 font-semibold text-sm border-b-2 transition-colors flex items-center ${activeTab === "availability" ? "border-[#006b3f] text-[#006b3f]" : "border-transparent text-gray-500 hover:text-gray-700"}`}
+                    className={`py-3 px-5 font-semibold text-sm border-b-2 transition-colors flex items-center ${activeTab === "availability" ? "border-[#4085b3] text-[#4085b3]" : "border-transparent text-gray-500 hover:text-gray-700"}`}
                 >
                     <User className="w-4 h-4 mr-2" />
                     Teacher Availability
@@ -578,7 +578,7 @@ export default function TimetablePage() {
                                         <label key={day.value} className="flex items-center space-x-2 text-sm font-medium text-gray-700 select-none">
                                             <input 
                                                 type="checkbox"
-                                                className="w-4 h-4 rounded text-[#006b3f] focus:ring-[#006b3f]"
+                                                className="w-4 h-4 rounded text-[#4085b3] focus:ring-[#4085b3]"
                                                 checked={scheduleConfig.operatingDays.includes(day.value)}
                                                 onChange={(e) => {
                                                     const updated = e.target.checked
@@ -693,19 +693,19 @@ export default function TimetablePage() {
                                 <div className="flex rounded-md shadow-sm">
                                     <button 
                                         onClick={() => setViewType("section")}
-                                        className={`flex-1 px-4 py-2 text-xs font-bold rounded-l-md border transition-colors ${viewType === "section" ? "bg-[#006b3f] border-[#006b3f] text-white" : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50"}`}
+                                        className={`flex-1 px-4 py-2 text-xs font-bold rounded-l-md border transition-colors ${viewType === "section" ? "bg-[#4085b3] border-[#4085b3] text-white" : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50"}`}
                                     >
                                         Section
                                     </button>
                                     <button 
                                         onClick={() => setViewType("teacher")}
-                                        className={`flex-1 px-4 py-2 text-xs font-bold border-y border-r transition-colors ${viewType === "teacher" ? "bg-[#006b3f] border-[#006b3f] text-white" : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50"}`}
+                                        className={`flex-1 px-4 py-2 text-xs font-bold border-y border-r transition-colors ${viewType === "teacher" ? "bg-[#4085b3] border-[#4085b3] text-white" : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50"}`}
                                     >
                                         Teacher
                                     </button>
                                     <button 
                                         onClick={() => setViewType("room")}
-                                        className={`flex-1 px-4 py-2 text-xs font-bold border-y border-r rounded-r-md transition-colors ${viewType === "room" ? "bg-[#006b3f] border-[#006b3f] text-white" : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50"}`}
+                                        className={`flex-1 px-4 py-2 text-xs font-bold border-y border-r rounded-r-md transition-colors ${viewType === "room" ? "bg-[#4085b3] border-[#4085b3] text-white" : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50"}`}
                                     >
                                         Room
                                     </button>
@@ -798,7 +798,7 @@ export default function TimetablePage() {
                                             }
                                         }}
                                         variant="outline"
-                                        className="text-[#006b3f] border-[#006b3f] hover:bg-[#e6f3ed]"
+                                        className="text-[#4085b3] border-[#4085b3] hover:bg-sky-50"
                                     >
                                         Auto-Generate Timetable
                                     </Button>
@@ -844,21 +844,21 @@ export default function TimetablePage() {
                                                         return (
                                                             <td key={day.value} className="p-3 border-r border-gray-200 align-middle text-center relative group min-h-[80px]">
                                                                 {entry ? (
-                                                                    <div className="bg-[#e6f3ed] border border-[#b3dbca] text-[#006b3f] p-3 rounded-lg text-left shadow-sm relative transition-all">
-                                                                        <div className="text-xs font-bold uppercase tracking-wider text-[#006b3f]">
+                                                                    <div className="bg-sky-50 border border-sky-200 text-[#4085b3] p-3 rounded-lg text-left shadow-sm relative transition-all">
+                                                                        <div className="text-xs font-bold uppercase tracking-wider text-[#4085b3]">
                                                                             {entry.teachingAssignment?.subject?.name}
                                                                         </div>
                                                                         
                                                                         {viewType !== "teacher" && (
                                                                             <div className="text-xs mt-1 text-gray-900 flex items-center font-medium">
-                                                                                <User className="w-3 h-3 mr-1 text-[#006b3f]" />
+                                                                                <User className="w-3 h-3 mr-1 text-[#4085b3]" />
                                                                                 {entry.teachingAssignment?.teacher?.firstName} {entry.teachingAssignment?.teacher?.lastName}
                                                                             </div>
                                                                         )}
 
                                                                         {viewType !== "section" && (
                                                                             <div className="text-xs mt-1 text-gray-900 flex items-center font-medium">
-                                                                                <GraduationCap className="w-3 h-3 mr-1 text-[#006b3f]" />
+                                                                                <GraduationCap className="w-3 h-3 mr-1 text-[#4085b3]" />
                                                                                 Section: {entry.teachingAssignment?.section?.name || "All"}
                                                                             </div>
                                                                         )}
@@ -885,9 +885,9 @@ export default function TimetablePage() {
                                                                                 setSelectedCell({ dayOfWeek: day.value, periodId: period.id });
                                                                                 setIsAssignModalOpen(true);
                                                                             }}
-                                                                            className="w-full min-h-[50px] border border-dashed border-gray-300 rounded-lg hover:border-[#006b3f] hover:bg-[#e6f3ed]/20 transition-all flex items-center justify-center group/btn bg-white"
+                                                                            className="w-full min-h-[50px] border border-dashed border-gray-300 rounded-lg hover:border-[#4085b3] hover:bg-sky-50/20 transition-all flex items-center justify-center group/btn bg-white"
                                                                         >
-                                                                            <Plus className="w-5 h-5 text-gray-300 group-hover/btn:text-[#006b3f] transition-colors" />
+                                                                            <Plus className="w-5 h-5 text-gray-300 group-hover/btn:text-[#4085b3] transition-colors" />
                                                                         </button>
                                                                     ) : (
                                                                         <div className="text-xs text-gray-450 italic">Empty Slot</div>
@@ -1006,7 +1006,7 @@ export default function TimetablePage() {
                                                             />
                                                             <button 
                                                                 onClick={() => handleUpdateRequirement(as.id, editingRequirements[as.id])}
-                                                                className="p-1.5 bg-[#006b3f] hover:bg-[#005230] text-white rounded shadow-sm flex items-center justify-center transition-colors"
+                                                                className="p-1.5 bg-[#4085b3] hover:bg-[#32698e] text-white rounded shadow-sm flex items-center justify-center transition-colors"
                                                                 title="Save Requirement"
                                                             >
                                                                 <Check className="w-4 h-4" />
@@ -1146,7 +1146,7 @@ export default function TimetablePage() {
                         <input 
                             type="checkbox"
                             id="isBreak"
-                            className="w-4 h-4 rounded text-[#006b3f] focus:ring-[#006b3f]"
+                            className="w-4 h-4 rounded text-[#4085b3] focus:ring-[#4085b3]"
                             checked={newPeriod.isBreak}
                             onChange={(e) => setNewPeriod({ ...newPeriod, isBreak: e.target.checked })}
                         />
