@@ -406,6 +406,25 @@ export const deleteSchoolGrade = async (req: Request, res: Response) => {
     }
 };
 
+export const updateSchoolGradeStatus = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        if (!organizationId) return res.status(403).json({ error: "Missing school scope" });
+
+        const { status } = req.body;
+        if (!status) return res.status(400).json({ error: "Status is required (ACTIVE, SUSPENDED, or ARCHIVED)" });
+
+        const updated = await AcademicService.updateSchoolGradeStatus(
+            organizationId, 
+            req.params.schoolGradeId as string, 
+            status
+        );
+        res.json({ message: `School grade offering status updated to ${status}`, grade: updated });
+    } catch (error: any) {
+        res.status(400).json({ error: error.message || "Failed to update grade status" });
+    }
+};
+
 export const getSchoolGradeDetails = async (req: Request, res: Response) => {
     try {
         const organizationId = (req as any).accessScope?.id;
