@@ -67,40 +67,55 @@ export function EditSectionModal({ isOpen, onClose, onSuccess, section, gradeNam
 
     return (
         <Modal isOpen={isOpen} onClose={onClose} title={`Edit Section for ${gradeName}`}>
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-4 text-xs font-sans">
                 {error && (
-                    <div className="p-3 bg-red-100 text-red-700 rounded-md text-sm">
+                    <div className="p-3 bg-rose-50 border border-rose-200 text-rose-800 rounded-md text-xs">
                         {error}
                     </div>
                 )}
 
                 <div>
-                    <Input
-                        label="Section Identifier"
+                    <label className="block font-medium text-gray-700 mb-1">Section Identifier *</label>
+                    <input
+                        type="text"
                         value={name}
                         onChange={(e) => setName(e.target.value)}
                         placeholder="e.g. A, B, Blue"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md text-xs bg-white text-gray-900 focus:ring-2 focus:ring-[#4085b3] focus:border-[#4085b3] outline-none font-semibold uppercase"
                         required
                     />
                 </div>
 
                 <div>
-                    <Input
-                        label="Student Capacity"
+                    <label className="block font-medium text-gray-700 mb-1">Student Capacity *</label>
+                    <input
                         type="number"
                         min={1}
                         value={capacity}
                         onChange={(e) => setCapacity(e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md text-xs bg-white text-gray-900 focus:ring-2 focus:ring-[#4085b3] focus:border-[#4085b3] outline-none"
                         required
                     />
-                    <p className="text-xs text-gray-500 -mt-2 mb-2">
+                    <p className="text-[11px] text-gray-500 mt-1">
                         Capacity cannot be lowered below the number of currently enrolled students.
                     </p>
                 </div>
 
-                <div className="flex justify-end gap-3 pt-4 border-t">
-                    <Button type="button" variant="ghost" onClick={onClose}>Cancel</Button>
-                    <Button type="submit" isLoading={loading}>Save Changes</Button>
+                <div className="flex justify-end gap-2.5 pt-4 border-t border-gray-100">
+                    <button 
+                        type="button" 
+                        onClick={onClose}
+                        className="px-3.5 py-1.5 border border-gray-300 text-gray-700 hover:bg-gray-50 rounded-md text-xs font-medium transition-colors cursor-pointer"
+                    >
+                        Cancel
+                    </button>
+                    <button 
+                        type="submit" 
+                        disabled={loading}
+                        className="px-4 py-1.5 bg-[#4085b3] hover:bg-[#2b6a94] text-white rounded-md text-xs font-medium transition-colors shadow-xs disabled:opacity-50 cursor-pointer"
+                    >
+                        {loading ? "Saving..." : "Save Changes"}
+                    </button>
                 </div>
             </form>
         </Modal>
