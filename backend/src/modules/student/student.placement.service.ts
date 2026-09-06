@@ -170,11 +170,14 @@ export class StudentPlacementService {
                 capacity: cap,
                 status: sec.status,
                 enrolledCount,
+                occupancy: enrolledCount,
                 remainingCapacity,
                 isFull,
                 homeroomTeacher: sec.homeroomTeacher ? {
                     id: sec.homeroomTeacher.id,
                     name: `${sec.homeroomTeacher.firstName} ${sec.homeroomTeacher.lastName}`.trim(),
+                    firstName: sec.homeroomTeacher.firstName,
+                    fatherName: sec.homeroomTeacher.lastName,
                     email: undefined
                 } : null
             };
@@ -231,7 +234,16 @@ export class StudentPlacementService {
                 dateOfBirth: e.student.dateOfBirth,
                 enrollmentDate: e.enrollmentDate,
                 enrollmentType: e.enrollmentType,
-                status: e.status
+                status: e.status,
+                student: {
+                    id: e.student.id,
+                    studentId: e.student.studentId,
+                    firstName: e.student.firstName,
+                    fatherName: e.student.fatherName || e.student.lastName || "",
+                    grandfatherName: e.student.grandfatherName || "",
+                    gender: e.student.gender,
+                    dateOfBirth: e.student.dateOfBirth
+                }
             }))
         };
     }

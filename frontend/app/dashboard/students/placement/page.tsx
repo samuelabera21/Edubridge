@@ -308,13 +308,16 @@ function PlacementWorkspaceContent() {
         const query = searchQuery.trim().toLowerCase();
 
         return workspace.unplacedStudents.filter(item => {
-            // Search query
-            const fullName = `${item.student.firstName} ${item.student.fatherName} ${item.student.grandfatherName || ""}`.toLowerCase();
-            const studentId = (item.student.studentId || "").toLowerCase();
+            const studentObj = item.student || (item as any);
+            const firstName = studentObj?.firstName || (item as any).firstName || "";
+            const fatherName = studentObj?.fatherName || (item as any).fatherName || "";
+            const grandfatherName = studentObj?.grandfatherName || (item as any).grandfatherName || "";
+            const fullName = `${firstName} ${fatherName} ${grandfatherName}`.trim().toLowerCase();
+            const studentId = (studentObj?.studentId || (item as any).studentId || "").toLowerCase();
             const matchesQuery = !query || fullName.includes(query) || studentId.includes(query);
 
             // Gender filter
-            const studentGender = (item.student.gender || "").toUpperCase();
+            const studentGender = (studentObj?.gender || (item as any).gender || "").toUpperCase();
             const matchesGender = genderFilter === "ALL" || studentGender === genderFilter;
 
             return matchesQuery && matchesGender;
@@ -878,7 +881,14 @@ function PlacementWorkspaceContent() {
                                         <tbody className="divide-y divide-slate-100">
                                             {filteredUnplacedStudents.map((item) => {
                                                 const isSelected = selectedEnrollmentIds.includes(item.enrollmentId);
-                                                const fullName = `${item.student.firstName} ${item.student.fatherName} ${item.student.grandfatherName || ""}`.trim();
+                                                const studentObj = item.student || (item as any);
+                                                const firstName = studentObj?.firstName || (item as any).firstName || "";
+                                                const fatherName = studentObj?.fatherName || (item as any).fatherName || "";
+                                                const grandfatherName = studentObj?.grandfatherName || (item as any).grandfatherName || "";
+                                                const fullName = (item as any).fullName || `${firstName} ${fatherName} ${grandfatherName}`.trim() || "Unnamed Student";
+                                                const studentId = studentObj?.studentId || (item as any).studentId || "—";
+                                                const gender = studentObj?.gender || (item as any).gender || "—";
+                                                const dob = studentObj?.dateOfBirth || (item as any).dateOfBirth;
 
                                                 return (
                                                     <tr 
@@ -896,19 +906,19 @@ function PlacementWorkspaceContent() {
                                                         <td className="py-2.5 px-3">
                                                             <div className="font-semibold text-slate-900">{fullName}</div>
                                                             <span className="text-[11px] text-slate-400">
-                                                                {item.student.dateOfBirth ? `DOB: ${new Date(item.student.dateOfBirth).toLocaleDateString()}` : "Active"}
+                                                                {dob ? `DOB: ${new Date(dob).toLocaleDateString()}` : "Active"}
                                                             </span>
                                                         </td>
                                                         <td className="py-2.5 px-3 font-mono text-slate-600">
-                                                            {item.student.studentId}
+                                                            {studentId}
                                                         </td>
                                                         <td className="py-2.5 px-3">
                                                             <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold ${
-                                                                item.student.gender === "FEMALE" 
+                                                                gender === "FEMALE" 
                                                                     ? "bg-purple-50 text-purple-700 border border-purple-200" 
                                                                     : "bg-blue-50 text-blue-700 border border-blue-200"
                                                             }`}>
-                                                                {item.student.gender || "—"}
+                                                                {gender}
                                                             </span>
                                                         </td>
                                                         <td className="py-2.5 px-3">
