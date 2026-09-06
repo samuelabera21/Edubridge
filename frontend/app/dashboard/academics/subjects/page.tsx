@@ -254,10 +254,10 @@ function SubjectsPageContent() {
                 <span className="text-gray-900 font-medium">Curriculum Subjects</span>
             </div>
 
-            {/* Clean Header Bar */}
-            <div className="bg-white border border-gray-200 rounded-xl p-4 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            {/* Header: Clean, direct on page background */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
                 <div>
-                    <h1 className="text-lg font-bold text-gray-900 tracking-tight">
+                    <h1 className="text-xl font-bold text-gray-900 tracking-tight">
                         Curriculum & Subjects
                     </h1>
                     <p className="text-xs text-gray-500 mt-0.5">
@@ -268,7 +268,7 @@ function SubjectsPageContent() {
                 <div className="flex items-center space-x-2.5">
                     {/* Compact Session Dropdown */}
                     {years.length > 0 && (
-                        <div className="flex items-center space-x-1.5 bg-gray-50 border border-gray-300 rounded-lg px-2.5 py-1.5 text-xs">
+                        <div className="flex items-center space-x-1.5 bg-white border border-gray-300 rounded-lg px-2.5 py-1.5 text-xs shadow-2xs">
                             <span className="text-gray-500 text-[11px] font-medium">Session:</span>
                             <select
                                 value={selectedYearId}
@@ -341,11 +341,11 @@ function SubjectsPageContent() {
                 </div>
             </div>
 
-            {/* Navigation Tabs Bar */}
-            <div className="flex border-b border-gray-200 bg-white px-3 pt-2 rounded-t-xl border-t border-x gap-1">
+            {/* Clean Tabs on Normal Background (No Box) */}
+            <div className="flex border-b border-gray-200 gap-8">
                 <button
                     onClick={() => setActiveTab("CURRICULUM")}
-                    className={`py-2.5 px-3.5 text-xs font-semibold border-b-2 transition-colors flex items-center space-x-2 cursor-pointer ${
+                    className={`pb-2.5 text-xs font-semibold border-b-2 transition-colors flex items-center space-x-2 cursor-pointer ${
                         activeTab === "CURRICULUM"
                             ? "border-[#4085b3] text-[#4085b3]"
                             : "border-transparent text-gray-500 hover:text-gray-900"
@@ -356,7 +356,7 @@ function SubjectsPageContent() {
                 </button>
                 <button
                     onClick={() => setActiveTab("CATALOG")}
-                    className={`py-2.5 px-3.5 text-xs font-semibold border-b-2 transition-colors flex items-center space-x-2 cursor-pointer ${
+                    className={`pb-2.5 text-xs font-semibold border-b-2 transition-colors flex items-center space-x-2 cursor-pointer ${
                         activeTab === "CATALOG"
                             ? "border-[#4085b3] text-[#4085b3]"
                             : "border-transparent text-gray-500 hover:text-gray-900"
@@ -381,9 +381,10 @@ function SubjectsPageContent() {
                             </Link>
                         </div>
                     ) : (
-                        <>
-                            {/* Integrated Filter Toolbar */}
-                            <div className="bg-white border border-gray-200 rounded-xl p-3 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                        /* Unified Subject Table with Integrated Toolbar */
+                        <div className="bg-white border border-gray-200 rounded-xl shadow-xs overflow-hidden">
+                            {/* Integrated Toolbar in Table Header */}
+                            <div className="p-3.5 border-b border-gray-200 bg-gray-50/50 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
                                 <div className="flex flex-wrap items-center gap-2">
                                     <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Grade:</span>
                                     <select
@@ -397,10 +398,14 @@ function SubjectsPageContent() {
                                             </option>
                                         ))}
                                     </select>
+                                    <span className="text-gray-300 text-xs hidden md:inline">&bull;</span>
+                                    <span className="text-xs text-gray-500 font-mono hidden md:inline">
+                                        {filteredGradeSubjects.length} subjects &bull; {totalWeeklyPeriods} Total Weekly Periods
+                                    </span>
                                 </div>
 
                                 <div className="flex flex-wrap items-center gap-2 flex-1 max-w-md justify-end">
-                                    <div className="relative flex-1 min-w-[180px]">
+                                    <div className="relative flex-1 min-w-[160px]">
                                         <Search className="w-3.5 h-3.5 absolute left-3 top-2.5 text-gray-400" />
                                         <input
                                             type="text"
@@ -424,7 +429,7 @@ function SubjectsPageContent() {
                                     {curriculumSearchQuery && (
                                         <button
                                             onClick={() => setCurriculumSearchQuery("")}
-                                            className="inline-flex items-center space-x-1 px-2.5 py-1.5 rounded-lg border border-gray-200 bg-gray-50 hover:bg-gray-100 text-xs text-gray-600 transition-colors cursor-pointer"
+                                            className="inline-flex items-center space-x-1 px-2.5 py-1.5 rounded-lg border border-gray-300 bg-white hover:bg-gray-100 text-xs text-gray-600 transition-colors cursor-pointer"
                                             title="Clear search"
                                         >
                                             <RotateCcw className="w-3 h-3 text-gray-400" />
@@ -434,105 +439,93 @@ function SubjectsPageContent() {
                                 </div>
                             </div>
 
-                            {/* Grade Subject Table */}
-                            <div className="bg-white border border-gray-200 rounded-xl shadow-xs overflow-hidden">
-                                <div className="px-5 py-3.5 border-b border-gray-200 flex items-center justify-between bg-gray-50/50">
-                                    <h2 className="text-xs font-bold text-gray-900 uppercase tracking-wider">
-                                        {currentGrade?.grade?.name} Curriculum
-                                    </h2>
-                                    <span className="text-xs text-gray-500 font-mono">
-                                        {filteredGradeSubjects.length} subjects &bull; {totalWeeklyPeriods} Total Weekly Periods
-                                    </span>
+                            {gradeLoading ? (
+                                <div className="p-12 text-center text-xs text-gray-500">
+                                    <LoadingState message="Loading curriculum..." />
                                 </div>
-
-                                {gradeLoading ? (
-                                    <div className="p-12 text-center text-xs text-gray-500">
-                                        <LoadingState message="Loading curriculum..." />
-                                    </div>
-                                ) : filteredGradeSubjects.length === 0 ? (
-                                    <div className="py-16 text-center text-xs text-gray-500 space-y-2">
-                                        <p>
-                                            {curriculumSearchQuery 
-                                                ? "No allocated subjects match your filter." 
-                                                : `No subjects allocated to ${currentGrade?.grade?.name || "this grade"} yet.`}
-                                        </p>
-                                        {hasManagePermission && currentGrade && !curriculumSearchQuery && (
-                                            <button
-                                                onClick={() => {
-                                                    setModalGradeTarget({
-                                                        schoolGradeId: currentGrade.id,
-                                                        gradeName: currentGrade.grade?.name
-                                                    });
-                                                    setIsAddModalOpen(true);
-                                                }}
-                                                className="mt-2 inline-flex items-center space-x-1.5 px-3.5 py-1.5 text-xs font-medium text-white bg-[#4085b3] hover:bg-[#2b6a94] rounded-lg transition-colors shadow-xs cursor-pointer"
-                                            >
-                                                <Plus className="w-3.5 h-3.5" />
-                                                <span>Assign First Subject</span>
-                                            </button>
-                                        )}
-                                    </div>
-                                ) : (
-                                    <div className="overflow-x-auto">
-                                        <table className="w-full text-left text-xs text-gray-700">
-                                            <thead className="bg-gray-50 border-b border-gray-200 text-gray-600 uppercase font-semibold text-[11px]">
-                                                <tr>
-                                                    <th className="px-4 py-3 w-12 text-center">#</th>
-                                                    <th className="px-5 py-3 w-40">Subject Code</th>
-                                                    <th className="px-5 py-3">Subject Name</th>
-                                                    <th className="px-5 py-3 w-48 text-center">Weekly Load</th>
-                                                    <th className="px-5 py-3 w-28 text-right">Actions</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody className="divide-y divide-gray-100">
-                                                {filteredGradeSubjects.map((item, idx) => (
-                                                    <tr key={item.id} className="hover:bg-gray-50/70 transition-colors">
-                                                        <td className="px-4 py-3.5 text-center text-gray-400 font-mono text-[11px]">
-                                                            {idx + 1}
-                                                        </td>
-                                                        <td className="px-5 py-3.5 font-mono text-gray-600 font-semibold">
-                                                            {item.subject?.code || "N/A"}
-                                                        </td>
-                                                        <td className="px-5 py-3.5 font-bold text-gray-900">
-                                                            <div className="flex items-center space-x-2">
-                                                                <BookOpen className="w-4 h-4 text-[#4085b3]" />
-                                                                <span>{item.subject?.name}</span>
+                            ) : filteredGradeSubjects.length === 0 ? (
+                                <div className="py-16 text-center text-xs text-gray-500 space-y-2">
+                                    <p>
+                                        {curriculumSearchQuery 
+                                            ? "No allocated subjects match your filter." 
+                                            : `No subjects allocated to ${currentGrade?.grade?.name || "this grade"} yet.`}
+                                    </p>
+                                    {hasManagePermission && currentGrade && !curriculumSearchQuery && (
+                                        <button
+                                            onClick={() => {
+                                                setModalGradeTarget({
+                                                    schoolGradeId: currentGrade.id,
+                                                    gradeName: currentGrade.grade?.name
+                                                });
+                                                setIsAddModalOpen(true);
+                                            }}
+                                            className="mt-2 inline-flex items-center space-x-1.5 px-3.5 py-1.5 text-xs font-medium text-white bg-[#4085b3] hover:bg-[#2b6a94] rounded-lg transition-colors shadow-xs cursor-pointer"
+                                        >
+                                            <Plus className="w-3.5 h-3.5" />
+                                            <span>Assign First Subject</span>
+                                        </button>
+                                    )}
+                                </div>
+                            ) : (
+                                <div className="overflow-x-auto">
+                                    <table className="w-full text-left text-xs text-gray-700">
+                                        <thead className="bg-gray-50 border-b border-gray-200 text-gray-600 uppercase font-semibold text-[11px]">
+                                            <tr>
+                                                <th className="px-4 py-3 w-12 text-center">#</th>
+                                                <th className="px-5 py-3 w-40">Subject Code</th>
+                                                <th className="px-5 py-3">Subject Name</th>
+                                                <th className="px-5 py-3 w-44 text-center">Weekly Load</th>
+                                                <th className="px-5 py-3 w-28 text-right">Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-gray-100">
+                                            {filteredGradeSubjects.map((item, idx) => (
+                                                <tr key={item.id} className="hover:bg-gray-50/70 transition-colors">
+                                                    <td className="px-4 py-3.5 text-center text-gray-400 font-mono text-[11px]">
+                                                        {idx + 1}
+                                                    </td>
+                                                    <td className="px-5 py-3.5 font-mono text-gray-600 font-semibold">
+                                                        {item.subject?.code || "N/A"}
+                                                    </td>
+                                                    <td className="px-5 py-3.5 font-bold text-gray-900">
+                                                        <div className="flex items-center space-x-2">
+                                                            <BookOpen className="w-4 h-4 text-[#4085b3]" />
+                                                            <span>{item.subject?.name}</span>
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-5 py-3.5 text-center">
+                                                        <span className="inline-flex items-center space-x-1 px-2.5 py-1 rounded-md border border-gray-200 bg-gray-50 text-gray-800 font-mono text-xs">
+                                                            <Clock className="w-3 h-3 text-[#4085b3]" />
+                                                            <span>{item.weeklyPeriods ?? 5} Periods / Wk</span>
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-5 py-3.5 text-right">
+                                                        {hasManagePermission && (
+                                                            <div className="flex items-center justify-end space-x-1">
+                                                                <button
+                                                                    onClick={() => setEditSubjectModal({ isOpen: true, gradeSubject: item })}
+                                                                    className="text-gray-400 hover:text-[#4085b3] p-1 rounded hover:bg-sky-50 transition-colors cursor-pointer"
+                                                                    title="Update weekly periods"
+                                                                >
+                                                                    <Edit2 className="w-3.5 h-3.5" />
+                                                                </button>
+                                                                <button
+                                                                    onClick={() => handleRemoveSubjectFromGrade(item.subjectId, item.subject?.name)}
+                                                                    className="text-gray-400 hover:text-rose-600 p-1 rounded hover:bg-rose-50 transition-colors cursor-pointer"
+                                                                    title="Remove from grade curriculum"
+                                                                >
+                                                                    <Trash2 className="w-3.5 h-3.5" />
+                                                                </button>
                                                             </div>
-                                                        </td>
-                                                        <td className="px-5 py-3.5 text-center">
-                                                            <span className="inline-flex items-center space-x-1 px-2.5 py-1 rounded-md border border-gray-200 bg-gray-50 text-gray-800 font-mono text-xs">
-                                                                <Clock className="w-3 h-3 text-[#4085b3]" />
-                                                                <span>{item.weeklyPeriods ?? 5} Periods / Wk</span>
-                                                            </span>
-                                                        </td>
-                                                        <td className="px-5 py-3.5 text-right">
-                                                            {hasManagePermission && (
-                                                                <div className="flex items-center justify-end space-x-1">
-                                                                    <button
-                                                                        onClick={() => setEditSubjectModal({ isOpen: true, gradeSubject: item })}
-                                                                        className="text-gray-400 hover:text-[#4085b3] p-1 rounded hover:bg-sky-50 transition-colors cursor-pointer"
-                                                                        title="Update weekly periods"
-                                                                    >
-                                                                        <Edit2 className="w-3.5 h-3.5" />
-                                                                    </button>
-                                                                    <button
-                                                                        onClick={() => handleRemoveSubjectFromGrade(item.subjectId, item.subject?.name)}
-                                                                        className="text-gray-400 hover:text-rose-600 p-1 rounded hover:bg-rose-50 transition-colors cursor-pointer"
-                                                                        title="Remove from grade curriculum"
-                                                                    >
-                                                                        <Trash2 className="w-3.5 h-3.5" />
-                                                                    </button>
-                                                                </div>
-                                                            )}
-                                                        </td>
-                                                    </tr>
-                                                ))}
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                )}
-                            </div>
-                        </>
+                                                        )}
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            )}
+                        </div>
                     )}
                 </div>
             )}
@@ -540,41 +533,40 @@ function SubjectsPageContent() {
             {/* TAB 2: MASTER CATALOG */}
             {activeTab === "CATALOG" && (
                 <div className="space-y-3">
-                    {/* Catalog Filter Toolbar */}
-                    <div className="bg-white border border-gray-200 rounded-xl p-3 shadow-xs">
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                            <div className="relative flex-1 max-w-md">
-                                <Search className="w-3.5 h-3.5 absolute left-3 top-2.5 text-gray-400" />
-                                <input
-                                    type="text"
-                                    placeholder="Search master subjects by name or code..."
-                                    value={catalogSearchQuery}
-                                    onChange={(e) => setCatalogSearchQuery(e.target.value)}
-                                    className="w-full pl-8 pr-3 py-1.5 text-xs bg-white border border-gray-300 rounded-lg focus:ring-1 focus:ring-[#4085b3] focus:border-[#4085b3] outline-none"
-                                />
+                    {/* Master Subjects Table with Integrated Search in Header */}
+                    <div className="bg-white border border-gray-200 rounded-xl shadow-xs overflow-hidden">
+                        <div className="p-3.5 border-b border-gray-200 bg-gray-50/50 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                            <div className="flex items-center space-x-2">
+                                <h2 className="text-xs font-bold text-gray-900 uppercase tracking-wider">
+                                    Master Subject Register
+                                </h2>
+                                <span className="text-gray-300 text-xs">&bull;</span>
+                                <span className="text-xs text-gray-500 font-mono">
+                                    {filteredMasterSubjects.length} {filteredMasterSubjects.length === 1 ? "subject" : "subjects"}
+                                </span>
                             </div>
 
-                            {catalogSearchQuery && (
-                                <button
-                                    onClick={() => setCatalogSearchQuery("")}
-                                    className="inline-flex items-center space-x-1 px-2.5 py-1.5 rounded-lg border border-gray-200 bg-gray-50 hover:bg-gray-100 text-xs text-gray-600 transition-colors cursor-pointer"
-                                >
-                                    <RotateCcw className="w-3 h-3 text-gray-400" />
-                                    <span>Clear</span>
-                                </button>
-                            )}
-                        </div>
-                    </div>
-
-                    {/* Master Subjects Table */}
-                    <div className="bg-white border border-gray-200 rounded-xl shadow-xs overflow-hidden">
-                        <div className="px-5 py-3.5 border-b border-gray-200 flex items-center justify-between bg-gray-50/50">
-                            <h2 className="text-xs font-bold text-gray-900 uppercase tracking-wider">
-                                Master Subject Register
-                            </h2>
-                            <span className="text-xs text-gray-500 font-mono">
-                                {filteredMasterSubjects.length} {filteredMasterSubjects.length === 1 ? "subject" : "subjects"}
-                            </span>
+                            <div className="flex items-center space-x-2 max-w-sm flex-1 justify-end">
+                                <div className="relative flex-1">
+                                    <Search className="w-3.5 h-3.5 absolute left-3 top-2.5 text-gray-400" />
+                                    <input
+                                        type="text"
+                                        placeholder="Search master subjects..."
+                                        value={catalogSearchQuery}
+                                        onChange={(e) => setCatalogSearchQuery(e.target.value)}
+                                        className="w-full pl-8 pr-3 py-1.5 text-xs bg-white border border-gray-300 rounded-lg focus:ring-1 focus:ring-[#4085b3] focus:border-[#4085b3] outline-none"
+                                    />
+                                </div>
+                                {catalogSearchQuery && (
+                                    <button
+                                        onClick={() => setCatalogSearchQuery("")}
+                                        className="inline-flex items-center space-x-1 px-2.5 py-1.5 rounded-lg border border-gray-300 bg-white hover:bg-gray-100 text-xs text-gray-600 transition-colors cursor-pointer"
+                                    >
+                                        <RotateCcw className="w-3 h-3 text-gray-400" />
+                                        <span>Clear</span>
+                                    </button>
+                                )}
+                            </div>
                         </div>
 
                         {filteredMasterSubjects.length === 0 ? (

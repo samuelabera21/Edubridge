@@ -170,12 +170,12 @@ export default function GradeDetailsPage() {
                 </div>
             )}
 
-            {/* Clean Header Bar */}
-            <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-xs">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-gray-100">
+            {/* Header: Clean, direct on page background */}
+            <div className="space-y-2 pt-1">
+                <div className="flex items-center justify-between">
                     <Link 
                         href="/dashboard/academics/grades"
-                        className="inline-flex items-center space-x-1.5 text-xs text-gray-600 hover:text-gray-900 transition-colors w-fit"
+                        className="inline-flex items-center space-x-1.5 text-xs text-gray-500 hover:text-gray-900 transition-colors w-fit"
                     >
                         <ArrowLeft className="w-3.5 h-3.5" />
                         <span>Back to Grades & Sections</span>
@@ -183,40 +183,27 @@ export default function GradeDetailsPage() {
 
                     <div className="flex items-center space-x-2 text-xs text-gray-500">
                         <span>Session:</span>
-                        <span className="font-semibold text-gray-900 bg-gray-50 border border-gray-200 px-2.5 py-0.5 rounded">
+                        <span className="font-semibold text-gray-900 bg-white border border-gray-200 px-2.5 py-0.5 rounded shadow-2xs">
                             {gradeData.academicYear?.name}
                         </span>
                     </div>
                 </div>
 
-                <div className="pt-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
-                    <div>
-                        <div className="flex items-center space-x-3">
-                            <h1 className="text-2xl font-bold text-gray-900 tracking-tight">
-                                {gradeData.grade?.name}
-                            </h1>
-                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-sky-50 text-[#4085b3] border border-sky-100">
-                                Level {gradeData.grade?.level ?? 0}
-                            </span>
-                        </div>
-
-                        {/* Clean High-Level Summary */}
-                        <div className="flex flex-wrap items-center gap-2 mt-2 text-xs text-gray-600">
-                            <span className="font-semibold text-gray-900">{totalSections}</span> Sections
-                            <span className="text-gray-300">&bull;</span>
-                            <span className="font-semibold text-gray-900">{totalCapacity}</span> Total Seats
-                            <span className="text-gray-300">&bull;</span>
-                            <span className="font-semibold text-gray-900">{totalEnrolled}</span> Enrolled Students
-                            <span className="text-gray-300">&bull;</span>
-                            <span className="font-semibold text-gray-900">{totalSubjects}</span> Curriculum Subjects ({totalWeeklyPeriods} p/wk)
-                        </div>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
+                    <div className="flex items-center space-x-3">
+                        <h1 className="text-2xl font-bold text-gray-900 tracking-tight">
+                            {gradeData.grade?.name}
+                        </h1>
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-sky-50 text-[#4085b3] border border-sky-100">
+                            Level {gradeData.grade?.level ?? 0}
+                        </span>
                     </div>
 
                     {hasManagePermission && (
                         <div className="flex items-center space-x-2">
                             <button 
                                 onClick={() => setIsAddSectionOpen(true)}
-                                className="inline-flex items-center space-x-1 px-3 py-1.5 rounded-lg border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 text-xs font-semibold transition-colors cursor-pointer"
+                                className="inline-flex items-center space-x-1 px-3 py-1.5 rounded-lg border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 text-xs font-semibold transition-colors cursor-pointer shadow-2xs"
                             >
                                 <Plus className="w-3.5 h-3.5 text-gray-500" />
                                 <span>Add Section</span>
@@ -230,6 +217,35 @@ export default function GradeDetailsPage() {
                             </button>
                         </div>
                     )}
+                </div>
+
+                {/* Clean Data Stats on Normal Background (No Cards) */}
+                <div className="flex flex-wrap items-center gap-y-2 gap-x-6 px-1 pt-1 text-xs">
+                    <div className="flex items-baseline space-x-2">
+                        <span className="text-gray-500 font-medium text-xs">Sections:</span>
+                        <span className="font-bold text-gray-900 text-sm font-mono">{totalSections}</span>
+                    </div>
+
+                    <span className="text-gray-300 select-none hidden sm:inline">|</span>
+
+                    <div className="flex items-baseline space-x-2">
+                        <span className="text-gray-500 font-medium text-xs">Total Seats:</span>
+                        <span className="font-bold text-gray-900 text-sm font-mono">{totalCapacity}</span>
+                    </div>
+
+                    <span className="text-gray-300 select-none hidden sm:inline">|</span>
+
+                    <div className="flex items-baseline space-x-2">
+                        <span className="text-gray-500 font-medium text-xs">Enrolled:</span>
+                        <span className="font-bold text-emerald-700 text-sm font-mono">{totalEnrolled}</span>
+                    </div>
+
+                    <span className="text-gray-300 select-none hidden sm:inline">|</span>
+
+                    <div className="flex items-baseline space-x-2">
+                        <span className="text-gray-500 font-medium text-xs">Curriculum:</span>
+                        <span className="font-bold text-gray-900 text-sm font-mono">{totalSubjects} <span className="text-xs font-normal text-gray-500">subjects ({totalWeeklyPeriods} p/wk)</span></span>
+                    </div>
                 </div>
             </div>
 

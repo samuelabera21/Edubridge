@@ -277,70 +277,78 @@ export default function GradesAndSectionsPage() {
                 <span className="text-gray-900 font-medium">Grades & Class Sections</span>
             </div>
 
-            {/* Clean Header */}
-            <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-xs space-y-4">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                    <div>
-                        <h1 className="text-xl font-bold text-gray-900 tracking-tight">
-                            Grades & Class Sections
-                        </h1>
-                    </div>
-
-                    <div className="flex items-center space-x-3">
-                        {hasManagePermission && selectedYear && (
-                            <Link href={`/dashboard/academics/grades/create?yearId=${selectedYear.id}`}>
-                                <button className="inline-flex items-center space-x-1.5 px-4 py-2 text-xs font-medium text-white bg-[#4085b3] hover:bg-[#2b6a94] rounded-md transition-colors shadow-xs cursor-pointer">
-                                    <Plus className="w-4 h-4" />
-                                    <span>Add Grade Offering</span>
-                                </button>
-                            </Link>
-                        )}
-                    </div>
+            {/* Header: Clean, direct on page background */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
+                <div>
+                    <h1 className="text-xl font-bold text-gray-900 tracking-tight">
+                        Grades & Class Sections
+                    </h1>
+                    <p className="text-xs text-gray-500 mt-0.5">
+                        Configure academic levels, class sections, and student enrollment capacities.
+                    </p>
                 </div>
 
-                {selectedYear && (
-                    <div className="pt-3 border-t border-gray-100 flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs">
-                        <div className="flex flex-wrap items-center gap-3">
-                            <div className="flex items-center space-x-2 bg-gray-50 px-2.5 py-1 rounded border border-gray-300 text-xs">
-                                <span className="text-gray-500 font-medium">Session:</span>
-                                <select
-                                    value={selectedYearId}
-                                    onChange={(e) => setSelectedYearId(e.target.value)}
-                                    className="bg-transparent text-gray-900 font-semibold outline-none cursor-pointer"
-                                >
-                                    {years.map(y => (
-                                        <option key={y.id} value={y.id}>
-                                            {y.name} ({y.status})
-                                        </option>
-                                    ))}
-                                </select>
-                            </div>
-
-                            <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wider ${
-                                selectedYear.status === "ACTIVE"
-                                    ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                                    : selectedYear.status === "PLANNED"
-                                    ? "bg-amber-50 text-amber-700 border border-amber-200"
-                                    : "bg-gray-50 text-gray-700 border border-gray-200"
-                            }`}>
-                                {selectedYear.status}
-                            </span>
-
-                            <span className="text-gray-400 font-mono text-[11px]">
-                                {new Date(selectedYear.startDate).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })} &ndash; {new Date(selectedYear.endDate).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}
-                            </span>
+                <div className="flex items-center space-x-2.5">
+                    {/* Session Dropdown */}
+                    {selectedYear && (
+                        <div className="flex items-center space-x-1.5 bg-white border border-gray-300 rounded-lg px-2.5 py-1.5 text-xs shadow-2xs">
+                            <span className="text-gray-500 text-[11px] font-medium">Session:</span>
+                            <select
+                                value={selectedYearId}
+                                onChange={(e) => setSelectedYearId(e.target.value)}
+                                className="bg-transparent text-gray-900 font-semibold outline-none cursor-pointer"
+                            >
+                                {years.map(y => (
+                                    <option key={y.id} value={y.id}>
+                                        {y.name} ({y.status})
+                                    </option>
+                                ))}
+                            </select>
                         </div>
+                    )}
 
-                        {/* Clean summary stats */}
-                        <div className="flex items-center space-x-3 text-xs text-gray-600 bg-gray-50 px-3 py-1.5 rounded-lg border border-gray-200">
-                            <span><strong className="text-gray-900 font-mono">{schoolGrades.length}</strong> Grades</span>
-                            <span className="text-gray-300">&bull;</span>
-                            <span><strong className="text-gray-900 font-mono">{totalSections}</strong> Sections</span>
-                            <span className="text-gray-300">&bull;</span>
-                            <span><strong className="text-gray-900 font-mono">{totalCapacity}</strong> Seats</span>
-                        </div>
-                    </div>
-                )}
+                    {hasManagePermission && selectedYear && (
+                        <Link href={`/dashboard/academics/grades/create?yearId=${selectedYear.id}`}>
+                            <button className="inline-flex items-center space-x-1.5 px-3.5 py-1.5 text-xs font-semibold text-white bg-[#4085b3] hover:bg-[#2b6a94] rounded-lg transition-colors shadow-xs cursor-pointer flex-shrink-0">
+                                <Plus className="w-3.5 h-3.5" />
+                                <span>Add Grade Offering</span>
+                            </button>
+                        </Link>
+                    )}
+                </div>
+            </div>
+
+            {/* Clean Data Stats on Normal Background (No Cards) */}
+            <div className="flex flex-wrap items-center gap-y-2 gap-x-6 px-1 py-1 text-xs">
+                <div className="flex items-baseline space-x-2">
+                    <span className="text-gray-500 font-medium text-xs">Offered Grades:</span>
+                    <span className="font-bold text-gray-900 text-sm font-mono">{schoolGrades.length}</span>
+                </div>
+
+                <span className="text-gray-300 select-none hidden sm:inline">|</span>
+
+                <div className="flex items-baseline space-x-2">
+                    <span className="text-gray-500 font-medium text-xs">Total Sections:</span>
+                    <span className="font-bold text-gray-900 text-sm font-mono">{totalSections}</span>
+                </div>
+
+                <span className="text-gray-300 select-none hidden sm:inline">|</span>
+
+                <div className="flex items-baseline space-x-2">
+                    <span className="text-gray-500 font-medium text-xs">Total Capacity:</span>
+                    <span className="font-bold text-gray-900 text-sm font-mono">
+                        {totalCapacity} <span className="text-xs font-normal text-gray-500">seats</span>
+                    </span>
+                </div>
+
+                <span className="text-gray-300 select-none hidden sm:inline">|</span>
+
+                <div className="flex items-baseline space-x-2">
+                    <span className="text-gray-500 font-medium text-xs">Avg Capacity / Sec:</span>
+                    <span className="font-bold text-gray-900 text-sm font-mono">
+                        {avgCapacityPerSection} <span className="text-xs font-normal text-gray-500">seats</span>
+                    </span>
+                </div>
             </div>
 
             {/* Main Content Area with Integrated Action Bar */}

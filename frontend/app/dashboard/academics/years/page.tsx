@@ -130,10 +130,10 @@ export default function AcademicYearsPage() {
                 <span className="text-gray-900 font-medium">Academic Years</span>
             </div>
 
-            {/* Clean Header Bar */}
-            <div className="bg-white border border-gray-200 rounded-xl p-4 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            {/* Header: Clean, direct on page background */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
                 <div>
-                    <h1 className="text-lg font-bold text-gray-900 tracking-tight">
+                    <h1 className="text-xl font-bold text-gray-900 tracking-tight">
                         Academic Years
                     </h1>
                     <p className="text-xs text-gray-500 mt-0.5">
@@ -152,113 +152,92 @@ export default function AcademicYearsPage() {
                 )}
             </div>
 
-            {/* Reduced, Compact KPI Metric Strip */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-                <div className="bg-white border border-gray-200 rounded-xl px-4 py-3 shadow-xs flex items-center justify-between hover:border-[#4085b3] transition-all">
-                    <div>
-                        <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider">Total Registered</p>
-                        <p className="text-xl font-bold text-gray-900 mt-0.5 font-mono">{years.length}</p>
-                    </div>
-                    <div className="w-8 h-8 rounded-lg bg-sky-50 text-[#4085b3] flex items-center justify-center">
-                        <Calendar className="w-4 h-4" />
-                    </div>
+            {/* Clean Data Stats on Normal Background (No Cards) */}
+            <div className="flex flex-wrap items-center gap-y-2 gap-x-6 px-1 py-1 text-xs">
+                <div className="flex items-baseline space-x-2">
+                    <span className="text-gray-500 font-medium text-xs">Total Sessions:</span>
+                    <span className="font-bold text-gray-900 text-sm font-mono">{years.length}</span>
                 </div>
 
-                <div className="bg-white border border-gray-200 rounded-xl px-4 py-3 shadow-xs flex items-center justify-between hover:border-[#4085b3] transition-all">
-                    <div>
-                        <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider">Active Session</p>
-                        <p className="text-sm font-bold text-emerald-700 font-mono mt-0.5 truncate max-w-[140px]">
-                            {activeYear ? activeYear.name : "None"}
-                        </p>
-                    </div>
-                    <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
-                        <CheckCircle2 className="w-4 h-4" />
-                    </div>
+                <span className="text-gray-300 select-none hidden sm:inline">|</span>
+
+                <div className="flex items-baseline space-x-2">
+                    <span className="text-gray-500 font-medium text-xs">Active Session:</span>
+                    <span className="font-bold text-emerald-700 text-sm font-mono">{activeYear ? activeYear.name : "None"}</span>
                 </div>
 
-                <div className="bg-white border border-gray-200 rounded-xl px-4 py-3 shadow-xs flex items-center justify-between hover:border-[#4085b3] transition-all">
-                    <div>
-                        <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider">Planned</p>
-                        <p className="text-xl font-bold text-amber-600 font-mono mt-0.5">{plannedCount}</p>
-                    </div>
-                    <div className="w-8 h-8 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center">
-                        <Clock className="w-4 h-4" />
-                    </div>
+                <span className="text-gray-300 select-none hidden sm:inline">|</span>
+
+                <div className="flex items-baseline space-x-2">
+                    <span className="text-gray-500 font-medium text-xs">Planned:</span>
+                    <span className="font-bold text-gray-900 text-sm font-mono">{plannedCount}</span>
                 </div>
 
-                <div className="bg-white border border-gray-200 rounded-xl px-4 py-3 shadow-xs flex items-center justify-between hover:border-[#4085b3] transition-all">
-                    <div>
-                        <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider">Archived</p>
-                        <p className="text-xl font-bold text-gray-700 font-mono mt-0.5">{historicalCount}</p>
-                    </div>
-                    <div className="w-8 h-8 rounded-lg bg-gray-50 text-gray-600 flex items-center justify-center">
-                        <Layers className="w-4 h-4" />
-                    </div>
+                <span className="text-gray-300 select-none hidden sm:inline">|</span>
+
+                <div className="flex items-baseline space-x-2">
+                    <span className="text-gray-500 font-medium text-xs">Archived:</span>
+                    <span className="font-bold text-gray-900 text-sm font-mono">{historicalCount}</span>
                 </div>
             </div>
 
-            {/* Clean Integrated Filter Bar */}
-            <div className="bg-white border border-gray-200 rounded-xl p-3 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
-                <div className="relative flex-1">
-                    <Search className="w-3.5 h-3.5 absolute left-3 top-2.5 text-gray-400" />
-                    <input
-                        type="text"
-                        placeholder="Search academic year..."
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        className="w-full pl-8 pr-3 py-1.5 text-xs bg-white border border-gray-300 rounded-lg focus:ring-1 focus:ring-[#4085b3] focus:border-[#4085b3] outline-none"
-                    />
-                </div>
-
-                <div className="flex flex-wrap items-center gap-2">
-                    {/* Status Filter */}
-                    <select
-                        value={statusFilter}
-                        onChange={(e) => setStatusFilter(e.target.value)}
-                        className="text-xs border border-gray-300 rounded-lg px-2.5 py-1.5 bg-white text-gray-700 focus:ring-1 focus:ring-[#4085b3] outline-none cursor-pointer"
-                    >
-                        <option value="ALL">All Statuses</option>
-                        <option value="ACTIVE">Active</option>
-                        <option value="PLANNED">Planned</option>
-                        <option value="COMPLETED">Completed</option>
-                        <option value="ARCHIVED">Archived</option>
-                    </select>
-
-                    {/* Sort Dropdown */}
-                    <select
-                        value={sortBy}
-                        onChange={(e) => setSortBy(e.target.value as any)}
-                        className="text-xs border border-gray-300 rounded-lg px-2.5 py-1.5 bg-white text-gray-700 focus:ring-1 focus:ring-[#4085b3] outline-none cursor-pointer"
-                    >
-                        <option value="newest">Newest First</option>
-                        <option value="oldest">Oldest First</option>
-                        <option value="name_asc">Name (A - Z)</option>
-                        <option value="name_desc">Name (Z - A)</option>
-                    </select>
-
-                    {/* Clear Button */}
-                    {hasActiveFilters && (
-                        <button
-                            onClick={handleClearFilters}
-                            className="inline-flex items-center space-x-1 px-2.5 py-1.5 rounded-lg border border-gray-200 bg-gray-50 hover:bg-gray-100 text-xs text-gray-600 transition-colors cursor-pointer"
-                            title="Reset filters"
-                        >
-                            <RotateCcw className="w-3 h-3 text-gray-400" />
-                            <span>Clear</span>
-                        </button>
-                    )}
-                </div>
-            </div>
-
-            {/* Academic Years Data Table */}
+            {/* Academic Years Data Table with Integrated Toolbar */}
             <div className="bg-white border border-gray-200 rounded-xl shadow-xs overflow-hidden">
-                <div className="px-5 py-3.5 border-b border-gray-200 flex items-center justify-between bg-gray-50/50">
-                    <h2 className="text-xs font-bold text-gray-900 uppercase tracking-wider">
-                        Academic Sessions
-                    </h2>
-                    <span className="text-xs text-gray-500 font-mono">
-                        {filteredYears.length} {filteredYears.length === 1 ? "session" : "sessions"}
-                    </span>
+                <div className="p-3.5 border-b border-gray-200 bg-gray-50/50 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                    <div className="flex items-center space-x-2.5 flex-1 max-w-md">
+                        <div className="relative flex-1">
+                            <Search className="w-3.5 h-3.5 absolute left-3 top-2.5 text-gray-400" />
+                            <input
+                                type="text"
+                                placeholder="Search academic year..."
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                className="w-full pl-8 pr-3 py-1.5 text-xs bg-white border border-gray-300 rounded-lg focus:ring-1 focus:ring-[#4085b3] focus:border-[#4085b3] outline-none"
+                            />
+                        </div>
+                        <span className="text-xs text-gray-500 font-mono hidden sm:inline flex-shrink-0">
+                            {filteredYears.length} {filteredYears.length === 1 ? "session" : "sessions"}
+                        </span>
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-2">
+                        {/* Status Filter */}
+                        <select
+                            value={statusFilter}
+                            onChange={(e) => setStatusFilter(e.target.value)}
+                            className="text-xs border border-gray-300 rounded-lg px-2.5 py-1.5 bg-white text-gray-700 focus:ring-1 focus:ring-[#4085b3] outline-none cursor-pointer"
+                        >
+                            <option value="ALL">All Statuses</option>
+                            <option value="ACTIVE">Active</option>
+                            <option value="PLANNED">Planned</option>
+                            <option value="COMPLETED">Completed</option>
+                            <option value="ARCHIVED">Archived</option>
+                        </select>
+
+                        {/* Sort Dropdown */}
+                        <select
+                            value={sortBy}
+                            onChange={(e) => setSortBy(e.target.value as any)}
+                            className="text-xs border border-gray-300 rounded-lg px-2.5 py-1.5 bg-white text-gray-700 focus:ring-1 focus:ring-[#4085b3] outline-none cursor-pointer"
+                        >
+                            <option value="newest">Newest First</option>
+                            <option value="oldest">Oldest First</option>
+                            <option value="name_asc">Name (A - Z)</option>
+                            <option value="name_desc">Name (Z - A)</option>
+                        </select>
+
+                        {/* Clear Button */}
+                        {hasActiveFilters && (
+                            <button
+                                onClick={handleClearFilters}
+                                className="inline-flex items-center space-x-1 px-2.5 py-1.5 rounded-lg border border-gray-300 bg-white hover:bg-gray-100 text-xs text-gray-600 transition-colors cursor-pointer"
+                                title="Reset filters"
+                            >
+                                <RotateCcw className="w-3 h-3 text-gray-400" />
+                                <span>Clear</span>
+                            </button>
+                        )}
+                    </div>
                 </div>
 
                 {filteredYears.length === 0 ? (

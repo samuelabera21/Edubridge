@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { fetchApi } from "@/lib/api";
 import { useAuth } from "@/hooks/useAuth";
 import { 
@@ -408,17 +409,31 @@ export default function TeachingAssignmentsPage() {
 
     return (
         <div className="space-y-5 max-w-7xl mx-auto pb-12 font-sans text-gray-900">
-            {/* Clean Header Bar */}
-            <div className="bg-white border border-gray-200 rounded-lg px-6 py-4 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <h1 className="text-xl font-bold text-gray-900 tracking-tight">
-                    Staffing & Teaching Allocation
-                </h1>
+            {/* Breadcrumb Navigation */}
+            <div className="flex items-center space-x-2 text-xs text-gray-500">
+                <Link href="/dashboard" className="hover:text-gray-900 transition-colors">Dashboard</Link>
+                <span>/</span>
+                <span className="text-gray-500">Teachers</span>
+                <span>/</span>
+                <span className="text-gray-900 font-medium">Staffing & Allocation</span>
+            </div>
 
-                <div className="flex flex-wrap items-center gap-2.5">
+            {/* Clean Header */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-1">
+                <div>
+                    <h1 className="text-xl sm:text-2xl font-bold text-gray-900 tracking-tight">
+                        Staffing & Teaching Allocation
+                    </h1>
+                    <p className="text-xs text-gray-500 mt-1">
+                        Manage faculty workloads, subject assignments, and curriculum period coverage across class sections.
+                    </p>
+                </div>
+
+                <div className="flex items-center space-x-2.5 flex-wrap sm:flex-nowrap">
                     {/* Academic Year Selector */}
-                    <div className="flex items-center space-x-2 bg-gray-50 border border-gray-200 rounded-lg px-3 py-1.5">
-                        <Calendar className="w-3.5 h-3.5 text-gray-500" />
-                        <span className="text-xs font-medium text-gray-600">Year:</span>
+                    <div className="flex items-center space-x-2 bg-white border border-gray-300 rounded-lg px-2.5 py-1.5 shadow-2xs">
+                        <Calendar className="w-3.5 h-3.5 text-gray-400" />
+                        <span className="text-xs font-medium text-gray-500">Session:</span>
                         <select
                             value={selectedYearId}
                             onChange={(e) => handleYearChange(e.target.value)}
@@ -431,7 +446,7 @@ export default function TeachingAssignmentsPage() {
                             ))}
                         </select>
                         {selectedYear && (
-                            <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded ${
+                            <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded uppercase tracking-wider ${
                                 selectedYear.status === "ACTIVE" 
                                     ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
                                     : selectedYear.status === "PLANNED"
@@ -446,17 +461,17 @@ export default function TeachingAssignmentsPage() {
                     <button 
                         onClick={handleRefresh}
                         disabled={isRefreshing}
-                        className="inline-flex items-center space-x-1.5 bg-white border border-gray-200 text-gray-700 px-3 py-1.5 rounded-lg text-xs font-medium hover:bg-gray-50 transition-colors disabled:opacity-60 cursor-pointer"
+                        className="inline-flex items-center space-x-1.5 bg-white border border-gray-300 text-gray-700 px-3 py-1.5 rounded-lg text-xs font-medium hover:bg-gray-50 transition-colors shadow-2xs disabled:opacity-60 cursor-pointer flex-shrink-0"
                         title="Reload latest data"
                     >
-                        <RefreshCw className={`w-3.5 h-3.5 text-gray-500 ${isRefreshing ? "animate-spin text-[#4085b3]" : ""}`} />
+                        <RefreshCw className={`w-3.5 h-3.5 text-gray-400 ${isRefreshing ? "animate-spin text-[#4085b3]" : ""}`} />
                         <span>{isRefreshing ? "Refreshing..." : "Refresh"}</span>
                     </button>
 
                     {hasCreatePermission && !isYearLocked && (
                         <button 
                             onClick={() => router.push(`/dashboard/teachers/assignments/manage?yearId=${selectedYearId}`)}
-                            className="inline-flex items-center space-x-1.5 bg-[#4085b3] hover:bg-[#2b6a94] text-white px-3.5 py-1.5 rounded-lg text-xs font-medium transition-colors shadow-xs cursor-pointer"
+                            className="inline-flex items-center space-x-1.5 bg-[#4085b3] hover:bg-[#2b6a94] text-white px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-colors shadow-xs cursor-pointer flex-shrink-0"
                         >
                             <Plus className="w-3.5 h-3.5" />
                             <span>Assign Faculty</span>
