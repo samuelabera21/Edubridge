@@ -12,6 +12,27 @@ services:
       - edubridge_pgdata:/var/lib/postgresql/data
     restart: unless-stopped
 
+  minio:
+    image: minio/minio:latest
+    container_name: edubridge_minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-edubridge_minio}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-EduBridge@MinIO2024!}
+      # Allow direct browser uploads from all local frontend origins
+      MINIO_API_CORS_ALLOW_ORIGIN: "http://localhost:3000,http://localhost:3001,http://localhost:5173,http://localhost:5001"
+    ports:
+      - "${MINIO_API_PORT:-9000}:9000"
+      - "${MINIO_CONSOLE_PORT:-9001}:9001"
+    volumes:
+      - edubridge_minio_data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
   backend:
     build:
       context: ./backend
@@ -26,11 +47,20 @@ services:
       # Set BETTER_AUTH_URL to the internal backend address so auth callbacks
       # and base URLs resolve correctly from inside the Docker network.
       - BETTER_AUTH_URL=http://backend:5000
+      # MinIO / Storage
+      - MINIO_ENDPOINT=minio
+      - MINIO_PORT=9000
+      - MINIO_USE_SSL=false
+      - MINIO_ROOT_USER=${MINIO_ROOT_USER:-edubridge_minio}
+      - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD:-EduBridge@MinIO2024!}
+      - MINIO_BUCKET=${MINIO_BUCKET:-edubridge-documents}
+      - MINIO_PUBLIC_URL=${MINIO_PUBLIC_URL:-http://localhost:9000}
     volumes:
       - ./backend:/app
       - /app/node_modules
     depends_on:
       - db
+      - minio
     restart: unless-stopped
 
   frontend:
@@ -53,3 +83,4 @@ services:
 
 volumes:
   edubridge_pgdata:
+  edubridge_minio_data:

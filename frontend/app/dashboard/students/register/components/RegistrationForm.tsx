@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { 
     User, 
     UserPlus, 
@@ -12,15 +12,19 @@ import {
     CheckCircle2, 
     AlertCircle, 
     ArrowRight, 
-    ArrowLeft, 
-    Upload, 
+    ArrowLeft,
     Info, 
     RefreshCw, 
     ShieldCheck, 
     Check,
     Phone,
     Home,
-    FileCheck
+    FileCheck,
+    UploadCloud,
+    X,
+    Paperclip,
+    Eye,
+    Loader2
 } from "lucide-react";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
@@ -29,6 +33,247 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/Card";
 import { fetchApi } from "@/lib/api";
 import { useRouter } from "next/navigation";
 import { AcademicYear } from "@/types/api";
+
+// ─── Document Upload State ────────────────────────────────────────────────────
+type UploadStatus = "idle" | "uploading" | "done" | "error";
+interface UploadState {
+    status: UploadStatus;
+    progress: number;        // 0–100
+    fileName: string;
+    fileSize: number;
+    publicUrl: string;
+    error: string | null;
+}
+
+const defaultUpload = (): UploadState => ({
+    status: "idle",
+    progress: 0,
+    fileName: "",
+    fileSize: 0,
+    publicUrl: "",
+    error: null,
+});
+
+// ─── DocumentUploader Component ──────────────────────────────────────────────
+interface DocumentUploaderProps {
+    label: string;
+    badge?: string;
+    badgeColor?: string;
+    description: string;
+    accept?: string;
+    state: UploadState;
+    onChange: (state: UploadState) => void;
+}
+
+function DocumentUploader({
+    label, badge, badgeColor = "amber", description, accept = "application/pdf,image/jpeg,image/png",
+    state, onChange
+}: DocumentUploaderProps) {
+    const fileInputRef = useRef<HTMLInputElement>(null);
+    const [dragging, setDragging] = useState(false);
+    // Keep a ref so XHR progress callbacks can read latest state without stale closure
+    const stateRef = useRef<UploadState>(state);
+    stateRef.current = state;
+
+    const handleFile = useCallback(async (file: File) => {
+        // Validate size (max 10MB)
+        if (file.size > 10 * 1024 * 1024) {
+            onChange({ ...defaultUpload(), status: "error", error: "File too large. Maximum size is 10MB." });
+            return;
+        }
+
+        // Validate type
+        const allowed = ["application/pdf", "image/jpeg", "image/jpg", "image/png"];
+        if (!allowed.includes(file.type)) {
+            onChange({ ...defaultUpload(), status: "error", error: "Only PDF, JPEG, and PNG files are accepted." });
+            return;
+        }
+
+        onChange({ ...defaultUpload(), status: "uploading", progress: 10, fileName: file.name, fileSize: file.size, publicUrl: "", error: null });
+
+        try {
+            // Step 1: Get presigned URL from backend
+            const presignRes = await fetchApi("/storage/presign", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ fileName: file.name, contentType: file.type, folder: "students/documents" }),
+            });
+            if (!presignRes.ok) {
+                const err = await presignRes.json().catch(() => ({}));
+                throw new Error(err.error || "Failed to get upload URL");
+            }
+            const { presignedUrl, publicUrl } = await presignRes.json();
+
+            onChange({ ...stateRef.current, progress: 30 });
+
+            // Step 2: PUT file directly to MinIO using presigned URL
+            await new Promise<void>((resolve, reject) => {
+                const xhr = new XMLHttpRequest();
+                xhr.open("PUT", presignedUrl, true);
+                xhr.setRequestHeader("Content-Type", file.type);
+                xhr.upload.onprogress = (e) => {
+                    if (e.lengthComputable) {
+                        const pct = 30 + Math.round((e.loaded / e.total) * 65);
+                        onChange({ ...stateRef.current, progress: pct });
+                    }
+                };
+                xhr.onload = () => xhr.status < 300 ? resolve() : reject(new Error(`Upload failed: HTTP ${xhr.status}`));
+                xhr.onerror = () => reject(new Error("Network error during upload."));
+                xhr.send(file);
+            });
+
+            // Step 3: Done
+            onChange({ status: "done", progress: 100, fileName: file.name, fileSize: file.size, publicUrl, error: null });
+        } catch (err: any) {
+            onChange({ ...defaultUpload(), status: "error", fileName: file.name, fileSize: file.size, publicUrl: "", error: err.message || "Upload failed." });
+        }
+    }, [onChange]);
+
+    const onDrop = useCallback((e: React.DragEvent) => {
+        e.preventDefault();
+        setDragging(false);
+        const file = e.dataTransfer.files?.[0];
+        if (file) handleFile(file);
+    }, [handleFile]);
+
+    const formatBytes = (bytes: number) => {
+        if (bytes < 1024) return `${bytes} B`;
+        if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+        return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+    };
+
+    const badgeColors: Record<string, string> = {
+        amber: "bg-amber-50 text-amber-700 border-amber-200",
+        blue: "bg-blue-50 text-blue-700 border-blue-200",
+        gray: "bg-gray-100 text-gray-600 border-gray-200",
+    };
+
+    const isPdf = state.fileName.toLowerCase().endsWith(".pdf");
+    const isImage = [".jpg", ".jpeg", ".png"].some(ext => state.fileName.toLowerCase().endsWith(ext));
+
+    return (
+        <div className="rounded-xl border border-gray-200 bg-white overflow-hidden transition-shadow hover:shadow-sm">
+            {/* Header */}
+            <div className="flex items-start justify-between gap-3 px-4 py-3 border-b border-gray-100 bg-gray-50/60">
+                <div className="flex items-center gap-2.5">
+                    <div className="w-7 h-7 rounded-lg bg-[#4085b3]/10 flex items-center justify-center flex-shrink-0">
+                        <Paperclip className="w-3.5 h-3.5 text-[#4085b3]" />
+                    </div>
+                    <div>
+                        <div className="flex items-center gap-2">
+                            <span className="text-[13px] font-semibold text-gray-900">{label}</span>
+                            {badge && (
+                                <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded border ${badgeColors[badgeColor] || badgeColors.gray}`}>
+                                    {badge}
+                                </span>
+                            )}
+                        </div>
+                        <p className="text-[11px] text-gray-500 mt-0.5">{description}</p>
+                    </div>
+                </div>
+                {state.status === "done" && (
+                    <button
+                        type="button"
+                        onClick={() => onChange(defaultUpload())}
+                        className="text-gray-400 hover:text-red-500 transition-colors p-1 rounded flex-shrink-0"
+                        title="Remove file"
+                    >
+                        <X className="w-4 h-4" />
+                    </button>
+                )}
+            </div>
+
+            {/* Upload Zone */}
+            <div className="p-4">
+                {state.status === "idle" || state.status === "error" ? (
+                    <>
+                        <div
+                            className={`relative border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-all ${
+                                dragging
+                                    ? "border-[#4085b3] bg-[#4085b3]/5"
+                                    : state.status === "error"
+                                    ? "border-red-300 bg-red-50/50"
+                                    : "border-gray-200 bg-gray-50/50 hover:border-[#4085b3]/40 hover:bg-[#4085b3]/5"
+                            }`}
+                            onDragEnter={(e) => { e.preventDefault(); setDragging(true); }}
+                            onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
+                            onDragLeave={() => setDragging(false)}
+                            onDrop={onDrop}
+                            onClick={() => fileInputRef.current?.click()}
+                        >
+                            <input
+                                ref={fileInputRef}
+                                type="file"
+                                accept={accept}
+                                className="hidden"
+                                onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); e.target.value = ""; }}
+                            />
+                            <UploadCloud className={`w-8 h-8 mx-auto mb-2 ${ dragging ? "text-[#4085b3]" : "text-gray-400" }`} />
+                            <p className="text-[13px] font-medium text-gray-700">
+                                {dragging ? "Drop file here" : "Click to browse or drag & drop"}
+                            </p>
+                            <p className="text-[11px] text-gray-400 mt-1">PDF, JPEG, PNG — max 10 MB</p>
+                        </div>
+                        {state.status === "error" && state.error && (
+                            <div className="flex items-center gap-2 mt-2.5 text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+                                <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
+                                {state.error}
+                            </div>
+                        )}
+                    </>
+                ) : state.status === "uploading" ? (
+                    <div className="space-y-3">
+                        <div className="flex items-center gap-3">
+                            <div className="w-9 h-9 rounded-lg bg-[#4085b3]/10 flex items-center justify-center flex-shrink-0">
+                                <Loader2 className="w-4 h-4 text-[#4085b3] animate-spin" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                                <p className="text-[13px] font-medium text-gray-800 truncate">{state.fileName}</p>
+                                <p className="text-[11px] text-gray-400">{formatBytes(state.fileSize)} · Uploading...</p>
+                            </div>
+                            <span className="text-xs font-bold text-[#4085b3]">{state.progress}%</span>
+                        </div>
+                        <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                            <div
+                                className="h-full bg-[#4085b3] rounded-full transition-all duration-300"
+                                style={{ width: `${state.progress}%` }}
+                            />
+                        </div>
+                    </div>
+                ) : ( // done
+                    <div className="flex items-center gap-3">
+                        <div className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 ${ isPdf ? "bg-red-50" : "bg-blue-50" }`}>
+                            {isPdf ? (
+                                <FileText className="w-4 h-4 text-red-500" />
+                            ) : (
+                                <Eye className="w-4 h-4 text-blue-500" />
+                            )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                            <p className="text-[13px] font-semibold text-gray-800 truncate">{state.fileName}</p>
+                            <p className="text-[11px] text-gray-400">{formatBytes(state.fileSize)}</p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <a
+                                href={state.publicUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-[11px] font-medium text-[#4085b3] hover:underline flex items-center gap-1"
+                            >
+                                <Eye className="w-3.5 h-3.5" />
+                                Preview
+                            </a>
+                            <span className="flex items-center gap-1 text-[11px] font-semibold text-emerald-600">
+                                <CheckCircle2 className="w-3.5 h-3.5" />
+                                Uploaded
+                            </span>
+                        </div>
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+}
 
 type WizardStep = "TYPE" | "IDENTITY" | "GUARDIAN" | "ENROLLMENT" | "DOCUMENTS" | "REVIEW";
 
@@ -48,6 +293,12 @@ export function RegistrationForm() {
     const [submitting, setSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+    // Document Upload States
+    const [uploadBirthCert, setUploadBirthCert] = useState<UploadState>(defaultUpload());
+    const [uploadGuardianId, setUploadGuardianId] = useState<UploadState>(defaultUpload());
+    const [uploadTranscript, setUploadTranscript] = useState<UploadState>(defaultUpload());
+    const [uploadTransferCert, setUploadTransferCert] = useState<UploadState>(defaultUpload());
 
     // Academic Data
     const [academicYears, setAcademicYears] = useState<AcademicYear[]>([]);
@@ -280,34 +531,34 @@ export function RegistrationForm() {
             setSubmitting(true);
             setError(null);
 
-            // Build Documents Array
+            // Build Documents Array from upload states
             const docList = [];
-            if (formData.birthCertUrl) {
+            if (uploadBirthCert.publicUrl) {
                 docList.push({
                     documentType: "BIRTH_CERTIFICATE",
-                    title: formData.birthCertTitle || "Birth Certificate",
-                    fileUrl: formData.birthCertUrl
+                    title: "Birth Certificate",
+                    fileUrl: uploadBirthCert.publicUrl
                 });
             }
-            if (formData.guardianIdUrl) {
+            if (uploadGuardianId.publicUrl) {
                 docList.push({
                     documentType: "GUARDIAN_ID",
-                    title: formData.guardianIdTitle || "Guardian Identification Card",
-                    fileUrl: formData.guardianIdUrl
+                    title: "Kebele / National ID Card",
+                    fileUrl: uploadGuardianId.publicUrl
                 });
             }
-            if (formData.transcriptUrl) {
+            if (uploadTranscript.publicUrl) {
                 docList.push({
                     documentType: "PREVIOUS_TRANSCRIPT",
-                    title: formData.transcriptTitle || "Official Academic Transcript",
-                    fileUrl: formData.transcriptUrl
+                    title: "Previous School Official Transcript",
+                    fileUrl: uploadTranscript.publicUrl
                 });
             }
-            if (formData.transferCertUrl) {
+            if (uploadTransferCert.publicUrl) {
                 docList.push({
                     documentType: "TRANSFER_CERTIFICATE",
-                    title: formData.transferCertTitle || "Official Transfer Clearance",
-                    fileUrl: formData.transferCertUrl
+                    title: "Transfer Clearance Certificate",
+                    fileUrl: uploadTransferCert.publicUrl
                 });
             }
 
@@ -926,68 +1177,73 @@ export function RegistrationForm() {
                     <CardHeader className="bg-gray-50/75 border-b border-gray-100 py-3.5 px-5">
                         <CardTitle className="text-sm font-bold text-gray-900 flex items-center gap-2">
                             <FileCheck className="w-4 h-4 text-[#4085b3]" />
-                            Official Supporting Evidence & Verification Records
+                            Supporting Documents & Evidence
                         </CardTitle>
                     </CardHeader>
-                    <CardContent className="p-6 space-y-4">
-                        <p className="text-xs text-gray-500">
-                            Provide URLs or references for official documents required by the Ethiopian Ministry of Education.
-                        </p>
+                    <CardContent className="p-5 space-y-4">
+                        {/* Info Banner */}
+                        <div className="flex items-start gap-2.5 p-3 bg-[#4085b3]/5 border border-[#4085b3]/20 rounded-lg">
+                            <Info className="w-3.5 h-3.5 text-[#4085b3] mt-0.5 flex-shrink-0" />
+                            <p className="text-[11px] text-[#32698e] leading-relaxed">
+                                Upload files directly to secure cloud storage. Files are sent directly from your browser — the server only stores the link.
+                                Accepted formats: <strong>PDF, JPEG, PNG</strong> · Max size: <strong>10 MB per file</strong>.
+                            </p>
+                        </div>
 
-                        <div className="space-y-4">
-                            {/* Document 1: Birth Certificate */}
-                            <div className="p-4 border border-gray-200 rounded-lg bg-white flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
-                                <div className="space-y-1">
-                                    <div className="flex items-center gap-2">
-                                        <span className="text-xs font-bold text-gray-900">1. Birth Certificate / የልደት ምስክር ወረቀት</span>
-                                        <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-200">Mandatory</span>
-                                    </div>
-                                    <p className="text-xs text-gray-500">Official vital event registration certificate.</p>
-                                </div>
-                                <div className="w-full md:w-80">
-                                    <Input
-                                        placeholder="Document URL or File ID (e.g. https://...)"
-                                        value={formData.birthCertUrl}
-                                        onChange={(e) => setFormData({ ...formData, birthCertUrl: e.target.value })}
-                                    />
-                                </div>
-                            </div>
+                        {/* Uploaders Grid */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <DocumentUploader
+                                label="Birth Certificate / የልደት ምስክር"
+                                badge="Mandatory"
+                                badgeColor="amber"
+                                description="Official vital event registration certificate issued by Kebele or relevant authority."
+                                state={uploadBirthCert}
+                                onChange={setUploadBirthCert}
+                            />
+                            <DocumentUploader
+                                label="Parent / Guardian National ID"
+                                badge="Recommended"
+                                badgeColor="blue"
+                                description="Valid Ethiopian Kebele ID or National Fayda ID card of the legal guardian."
+                                state={uploadGuardianId}
+                                onChange={setUploadGuardianId}
+                            />
+                            <DocumentUploader
+                                label="Previous School Transcript"
+                                badge="If Applicable"
+                                badgeColor="gray"
+                                description="Official academic report cards or regional exam result sheet from previous school."
+                                state={uploadTranscript}
+                                onChange={setUploadTranscript}
+                            />
+                            {formData.enrollmentType === "TRANSFER_IN" && (
+                                <DocumentUploader
+                                    label="Transfer Clearance Certificate"
+                                    badge="Transfer-In Required"
+                                    badgeColor="amber"
+                                    description="Official clearance from the previous institution confirming transfer status."
+                                    state={uploadTransferCert}
+                                    onChange={setUploadTransferCert}
+                                />
+                            )}
+                        </div>
 
-                            {/* Document 2: Guardian ID */}
-                            <div className="p-4 border border-gray-200 rounded-lg bg-white flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
-                                <div className="space-y-1">
-                                    <div className="flex items-center gap-2">
-                                        <span className="text-xs font-bold text-gray-900">2. Parent / Guardian Kebele or National ID</span>
-                                        <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200">Recommended</span>
-                                    </div>
-                                    <p className="text-xs text-gray-500">Valid Ethiopian ID card for legal guardian verification.</p>
-                                </div>
-                                <div className="w-full md:w-80">
-                                    <Input
-                                        placeholder="Document URL or File ID"
-                                        value={formData.guardianIdUrl}
-                                        onChange={(e) => setFormData({ ...formData, guardianIdUrl: e.target.value })}
-                                    />
-                                </div>
-                            </div>
-
-                            {/* Document 3: Previous Transcript */}
-                            <div className="p-4 border border-gray-200 rounded-lg bg-white flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
-                                <div className="space-y-1">
-                                    <div className="flex items-center gap-2">
-                                        <span className="text-xs font-bold text-gray-900">3. Previous School Official Academic Transcript</span>
-                                        <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-gray-100 text-gray-700">If Applicable</span>
-                                    </div>
-                                    <p className="text-xs text-gray-500">Official report cards from previous grades or regional examination results.</p>
-                                </div>
-                                <div className="w-full md:w-80">
-                                    <Input
-                                        placeholder="Document URL or File ID"
-                                        value={formData.transcriptUrl}
-                                        onChange={(e) => setFormData({ ...formData, transcriptUrl: e.target.value })}
-                                    />
-                                </div>
-                            </div>
+                        {/* Upload Summary */}
+                        <div className="flex items-center gap-4 pt-1 border-t border-gray-100">
+                            <span className="text-[11px] text-gray-500">
+                                {[uploadBirthCert, uploadGuardianId, uploadTranscript, uploadTransferCert]
+                                    .filter(u => u.status === "done").length} of {[
+                                        uploadBirthCert, uploadGuardianId, uploadTranscript,
+                                        ...(formData.enrollmentType === "TRANSFER_IN" ? [uploadTransferCert] : [])
+                                    ].length} document{[uploadBirthCert, uploadGuardianId, uploadTranscript].length !== 1 ? "s" : ""} uploaded
+                            </span>
+                            {[uploadBirthCert, uploadGuardianId, uploadTranscript, uploadTransferCert]
+                                .some(u => u.status === "uploading") && (
+                                <span className="flex items-center gap-1 text-[11px] text-[#4085b3]">
+                                    <Loader2 className="w-3 h-3 animate-spin" />
+                                    Upload in progress...
+                                </span>
+                            )}
                         </div>
                     </CardContent>
                 </Card>
@@ -1052,21 +1308,32 @@ export function RegistrationForm() {
                             {/* Documents Attached Card */}
                             <div className="border border-gray-200 rounded-lg p-4 bg-gray-50/50 space-y-2.5">
                                 <div className="flex items-center justify-between border-b border-gray-200 pb-2">
-                                    <span className="text-xs font-bold text-gray-900 uppercase">Evidence & Documents</span>
+                                    <span className="text-xs font-bold text-gray-900 uppercase">Supporting Documents</span>
                                 </div>
-                                <div className="text-xs space-y-1 text-gray-600">
-                                    <p className="flex items-center gap-1.5">
-                                        {formData.birthCertUrl ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> : <AlertCircle className="w-3.5 h-3.5 text-gray-400" />}
-                                        Birth Certificate: {formData.birthCertUrl ? "Attached" : "Not Provided"}
-                                    </p>
-                                    <p className="flex items-center gap-1.5">
-                                        {formData.guardianIdUrl ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> : <AlertCircle className="w-3.5 h-3.5 text-gray-400" />}
-                                        Guardian ID: {formData.guardianIdUrl ? "Attached" : "Not Provided"}
-                                    </p>
-                                    <p className="flex items-center gap-1.5">
-                                        {formData.transcriptUrl ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> : <AlertCircle className="w-3.5 h-3.5 text-gray-400" />}
-                                        Transcript: {formData.transcriptUrl ? "Attached" : "Not Provided"}
-                                    </p>
+                                <div className="text-xs space-y-2 text-gray-600">
+                                    {[
+                                        { label: "Birth Certificate", state: uploadBirthCert },
+                                        { label: "Guardian / Parent ID", state: uploadGuardianId },
+                                        { label: "Previous Transcript", state: uploadTranscript },
+                                        { label: "Transfer Certificate", state: uploadTransferCert },
+                                    ].map(({ label, state }) => (
+                                        <div key={label} className="flex items-center gap-1.5">
+                                            {state.status === "done"
+                                                ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0" />
+                                                : <AlertCircle className="w-3.5 h-3.5 text-gray-300 flex-shrink-0" />}
+                                            <span className={state.status === "done" ? "text-gray-900 font-medium" : "text-gray-400"}>
+                                                {label}:
+                                            </span>
+                                            {state.status === "done" ? (
+                                                <a href={state.publicUrl} target="_blank" rel="noopener noreferrer"
+                                                    className="text-[#4085b3] hover:underline truncate max-w-[140px]">
+                                                    {state.fileName}
+                                                </a>
+                                            ) : (
+                                                <span className="text-gray-400">Not uploaded</span>
+                                            )}
+                                        </div>
+                                    ))}
                                 </div>
                             </div>
                         </div>
