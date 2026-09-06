@@ -98,7 +98,12 @@ router.post("/years/:yearId/subjects", requirePermission("ACADEMIC:CREATE"), cre
 router.delete("/years/:yearId/subjects/:subjectId", requirePermission("ACADEMIC:MANAGE"), deleteSchoolSubject);
 
 router.get("/grades/school-grades/:schoolGradeId/subjects", requirePermission("ACADEMIC:VIEW"), getSchoolGradeSubjects);
+router.get("/grades/:schoolGradeId/subjects", requirePermission("ACADEMIC:VIEW"), getSchoolGradeSubjects);
+
 router.post("/grades/school-grades/:schoolGradeId/subjects", requirePermission("ACADEMIC:CREATE"), assignSubjectToGrade);
+router.post("/grades/:schoolGradeId/subjects", requirePermission("ACADEMIC:CREATE"), assignSubjectToGrade);
+
 router.delete("/grades/school-grades/:schoolGradeId/subjects/:subjectId", requirePermission("ACADEMIC:MANAGE"), removeSubjectFromGrade);
+router.delete("/grades/:schoolGradeId/subjects/:subjectId", requirePermission("ACADEMIC:MANAGE"), removeSubjectFromGrade);
 
 export default router;

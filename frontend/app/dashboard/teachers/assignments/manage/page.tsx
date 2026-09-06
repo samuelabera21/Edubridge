@@ -95,6 +95,17 @@ export default function ManageTeacherAssignmentsPage() {
                 setTeachers(teacherList);
                 if (initialTeacherId) {
                     setSelectedTeacherId(initialTeacherId);
+                } else if (initialSubjectId && teacherList.length > 0) {
+                    const specialist = teacherList.find(t => 
+                        t.specializations?.some((s: any) => s.subjectId === initialSubjectId || s.subject?.id === initialSubjectId)
+                    );
+                    if (specialist) {
+                        setSelectedTeacherId(specialist.id);
+                    } else if (teacherList.length === 1) {
+                        setSelectedTeacherId(teacherList[0].id);
+                    }
+                } else if (teacherList.length === 1) {
+                    setSelectedTeacherId(teacherList[0].id);
                 } else if (!initialSubjectId && teacherList.length > 0) {
                     setSelectedTeacherId(teacherList[0].id);
                 }
@@ -139,6 +150,25 @@ export default function ManageTeacherAssignmentsPage() {
         loadInitialData();
     }, []);
 
+    // Sync query params if they change
+    useEffect(() => {
+        if (initialSubjectId && formData.subjectId !== initialSubjectId) {
+            setFormData(prev => ({ ...prev, subjectId: initialSubjectId }));
+        }
+    }, [initialSubjectId]);
+
+    useEffect(() => {
+        if (initialGradeId && formData.schoolGradeId !== initialGradeId) {
+            setFormData(prev => ({ ...prev, schoolGradeId: initialGradeId }));
+        }
+    }, [initialGradeId]);
+
+    useEffect(() => {
+        if (initialSectionId && !formData.selectedSectionIds.includes(initialSectionId)) {
+            setFormData(prev => ({ ...prev, selectedSectionIds: [initialSectionId] }));
+        }
+    }, [initialSectionId]);
+
     // Load teacher specializations when selected teacher changes
     useEffect(() => {
         if (!selectedTeacherId) return;
@@ -165,7 +195,10 @@ export default function ManageTeacherAssignmentsPage() {
         const fetchGradeDetails = async () => {
             try {
                 const [subjectsRes, sectionsRes] = await Promise.all([
-                    fetchApi(`/academic/grades/${formData.schoolGradeId}/subjects`),
+                    fetchApi(`/academic/grades/school-grades/${formData.schoolGradeId}/subjects`).then(async res => {
+                        if (res.ok) return res;
+                        return fetchApi(`/academic/grades/${formData.schoolGradeId}/subjects`);
+                    }),
                     fetchApi(`/academic/grades/${formData.schoolGradeId}/sections`)
                 ]);
                 if (subjectsRes.ok) {
@@ -184,7 +217,7 @@ export default function ManageTeacherAssignmentsPage() {
     // Auto-update periodsPerWeek when subject changes
     useEffect(() => {
         if (!formData.subjectId || gradeSubjects.length === 0) return;
-        const found = gradeSubjects.find(s => s.subjectId === formData.subjectId);
+        const found = gradeSubjects.find(s => (s.subjectId || s.subject?.id) === formData.subjectId);
         if (found && found.weeklyPeriods) {
             setFormData(prev => ({ ...prev, periodsPerWeek: found.weeklyPeriods }));
         }
@@ -427,27 +460,30 @@ export default function ManageTeacherAssignmentsPage() {
                 <span className="text-gray-900 font-medium">Allocate</span>
             </div>
 
-            {/* Clean Government Header Bar */}
-            <div className="bg-white border border-gray-200 rounded-lg p-5 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            {/* Clean Header */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-1">
                 <div className="flex items-center space-x-3">
                     <button
                         onClick={() => router.push("/dashboard/teachers/assignments")}
-                        className="inline-flex items-center space-x-1.5 text-xs text-gray-700 hover:text-gray-900 bg-white border border-gray-300 hover:bg-gray-50 px-3 py-1.5 rounded-md transition-colors cursor-pointer"
+                        className="inline-flex items-center space-x-1.5 text-xs text-gray-700 hover:text-gray-900 bg-white border border-gray-300 hover:bg-gray-50 px-3 py-1.5 rounded-lg transition-colors cursor-pointer shadow-2xs"
                     >
                         <ArrowLeft className="w-3.5 h-3.5" />
                         <span>Back to Overview</span>
                     </button>
                     <div>
-                        <h1 className="text-lg font-bold text-gray-900 tracking-tight">
+                        <h1 className="text-xl font-bold text-gray-900 tracking-tight">
                             Teacher Section Allocation
                         </h1>
+                        <p className="text-xs text-gray-500 mt-0.5">
+                            Assign teachers to specific subjects and class sections.
+                        </p>
                     </div>
                 </div>
 
                 {/* Academic Year Selector */}
-                <div className="flex items-center space-x-2 bg-gray-50 border border-gray-200 rounded-md px-3 py-1.5 text-xs">
-                    <Calendar className="w-3.5 h-3.5 text-gray-500" />
-                    <span className="font-medium text-gray-600">Academic Year:</span>
+                <div className="flex items-center space-x-2 bg-white border border-gray-300 rounded-lg px-2.5 py-1.5 text-xs shadow-2xs">
+                    <Calendar className="w-3.5 h-3.5 text-gray-400" />
+                    <span className="font-medium text-gray-500">Session:</span>
                     <select
                         value={selectedYearId}
                         onChange={(e) => handleYearChange(e.target.value)}
@@ -515,24 +551,32 @@ export default function ManageTeacherAssignmentsPage() {
                         </h2>
 
                         <div>
-                            <label className="block text-xs font-medium text-gray-700 mb-1">
-                                {reassignNotice ? "Select Replacement Teacher" : "Teacher"}
+                            <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center justify-between">
+                                <span>{reassignNotice ? "Select Replacement Teacher" : "Teacher"} <span className="text-rose-500">*</span></span>
+                                {!selectedTeacherId && (
+                                    <span className="text-[10px] text-amber-600 font-medium">Required</span>
+                                )}
                             </label>
                             <select
                                 value={selectedTeacherId}
                                 onChange={(e) => setSelectedTeacherId(e.target.value)}
                                 className={`w-full px-3 py-2 bg-white border text-gray-900 rounded-md text-xs font-medium outline-none cursor-pointer ${
-                                    reassignNotice && !selectedTeacherId 
-                                        ? "border-amber-400 ring-2 ring-amber-200" 
+                                    !selectedTeacherId 
+                                        ? "border-amber-400 ring-2 ring-amber-100" 
                                         : "border-gray-300 focus:ring-2 focus:ring-[#4085b3] focus:border-[#4085b3]"
                                 }`}
                             >
                                 <option value="">Select Teacher...</option>
-                                {teachers.map(t => (
-                                    <option key={t.id} value={t.id}>
-                                        {t.firstName} {t.lastName} ({t.staffIdCode || t.employeeId || "Staff"})
-                                    </option>
-                                ))}
+                                {teachers.map(t => {
+                                    const isSpecialist = formData.subjectId && t.specializations?.some((s: any) => 
+                                        s.subjectId === formData.subjectId || s.subject?.id === formData.subjectId
+                                    );
+                                    return (
+                                        <option key={t.id} value={t.id}>
+                                            {t.firstName} {t.lastName} ({t.staffIdCode || t.employeeId || "Staff"}){isSpecialist ? " ★ [Specialist]" : ""}
+                                        </option>
+                                    );
+                                })}
                             </select>
                         </div>
 
@@ -586,8 +630,14 @@ export default function ManageTeacherAssignmentsPage() {
                                 )}
                             </div>
                         ) : (
-                            <div className="p-3 bg-gray-50 border border-gray-200 rounded-md text-xs text-gray-500 text-center">
-                                Select a teacher above to view profile, workload, and allocations.
+                            <div className="p-3 bg-amber-50/70 border border-amber-200 rounded-md text-xs text-amber-800 space-y-1">
+                                <p className="font-semibold flex items-center gap-1.5 text-amber-900">
+                                    <AlertCircle className="w-3.5 h-3.5 text-amber-600 flex-shrink-0" />
+                                    No Teacher Selected
+                                </p>
+                                <p className="text-[11px] text-amber-700">
+                                    Please select an instructor above to assign them to the selected subject and section.
+                                </p>
                             </div>
                         )}
                     </div>
@@ -627,24 +677,42 @@ export default function ManageTeacherAssignmentsPage() {
 
                                 {/* Subject Dropdown */}
                                 <div>
-                                    <label className="block text-xs font-medium text-gray-700 mb-1">
-                                        Subject <span className="text-rose-500">*</span>
+                                    <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center justify-between">
+                                        <span>Subject <span className="text-rose-500">*</span></span>
+                                        {gradeSubjects.length > 0 && (
+                                            <span className="text-[10px] text-gray-500 font-mono">
+                                                {gradeSubjects.length} subject{gradeSubjects.length > 1 ? "s" : ""}
+                                            </span>
+                                        )}
                                     </label>
                                     <select
                                         value={formData.subjectId}
                                         onChange={(e) => setFormData(prev => ({ ...prev, subjectId: e.target.value }))}
-                                        className="w-full px-3 py-2 bg-white border border-gray-300 text-gray-900 rounded-md text-xs font-medium focus:ring-2 focus:ring-[#4085b3] focus:border-[#4085b3] outline-none cursor-pointer disabled:bg-gray-50"
+                                        className={`w-full px-3 py-2 bg-white border text-gray-900 rounded-md text-xs font-medium focus:ring-2 focus:ring-[#4085b3] focus:border-[#4085b3] outline-none cursor-pointer disabled:bg-gray-50 ${
+                                            !formData.subjectId && formData.schoolGradeId
+                                                ? "border-amber-400 ring-2 ring-amber-100"
+                                                : "border-gray-300"
+                                        }`}
                                         required
                                         disabled={!formData.schoolGradeId}
                                     >
                                         <option value="">
-                                            {!formData.schoolGradeId ? "Select Grade first..." : "Select Subject..."}
+                                            {!formData.schoolGradeId 
+                                                ? "Select Grade first..." 
+                                                : gradeSubjects.length === 0 
+                                                    ? "Loading subjects or none assigned to grade..." 
+                                                    : "Select Subject..."}
                                         </option>
-                                        {gradeSubjects.map(gs => (
-                                            <option key={gs.subjectId} value={gs.subjectId}>
-                                                {gs.subject?.name} ({gs.weeklyPeriods || 5} p/wk)
-                                            </option>
-                                        ))}
+                                        {gradeSubjects.map(gs => {
+                                            const subId = gs.subjectId || gs.subject?.id;
+                                            const subName = gs.subject?.name || "Subject";
+                                            const periods = gs.weeklyPeriods || 5;
+                                            return (
+                                                <option key={subId} value={subId}>
+                                                    {subName} ({periods} p/wk)
+                                                </option>
+                                            );
+                                        })}
                                     </select>
                                 </div>
                             </div>
@@ -766,31 +834,64 @@ export default function ManageTeacherAssignmentsPage() {
                                 </div>
                             </div>
 
-                            {/* Action Buttons */}
-                            <div className="pt-3 border-t border-gray-100 flex justify-end space-x-2.5">
-                                <button
-                                    type="button"
-                                    onClick={() => {
-                                        setReassignNotice(null);
-                                        router.push("/dashboard/teachers/assignments");
-                                    }}
-                                    className="px-4 py-2 text-xs font-medium text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors cursor-pointer"
-                                >
-                                    Cancel
-                                </button>
-                                <button
-                                    type="submit"
-                                    disabled={submitting || !selectedTeacherId || !formData.subjectId || !formData.schoolGradeId}
-                                    className="px-5 py-2 text-xs font-medium text-white bg-[#4085b3] hover:bg-[#2b6a94] rounded-md transition-colors shadow-xs disabled:opacity-50 cursor-pointer"
-                                >
-                                    {submitting 
-                                        ? "Saving..." 
-                                        : reassignNotice 
-                                            ? "Confirm Reassignment" 
-                                            : formData.asProposal 
-                                                ? "Submit Proposal" 
-                                                : "Save Assignment"}
-                                </button>
+                            {/* Action Buttons & Guidance */}
+                            <div className="pt-3 border-t border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                                <div>
+                                    {!selectedTeacherId ? (
+                                        <p className="text-[11px] text-amber-700 font-medium flex items-center gap-1.5 bg-amber-50 px-2.5 py-1 rounded border border-amber-200">
+                                            <AlertCircle className="w-3.5 h-3.5 text-amber-600 flex-shrink-0" />
+                                            Please choose a teacher from the left panel.
+                                        </p>
+                                    ) : !formData.schoolGradeId ? (
+                                        <p className="text-[11px] text-amber-700 font-medium flex items-center gap-1.5 bg-amber-50 px-2.5 py-1 rounded border border-amber-200">
+                                            <AlertCircle className="w-3.5 h-3.5 text-amber-600 flex-shrink-0" />
+                                            Please select a grade level.
+                                        </p>
+                                    ) : !formData.subjectId ? (
+                                        <p className="text-[11px] text-amber-700 font-medium flex items-center gap-1.5 bg-amber-50 px-2.5 py-1 rounded border border-amber-200">
+                                            <AlertCircle className="w-3.5 h-3.5 text-amber-600 flex-shrink-0" />
+                                            Please select a subject.
+                                        </p>
+                                    ) : formData.selectedSectionIds.length === 0 ? (
+                                        <p className="text-[11px] text-amber-700 font-medium flex items-center gap-1.5 bg-amber-50 px-2.5 py-1 rounded border border-amber-200">
+                                            <AlertCircle className="w-3.5 h-3.5 text-amber-600 flex-shrink-0" />
+                                            Please select at least one section.
+                                        </p>
+                                    ) : (
+                                        <p className="text-[11px] text-emerald-700 font-medium flex items-center gap-1.5">
+                                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                                            Ready to assign ({formData.selectedSectionIds.length} section{formData.selectedSectionIds.length > 1 ? "s" : ""}, {formData.periodsPerWeek} p/wk each)
+                                        </p>
+                                    )}
+                                </div>
+
+                                <div className="flex items-center space-x-2.5 justify-end">
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setReassignNotice(null);
+                                            router.push("/dashboard/teachers/assignments");
+                                        }}
+                                        className="px-4 py-2 text-xs font-medium text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors cursor-pointer"
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button
+                                        type="submit"
+                                        disabled={submitting || !selectedTeacherId || !formData.subjectId || !formData.schoolGradeId || formData.selectedSectionIds.length === 0}
+                                        className="px-5 py-2 text-xs font-medium text-white bg-[#4085b3] hover:bg-[#2b6a94] rounded-md transition-colors shadow-xs disabled:opacity-50 cursor-pointer flex items-center space-x-1.5"
+                                    >
+                                        <span>
+                                            {submitting 
+                                                ? "Saving..." 
+                                                : reassignNotice 
+                                                    ? "Confirm Reassignment" 
+                                                    : formData.asProposal 
+                                                        ? "Submit Proposal" 
+                                                        : "Save Assignment"}
+                                        </span>
+                                    </button>
+                                </div>
                             </div>
                         </form>
                     </div>
