@@ -1148,6 +1148,35 @@ export class AcademicService {
         });
     }
 
+    static async updateSchoolGradeStatus(organizationId: string, schoolGradeId: string, status: string) {
+        const validStatuses = ["ACTIVE", "SUSPENDED", "ARCHIVED"];
+        if (!validStatuses.includes(status)) {
+            throw new Error(`Invalid status: ${status}. Must be one of: ${validStatuses.join(", ")}`);
+        }
+
+        const schoolGrade = await prisma.schoolGrade.findUnique({
+            where: { id: schoolGradeId },
+            include: { academicYear: true, grade: true }
+        });
+
+        if (!schoolGrade || schoolGrade.academicYear.organizationId !== organizationId) {
+            throw new Error("School Grade not found or unauthorized");
+        }
+
+        return prisma.schoolGrade.update({
+            where: { id: schoolGradeId },
+            data: { status },
+            include: {
+                grade: true,
+                sections: { orderBy: { name: 'asc' } },
+                gradeSubjects: {
+                    include: { subject: true },
+                    orderBy: { subject: { name: 'asc' } }
+                }
+            }
+        });
+    }
+
     static async getSchoolGradeDetails(organizationId: string, schoolGradeId: string) {
         const schoolGrade = await prisma.schoolGrade.findUnique({
             where: { id: schoolGradeId },
