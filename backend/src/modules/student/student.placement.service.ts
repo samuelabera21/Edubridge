@@ -853,9 +853,15 @@ export class StudentPlacementService {
      * Retrieve audit history of placement and reassignment actions for an enrollment.
      */
     static async getEnrollmentPlacementHistory(organizationId: string, enrollmentId: string) {
+        const enrollment = await prisma.studentEnrollment.findFirst({
+            where: { id: enrollmentId, organizationId }
+        });
+        if (!enrollment) {
+            throw new Error("Student enrollment not found in this school organization");
+        }
+
         return prisma.auditLog.findMany({
             where: {
-                organizationId,
                 resource: "StudentEnrollment",
                 resourceId: enrollmentId,
                 action: { in: ["SECTION_ASSIGNED", "SECTION_REASSIGNED"] }

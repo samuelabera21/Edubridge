@@ -487,7 +487,8 @@ function PlacementWorkspaceContent() {
             const res = await fetchApi(`/student/placement/enrollments/${enrollmentId}/history`);
             if (res.ok) {
                 const data = await res.json();
-                setHistoryEnrollment({ studentName, studentId, records: data.history || [] });
+                const records = Array.isArray(data) ? data : (data.history || data.records || []);
+                setHistoryEnrollment({ studentName, studentId, records });
             }
         } catch (err) {
             console.error("Failed to fetch placement history", err);
@@ -1387,35 +1388,58 @@ function PlacementWorkspaceContent() {
                             <p className="text-center text-slate-400 py-6">No placement mutations recorded for this enrollment yet.</p>
                         ) : (
                             <div className="space-y-3">
-                                {historyEnrollment.records.map((h, i) => (
-                                    <div key={h.id || i} className="p-3 border border-slate-200 rounded-lg space-y-1.5 bg-white">
-                                        <div className="flex items-center justify-between">
-                                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                                                h.action === "SECTION_REASSIGNED" 
-                                                    ? "bg-amber-100 text-amber-800" 
-                                                    : "bg-emerald-100 text-emerald-800"
-                                            }`}>
-                                                {h.action}
-                                            </span>
-                                            <span className="text-[11px] text-slate-400">
-                                                {new Date(h.createdAt).toLocaleString()}
-                                            </span>
-                                        </div>
-                                        <div className="text-slate-700">
-                                            {h.details?.reason ? (
-                                                <p className="italic text-slate-600">&quot;{h.details.reason}&quot;</p>
-                                            ) : (
-                                                <p className="text-slate-500">Standard classroom placement</p>
-                                            )}
-                                        </div>
-                                        {h.user && (
-                                            <div className="text-[11px] text-slate-400 pt-1 border-t border-slate-100 flex items-center justify-between">
-                                                <span>Operator: {h.user.name || h.user.email}</span>
-                                                <span className="font-mono text-[10px]">Actor ID: {h.userId.slice(0, 8)}...</span>
+                                {historyEnrollment.records.map((h, i) => {
+                                    const isReassigned = h.action === "SECTION_REASSIGNED";
+                                    const oldSec = (h.oldValue as any)?.sectionName || (h.oldValue as any)?.name;
+                                    const newSec = (h.newValue as any)?.sectionName || (h.newValue as any)?.name;
+                                    const reason = (h.newValue as any)?.reason || (h.details as any)?.reason;
+                                    const operatorName = h.user?.name || h.user?.email || "School Administrator";
+
+                                    return (
+                                        <div key={h.id || i} className="p-3.5 border border-slate-200 rounded-lg space-y-2 bg-white shadow-xs">
+                                            <div className="flex items-center justify-between">
+                                                <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                                                    isReassigned 
+                                                        ? "bg-amber-100 text-amber-800 border border-amber-200" 
+                                                        : "bg-emerald-100 text-emerald-800 border border-emerald-200"
+                                                }`}>
+                                                    {isReassigned ? "SECTION REASSIGNED" : "SECTION ASSIGNED"}
+                                                </span>
+                                                <span className="text-[11px] text-slate-400">
+                                                    {new Date(h.createdAt).toLocaleString()}
+                                                </span>
                                             </div>
-                                        )}
-                                    </div>
-                                ))}
+                                            <div className="text-xs text-slate-800">
+                                                {isReassigned ? (
+                                                    <div>
+                                                        <div className="flex items-center gap-1.5 font-medium">
+                                                            <span className="text-slate-400 line-through">Section {oldSec || "Previous"}</span>
+                                                            <span className="text-slate-400">→</span>
+                                                            <span className="font-bold text-slate-900">Section {newSec || "Target"}</span>
+                                                        </div>
+                                                        {reason && (
+                                                            <p className="italic text-slate-600 mt-1.5 bg-slate-50 p-2 rounded border border-slate-100">
+                                                                &quot;{reason}&quot;
+                                                            </p>
+                                                        )}
+                                                    </div>
+                                                ) : (
+                                                    <div>
+                                                        <p className="font-medium">
+                                                            Placed into <strong className="text-slate-900 font-bold">Section {newSec || "Assigned"}</strong>
+                                                        </p>
+                                                    </div>
+                                                )}
+                                            </div>
+                                            <div className="text-[11px] text-slate-400 pt-1.5 border-t border-slate-100 flex items-center justify-between">
+                                                <span>Operator: <strong className="text-slate-600 font-medium">{operatorName}</strong></span>
+                                                <span className="font-mono text-[10px]">
+                                                    {new Date(h.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
                             </div>
                         )}
                     </div>

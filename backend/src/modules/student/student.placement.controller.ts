@@ -134,7 +134,7 @@ export const getEnrollmentPlacementHistoryHandler = async (req: Request, res: Re
         const { enrollmentId } = req.params;
         const history = await StudentPlacementService.getEnrollmentPlacementHistory(organizationId, enrollmentId as string);
 
-        return res.status(200).json(history);
+        return res.status(200).json({ enrollmentId, history });
     } catch (error: any) {
         console.error("[Placement History Error]:", error);
         return res.status(400).json({ error: error.message || "Failed to fetch placement history" });
