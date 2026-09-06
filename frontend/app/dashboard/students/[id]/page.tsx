@@ -3,216 +3,387 @@
 import { useEffect, useState } from "react";
 import { fetchApi } from "@/lib/api";
 import { useParams, useRouter } from "next/navigation";
-import { User, Phone, MapPin, School, FileText, ArrowLeft, GraduationCap, X } from "lucide-react";
+import { 
+    ArrowLeft, 
+    ExternalLink,
+    Check,
+    X,
+    FileText,
+    Calendar,
+    UserCheck
+} from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { LoadingState } from "@/components/ui/LoadingState";
 import { ErrorState } from "@/components/ui/ErrorState";
+import Link from "next/link";
+
+interface StudentDossier {
+    id: string;
+    studentId: string;
+    firstName: string;
+    fatherName?: string;
+    grandfatherName?: string;
+    lastName?: string;
+    gender?: string;
+    dateOfBirth?: string;
+    nationality?: string;
+    placeOfBirth?: string;
+    nationalId?: string;
+    region?: string;
+    zone?: string;
+    woreda?: string;
+    city?: string;
+    kebele?: string;
+    houseNumber?: string;
+    previousSchool?: string;
+    previousStudentId?: string;
+    emergencyContactName?: string;
+    emergencyContactRelation?: string;
+    emergencyContactPhone?: string;
+    enrollments?: any[];
+    guardians?: any[];
+    studentDocuments?: any[];
+}
 
 export default function StudentProfilePage() {
     const params = useParams();
     const router = useRouter();
     const studentId = params.id as string;
 
-    const [student, setStudent] = useState<any>(null);
+    const [student, setStudent] = useState<StudentDossier | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
-    const [previewDoc, setPreviewDoc] = useState<{ url: string, title: string, isImage: boolean } | null>(null);
+    const [verifyingDocId, setVerifyingDocId] = useState<string | null>(null);
+
+    const loadStudent = async () => {
+        try {
+            setLoading(true);
+            const res = await fetchApi(`/student/${studentId}`);
+            if (!res.ok) throw new Error("Failed to load student profile");
+            const data = await res.json();
+            setStudent(data);
+            setError(null);
+        } catch (err: any) {
+            setError(err.message || "An error occurred while loading student dossier");
+        } finally {
+            setLoading(false);
+        }
+    };
 
     useEffect(() => {
-        const loadStudent = async () => {
-            try {
-                setLoading(true);
-                const res = await fetchApi(`/student/${studentId}`);
-                if (!res.ok) throw new Error("Failed to load student profile");
-                setStudent(await res.json());
-                setError(null);
-            } catch (err: any) {
-                setError(err.message || "An error occurred");
-            } finally {
-                setLoading(false);
-            }
-        };
-
         if (studentId) {
             loadStudent();
         }
     }, [studentId]);
 
-    if (loading) return <LoadingState message="Loading student profile..." />;
-    if (error || !student) return <ErrorState message={error || "Student not found"} onRetry={() => router.back()} />;
+    const handleVerifyDocument = async (docId: string, status: "VERIFIED" | "REJECTED") => {
+        try {
+            setVerifyingDocId(docId);
+            const notes = status === "VERIFIED" ? "Verified against institutional records" : "Document rejected due to clarity issues";
+            const res = await fetchApi(`/student/documents/${docId}/verify`, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ verificationStatus: status, verificationNotes: notes })
+            });
 
-    const docs = student.documents || {};
-    const hasDocs = Object.values(docs).some(Boolean);
+            if (!res.ok) {
+                const errData = await res.json().catch(() => ({}));
+                throw new Error(errData.error || errData.message || "Failed to update verification status");
+            }
 
-    const renderDocument = (title: string, base64Url: string | null) => {
-        if (!base64Url) return null;
-        
-        const isImage = base64Url.startsWith('data:image');
-        
-        return (
-            <div className="flex flex-col items-center bg-gray-50 rounded-xl p-4 border border-gray-100 hover:shadow-md transition-shadow">
-                <p className="text-sm font-semibold text-gray-700 mb-3">{title}</p>
-                <div 
-                    className="relative w-full aspect-square overflow-hidden rounded-lg bg-white border border-gray-200 flex items-center justify-center cursor-pointer hover:border-[#006b3f] group"
-                    onClick={() => setPreviewDoc({ url: base64Url, title, isImage })}
-                >
-                    {isImage ? (
-                        <img src={base64Url} alt={title} className="object-cover w-full h-full group-hover:scale-105 transition-transform" />
-                    ) : (
-                        <div className="flex flex-col items-center justify-center text-[#006b3f] group-hover:text-green-800">
-                            <FileText className="w-12 h-12 mb-2" />
-                            <span className="text-sm font-medium">Click to View</span>
-                        </div>
-                    )}
-                </div>
-            </div>
-        );
+            await loadStudent();
+        } catch (err: any) {
+            alert(err.message || "Error verifying document");
+        } finally {
+            setVerifyingDocId(null);
+        }
     };
+
+    if (loading) return <LoadingState message="Loading student official dossier..." />;
+    if (error || !student) return <ErrorState message={error || "Student record not found"} onRetry={() => router.back()} />;
+
+    const fullName = `${student.firstName} ${student.fatherName || student.lastName || ""} ${student.grandfatherName || ""}`.trim();
+    const documentsList = student.studentDocuments || [];
+    const enrollmentsList = student.enrollments || [];
+    const guardiansList = student.guardians || [];
 
     return (
         <div className="space-y-6 max-w-7xl mx-auto pb-12">
-            <div className="flex items-center justify-between">
-                <Button variant="ghost" leftIcon={<ArrowLeft className="w-4 h-4" />} onClick={() => router.back()}>
-                    Back to Enrollments
-                </Button>
+            {/* Top Navigation Bar */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-4">
+                <div className="flex items-center gap-3">
+                    <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={() => router.push("/dashboard/students/enrollments")}
+                        className="text-slate-700 border-slate-300 hover:bg-slate-50"
+                        leftIcon={<ArrowLeft className="w-4 h-4" />}
+                    >
+                        Back to Ledger
+                    </Button>
+                    <div>
+                        <h1 className="text-xl font-bold text-slate-900 capitalize">{fullName}</h1>
+                        <p className="text-xs font-mono text-slate-500 mt-0.5">
+                            Student ID: <strong className="text-slate-800">{student.studentId}</strong>
+                        </p>
+                    </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                    <Link href="/dashboard/students">
+                        <Button variant="ghost" size="sm" className="text-slate-600 hover:text-slate-900">
+                            Student Directory
+                        </Button>
+                    </Link>
+                </div>
             </div>
 
-            {/* HEADER */}
-            <div className="bg-white rounded-2xl p-8 shadow-sm border border-gray-100 flex flex-col md:flex-row gap-8 items-start md:items-center">
-                <div className="w-32 h-32 shrink-0 rounded-full overflow-hidden bg-gray-100 border-4 border-white shadow-lg">
-                    {student.photoUrl ? (
-                        <img src={student.photoUrl} alt="Student Photo" className="w-full h-full object-cover" />
-                    ) : (
-                        <div className="w-full h-full flex items-center justify-center text-gray-400">
-                            <User className="w-12 h-12" />
-                        </div>
-                    )}
-                </div>
-                <div className="flex-1">
-                    <h1 className="text-3xl font-bold text-gray-900">{student.firstName} {student.lastName}</h1>
-                    <div className="flex flex-wrap gap-4 mt-3 text-sm text-gray-600">
-                        <div className="flex items-center"><GraduationCap className="w-4 h-4 mr-2" /> ID: {student.studentId}</div>
-                        <div className="flex items-center"><User className="w-4 h-4 mr-2" /> {student.gender}</div>
+            {/* Student Identity Summary Bar */}
+            <div className="bg-white border border-slate-200 rounded-lg p-4 shadow-sm">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs">
+                    <div>
+                        <span className="text-slate-500 block">Full Name (3-Tier)</span>
+                        <span className="font-semibold text-slate-900 capitalize text-sm">{fullName}</span>
                     </div>
-                </div>
-            </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* LEFT COL */}
-                <div className="space-y-6 lg:col-span-2">
-                    {/* ENROLLMENTS */}
-                    <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-                        <h2 className="text-lg font-bold text-gray-900 mb-4 flex items-center border-b pb-3">
-                            <School className="w-5 h-5 mr-2 text-[#006b3f]" /> Enrollment History
-                        </h2>
-                        {student.enrollments && student.enrollments.length > 0 ? (
-                            <div className="space-y-4">
-                                {student.enrollments.map((enr: any) => (
-                                    <div key={enr.id} className="flex justify-between items-center p-4 bg-gray-50 rounded-lg">
-                                        <div>
-                                            <p className="font-semibold text-gray-900">{enr.academicYear?.name}</p>
-                                            <p className="text-sm text-gray-600">
-                                                {enr.schoolGrade?.grade?.name} {enr.section ? ` - Section ${enr.section.name}` : ""}
-                                            </p>
-                                        </div>
-                                        <div>
-                                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${enr.status === 'ACTIVE' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}`}>
-                                                {enr.status}
-                                            </span>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        ) : (
-                            <p className="text-gray-500 text-sm">No enrollments found.</p>
-                        )}
+                    <div>
+                        <span className="text-slate-500 block">Gender</span>
+                        <span className="font-medium text-slate-900 capitalize">
+                            {student.gender ? student.gender.toLowerCase() : "Not specified"}
+                        </span>
                     </div>
-
-                    {/* PERSONAL INFO */}
-                    <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-                        <h2 className="text-lg font-bold text-gray-900 mb-4 border-b pb-3">Personal Details</h2>
-                        <div className="grid grid-cols-2 md:grid-cols-3 gap-y-4 gap-x-6 text-sm">
-                            <div><p className="text-gray-500">Father's Name</p><p className="font-medium text-gray-900">{student.fatherName}</p></div>
-                            <div><p className="text-gray-500">Grandfather's Name</p><p className="font-medium text-gray-900">{student.grandfatherName}</p></div>
-                            <div><p className="text-gray-500">Date of Birth</p><p className="font-medium text-gray-900">{new Date(student.dateOfBirth).toLocaleDateString()}</p></div>
-                            <div><p className="text-gray-500">Nationality</p><p className="font-medium text-gray-900">{student.nationality}</p></div>
-                            <div><p className="text-gray-500">Place of Birth</p><p className="font-medium text-gray-900">{student.placeOfBirth}</p></div>
-                            <div><p className="text-gray-500">Previous School</p><p className="font-medium text-gray-900">{student.previousSchool || "N/A"}</p></div>
-                        </div>
+                    <div>
+                        <span className="text-slate-500 block">Date of Birth</span>
+                        <span className="font-medium text-slate-900">
+                            {student.dateOfBirth ? new Date(student.dateOfBirth).toLocaleDateString() : "—"}
+                        </span>
                     </div>
-                </div>
-
-                {/* RIGHT COL */}
-                <div className="space-y-6 lg:col-span-1">
-                    {/* ADDRESS & EMERGENCY */}
-                    <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-                        <h2 className="text-lg font-bold text-gray-900 mb-4 flex items-center border-b pb-3">
-                            <MapPin className="w-5 h-5 mr-2 text-[#006b3f]" /> Contact & Address
-                        </h2>
-                        <div className="space-y-4 text-sm">
-                            <div>
-                                <p className="text-gray-500 font-semibold mb-1">Emergency Contact</p>
-                                <p className="font-medium text-gray-900">{student.emergencyContactName} ({student.emergencyContactRelation})</p>
-                                <p className="text-gray-600 flex items-center mt-1"><Phone className="w-3 h-3 mr-1" /> {student.emergencyContactPhone}</p>
-                            </div>
-                            <div className="pt-3 border-t">
-                                <p className="text-gray-500 font-semibold mb-1">Address</p>
-                                <p className="text-gray-900">{student.region}, {student.city}</p>
-                                <p className="text-gray-600">Sub-city/Zone: {student.zone}</p>
-                                <p className="text-gray-600">Woreda: {student.woreda}</p>
-                                <p className="text-gray-600">House No: {student.houseNumber}</p>
-                            </div>
-                        </div>
+                    <div>
+                        <span className="text-slate-500 block">Residential City / Region</span>
+                        <span className="font-medium text-slate-900">
+                            {student.city || student.region || "Addis Ababa"}
+                        </span>
                     </div>
                 </div>
             </div>
 
-            {/* DOCUMENTS PREVIEW */}
-            <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-                <h2 className="text-lg font-bold text-gray-900 mb-4 flex items-center border-b pb-3">
-                    <FileText className="w-5 h-5 mr-2 text-[#006b3f]" /> Registration Documents
-                </h2>
-                
-                {hasDocs ? (
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-                        {renderDocument("Birth Certificate", docs.birthCertificate)}
-                        {renderDocument("Previous Transcript", docs.transcript)}
-                        {renderDocument("Parent/Guardian ID", docs.parentID)}
+            {/* Section 1: Academic Enrollment History */}
+            <div className="bg-white border border-slate-200 rounded-lg shadow-sm overflow-hidden">
+                <div className="px-5 py-3.5 bg-slate-50/80 border-b border-slate-200 flex items-center justify-between">
+                    <h2 className="text-xs font-bold text-slate-800 uppercase tracking-wider">
+                        Academic Enrollment History
+                    </h2>
+                    <span className="text-xs text-slate-500">
+                        {enrollmentsList.length} Session Records
+                    </span>
+                </div>
+
+                {enrollmentsList.length === 0 ? (
+                    <div className="p-6 text-center text-xs text-slate-500">
+                        No active or historical enrollments recorded for this student.
                     </div>
                 ) : (
-                    <p className="text-gray-500 text-sm">No documents uploaded during registration.</p>
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-left border-collapse text-xs">
+                            <thead>
+                                <tr className="border-b border-slate-200 text-[11px] font-semibold text-slate-600 uppercase tracking-wider bg-slate-50/40">
+                                    <th className="px-5 py-2.5">Academic Session</th>
+                                    <th className="px-5 py-2.5">Grade Cohort</th>
+                                    <th className="px-5 py-2.5">Section Placement</th>
+                                    <th className="px-5 py-2.5">Intake Category</th>
+                                    <th className="px-5 py-2.5">Enrollment Date</th>
+                                    <th className="px-5 py-2.5 text-right">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100">
+                                {enrollmentsList.map((enr: any) => (
+                                    <tr key={enr.id} className="hover:bg-slate-50/50">
+                                        <td className="px-5 py-3 font-semibold text-slate-900">
+                                            {enr.academicYear?.name || "Academic Year"}
+                                        </td>
+                                        <td className="px-5 py-3 text-slate-800">
+                                            {enr.schoolGrade?.grade?.name || "Unassigned"}
+                                        </td>
+                                        <td className="px-5 py-3 text-slate-700">
+                                            {enr.section ? (
+                                                <span className="font-medium text-slate-900">
+                                                    Section {enr.section.name}
+                                                </span>
+                                            ) : (
+                                                <span className="text-slate-500 italic">
+                                                    Unplaced (Step 5)
+                                                </span>
+                                            )}
+                                        </td>
+                                        <td className="px-5 py-3 text-slate-700 capitalize">
+                                            {enr.enrollmentType ? enr.enrollmentType.replace("_", "-").toLowerCase() : "new"}
+                                        </td>
+                                        <td className="px-5 py-3 text-slate-600">
+                                            {enr.enrollmentDate ? new Date(enr.enrollmentDate).toLocaleDateString() : "Active"}
+                                        </td>
+                                        <td className="px-5 py-3 text-right">
+                                            <span className="inline-flex px-2 py-0.5 rounded text-[11px] font-medium bg-slate-100 text-slate-700 border border-slate-200">
+                                                {enr.status.toLowerCase()}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
                 )}
             </div>
 
-            {/* DOCUMENT MODAL */}
-            {previewDoc && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={() => setPreviewDoc(null)}>
-                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col" onClick={e => e.stopPropagation()}>
-                        <div className="flex items-center justify-between p-4 border-b">
-                            <h3 className="font-bold text-gray-900">{previewDoc.title}</h3>
-                            <div className="flex items-center gap-2">
-                                <a 
-                                    href={previewDoc.url} 
-                                    download={previewDoc.title.replace(/\s+/g, '_')}
-                                    className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-800 rounded-lg text-sm font-medium transition-colors"
-                                >
-                                    Download
-                                </a>
-                                <button onClick={() => setPreviewDoc(null)} className="p-2 hover:bg-gray-100 rounded-full text-gray-500 transition-colors">
-                                    <X className="w-5 h-5" />
-                                </button>
-                            </div>
-                        </div>
-                        <div className="flex-1 overflow-auto bg-gray-50 flex items-center justify-center p-4">
-                            {previewDoc.isImage ? (
-                                <img src={previewDoc.url} alt={previewDoc.title} className="max-w-full max-h-[70vh] object-contain rounded shadow-sm" />
-                            ) : (
-                                <iframe src={previewDoc.url} className="w-full h-[70vh] bg-white rounded shadow-sm" title={previewDoc.title} />
-                            )}
-                        </div>
+            {/* Section 2: Demographic & Residential Details */}
+            <div className="bg-white border border-slate-200 rounded-lg shadow-sm overflow-hidden">
+                <div className="px-5 py-3.5 bg-slate-50/80 border-b border-slate-200">
+                    <h2 className="text-xs font-bold text-slate-800 uppercase tracking-wider">
+                        Demographic & Residential Records
+                    </h2>
+                </div>
+                <div className="p-5 grid grid-cols-2 md:grid-cols-3 gap-y-4 gap-x-6 text-xs">
+                    <div>
+                        <span className="text-slate-500 block">First Name</span>
+                        <span className="font-semibold text-slate-900 capitalize mt-0.5 block">{student.firstName}</span>
+                    </div>
+                    <div>
+                        <span className="text-slate-500 block">Father's Name</span>
+                        <span className="font-semibold text-slate-900 capitalize mt-0.5 block">{student.fatherName || "—"}</span>
+                    </div>
+                    <div>
+                        <span className="text-slate-500 block">Grandfather's Name</span>
+                        <span className="font-semibold text-slate-900 capitalize mt-0.5 block">{student.grandfatherName || "—"}</span>
+                    </div>
+                    <div>
+                        <span className="text-slate-500 block">Nationality</span>
+                        <span className="font-medium text-slate-900 mt-0.5 block">{student.nationality || "Ethiopian"}</span>
+                    </div>
+                    <div>
+                        <span className="text-slate-500 block">Place of Birth</span>
+                        <span className="font-medium text-slate-900 mt-0.5 block">{student.placeOfBirth || "—"}</span>
+                    </div>
+                    <div>
+                        <span className="text-slate-500 block">National / Kebele ID</span>
+                        <span className="font-medium text-slate-900 mt-0.5 block">{student.nationalId || "—"}</span>
+                    </div>
+                    <div>
+                        <span className="text-slate-500 block">Region / Sub-city</span>
+                        <span className="font-medium text-slate-900 mt-0.5 block">{student.region || "Addis Ababa"} {student.zone ? `• ${student.zone}` : ""}</span>
+                    </div>
+                    <div>
+                        <span className="text-slate-500 block">Woreda / Kebele</span>
+                        <span className="font-medium text-slate-900 mt-0.5 block">{student.woreda || "—"} {student.kebele ? `/ Kebele ${student.kebele}` : ""}</span>
+                    </div>
+                    <div>
+                        <span className="text-slate-500 block">Previous School</span>
+                        <span className="font-medium text-slate-900 mt-0.5 block">{student.previousSchool || "N/A"}</span>
                     </div>
                 </div>
-            )}
+            </div>
+
+            {/* Section 3: Legal Guardians & Evidence Documents */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Legal Guardians */}
+                <div className="bg-white border border-slate-200 rounded-lg shadow-sm overflow-hidden">
+                    <div className="px-5 py-3.5 bg-slate-50/80 border-b border-slate-200">
+                        <h2 className="text-xs font-bold text-slate-800 uppercase tracking-wider">
+                            Legal Guardians & Contacts
+                        </h2>
+                    </div>
+                    <div className="p-5 space-y-3 text-xs">
+                        {guardiansList.length > 0 ? (
+                            guardiansList.map((g: any, idx: number) => (
+                                <div key={idx} className="p-3 bg-slate-50 border border-slate-200 rounded-md space-y-1">
+                                    <div className="flex items-center justify-between">
+                                        <span className="font-semibold text-slate-900">{g.parent?.user?.name || "Guardian"}</span>
+                                        <span className="text-[11px] text-slate-600 bg-white border border-slate-200 px-2 py-0.5 rounded">
+                                            {g.relationship}
+                                        </span>
+                                    </div>
+                                    <p className="text-slate-600">
+                                        Phone: <strong className="text-slate-800">{g.parent?.emergencyPhone || "—"}</strong>
+                                    </p>
+                                </div>
+                            ))
+                        ) : (
+                            <p className="text-slate-500 text-xs">No primary guardian registered.</p>
+                        )}
+
+                        {student.emergencyContactName && (
+                            <div className="pt-3 border-t border-slate-200">
+                                <span className="text-slate-500 block font-medium">Secondary Emergency Contact</span>
+                                <p className="font-semibold text-slate-900 mt-0.5">
+                                    {student.emergencyContactName} ({student.emergencyContactRelation || "Contact"})
+                                </p>
+                                <p className="text-slate-600 mt-0.5">
+                                    Phone: <strong className="text-slate-800">{student.emergencyContactPhone || "—"}</strong>
+                                </p>
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+                {/* Supporting Documents & Verification */}
+                <div className="bg-white border border-slate-200 rounded-lg shadow-sm overflow-hidden">
+                    <div className="px-5 py-3.5 bg-slate-50/80 border-b border-slate-200">
+                        <h2 className="text-xs font-bold text-slate-800 uppercase tracking-wider">
+                            Supporting Documents & Verification
+                        </h2>
+                    </div>
+                    <div className="p-5 space-y-3 text-xs">
+                        {documentsList.length > 0 ? (
+                            documentsList.map((doc: any) => (
+                                <div key={doc.id} className="p-3 border border-slate-200 rounded-md bg-white space-y-2">
+                                    <div className="flex items-start justify-between gap-2">
+                                        <div>
+                                            <p className="font-semibold text-slate-900">{doc.title}</p>
+                                            <p className="text-[11px] text-slate-500">{doc.documentType}</p>
+                                        </div>
+                                        <span className="inline-flex px-2 py-0.5 rounded text-[10px] font-medium bg-slate-100 text-slate-700 border border-slate-200">
+                                            {doc.verificationStatus}
+                                        </span>
+                                    </div>
+
+                                    {doc.fileUrl && (
+                                        <a 
+                                            href={doc.fileUrl} 
+                                            target="_blank" 
+                                            rel="noreferrer"
+                                            className="inline-flex items-center text-[11px] font-medium text-[#4085b3] hover:underline"
+                                        >
+                                            <ExternalLink className="w-3 h-3 mr-1" />
+                                            View Document File
+                                        </a>
+                                    )}
+
+                                    {doc.verificationStatus === "PENDING" && (
+                                        <div className="flex items-center gap-2 pt-2 border-t border-slate-100">
+                                            <Button 
+                                                size="sm" 
+                                                onClick={() => handleVerifyDocument(doc.id, "VERIFIED")}
+                                                isLoading={verifyingDocId === doc.id}
+                                                className="bg-[#4085b3] hover:bg-[#32698e] text-white text-[10px] h-6 px-2.5"
+                                            >
+                                                Verify
+                                            </Button>
+                                            <Button 
+                                                size="sm" 
+                                                variant="outline"
+                                                onClick={() => handleVerifyDocument(doc.id, "REJECTED")}
+                                                disabled={verifyingDocId === doc.id}
+                                                className="text-red-600 hover:text-red-700 border-red-200 text-[10px] h-6 px-2.5"
+                                            >
+                                                Reject
+                                            </Button>
+                                        </div>
+                                    )}
+                                </div>
+                            ))
+                        ) : (
+                            <p className="text-slate-500 text-xs">No official supporting documents attached.</p>
+                        )}
+                    </div>
+                </div>
+            </div>
         </div>
     );
 }
