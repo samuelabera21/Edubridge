@@ -48,6 +48,7 @@ model User {
   verifiedTeacherQualifications TeacherQualification[] @relation("VerifiedTeacherQualifications")
   uploadedTeacherDocuments      TeacherDocument[]      @relation("UploadedTeacherDocuments")
   verifiedTeacherDocuments      TeacherDocument[]      @relation("VerifiedTeacherDocuments")
+  verifiedStudentDocuments      StudentDocument[]      @relation("VerifiedStudentDocuments")
 
   @@unique([email])
   @@map("user")
@@ -568,9 +569,10 @@ model Student {
   emergencyContactRelation String?
   emergencyContactPhone    String?
 
-  user        User?                @relation(fields: [userId], references: [id], onDelete: SetNull)
-  enrollments StudentEnrollment[]
-  parents     ParentStudent[]
+  user             User?                @relation(fields: [userId], references: [id], onDelete: SetNull)
+  enrollments      StudentEnrollment[]
+  parents          ParentStudent[]
+  studentDocuments StudentDocument[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -585,6 +587,7 @@ model StudentEnrollment {
   academicYearId String
   schoolGradeId  String
   sectionId      String?
+  enrollmentType EnrollmentType   @default(NEW)
   status         EnrollmentStatus @default(ENROLLED)
   enrollmentDate DateTime         @default(now())
 
@@ -594,6 +597,7 @@ model StudentEnrollment {
   schoolGrade   SchoolGrade            @relation(fields: [schoolGradeId], references: [id], onDelete: Cascade)
   section       Section?               @relation(fields: [sectionId], references: [id], onDelete: SetNull)
   statusHistory StudentStatusHistory[]
+  documents     StudentDocument[]
   attendances   StudentAttendance[]
   results       StudentResult[]
   submissions   Submission[]
@@ -606,6 +610,46 @@ model StudentEnrollment {
   @@index([organizationId])
   @@index([schoolGradeId])
   @@map("student_enrollment")
+}
+
+model StudentDocument {
+  id                 String                     @id @default(cuid())
+  studentId          String
+  enrollmentId       String?
+  documentType       String                     // BIRTH_CERTIFICATE, PREVIOUS_TRANSCRIPT, PARENT_ID, TRANSFER_CLEARANCE, OTHER
+  title              String
+  fileUrl            String
+  fileSize           Int?
+  mimeType           String?
+  verificationStatus DocumentVerificationStatus @default(PENDING)
+  verificationNotes  String?
+  verifiedAt         DateTime?
+  verifiedById       String?
+
+  student            Student                    @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  enrollment         StudentEnrollment?         @relation(fields: [enrollmentId], references: [id], onDelete: SetNull)
+  verifiedBy         User?                      @relation("VerifiedStudentDocuments", fields: [verifiedById], references: [id], onDelete: SetNull)
+
+  createdAt          DateTime                   @default(now())
+  updatedAt          DateTime                   @updatedAt
+
+  @@index([studentId])
+  @@index([enrollmentId])
+  @@map("student_document")
+}
+
+enum DocumentVerificationStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+  EXEMPT
+}
+
+enum EnrollmentType {
+  NEW
+  RETURNING
+  TRANSFER_IN
+  RE_ENTRY
 }
 
 model StudentStatusHistory {
