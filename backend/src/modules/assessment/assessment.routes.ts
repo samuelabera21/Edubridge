@@ -6,7 +6,10 @@ import {
     recordResult,
     recordBulkResults,
     getStudentResults,
-    getStudentReportCard
+    getStudentReportCard,
+    getSubjectAnalytics,
+    getAtRiskStudents,
+    getGradebookApprovals
 } from "./assessment.controller.js";
 import { requirePermission, requireScope } from "../authentication/authorization.middleware.js";
 
@@ -126,6 +129,9 @@ router.post("/results/bulk", requirePermission("ACADEMIC:CREATE"), recordBulkRes
 router.get("/student/:enrollmentId", requirePermission("ACADEMIC:VIEW"), getStudentResults);
 router.get("/result/student/:enrollmentId", requirePermission("ACADEMIC:VIEW"), getStudentResults);
 router.get("/student/:enrollmentId/report-card", requirePermission("ACADEMIC:VIEW"), getStudentReportCard);
+router.get("/analytics/subjects", requirePermission("ACADEMIC:VIEW"), getSubjectAnalytics);
+router.get("/at-risk/students", requirePermission("ACADEMIC:VIEW"), getAtRiskStudents);
+router.get("/gradebooks/approval", requirePermission("ACADEMIC:VIEW"), getGradebookApprovals);
 
 export default router;
 

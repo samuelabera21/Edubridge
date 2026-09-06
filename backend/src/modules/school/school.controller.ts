@@ -94,26 +94,36 @@ export async function updateProfileHandler(req: Request, res: Response) {
         });
 
         if (data.activeAcademicYearId) {
-            // Set all to COMPLETED
-            await prisma.academicYear.updateMany({
-                where: { organizationId: accessScope.id, id: { not: data.activeAcademicYearId } },
-                data: { status: "COMPLETED" }
+            const currentActive = await prisma.academicYear.findFirst({
+                where: { organizationId: accessScope.id, status: "ACTIVE" }
             });
-            // Set selected to ACTIVE
-            await prisma.academicYear.update({
-                where: { id: data.activeAcademicYearId },
-                data: { status: "ACTIVE" }
-            });
+            if (!currentActive || currentActive.id !== data.activeAcademicYearId) {
+                const { AcademicService } = await import("../academic/academic.service.js");
+                await AcademicService.activateAcademicYear(accessScope.id, data.activeAcademicYearId);
+            }
         }
 
         return res.json({
             message: "Profile updated successfully",
             profile,
         });
-    } catch (error) {
+    } catch (error: any) {
         console.error("Error updating school profile:", error);
-        return res.status(500).json({ message: "Internal server error" });
+        return res.status(400).json({ message: error.message || "Failed to update profile" });
     }
 }
+export async function getDashboardOverviewHandler(req: Request, res: Response) {
+    try {
+        const accessScope = (req as any).accessScope;
+        if (!accessScope || accessScope.type !== "SCHOOL") {
+            return res.status(403).json({ message: "Invalid or missing school scope" });
+        }
 
-
+        const { getDashboardOverview } = await import("./school.service.js");
+        const data = await getDashboardOverview(accessScope.id);
+        return res.json(data);
+    } catch (error: any) {
+        console.error("Error fetching dashboard overview:", error);
+        return res.status(500).json({ message: error.message || "Failed to fetch dashboard overview" });
+    }
+}

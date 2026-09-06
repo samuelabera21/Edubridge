@@ -42,6 +42,12 @@ model User {
   receivedMessages   Message[]           @relation("ReceivedMessages")
   reportedIssues     Issue[]             @relation("ReportedIssues")
   assignedIssues     Issue[]             @relation("AssignedIssues")
+  createdCalendarEvents CalendarEvent[]   @relation("CreatedCalendarEvents")
+  updatedCalendarEvents CalendarEvent[]   @relation("UpdatedCalendarEvents")
+
+  verifiedTeacherQualifications TeacherQualification[] @relation("VerifiedTeacherQualifications")
+  uploadedTeacherDocuments      TeacherDocument[]      @relation("UploadedTeacherDocuments")
+  verifiedTeacherDocuments      TeacherDocument[]      @relation("VerifiedTeacherDocuments")
 
   @@unique([email])
   @@map("user")
@@ -270,13 +276,62 @@ enum AcademicYearStatus {
   ARCHIVED
 }
 
+enum CalendarStatus {
+  DRAFT
+  REVIEW
+  PUBLISHED
+  ARCHIVED
+}
+
+enum CalendarEventCategory {
+  ACADEMIC_PERIOD
+  EXAMINATION
+  HOLIDAY_BREAK
+  SCHOOL_EVENT
+}
+
+enum CalendarEventType {
+  // Academic Periods
+  SEMESTER
+  TERM
+  QUARTER
+  // Examinations
+  MIDTERM_EXAM
+  FINAL_EXAM
+  MAKEUP_EXAM
+  NATIONAL_EXAM
+  REGIONAL_EXAM
+  // Holidays & Breaks
+  PUBLIC_HOLIDAY
+  SCHOOL_HOLIDAY
+  MIDYEAR_BREAK
+  TERM_BREAK
+  OTHER_BREAK
+  // School Events
+  REGISTRATION
+  ORIENTATION
+  SCHOOL_EVENT
+  MEETING
+  OTHER
+}
+
+enum CalendarEventSource {
+  SYSTEM
+  SCHOOL
+  IMPORTED
+}
+
 model AcademicCalendar {
-  id             String  @id @default(cuid())
-  academicYearId String  @unique
+  id             String         @id @default(cuid())
+  academicYearId String         @unique
   description    String?
+  status         CalendarStatus @default(DRAFT)
+  publishedAt    DateTime?
+  publishedById  String?
 
   academicYear AcademicYear     @relation(fields: [academicYearId], references: [id], onDelete: Cascade)
   periods      AcademicPeriod[]
+  events       CalendarEvent[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -293,11 +348,49 @@ model AcademicPeriod {
   type               String // e.g. SEMESTER, TERM
 
   academicCalendar AcademicCalendar @relation(fields: [academicCalendarId], references: [id], onDelete: Cascade)
+  events           CalendarEvent[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@map("academic_period")
+}
+
+model CalendarEvent {
+  id                 String                @id @default(cuid())
+  academicCalendarId String
+  academicPeriodId   String?               // Optional link to parent Semester/Term
+  title              String
+  category           CalendarEventCategory
+  type               CalendarEventType
+  startDate          DateTime
+  endDate            DateTime
+  isAllDay           Boolean               @default(true)
+  isSchoolClosed     Boolean               @default(false)
+  isExternal         Boolean               @default(false) // e.g. national exams
+  description        String?               @db.Text
+  source             CalendarEventSource   @default(SCHOOL)
+  isConfigurable     Boolean               @default(true)
+  status             String                @default("CONFIRMED") // CONFIRMED, TENTATIVE, CANCELLED
+  metadata           Json?                 // for external links, religious holiday details, etc.
+
+  createdById        String?
+  updatedById        String?
+
+  academicCalendar   AcademicCalendar      @relation(fields: [academicCalendarId], references: [id], onDelete: Cascade)
+  academicPeriod     AcademicPeriod?       @relation(fields: [academicPeriodId], references: [id], onDelete: SetNull)
+  createdBy          User?                 @relation("CreatedCalendarEvents", fields: [createdById], references: [id], onDelete: SetNull)
+  updatedBy          User?                 @relation("UpdatedCalendarEvents", fields: [updatedById], references: [id], onDelete: SetNull)
+
+  createdAt          DateTime              @default(now())
+  updatedAt          DateTime              @updatedAt
+
+  @@index([academicCalendarId])
+  @@index([startDate, endDate])
+  @@index([type])
+  @@index([category])
+  @@index([academicPeriodId])
+  @@map("calendar_event")
 }
 
 model Grade {
@@ -321,10 +414,12 @@ model SchoolGrade {
   id             String @id @default(cuid())
   academicYearId String
   gradeId        String
+  status         String @default("ACTIVE") // ACTIVE, SUSPENDED, ARCHIVED
 
   academicYear AcademicYear @relation(fields: [academicYearId], references: [id], onDelete: Cascade)
   grade        Grade        @relation(fields: [gradeId], references: [id], onDelete: Cascade)
   sections     Section[]
+  gradeSubjects SchoolGradeSubject[]
 
   classroomObservations ClassroomObservation[]
 
@@ -342,10 +437,14 @@ model Section {
   schoolGradeId String
   name          String
   capacity      Int?
+  status        String @default("ACTIVE") // ACTIVE, SUSPENDED, ARCHIVED
 
   schoolGrade SchoolGrade @relation(fields: [schoolGradeId], references: [id], onDelete: Cascade)
 
   classroomObservations ClassroomObservation[]
+
+  homeroomTeacherId   String?
+  homeroomTeacher     Teacher?             @relation("SectionHomeroomTeacher", fields: [homeroomTeacherId], references: [id], onDelete: SetNull)
 
   createdAt           DateTime             @default(now())
   updatedAt           DateTime             @updatedAt
@@ -353,6 +452,7 @@ model Section {
   teachingAssignments TeachingAssignment[]
 
   @@unique([schoolGradeId, name])
+  @@index([homeroomTeacherId])
   @@map("section")
 }
 
@@ -364,12 +464,14 @@ model Subject {
 
   organization   OrganizationUnit @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   schoolSubjects SchoolSubject[]
+  gradeSubjects  SchoolGradeSubject[]
 
   classroomObservations ClassroomObservation[]
 
-  createdAt           DateTime             @default(now())
-  updatedAt           DateTime             @updatedAt
-  teachingAssignments TeachingAssignment[]
+  createdAt             DateTime                @default(now())
+  updatedAt             DateTime                @updatedAt
+  teachingAssignments   TeachingAssignment[]
+  teacherSpecializations TeacherSpecialization[]
 
   @@unique([organizationId, name])
   @@map("subject")
@@ -388,6 +490,22 @@ model SchoolSubject {
 
   @@unique([academicYearId, subjectId])
   @@map("school_subject")
+}
+
+model SchoolGradeSubject {
+  id            String   @id @default(cuid())
+  schoolGradeId String
+  subjectId     String
+  weeklyPeriods Int?
+
+  schoolGrade   SchoolGrade @relation(fields: [schoolGradeId], references: [id], onDelete: Cascade)
+  subject       Subject     @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  @@unique([schoolGradeId, subjectId])
+  @@map("school_grade_subject")
 }
 
 // ============================================================
@@ -515,70 +633,235 @@ enum EnrollmentStatus {
 }
 
 // ============================================================
+// STEP 3: STAFFING & INSTRUCTIONAL ALLOCATION ENUMS
+// ============================================================
+
+enum AssignmentStatus {
+  DRAFT
+  PROPOSED
+  APPROVED
+  ACTIVE
+  ENDED
+  REJECTED
+}
+
+enum TeacherEmploymentType {
+  PERMANENT
+  CONTRACT
+  TRANSFER_IN
+  PART_TIME
+  OTHER
+}
+
+enum TeacherEmploymentStatus {
+  ACTIVE
+  ON_LEAVE
+  TRANSFERRED
+  RESIGNED
+  RETIRED
+  INACTIVE
+}
+
+enum EducationCycle {
+  PRIMARY_FIRST_CYCLE
+  PRIMARY_SECOND_CYCLE
+  SECONDARY_FIRST_CYCLE
+  SECONDARY_SECOND_CYCLE
+}
+
+enum QualificationLevel {
+  CERTIFICATE
+  DIPLOMA
+  BACHELORS
+  MASTERS
+  DOCTORATE
+  OTHER
+}
+
+enum CredentialVerificationStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+  NOT_REVIEWED
+}
+
+enum EquivalencyStatus {
+  NOT_REQUIRED
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
+// ============================================================
 // TEACHER DOMAIN
 // ============================================================
 
 model Teacher {
-  id             String  @id @default(cuid())
-  organizationId String
-  firstName      String
-  lastName       String
-  fatherName     String?
+  id              String   @id @default(cuid())
+  organizationId  String
+  firstName       String
+  lastName        String
+  fatherName      String?
   grandfatherName String?
-  employeeId     String? @unique
-  userId         String? @unique
+  gender          String?
+  dateOfBirth     DateTime?
+  nationality     String?  @default("Ethiopian")
+  nationalIdNumber String?
+
+  employeeId      String?  @unique
+  staffIdCode     String?
+  userId          String?  @unique
   
-  gender         String?
-  dateOfBirth    DateTime?
-  qualification  String?
-  fieldOfStudy   String?
+  qualification   String?  // Legacy / summary field
+  fieldOfStudy    String?
   yearsOfExperience Int?
   
-  phoneNumber    String?
-  email          String?
+  phoneNumber     String?
+  email           String?
   
-  // Address
-  region         String?
-  zone           String?
-  woreda         String?
-  city           String?
-  kebele         String?
-  houseNumber    String?
-  
-  // Media & Documents
-  photoUrl       String?
-  documents      Json?
-  
-  status         String  @default("ACTIVE")
-  availability   Json?
+  // Employment Lifecycle (Step 3 & 3A)
+  employmentType   TeacherEmploymentType   @default(PERMANENT)
+  employmentStatus TeacherEmploymentStatus @default(ACTIVE)
+  joiningDate      DateTime?               @default(now())
+  jobTitle         String?                 @default("Teacher")
+  targetWorkload   Int                     @default(22)
+  minWorkload      Int                     @default(18)
+  maxWorkload      Int                     @default(28)
 
-  organization OrganizationUnit     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  user         User?                @relation(fields: [userId], references: [id], onDelete: SetNull)
-  assignments  TeachingAssignment[]
-  attendances  TeacherAttendance[]
+  // Address
+  region          String?
+  zone            String?
+  woreda          String?
+  city            String?
+  kebele          String?
+  houseNumber     String?
+  
+  // Media & Legacy Documents
+  photoUrl        String?
+  documents       Json?
+  
+  status          String   @default("ACTIVE")
+  availability    Json?
+
+  organization     OrganizationUnit        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user             User?                   @relation(fields: [userId], references: [id], onDelete: SetNull)
+  assignments      TeachingAssignment[]
+  specializations  TeacherSpecialization[]
+  qualifications   TeacherQualification[]
+  teacherDocuments TeacherDocument[]
+  homeroomSections Section[]               @relation("SectionHomeroomTeacher")
+  attendances      TeacherAttendance[]
 
   classroomObservations ClassroomObservation[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@index([organizationId])
+  @@index([employmentStatus])
   @@map("teacher")
 }
 
+model TeacherQualification {
+  id                 String                       @id @default(cuid())
+  teacherId          String
+  qualificationLevel QualificationLevel
+  qualificationTitle String
+  fieldOfStudy       String
+  institution        String
+  graduationYear     Int
+  credentialNumber   String?
+  country            String                       @default("Ethiopia")
+  documentUrl        String?
+  verificationStatus CredentialVerificationStatus @default(PENDING)
+  equivalencyStatus  EquivalencyStatus            @default(NOT_REQUIRED)
+  verifiedById       String?
+  verifiedAt         DateTime?
+  verificationNotes  String?
+  isHighest          Boolean                      @default(false)
+
+  teacher    Teacher @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  verifiedBy User?   @relation("VerifiedTeacherQualifications", fields: [verifiedById], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([teacherId])
+  @@index([verificationStatus])
+  @@map("teacher_qualification")
+}
+
+model TeacherDocument {
+  id                 String                       @id @default(cuid())
+  teacherId          String
+  documentType       String                       // QUALIFICATION_CERTIFICATE, TRANSCRIPT, NATIONAL_ID, APPOINTMENT_LETTER, CV, OTHER
+  title              String
+  fileUrl            String
+  uploadedById       String?
+  uploadedAt         DateTime                     @default(now())
+  verificationStatus CredentialVerificationStatus @default(PENDING)
+  verifiedById       String?
+  verifiedAt         DateTime?
+  verificationNotes  String?
+
+  teacher    Teacher @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  uploadedBy User?   @relation("UploadedTeacherDocuments", fields: [uploadedById], references: [id], onDelete: SetNull)
+  verifiedBy User?   @relation("VerifiedTeacherDocuments", fields: [verifiedById], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([teacherId])
+  @@index([documentType])
+  @@map("teacher_document")
+}
+
+model TeacherSpecialization {
+  id          String          @id @default(cuid())
+  teacherId   String
+  subjectId   String
+  cycle       EducationCycle?
+  isPrimary   Boolean         @default(true)
+  verified    Boolean         @default(false)
+  notes       String?
+
+  teacher     Teacher         @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  subject     Subject         @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  @@unique([teacherId, subjectId])
+  @@index([teacherId])
+  @@index([subjectId])
+  @@map("teacher_specialization")
+}
+
 model TeachingAssignment {
-  id             String  @id @default(cuid())
+  id             String           @id @default(cuid())
   teacherId      String
   academicYearId String
   subjectId      String
   schoolGradeId  String
   sectionId      String?
-  periodsPerWeek Int     @default(0)
+  periodsPerWeek Int              @default(0)
+
+  // Assignment Lifecycle & Audit (Step 3)
+  status              AssignmentStatus @default(PROPOSED)
+  proposedById        String?
+  approvedById        String?
+  approvedAt          DateTime?
+  rejectionReason     String?
+  effectiveStartDate  DateTime?
+  effectiveEndDate    DateTime?
 
   teacher            Teacher            @relation(fields: [teacherId], references: [id], onDelete: Cascade)
   academicYear       AcademicYear       @relation(fields: [academicYearId], references: [id], onDelete: Cascade)
   subject            Subject            @relation(fields: [subjectId], references: [id], onDelete: Cascade)
   schoolGrade        SchoolGrade        @relation(fields: [schoolGradeId], references: [id], onDelete: Cascade)
   section            Section?           @relation(fields: [sectionId], references: [id], onDelete: SetNull)
+  
+  // CRITICAL DATA PRESERVATION: Restrict deletion so removing an assignment never cascades and destroys student assessments, marks, or timetables
   timetables         Timetable[]
   assessments        Assessment[]
   learningActivities LearningActivity[]
@@ -586,8 +869,10 @@ model TeachingAssignment {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  // A teacher should not be assigned the same exact class/subject twice in a year
-  @@unique([teacherId, academicYearId, subjectId, sectionId])
+  // Indexed for fast lookups and historical filtering
+  @@index([academicYearId, status])
+  @@index([teacherId, academicYearId])
+  @@index([schoolGradeId, sectionId, subjectId])
   @@map("teaching_assignment")
 }
 
@@ -664,8 +949,9 @@ model Timetable {
 
   organization       OrganizationUnit   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   academicYear       AcademicYear       @relation(fields: [academicYearId], references: [id], onDelete: Cascade)
-  teachingAssignment TeachingAssignment @relation(fields: [teachingAssignmentId], references: [id], onDelete: Cascade)
+  teachingAssignment TeachingAssignment @relation(fields: [teachingAssignmentId], references: [id], onDelete: Restrict)
   classPeriod        ClassPeriod        @relation(fields: [classPeriodId], references: [id], onDelete: Cascade)
+  room               SchoolResource?    @relation(fields: [roomId], references: [id], onDelete: SetNull)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -760,7 +1046,7 @@ model Assessment {
 
   organization       OrganizationUnit   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   academicYear       AcademicYear       @relation(fields: [academicYearId], references: [id], onDelete: Cascade)
-  teachingAssignment TeachingAssignment @relation(fields: [teachingAssignmentId], references: [id], onDelete: Cascade)
+  teachingAssignment TeachingAssignment @relation(fields: [teachingAssignmentId], references: [id], onDelete: Restrict)
   results            StudentResult[]
 
   createdAt DateTime @default(now())
@@ -813,7 +1099,7 @@ model LearningActivity {
 
   organization       OrganizationUnit   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   academicYear       AcademicYear       @relation(fields: [academicYearId], references: [id], onDelete: Cascade)
-  teachingAssignment TeachingAssignment @relation(fields: [teachingAssignmentId], references: [id], onDelete: Cascade)
+  teachingAssignment TeachingAssignment @relation(fields: [teachingAssignmentId], references: [id], onDelete: Restrict)
   submissions        Submission[]
 
   createdAt DateTime @default(now())
@@ -890,6 +1176,7 @@ enum AnnouncementTarget {
   TEACHERS
   STUDENTS
   PARENTS
+  STAFF
   SPECIFIC_GRADE
   SPECIFIC_SECTION
 }
@@ -975,6 +1262,7 @@ model SchoolResource {
 
   organization OrganizationUnit @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   issues       Issue[]
+  timetables   Timetable[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1097,4 +1385,291 @@ model TimetableConfig {
 
   @@unique([organizationId, academicYearId])
   @@map("timetable_config")
+}
+
+// ============================================================
+// DOMAIN 9: STUDENT SUPPORT & REMEDIAL INTERVENTIONS
+// ============================================================
+
+model LearningDifficulty {
+  id                       String   @id @default(cuid())
+  organizationId           String
+  studentId                String?
+  studentName              String
+  gradeName                String
+  conditionType            String   // DYSLEXIA, ADHD, VISUAL_IMPAIRMENT, HEARING_IMPAIRMENT, OTHER
+  accommodationNotes       String?
+  examTimeExtensionMinutes Int      @default(0)
+
+  createdAt                DateTime @default(now())
+  updatedAt                DateTime @updatedAt
+
+  @@map("learning_difficulty")
+}
+
+model RemedialProgram {
+  id             String   @id @default(cuid())
+  organizationId String
+  programTitle   String
+  subjectName    String
+  gradeName      String
+  leadTeacher    String
+  scheduleTime   String
+  enrolledCount  Int      @default(0)
+  maxCapacity    Int      @default(30)
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@map("remedial_program")
+}
+
+model EnrichmentProgram {
+  id                 String   @id @default(cuid())
+  organizationId     String
+  clubName           String
+  category           String   // STEM, OLYMPIAD, LEADERSHIP, DEBATE
+  coordinatorTeacher String?
+  meetingSchedule    String?
+  description        String?
+  memberCount        Int      @default(0)
+
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@map("enrichment_program")
+}
+
+model InterventionPlan {
+  id             String    @id @default(cuid())
+  organizationId String
+  studentId      String?
+  studentName    String
+  gradeName      String
+  targetScore    String
+  counselorName  String?
+  reviewDate     DateTime?
+  strategyNotes  String?
+  status         String    @default("DRAFTED") // DRAFTED, IN_PROGRESS, COMPLETED
+
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@map("intervention_plan")
+}
+
+model InterventionOutcome {
+  id             String   @id @default(cuid())
+  organizationId String
+  studentId      String?
+  studentName    String
+  initialScore   Float
+  postScore      Float
+  gain           Float
+  status         String   @default("IMPROVED") // IMPROVED, RESOLVED, PENDING
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@map("intervention_outcome")
+}
+
+model InterventionMonitoring {
+  id              String   @id @default(cuid())
+  organizationId  String
+  studentId       String?
+  studentName     String
+  programName     String
+  attendanceRate  Float    @default(100.0)
+  status          String   @default("IN_PROGRESS") // NOT_STARTED, IN_PROGRESS, TARGET_MET
+  lastCheckInDate DateTime @default(now())
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("intervention_monitoring")
+}
+
+// ============================================================
+// DOMAIN 10: PARENT / GUARDIAN MANAGEMENT
+// ============================================================
+
+model ParentMeeting {
+  id             String   @id @default(cuid())
+  organizationId String
+  title          String
+  meetingType    String   // PTA_GENERAL, PARENT_TEACHER_CONFERENCE, EMERGENCY_MEETING
+  scheduledDate  DateTime
+  location       String
+  agenda         String?
+  status         String   @default("SCHEDULED") // SCHEDULED, COMPLETED, CANCELLED
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@map("parent_meeting")
+}
+
+model ParentNotification {
+  id             String   @id @default(cuid())
+  organizationId String
+  parentId       String?
+  title          String
+  message        String
+  channel        String   @default("PORTAL") // PORTAL, SMS, EMAIL
+  status         String   @default("SENT") // SENT, DELIVERED, READ
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@map("parent_notification")
+}
+
+model ParentParticipation {
+  id             String   @id @default(cuid())
+  organizationId String
+  parentName     String
+  activityTitle  String
+  category       String   // VOLUNTEER, PTA_COMMITTEE, FUNDRAISING, EVENT_SUPPORT
+  hoursLogged    Float    @default(0)
+  eventDate      DateTime @default(now())
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@map("parent_participation")
+}
+
+model ImportantNotice {
+  id             String   @id @default(cuid())
+  organizationId String
+  title          String
+  content        String
+  noticeType     String   @default("EMERGENCY") // EMERGENCY, COMPLIANCE, SAFETY, DIRECTIVE
+  isPinned       Boolean  @default(true)
+  authorName     String   @default("School Principal")
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@map("important_notice")
+}
+
+// ============================================================
+// DOMAIN 12: SCHOOL IMPROVEMENT MANAGEMENT
+// ============================================================
+
+model SchoolProblem {
+  id             String   @id @default(cuid())
+  organizationId String
+  problemTitle   String
+  category       String   // ACADEMIC, INFRASTRUCTURE, ATTENDANCE, GOVERNANCE
+  severity       String   @default("HIGH") // CRITICAL, HIGH, MEDIUM, LOW
+  description    String?
+  status         String   @default("OPEN") // OPEN, IN_REVIEW, RESOLVED
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@map("school_problem")
+}
+
+model ImprovementActivity {
+  id                String    @id @default(cuid())
+  organizationId    String
+  improvementPlanId String?
+  activityTitle     String
+  assignedTeam      String
+  dueDate           DateTime?
+  status            String    @default("PENDING") // PENDING, IN_PROGRESS, COMPLETED
+
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  @@map("improvement_activity")
+}
+
+model ImprovementTarget {
+  id             String   @id @default(cuid())
+  organizationId String
+  metricTitle    String
+  baselineValue  Float
+  targetValue    Float
+  currentValue   Float
+  unit           String   @default("%")
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@map("improvement_target")
+}
+
+model ImprovementOutcome {
+  id                 String   @id @default(cuid())
+  organizationId     String
+  planTitle          String
+  achievedPercentage Float    @default(100.0)
+  impactRating       String   @default("EXCELLENT") // EXCELLENT, SATISFACTORY, NEEDS_WORK
+  notes              String?
+
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@map("improvement_outcome")
+}
+
+// ============================================================
+// DOMAIN 13: REPORTS & ANALYTICS
+// ============================================================
+
+model GeneratedReport {
+  id             String   @id @default(cuid())
+  organizationId String
+  reportType     String   // ENROLLMENT, ATTENDANCE, TEACHER, ASSESSMENT, PERFORMANCE, CURRICULUM, SUPPORT, SCHOOL_PERFORMANCE
+  title          String
+  generatedBy    String   @default("School Principal")
+  fileFormat     String   @default("PDF") // PDF, CSV, XLSX
+  summaryMetrics String?  // JSON stringified key values
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@map("generated_report")
+}
+
+// ============================================================
+// DOMAIN 14: AI SCHOOL LEADERSHIP
+// ============================================================
+
+model AILeadershipInsight {
+  id              String   @id @default(cuid())
+  organizationId  String
+  category        String   // SCHOOL_PERFORMANCE, ATTENDANCE, STUDENT_RISK, TRENDS, INTERVENTION, RECOMMENDATIONS, NATURAL_LANGUAGE, EXECUTIVE_SUMMARY
+  promptQuery     String?
+  responseText    String
+  confidenceScore Float    @default(0.95)
+  keyTakeaways    String?  // JSON or pipe separated text
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("ai_leadership_insight")
+}
+
+// ============================================================
+// DOMAIN 16: SCHOOL SETTINGS
+// ============================================================
+
+model SchoolSetting {
+  id             String   @id @default(cuid())
+  organizationId String
+  category       String   // SCHOOL, ACADEMIC, NOTIFICATION, INTEGRATION, DATA
+  key            String
+  value          String
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@unique([organizationId, key])
+  @@map("school_setting")
 }

@@ -64,6 +64,19 @@ export const submitActivity = async (req: Request, res: Response) => {
     }
 };
 
+export const getActivitySubmissions = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        if (!organizationId) return res.status(403).json({ error: "Missing school scope" });
+
+        const { activityId } = req.params;
+        const submissions = await LearningService.getActivitySubmissions(organizationId, activityId as string);
+        return res.json(submissions);
+    } catch (error: any) {
+        return res.status(500).json({ error: error.message || "Failed to fetch submissions" });
+    }
+};
+
 export const raiseSupportFlag = async (req: Request, res: Response) => {
     try {
         const organizationId = (req as any).accessScope?.id;

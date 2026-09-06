@@ -113,4 +113,68 @@ export class ParentService {
         if (!parent) throw new Error("Parent profile not found for user");
         return parent;
     }
+
+    // Domain 10: Meetings
+    static async getMeetings(organizationId: string) {
+        return prisma.parentMeeting.findMany({
+            where: { organizationId },
+            orderBy: { scheduledDate: "desc" }
+        });
+    }
+
+    static async createMeeting(organizationId: string, data: any) {
+        return prisma.parentMeeting.create({
+            data: {
+                organizationId,
+                title: data.title,
+                meetingType: data.meetingType || "PTA_GENERAL",
+                scheduledDate: new Date(data.scheduledDate || Date.now()),
+                location: data.location || "Main Assembly Hall",
+                agenda: data.agenda,
+                status: "SCHEDULED"
+            }
+        });
+    }
+
+    // Domain 10: Notifications
+    static async getNotifications(organizationId: string) {
+        return prisma.parentNotification.findMany({
+            where: { organizationId },
+            orderBy: { createdAt: "desc" }
+        });
+    }
+
+    static async createNotification(organizationId: string, data: any) {
+        return prisma.parentNotification.create({
+            data: {
+                organizationId,
+                parentId: data.parentId || null,
+                title: data.title,
+                message: data.message,
+                channel: data.channel || "PORTAL",
+                status: "SENT"
+            }
+        });
+    }
+
+    // Domain 10: Participation
+    static async getParticipations(organizationId: string) {
+        return prisma.parentParticipation.findMany({
+            where: { organizationId },
+            orderBy: { createdAt: "desc" }
+        });
+    }
+
+    static async createParticipation(organizationId: string, data: any) {
+        return prisma.parentParticipation.create({
+            data: {
+                organizationId,
+                parentName: data.parentName,
+                activityTitle: data.activityTitle,
+                category: data.category || "VOLUNTEER",
+                hoursLogged: Number(data.hoursLogged) || 0,
+                eventDate: data.eventDate ? new Date(data.eventDate) : new Date()
+            }
+        });
+    }
 }

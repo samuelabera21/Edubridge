@@ -8,7 +8,11 @@ import {
     transferStudent,
     updateStudentStatus,
     getStudentProfile,
-    getStudentDashboard
+    getStudentDashboard,
+    getTransfersHandler,
+    executeProgressionHandler,
+    getApprovalsHandler,
+    createApprovalHandler
 } from "./student.controller.js";
 import { requirePermission, requireScope } from "../authentication/authorization.middleware.js";
 
@@ -113,6 +117,11 @@ router.get("/dashboard", requireScope("SCHOOL"), getStudentDashboard);
  *       - bearerAuth: []
  *       - cookieAuth: []
  */
+router.get("/transfers/history", requireScope("SCHOOL"), requirePermission("ACADEMIC:VIEW"), getTransfersHandler);
+router.post("/progression/execute", requireScope("SCHOOL"), requirePermission("ACADEMIC:UPDATE"), executeProgressionHandler);
+router.get("/approvals/queue", requireScope("SCHOOL"), requirePermission("ACADEMIC:VIEW"), getApprovalsHandler);
+router.post("/approvals/request", requireScope("SCHOOL"), requirePermission("ACADEMIC:CREATE"), createApprovalHandler);
+
 router.get("/:id", requireScope("SCHOOL"), requirePermission("ACADEMIC:VIEW"), getStudentById);
 
 export default router;

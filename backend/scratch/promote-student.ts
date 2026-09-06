@@ -52,19 +52,39 @@ async function main() {
     });
 
     if (!student) {
-        const nameParts = user.name.trim().split(/\s+/);
+        student = await prisma.student.findFirst({
+            where: { user: { email } }
+        });
+    }
+
+    if (!student) {
+        const nameParts = (user.name || "Demo Student").trim().split(/\s+/);
         const firstName = nameParts.shift() || "Student";
         const lastName = nameParts.join(" ") || "User";
+
+        let candidateId = `STU-${user.id.slice(0, 8).toUpperCase()}`;
+        let suffix = 1;
+
+        while (await prisma.student.findUnique({ where: { studentId: candidateId } })) {
+            candidateId = `STU-${user.id.slice(0, 8).toUpperCase()}-${suffix}`;
+            suffix += 1;
+        }
 
         student = await prisma.student.create({
             data: {
                 userId: user.id,
-                studentId: `STU-${user.id.slice(0, 8).toUpperCase()}`,
+                studentId: candidateId,
                 firstName,
                 lastName
             }
         });
         console.log(`Created student profile ${student.studentId}.`);
+    } else if (!student.userId) {
+        student = await prisma.student.update({
+            where: { id: student.id },
+            data: { userId: user.id }
+        });
+        console.log(`Linked existing student profile ${student.studentId} to ${email}.`);
     } else {
         console.log(`Student profile ${student.studentId} is already linked.`);
     }

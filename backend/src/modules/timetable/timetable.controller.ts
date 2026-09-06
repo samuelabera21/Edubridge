@@ -62,7 +62,8 @@ export const getTimetableForSection = async (req: Request, res: Response) => {
         if (!organizationId) return res.status(403).json({ error: "Missing school scope" });
 
         const { sectionId } = req.params;
-        const timetable = await TimetableService.getTimetableForSection(organizationId, sectionId as string);
+        const academicYearId = typeof req.query.academicYearId === "string" ? req.query.academicYearId : undefined;
+        const timetable = await TimetableService.getTimetableForSection(organizationId, sectionId as string, academicYearId);
         return res.json(timetable);
     } catch (error) {
         return res.status(500).json({ error: "Internal server error" });

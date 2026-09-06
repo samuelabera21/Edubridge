@@ -35,6 +35,10 @@ scratch/
 scratch_*
 *.scratch.*
 swagger_dump.json
+backend/prisma/seed-teacher-demo.ts
+prisma/seed-teacher-demo.ts
+**/seed-teacher-demo.ts
+*seed-teacher-demo*
 
 # Logs & Debug
 *.log

@@ -343,4 +343,82 @@ export class StudentService {
             dateRange: { today: todayStart.toISOString(), tomorrow: tomorrow.toISOString() }
         };
     }
+
+    static async getTransfers(organizationId: string) {
+        return prisma.studentStatusHistory.findMany({
+            where: {
+                enrollment: { organizationId },
+                status: "TRANSFERRED"
+            },
+            include: {
+                enrollment: {
+                    include: {
+                        student: true,
+                        schoolGrade: { include: { grade: true } },
+                        section: true
+                    }
+                }
+            },
+            orderBy: { createdAt: "desc" }
+        });
+    }
+
+    static async executeProgression(organizationId: string, data: any) {
+        const { sourceGradeId, targetGradeId, academicYearId } = data;
+        const eligibleEnrollments = await prisma.studentEnrollment.findMany({
+            where: {
+                organizationId,
+                schoolGradeId: sourceGradeId,
+                status: "ENROLLED"
+            }
+        });
+
+        let promotedCount = 0;
+        for (const enrollment of eligibleEnrollments) {
+            await prisma.studentEnrollment.update({
+                where: { id: enrollment.id },
+                data: { status: EnrollmentStatus.GRADUATED }
+            });
+
+            await prisma.studentEnrollment.create({
+                data: {
+                    studentId: enrollment.studentId,
+                    organizationId,
+                    academicYearId,
+                    schoolGradeId: targetGradeId,
+                    status: "ENROLLED"
+                }
+            });
+            promotedCount++;
+        }
+
+        return {
+            success: true,
+            promotedCount,
+            message: `Successfully promoted ${promotedCount} students to next grade.`
+        };
+    }
+
+    static async getApprovals(organizationId: string) {
+        return prisma.auditLog.findMany({
+            where: {
+                organizationId,
+                action: { in: ["STUDENT_RECORD_CORRECTION", "GRADE_CORRECTION_REQUEST"] }
+            },
+            orderBy: { createdAt: "desc" }
+        });
+    }
+
+    static async createApprovalRequest(organizationId: string, data: any) {
+        return prisma.auditLog.create({
+            data: {
+                organizationId,
+                userId: data.userId || null,
+                action: "STUDENT_RECORD_CORRECTION",
+                resource: "Student",
+                resourceId: data.studentId,
+                newValue: { reason: data.reason, correctedFields: data.correctedFields, status: "PENDING_PRINCIPAL_APPROVAL" }
+            }
+        });
+    }
 }

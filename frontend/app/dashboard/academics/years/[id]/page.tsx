@@ -2,28 +2,38 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import Link from "next/link";
 import { fetchApi } from "@/lib/api";
-import { ArrowLeft, Users, UserCheck, Layers, LayoutGrid, Calendar, Settings, Copy, Save } from "lucide-react";
-import { Button } from "@/components/ui/Button";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/Card";
+import { useAuth } from "@/hooks/useAuth";
+import { 
+    ArrowLeft, Users, UserCheck, Layers, LayoutGrid, Calendar, 
+    Settings, Copy, Save, CheckCircle2, AlertCircle, X, Check, BookOpen, ChevronRight 
+} from "lucide-react";
 import { LoadingState } from "@/components/ui/LoadingState";
 import { ErrorState } from "@/components/ui/ErrorState";
 import { AcademicYear } from "@/types/api";
 
 export default function AcademicYearDetailsPage() {
+    const { authData } = useAuth();
     const params = useParams();
     const router = useRouter();
     const yearId = params.id as string;
 
+    const hasUpdatePermission = authData?.access.some(acc => 
+        ["ADMIN", "SCHOOL_ADMIN"].includes(acc.role.name) ||
+        acc.role.permissions.some((p: any) => p.permission?.name === "ACADEMIC:UPDATE")
+    );
+
     const [year, setYear] = useState<AcademicYear | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [notification, setNotification] = useState<{ type: "success" | "error"; message: string } | null>(null);
 
     // Form states
     const [name, setName] = useState("");
     const [startDate, setStartDate] = useState("");
     const [endDate, setEndDate] = useState("");
-    const [status, setStatus] = useState("DRAFT");
+    const [status, setStatus] = useState("PLANNED");
     const [saving, setSaving] = useState(false);
 
     // Copy states
@@ -32,6 +42,38 @@ export default function AcademicYearDetailsPage() {
     const [copying, setCopying] = useState(false);
 
     const [activeTab, setActiveTab] = useState<"overview" | "settings">("overview");
+
+    const getAvailableStatusOptions = (currentStatus?: string) => {
+        switch (currentStatus) {
+            case "PLANNED":
+                return [
+                    { value: "PLANNED", label: "PLANNED - Planning phase" },
+                    { value: "ACTIVE", label: "ACTIVE - Current operational year" },
+                    { value: "ARCHIVED", label: "ARCHIVED - Cancelled before start" }
+                ];
+            case "ACTIVE":
+                return [
+                    { value: "ACTIVE", label: "ACTIVE - Current operational year" },
+                    { value: "COMPLETED", label: "COMPLETED - Year finished" }
+                ];
+            case "COMPLETED":
+                return [
+                    { value: "COMPLETED", label: "COMPLETED - Year finished" },
+                    { value: "ARCHIVED", label: "ARCHIVED - Read-only history" }
+                ];
+            case "ARCHIVED":
+                return [
+                    { value: "ARCHIVED", label: "ARCHIVED - Read-only history" }
+                ];
+            default:
+                return [
+                    { value: "PLANNED", label: "PLANNED - Planning phase" },
+                    { value: "ACTIVE", label: "ACTIVE - Current operational year" },
+                    { value: "COMPLETED", label: "COMPLETED - Year finished" },
+                    { value: "ARCHIVED", label: "ARCHIVED - Read-only history" }
+                ];
+        }
+    };
 
     const loadYear = async () => {
         try {
@@ -73,31 +115,42 @@ export default function AcademicYearDetailsPage() {
 
     const handleUpdate = async (e: React.FormEvent) => {
         e.preventDefault();
+        setNotification(null);
+
+        if (new Date(startDate) >= new Date(endDate)) {
+            setNotification({ type: "error", message: "Start date must be before end date." });
+            return;
+        }
+
         try {
             setSaving(true);
             const res = await fetchApi(`/academic/years/${yearId}`, {
                 method: "PUT",
                 body: JSON.stringify({ name, startDate, endDate, status }),
             });
+            const data = await res.json();
             if (!res.ok) {
-                const errData = await res.json();
-                throw new Error(errData.error || "Failed to update academic year");
+                throw new Error(data.error || "Failed to update academic year");
             }
-            alert("Academic year updated successfully!");
+            setNotification({ type: "success", message: "Academic year updated successfully." });
             loadYear();
         } catch (err: any) {
-            alert(err.message);
+            setNotification({ type: "error", message: err.message || "Failed to update academic year" });
         } finally {
             setSaving(false);
         }
     };
 
     const handleCopyStructure = async () => {
-        if (!selectedPrevYear) return alert("Please select a previous year to copy from");
-        if (!confirm("Are you sure you want to copy grades and sections from the selected year? This cannot be undone.")) return;
+        if (!selectedPrevYear) {
+            setNotification({ type: "error", message: "Please select a previous year to copy from." });
+            return;
+        }
+        if (!confirm("Are you sure you want to copy grades and sections from the selected year?")) return;
         
         try {
             setCopying(true);
+            setNotification(null);
             const res = await fetchApi(`/academic/years/${yearId}/copy-structure`, {
                 method: "POST",
                 body: JSON.stringify({ previousYearId: selectedPrevYear }),
@@ -105,244 +158,402 @@ export default function AcademicYearDetailsPage() {
             const data = await res.json();
             if (!res.ok) throw new Error(data.error || "Failed to copy structure");
             
-            alert(data.message || "Structure copied successfully!");
-            loadYear(); // reload stats
+            setNotification({ type: "success", message: data.message || "Structure copied successfully." });
+            loadYear();
         } catch (err: any) {
-            alert(err.message);
+            setNotification({ type: "error", message: err.message || "Failed to copy structure" });
         } finally {
             setCopying(false);
         }
     };
 
     const handleActivate = async () => {
-        if (!confirm("Are you sure you want to activate this academic year? Other active years will be marked as completed.")) return;
+        if (!confirm("Are you sure you want to activate this academic year? Any currently active year will be marked as completed.")) return;
         try {
+            setNotification(null);
             const res = await fetchApi(`/academic/years/${yearId}/activate`, {
                 method: "PUT",
             });
-            if (!res.ok) throw new Error("Failed to activate");
-            alert("Academic year activated!");
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || "Failed to activate");
+            setNotification({ type: "success", message: "Academic year activated successfully." });
             loadYear();
         } catch (err: any) {
-            alert(err.message);
+            setNotification({ type: "error", message: err.message || "Failed to activate academic year" });
         }
-    }
+    };
 
     if (loading) return <LoadingState message="Loading academic year details..." />;
     if (error || !year) return <ErrorState message={error || "Academic Year not found"} onRetry={() => router.back()} />;
 
     return (
-        <div className="space-y-6 max-w-7xl mx-auto pb-12">
-            <div className="flex items-center justify-between">
-                <Button variant="ghost" leftIcon={<ArrowLeft className="w-4 h-4" />} onClick={() => router.back()}>
-                    Back to Academic Years
-                </Button>
-                {year.status !== "ACTIVE" && (
-                    <Button onClick={handleActivate} variant="secondary" className="text-green-600 border-green-600 hover:bg-green-50">
-                        Set as Active Year
-                    </Button>
-                )}
+        <div className="space-y-5 max-w-7xl mx-auto pb-12 font-sans text-gray-900">
+            {/* Breadcrumb Navigation */}
+            <div className="flex items-center space-x-2 text-xs text-gray-500">
+                <Link href="/dashboard" className="hover:text-gray-900">Dashboard</Link>
+                <span>/</span>
+                <Link href="/dashboard/academics/years" className="hover:text-gray-900">Academics</Link>
+                <span>/</span>
+                <Link href="/dashboard/academics/years" className="hover:text-gray-900">Academic Years</Link>
+                <span>/</span>
+                <span className="text-gray-900 font-medium">{year.name}</span>
             </div>
 
-            {/* HEADER */}
-            <div className="bg-white rounded-2xl p-8 shadow-sm border border-gray-100 flex flex-col md:flex-row gap-8 items-start md:items-center justify-between">
-                <div>
-                    <h1 className="text-3xl font-bold text-gray-900 flex items-center">
-                        <Calendar className="w-8 h-8 mr-3 text-[#006b3f]" />
-                        {year.name}
-                    </h1>
-                    <div className="flex flex-wrap gap-4 mt-3 text-sm text-gray-600">
-                        <div className="flex items-center">
-                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                                year.status === 'ACTIVE' ? 'bg-green-100 text-green-800' : 
-                                year.status === 'COMPLETED' ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-800'
+            {/* Notification Messages */}
+            {notification && (
+                <div className={`p-3.5 rounded-md border flex items-center justify-between text-xs transition-all ${
+                    notification.type === "success" 
+                        ? "bg-emerald-50 text-emerald-800 border-emerald-200" 
+                        : "bg-rose-50 text-rose-800 border-rose-200"
+                }`}>
+                    <div className="flex items-center space-x-2">
+                        {notification.type === "success" ? (
+                            <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                        ) : (
+                            <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+                        )}
+                        <p className="font-medium">{notification.message}</p>
+                    </div>
+                    <button 
+                        onClick={() => setNotification(null)}
+                        className="text-gray-500 hover:text-gray-700 cursor-pointer"
+                    >
+                        <X className="w-4 h-4" />
+                    </button>
+                </div>
+            )}
+
+            {/* Unified Government Session Header Card */}
+            <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-xs">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-gray-100">
+                    <Link 
+                        href="/dashboard/academics/years"
+                        className="inline-flex items-center space-x-1.5 text-xs text-gray-600 hover:text-gray-900 transition-colors w-fit"
+                    >
+                        <ArrowLeft className="w-3.5 h-3.5" />
+                        <span>Back to Academic Years</span>
+                    </Link>
+
+                    <div className="flex items-center space-x-3">
+                        {hasUpdatePermission && year.status === "PLANNED" && (
+                            <button 
+                                onClick={handleActivate} 
+                                className="inline-flex items-center space-x-1.5 px-4 py-2 text-xs font-medium text-white bg-[#4085b3] hover:bg-[#2b6a94] rounded-md transition-colors shadow-xs cursor-pointer"
+                            >
+                                <Check className="w-3.5 h-3.5" />
+                                <span>Set as Active Year</span>
+                            </button>
+                        )}
+                        {year.status === "ACTIVE" && (
+                            <span className="inline-flex items-center space-x-1.5 px-3 py-1 rounded text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                                <span>Active Operational Year</span>
+                            </span>
+                        )}
+                    </div>
+                </div>
+
+                <div className="pt-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div>
+                        <div className="flex items-center space-x-3">
+                            <h1 className="text-2xl font-bold text-gray-900 tracking-tight">
+                                Academic Year {year.name}
+                            </h1>
+                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wider ${
+                                year.status === 'ACTIVE' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 
+                                year.status === 'COMPLETED' ? 'bg-blue-50 text-blue-700 border border-blue-200' : 
+                                year.status === 'PLANNED' ? 'bg-amber-50 text-amber-700 border border-amber-200' : 'bg-gray-50 text-gray-700 border border-gray-200'
                             }`}>
                                 {year.status}
                             </span>
                         </div>
-                        <div className="flex items-center">Start: {new Date(year.startDate).toLocaleDateString()}</div>
-                        <div className="flex items-center">End: {new Date(year.endDate).toLocaleDateString()}</div>
+                        <div className="flex flex-wrap items-center gap-3 mt-2 text-xs text-gray-600 font-mono">
+                            <span>Start: {new Date(year.startDate).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}</span>
+                            <span className="text-gray-300">&bull;</span>
+                            <span>End: {new Date(year.endDate).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}</span>
+                        </div>
                     </div>
                 </div>
             </div>
 
-            {/* TABS */}
-            <div className="flex border-b border-gray-200">
+            {/* Government Tabs */}
+            <div className="flex border-b border-gray-200 text-xs font-medium space-x-6">
                 <button
                     onClick={() => setActiveTab("overview")}
-                    className={`py-3 px-6 text-sm font-medium border-b-2 transition-colors ${
-                        activeTab === "overview" ? "border-[#006b3f] text-[#006b3f]" : "border-transparent text-gray-500 hover:text-gray-700"
+                    className={`pb-3 transition-colors relative cursor-pointer ${
+                        activeTab === "overview" ? "text-[#4085b3] font-semibold" : "text-gray-500 hover:text-gray-800"
                     }`}
                 >
-                    Overview & Stats
+                    <span>Overview & Statistics</span>
+                    {activeTab === "overview" && (
+                        <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#4085b3]" />
+                    )}
                 </button>
                 <button
                     onClick={() => setActiveTab("settings")}
-                    className={`py-3 px-6 text-sm font-medium border-b-2 transition-colors ${
-                        activeTab === "settings" ? "border-[#006b3f] text-[#006b3f]" : "border-transparent text-gray-500 hover:text-gray-700"
+                    className={`pb-3 transition-colors relative cursor-pointer ${
+                        activeTab === "settings" ? "text-[#4085b3] font-semibold" : "text-gray-500 hover:text-gray-800"
                     }`}
                 >
-                    Settings & Configuration
+                    <span>Configuration</span>
+                    {activeTab === "settings" && (
+                        <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#4085b3]" />
+                    )}
                 </button>
             </div>
 
+            {/* TAB 1: OVERVIEW */}
             {activeTab === "overview" && (
                 <div className="space-y-6">
-                    <h2 className="text-lg font-bold text-gray-900">Academic Year Overview</h2>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                        <Card className="bg-gradient-to-br from-blue-50 to-white border-blue-100">
-                            <CardContent className="p-6">
+                    {/* 4 Clean Elevated Metric Cards (EAES Portal Style) */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <Link href="/dashboard/students" className="block group">
+                            <div className="bg-white border border-gray-200 rounded-lg p-5 shadow-xs group-hover:border-[#4085b3] group-hover:shadow-md group-hover:-translate-y-0.5 transition-all duration-200">
                                 <div className="flex items-center justify-between">
-                                    <div>
-                                        <p className="text-sm font-medium text-blue-600 mb-1">Enrolled Students</p>
-                                        <p className="text-3xl font-bold text-gray-900">{year.stats?.students || 0}</p>
-                                    </div>
-                                    <div className="p-3 bg-blue-100 rounded-lg text-blue-600">
-                                        <Users className="w-6 h-6" />
+                                    <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider">Enrolled Students</p>
+                                    <div className="w-9 h-9 rounded-lg bg-sky-50 text-[#4085b3] flex items-center justify-center transition-colors group-hover:bg-[#4085b3] group-hover:text-white">
+                                        <Users className="w-4 h-4" />
                                     </div>
                                 </div>
-                            </CardContent>
-                        </Card>
+                                <p className="text-2xl font-bold text-gray-900 mt-2 font-mono">{year.stats?.students || 0}</p>
+                                <div className="mt-3 pt-2 border-t border-gray-100 flex items-center justify-between text-[11px] text-gray-500">
+                                    <span>Student Directory</span>
+                                    <span className="text-[#4085b3] font-medium group-hover:underline">View &rarr;</span>
+                                </div>
+                            </div>
+                        </Link>
                         
-                        <Card className="bg-gradient-to-br from-purple-50 to-white border-purple-100">
-                            <CardContent className="p-6">
+                        <Link href="/dashboard/teachers/assignments" className="block group">
+                            <div className="bg-white border border-gray-200 rounded-lg p-5 shadow-xs group-hover:border-[#4085b3] group-hover:shadow-md group-hover:-translate-y-0.5 transition-all duration-200">
                                 <div className="flex items-center justify-between">
-                                    <div>
-                                        <p className="text-sm font-medium text-purple-600 mb-1">Assigned Teachers</p>
-                                        <p className="text-3xl font-bold text-gray-900">{year.stats?.teachers || 0}</p>
-                                    </div>
-                                    <div className="p-3 bg-purple-100 rounded-lg text-purple-600">
-                                        <UserCheck className="w-6 h-6" />
+                                    <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider">Assigned Teachers</p>
+                                    <div className="w-9 h-9 rounded-lg bg-sky-50 text-[#4085b3] flex items-center justify-center transition-colors group-hover:bg-[#4085b3] group-hover:text-white">
+                                        <UserCheck className="w-4 h-4" />
                                     </div>
                                 </div>
-                            </CardContent>
-                        </Card>
+                                <p className="text-2xl font-bold text-gray-900 mt-2 font-mono">{year.stats?.teachers || 0}</p>
+                                <div className="mt-3 pt-2 border-t border-gray-100 flex items-center justify-between text-[11px] text-gray-500">
+                                    <span>Staffing Coverage</span>
+                                    <span className="text-[#4085b3] font-medium group-hover:underline">View &rarr;</span>
+                                </div>
+                            </div>
+                        </Link>
 
-                        <Card className="bg-gradient-to-br from-amber-50 to-white border-amber-100">
-                            <CardContent className="p-6">
+                        <Link href="/dashboard/academics/grades" className="block group">
+                            <div className="bg-white border border-gray-200 rounded-lg p-5 shadow-xs group-hover:border-[#4085b3] group-hover:shadow-md group-hover:-translate-y-0.5 transition-all duration-200">
                                 <div className="flex items-center justify-between">
-                                    <div>
-                                        <p className="text-sm font-medium text-amber-600 mb-1">Total Grades</p>
-                                        <p className="text-3xl font-bold text-gray-900">{year.stats?.grades || 0}</p>
-                                    </div>
-                                    <div className="p-3 bg-amber-100 rounded-lg text-amber-600">
-                                        <Layers className="w-6 h-6" />
+                                    <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider">Configured Grades</p>
+                                    <div className="w-9 h-9 rounded-lg bg-sky-50 text-[#4085b3] flex items-center justify-center transition-colors group-hover:bg-[#4085b3] group-hover:text-white">
+                                        <Layers className="w-4 h-4" />
                                     </div>
                                 </div>
-                            </CardContent>
-                        </Card>
+                                <p className="text-2xl font-bold text-gray-900 mt-2 font-mono">{year.stats?.grades || 0}</p>
+                                <div className="mt-3 pt-2 border-t border-gray-100 flex items-center justify-between text-[11px] text-gray-500">
+                                    <span>Grade Levels</span>
+                                    <span className="text-[#4085b3] font-medium group-hover:underline">View &rarr;</span>
+                                </div>
+                            </div>
+                        </Link>
 
-                        <Card className="bg-gradient-to-br from-green-50 to-white border-green-100">
-                            <CardContent className="p-6">
+                        <Link href="/dashboard/academics/grades" className="block group">
+                            <div className="bg-white border border-gray-200 rounded-lg p-5 shadow-xs group-hover:border-[#4085b3] group-hover:shadow-md group-hover:-translate-y-0.5 transition-all duration-200">
                                 <div className="flex items-center justify-between">
-                                    <div>
-                                        <p className="text-sm font-medium text-green-600 mb-1">Total Sections</p>
-                                        <p className="text-3xl font-bold text-gray-900">{year.stats?.sections || 0}</p>
-                                    </div>
-                                    <div className="p-3 bg-green-100 rounded-lg text-green-600">
-                                        <LayoutGrid className="w-6 h-6" />
+                                    <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider">Active Sections</p>
+                                    <div className="w-9 h-9 rounded-lg bg-sky-50 text-[#4085b3] flex items-center justify-center transition-colors group-hover:bg-[#4085b3] group-hover:text-white">
+                                        <LayoutGrid className="w-4 h-4" />
                                     </div>
                                 </div>
-                            </CardContent>
-                        </Card>
+                                <p className="text-2xl font-bold text-gray-900 mt-2 font-mono">{year.stats?.sections || 0}</p>
+                                <div className="mt-3 pt-2 border-t border-gray-100 flex items-center justify-between text-[11px] text-gray-500">
+                                    <span>Class Sections</span>
+                                    <span className="text-[#4085b3] font-medium group-hover:underline">View &rarr;</span>
+                                </div>
+                            </div>
+                        </Link>
                     </div>
 
-                    <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 mt-6">
-                        <div className="flex justify-between items-center mb-4">
-                            <h3 className="text-lg font-bold text-gray-900">Copy Academic Structure</h3>
+                    {/* Academic Structure Rollover */}
+                    <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-xs space-y-4">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                            <div>
+                                <h3 className="text-sm font-bold text-gray-900">
+                                    Structure Rollover
+                                </h3>
+                                <p className="text-xs text-gray-500 mt-0.5">
+                                    Copy grade levels and class sections from a previous academic session.
+                                </p>
+                            </div>
+                            {(year.stats?.grades || 0) > 0 && (
+                                <span className="text-xs text-gray-500 font-mono bg-gray-50 border border-gray-200 px-2.5 py-1 rounded">
+                                    Current: {year.stats?.grades} grades, {year.stats?.sections} sections
+                                </span>
+                            )}
                         </div>
-                        <p className="text-sm text-gray-500 mb-4">
-                            Quickly set up this academic year by copying Grades and Sections from a previous year. 
-                            This is useful for rolling over the school structure without manual entry.
-                        </p>
-                        <div className="flex gap-4 items-center">
+
+                        <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center pt-2">
                             <select 
-                                className="flex-1 max-w-sm rounded-lg border border-gray-300 p-2.5 text-sm focus:ring-[#006b3f] focus:border-[#006b3f]"
+                                className="w-full sm:w-80 rounded-md border border-gray-300 px-3 py-2 text-xs bg-white focus:ring-2 focus:ring-[#4085b3] focus:border-[#4085b3] outline-none cursor-pointer"
                                 value={selectedPrevYear}
                                 onChange={(e) => setSelectedPrevYear(e.target.value)}
                             >
-                                <option value="">Select a previous academic year...</option>
+                                <option value="">Select source academic year...</option>
                                 {otherYears.map(y => (
                                     <option key={y.id} value={y.id}>{y.name}</option>
                                 ))}
                             </select>
-                            <Button 
+                            <button 
                                 onClick={handleCopyStructure} 
                                 disabled={!selectedPrevYear || copying}
-                                leftIcon={<Copy className="w-4 h-4" />}
+                                className="inline-flex items-center space-x-1.5 px-4 py-2 text-xs font-medium text-white bg-[#4085b3] hover:bg-[#2b6a94] rounded-md transition-colors shadow-xs disabled:opacity-50 cursor-pointer flex-shrink-0"
                             >
-                                {copying ? "Copying..." : "Copy Grades & Sections"}
-                            </Button>
+                                <Copy className="w-3.5 h-3.5" />
+                                <span>{copying ? "Copying..." : "Copy Structure"}</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* Academic Management Modules (EAES Hover Grid) */}
+                    <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-xs space-y-4">
+                        <div className="border-b border-gray-100 pb-3">
+                            <h3 className="text-sm font-bold text-gray-900">
+                                Academic Management Modules
+                            </h3>
+                            <p className="text-xs text-gray-500 mt-0.5">
+                                Core curricular components and operational settings for this session.
+                            </p>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 pt-1">
+                            <Link 
+                                href="/dashboard/academics/grades"
+                                className="group p-4 rounded-lg border border-gray-200 hover:border-[#4085b3] hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 bg-white"
+                            >
+                                <div className="flex items-start justify-between">
+                                    <div className="w-9 h-9 rounded-lg bg-sky-50 text-[#4085b3] flex items-center justify-center group-hover:bg-[#4085b3] group-hover:text-white transition-colors">
+                                        <Layers className="w-4 h-4" />
+                                    </div>
+                                    <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-[#4085b3] group-hover:translate-x-0.5 transition-all" />
+                                </div>
+                                <h4 className="text-xs font-bold text-gray-900 mt-3 group-hover:text-[#4085b3] transition-colors">
+                                    Grades & Class Sections
+                                </h4>
+                                <p className="text-[11px] text-gray-500 mt-1">
+                                    Configure academic grade levels, student streams, and homeroom divisions.
+                                </p>
+                            </Link>
+
+                            <Link 
+                                href="/dashboard/academics/subjects"
+                                className="group p-4 rounded-lg border border-gray-200 hover:border-[#4085b3] hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 bg-white"
+                            >
+                                <div className="flex items-start justify-between">
+                                    <div className="w-9 h-9 rounded-lg bg-sky-50 text-[#4085b3] flex items-center justify-center group-hover:bg-[#4085b3] group-hover:text-white transition-colors">
+                                        <BookOpen className="w-4 h-4" />
+                                    </div>
+                                    <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-[#4085b3] group-hover:translate-x-0.5 transition-all" />
+                                </div>
+                                <h4 className="text-xs font-bold text-gray-900 mt-3 group-hover:text-[#4085b3] transition-colors">
+                                    Curriculum Subjects
+                                </h4>
+                                <p className="text-[11px] text-gray-500 mt-1">
+                                    Define official courses, curriculum codes, credits, and weekly period counts.
+                                </p>
+                            </Link>
+
+                            <Link 
+                                href="/dashboard/academics/calendar"
+                                className="group p-4 rounded-lg border border-gray-200 hover:border-[#4085b3] hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 bg-white"
+                            >
+                                <div className="flex items-start justify-between">
+                                    <div className="w-9 h-9 rounded-lg bg-sky-50 text-[#4085b3] flex items-center justify-center group-hover:bg-[#4085b3] group-hover:text-white transition-colors">
+                                        <Calendar className="w-4 h-4" />
+                                    </div>
+                                    <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-[#4085b3] group-hover:translate-x-0.5 transition-all" />
+                                </div>
+                                <h4 className="text-xs font-bold text-gray-900 mt-3 group-hover:text-[#4085b3] transition-colors">
+                                    Academic Calendar
+                                </h4>
+                                <p className="text-[11px] text-gray-500 mt-1">
+                                    Manage semesters, term examination dates, holidays, and school periods.
+                                </p>
+                            </Link>
                         </div>
                     </div>
                 </div>
             )}
 
+            {/* TAB 2: SETTINGS */}
             {activeTab === "settings" && (
-                <Card>
-                    <CardHeader>
-                        <CardTitle className="flex items-center">
-                            <Settings className="w-5 h-5 mr-2 text-gray-500" />
-                            Update Configuration
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <form onSubmit={handleUpdate} className="space-y-6 max-w-2xl">
+                <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-xs">
+                    <h3 className="text-sm font-bold text-gray-900 pb-3 border-b border-gray-100 mb-5">
+                        Year Configuration
+                    </h3>
+
+                    <form onSubmit={handleUpdate} className="space-y-4 max-w-xl text-xs">
+                        <div>
+                            <label className="block font-medium text-gray-700 mb-1">Academic Year Name *</label>
+                            <input 
+                                type="text" 
+                                required
+                                value={name}
+                                onChange={(e) => setName(e.target.value)}
+                                placeholder="e.g. 2018 E.C."
+                                className="w-full rounded-md border border-gray-300 px-3 py-2 focus:ring-2 focus:ring-[#4085b3] focus:border-[#4085b3] outline-none"
+                            />
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Academic Year Name</label>
+                                <label className="block font-medium text-gray-700 mb-1">Start Date *</label>
                                 <input 
-                                    type="text" 
+                                    type="date" 
                                     required
-                                    value={name}
-                                    onChange={(e) => setName(e.target.value)}
-                                    placeholder="e.g. 2018 E.C."
-                                    className="w-full rounded-lg border border-gray-300 p-2.5 focus:ring-[#006b3f] focus:border-[#006b3f]"
+                                    value={startDate}
+                                    onChange={(e) => setStartDate(e.target.value)}
+                                    className="w-full rounded-md border border-gray-300 px-3 py-2 focus:ring-2 focus:ring-[#4085b3] focus:border-[#4085b3] outline-none"
                                 />
-                                <p className="text-xs text-gray-500 mt-1">Use the standard Ethiopian Calendar format if required.</p>
-                            </div>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
-                                    <input 
-                                        type="date" 
-                                        required
-                                        value={startDate}
-                                        onChange={(e) => setStartDate(e.target.value)}
-                                        className="w-full rounded-lg border border-gray-300 p-2.5 focus:ring-[#006b3f] focus:border-[#006b3f]"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">End Date</label>
-                                    <input 
-                                        type="date" 
-                                        required
-                                        value={endDate}
-                                        onChange={(e) => setEndDate(e.target.value)}
-                                        className="w-full rounded-lg border border-gray-300 p-2.5 focus:ring-[#006b3f] focus:border-[#006b3f]"
-                                    />
-                                </div>
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
-                                <select 
-                                    value={status}
-                                    onChange={(e) => setStatus(e.target.value)}
-                                    className="w-full rounded-lg border border-gray-300 p-2.5 focus:ring-[#006b3f] focus:border-[#006b3f]"
-                                >
-                                    <option value="DRAFT">DRAFT - Planning phase</option>
-                                    <option value="ACTIVE">ACTIVE - Current operational year</option>
-                                    <option value="COMPLETED">COMPLETED - Year finished</option>
-                                    <option value="ARCHIVED">ARCHIVED - Read-only history</option>
-                                </select>
+                                <label className="block font-medium text-gray-700 mb-1">End Date *</label>
+                                <input 
+                                    type="date" 
+                                    required
+                                    value={endDate}
+                                    onChange={(e) => setEndDate(e.target.value)}
+                                    className="w-full rounded-md border border-gray-300 px-3 py-2 focus:ring-2 focus:ring-[#4085b3] focus:border-[#4085b3] outline-none"
+                                />
                             </div>
-                            <div className="pt-4 border-t border-gray-100 flex justify-end">
-                                <Button type="submit" disabled={saving} leftIcon={<Save className="w-4 h-4" />}>
-                                    {saving ? "Saving..." : "Save Changes"}
-                                </Button>
-                            </div>
-                        </form>
-                    </CardContent>
-                </Card>
+                        </div>
+
+                        <div>
+                            <label className="block font-medium text-gray-700 mb-1">Status</label>
+                            <select 
+                                value={status}
+                                onChange={(e) => setStatus(e.target.value)}
+                                disabled={!hasUpdatePermission || year.status === "ARCHIVED"}
+                                className="w-full rounded-md border border-gray-300 px-3 py-2 bg-white focus:ring-2 focus:ring-[#4085b3] focus:border-[#4085b3] outline-none disabled:bg-gray-100 disabled:cursor-not-allowed cursor-pointer"
+                            >
+                                {getAvailableStatusOptions(year.status).map(opt => (
+                                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                ))}
+                            </select>
+                            {year.status === "ARCHIVED" && (
+                                <p className="text-[11px] text-amber-600 mt-1">Archived academic years are locked and cannot be modified.</p>
+                            )}
+                        </div>
+
+                        <div className="pt-4 border-t border-gray-100 flex justify-end">
+                            <button 
+                                type="submit" 
+                                disabled={saving || !hasUpdatePermission || year.status === "ARCHIVED"} 
+                                className="inline-flex items-center space-x-1.5 px-5 py-2 text-xs font-medium text-white bg-[#4085b3] hover:bg-[#2b6a94] rounded-md transition-colors shadow-xs disabled:opacity-50 cursor-pointer"
+                            >
+                                <Save className="w-3.5 h-3.5" />
+                                <span>{saving ? "Saving..." : "Save Changes"}</span>
+                            </button>
+                        </div>
+                    </form>
+                </div>
             )}
         </div>
     );
