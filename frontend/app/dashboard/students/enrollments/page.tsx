@@ -218,6 +218,11 @@ export default function StudentEnrollmentsPage() {
                     </p>
                 </div>
                 <div className="flex items-center gap-3">
+                    <Link href="/dashboard/students/placement">
+                        <Button variant="outline" size="sm" className="text-slate-700 border-slate-300 hover:bg-slate-50">
+                            Classroom Placement
+                        </Button>
+                    </Link>
                     <Link href="/dashboard/students">
                         <Button variant="outline" size="sm" className="text-slate-700 border-slate-300 hover:bg-slate-50">
                             Student Directory
@@ -433,9 +438,17 @@ export default function StudentEnrollmentsPage() {
                                                         Section {enrollment.section.name}
                                                     </span>
                                                 ) : (
-                                                    <span className="text-slate-500 italic">
-                                                        Unplaced (Step 5)
-                                                    </span>
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="inline-flex px-2 py-0.5 rounded text-[11px] font-medium bg-amber-50 text-amber-800 border border-amber-200">
+                                                            Unplaced
+                                                        </span>
+                                                        <Link 
+                                                            href={`/dashboard/students/placement?yearId=${enrollment.academicYearId}&gradeId=${enrollment.schoolGradeId}`}
+                                                            className="text-[11px] text-[#4085b3] hover:text-[#32698e] font-semibold hover:underline"
+                                                        >
+                                                            Place →
+                                                        </Link>
+                                                    </div>
                                                 )}
                                             </td>
                                             <td className="px-5 py-3.5 text-slate-700 capitalize">
