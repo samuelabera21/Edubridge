@@ -27,6 +27,7 @@ import {
     getSchoolGrades, 
     createSchoolGrade,
     deleteSchoolGrade,
+    updateSchoolGradeStatus,
     getSchoolGradeDetails,
     getSections, 
     createSection,
@@ -80,6 +81,7 @@ router.get("/grades", requirePermission("ACADEMIC:VIEW"), getGrades);
 router.post("/grades", requirePermission("ACADEMIC:CREATE"), createGrade);
 router.get("/years/:yearId/grades", requirePermission("ACADEMIC:VIEW"), getSchoolGrades);
 router.post("/years/:yearId/grades", requirePermission("ACADEMIC:CREATE"), createSchoolGrade);
+router.patch("/grades/school-grades/:schoolGradeId/status", requirePermission("ACADEMIC:MANAGE"), updateSchoolGradeStatus);
 router.delete("/grades/school-grades/:schoolGradeId", requirePermission("ACADEMIC:MANAGE"), deleteSchoolGrade);
 router.get("/grades/:schoolGradeId/details", requirePermission("ACADEMIC:VIEW"), getSchoolGradeDetails);
 

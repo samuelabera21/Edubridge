@@ -414,6 +414,7 @@ model SchoolGrade {
   id             String @id @default(cuid())
   academicYearId String
   gradeId        String
+  status         String @default("ACTIVE") // ACTIVE, SUSPENDED, ARCHIVED
 
   academicYear AcademicYear @relation(fields: [academicYearId], references: [id], onDelete: Cascade)
   grade        Grade        @relation(fields: [gradeId], references: [id], onDelete: Cascade)
@@ -436,6 +437,7 @@ model Section {
   schoolGradeId String
   name          String
   capacity      Int?
+  status        String @default("ACTIVE") // ACTIVE, SUSPENDED, ARCHIVED
 
   schoolGrade SchoolGrade @relation(fields: [schoolGradeId], references: [id], onDelete: Cascade)
 
