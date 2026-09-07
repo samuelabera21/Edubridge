@@ -119,10 +119,17 @@ export async function getDashboardOverviewHandler(req: Request, res: Response) {
             return res.status(403).json({ message: "Invalid or missing school scope" });
         }
 
-        const { getDashboardOverview } = await import("./school.service.js");
-        const data = await getDashboardOverview(accessScope.id);
+        const academicYearId = typeof req.query.academicYearId === "string" ? req.query.academicYearId : undefined;
+        const { SchoolDashboardService } = await import("./school.dashboard.service.js");
+        const data = await SchoolDashboardService.getDashboardMetrics(accessScope.id, academicYearId);
         return res.json(data);
     } catch (error: any) {
+        if (error.message === "ACADEMIC_YEAR_NOT_FOUND") {
+            return res.status(404).json({ message: "Selected academic year was not found for this school" });
+        }
+        if (error.message === "ORGANIZATION_NOT_FOUND") {
+            return res.status(404).json({ message: "School organization not found" });
+        }
         console.error("Error fetching dashboard overview:", error);
         return res.status(500).json({ message: error.message || "Failed to fetch dashboard overview" });
     }
