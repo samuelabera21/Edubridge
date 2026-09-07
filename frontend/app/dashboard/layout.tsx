@@ -29,6 +29,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         communication: pathname.startsWith("/dashboard/communication"),
         operations: pathname.startsWith("/dashboard/operations"),
     });
+    const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
     const [showProfileDropdown, setShowProfileDropdown] = useState(false);
     const [headerCounts, setHeaderCounts] = useState<{ notifications: number; messages: number }>({
@@ -217,11 +218,49 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
                 <div className="hidden md:flex items-center space-x-5">
                     {!isTeacherRoute && (
-                        <nav className="flex space-x-6 text-sm font-bold text-gray-700 mr-4">
-                            <Link href="/dashboard" className="flex items-center hover:text-[#4085b3] transition-colors"><Building className="w-4 h-4 mr-1"/> About</Link>
-                            <Link href="/dashboard" className="flex items-center hover:text-[#4085b3] transition-colors"><LayoutDashboard className="w-4 h-4 mr-1"/> Dashboard</Link>
-                            <Link href="/dashboard/school/profile" className="flex items-center hover:text-[#4085b3] transition-colors">School Profile</Link>
-                            <Link href="/dashboard/academics/years" className="flex items-center hover:text-[#4085b3] transition-colors">Academics</Link>
+                        <nav className="flex space-x-1 text-xs font-bold text-gray-600 mr-4">
+                            <Link
+                                href="/dashboard/school/profile"
+                                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all ${
+                                    pathname === "/dashboard/school/profile"
+                                        ? "bg-amber-50 text-[#f59e0b] border border-amber-200"
+                                        : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+                                }`}
+                            >
+                                <Building className="w-3.5 h-3.5"/>
+                                About
+                            </Link>
+                            <Link
+                                href="/dashboard/admin"
+                                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all ${
+                                    pathname === "/dashboard/admin" || pathname === "/dashboard"
+                                        ? "bg-amber-50 text-[#f59e0b] border border-amber-200"
+                                        : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+                                }`}
+                            >
+                                <LayoutDashboard className="w-3.5 h-3.5"/>
+                                Dashboard
+                            </Link>
+                            <Link
+                                href="/dashboard/school/profile"
+                                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all ${
+                                    pathname.startsWith("/dashboard/school")
+                                        ? "bg-amber-50 text-[#f59e0b] border border-amber-200"
+                                        : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+                                }`}
+                            >
+                                School Profile
+                            </Link>
+                            <Link
+                                href="/dashboard/academics/years"
+                                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all ${
+                                    pathname.startsWith("/dashboard/academics")
+                                        ? "bg-amber-50 text-[#f59e0b] border border-amber-200"
+                                        : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+                                }`}
+                            >
+                                Academics
+                            </Link>
                         </nav>
                     )}
 
@@ -718,62 +757,86 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 ) : isStudentRoute ? (
                     <StudentNavigation />
                 ) : (
-                    <aside className="w-64 bg-[#041738] border-r border-[#092254] flex flex-col hidden md:flex overflow-y-auto text-slate-300 font-sans shadow-xl shrink-0">
-                        <div className="p-4 pt-5">
-                            <p className="text-[10px] text-amber-400 font-bold uppercase tracking-widest mb-3 px-2">Navigation</p>
+                    <aside
+                        className={`bg-[#041738] border-r border-[#092254] flex flex-col hidden md:flex overflow-y-auto scrollbar-hide text-slate-300 font-sans shadow-xl shrink-0 transition-all duration-300 ease-in-out ${sidebarCollapsed ? "w-16" : "w-64"}`}
+                        style={{ scrollbarWidth: "none", msOverflowStyle: "none" } as React.CSSProperties}
+                    >
+                        {/* Sidebar Header with collapse toggle */}
+                        <div className="flex items-center justify-between px-3 pt-4 pb-2 border-b border-[#092254]/60">
+                            {!sidebarCollapsed && (
+                                <p className="text-[10px] text-amber-400 font-bold uppercase tracking-widest px-1">Navigation</p>
+                            )}
+                            <button
+                                onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+                                title={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+                                className={`flex items-center justify-center w-7 h-7 rounded-lg bg-[#092254] hover:bg-[#0c2d68] text-slate-400 hover:text-amber-400 transition-all cursor-pointer ${sidebarCollapsed ? "mx-auto" : "ml-auto"}`}
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    {sidebarCollapsed
+                                        ? <><polyline points="13 17 18 12 13 7"/><polyline points="6 17 11 12 6 7"/></>  
+                                        : <><polyline points="11 17 6 12 11 7"/><polyline points="18 17 13 12 18 7"/></>
+                                    }
+                                </svg>
+                            </button>
+                        </div>
+                        <div className="p-3 pt-3 flex-1">
                             
                             <nav className="space-y-1">
                                 {["ADMIN", "SCHOOL_ADMIN", "ADMINISTRATOR", "PRINCIPAL"].includes(roleName) && (
                                     <>
                                         {/* Dashboard */}
                                         <Link 
-                                            href="/dashboard" 
-                                            className={`flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all ${pathname === "/dashboard" || pathname === "/dashboard/admin" ? "bg-[#0c2454] text-[#f59e0b] border-l-4 border-[#f59e0b] shadow-inner" : "text-slate-300 hover:bg-[#081e48] hover:text-white"}`}
+                                            href="/dashboard/admin" 
+                                            title="Dashboard"
+                                            className={`flex items-center ${sidebarCollapsed ? "justify-center px-2" : "justify-between px-3.5"} py-2.5 rounded-xl text-xs font-semibold transition-all ${pathname === "/dashboard" || pathname === "/dashboard/admin" ? "bg-[#0c2454] text-[#f59e0b] border-l-4 border-[#f59e0b] shadow-inner" : "text-slate-300 hover:bg-[#081e48] hover:text-white"}`}
                                         >
-                                            <div className="flex items-center space-x-3">
-                                                <LayoutDashboard className={`w-4 h-4 ${pathname === "/dashboard" || pathname === "/dashboard/admin" ? "text-[#f59e0b]" : "text-amber-400"}`} />
-                                                <span>Dashboard</span>
+                                            <div className={`flex items-center ${sidebarCollapsed ? "" : "space-x-3"}`}>
+                                                <LayoutDashboard className={`w-4 h-4 shrink-0 ${pathname === "/dashboard" || pathname === "/dashboard/admin" ? "text-[#f59e0b]" : "text-amber-400"}`} />
+                                                {!sidebarCollapsed && <span>Dashboard</span>}
                                             </div>
                                         </Link>
 
                                         {/* School Profile */}
                                         <Link 
-                                            href="/dashboard/school/profile" 
-                                            className={`flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-medium transition-all ${pathname === "/dashboard/school/profile" ? "bg-[#0c2454] text-[#f59e0b] border-l-4 border-[#f59e0b]" : "text-slate-300 hover:bg-[#081e48] hover:text-white"}`}
+                                            href="/dashboard/school/profile"
+                                            title="School Profile"
+                                            className={`flex items-center ${sidebarCollapsed ? "justify-center px-2" : "justify-between px-3.5"} py-2.5 rounded-xl text-xs font-medium transition-all ${pathname === "/dashboard/school/profile" ? "bg-[#0c2454] text-[#f59e0b] border-l-4 border-[#f59e0b]" : "text-slate-300 hover:bg-[#081e48] hover:text-white"}`}
                                         >
-                                            <div className="flex items-center space-x-3">
-                                                <Building className="w-4 h-4 text-amber-400" />
-                                                <span>School Profile</span>
+                                            <div className={`flex items-center ${sidebarCollapsed ? "" : "space-x-3"}`}>
+                                                <Building className="w-4 h-4 text-amber-400 shrink-0" />
+                                                {!sidebarCollapsed && <span>School Profile</span>}
                                             </div>
                                         </Link>
 
                                         {/* User Management */}
                                         <Link 
-                                            href="/dashboard/admin/users" 
-                                            className={`flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-medium transition-all ${pathname.startsWith("/dashboard/admin/users") ? "bg-[#0c2454] text-[#f59e0b] border-l-4 border-[#f59e0b]" : "text-slate-300 hover:bg-[#081e48] hover:text-white"}`}
+                                            href="/dashboard/admin/users"
+                                            title="User Management"
+                                            className={`flex items-center ${sidebarCollapsed ? "justify-center px-2" : "justify-between px-3.5"} py-2.5 rounded-xl text-xs font-medium transition-all ${pathname.startsWith("/dashboard/admin/users") ? "bg-[#0c2454] text-[#f59e0b] border-l-4 border-[#f59e0b]" : "text-slate-300 hover:bg-[#081e48] hover:text-white"}`}
                                         >
-                                            <div className="flex items-center space-x-3">
-                                                <Users className="w-4 h-4 text-amber-400" />
-                                                <span>User Management</span>
+                                            <div className={`flex items-center ${sidebarCollapsed ? "" : "space-x-3"}`}>
+                                                <Users className="w-4 h-4 text-amber-400 shrink-0" />
+                                                {!sidebarCollapsed && <span>User Management</span>}
                                             </div>
                                         </Link>
 
                                         {/* Academics Group */}
                                         <div className="pt-1">
                                             <button 
-                                                onClick={() => toggleMenu("academics")}
-                                                className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-medium text-slate-300 hover:bg-[#081e48] hover:text-white transition-all group cursor-pointer"
+                                                onClick={() => !sidebarCollapsed && toggleMenu("academics")}
+                                                title="Academics"
+                                                className={`w-full flex items-center ${sidebarCollapsed ? "justify-center px-2" : "justify-between px-3.5"} py-2.5 rounded-xl text-xs font-medium text-slate-300 hover:bg-[#081e48] hover:text-white transition-all group cursor-pointer`}
                                             >
-                                                <div className="flex items-center space-x-3">
-                                                    <Calendar className="w-4 h-4 text-amber-400" />
-                                                    <span>Academics</span>
+                                                <div className={`flex items-center ${sidebarCollapsed ? "" : "space-x-3"}`}>
+                                                    <Calendar className="w-4 h-4 text-amber-400 shrink-0" />
+                                                    {!sidebarCollapsed && <span>Academics</span>}
                                                 </div>
-                                                {openMenus.academics ? 
+                                                {!sidebarCollapsed && (openMenus.academics ? 
                                                     <ChevronDown className="w-3.5 h-3.5 text-slate-400 group-hover:text-white" /> : 
                                                     <ChevronRight className="w-3.5 h-3.5 text-slate-500 group-hover:text-slate-300" />
-                                                }
+                                                )}
                                             </button>
-                                            {openMenus.academics && (
+                                            {openMenus.academics && !sidebarCollapsed && (
                                                 <div className="pl-8 pr-2 py-1.5 space-y-1 bg-[#020e24]/60 rounded-xl my-1 border-l border-slate-700/50">
                                                     <Link href="/dashboard/academics/years" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/academics/years" ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>Academic Years</Link>
                                                     <Link href="/dashboard/academics/grades" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname.startsWith("/dashboard/academics/grades") ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>Grades & Sections</Link>
@@ -787,19 +850,20 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                                         {/* Students Group */}
                                         <div className="pt-1">
                                             <button 
-                                                onClick={() => toggleMenu("students")}
-                                                className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-medium text-slate-300 hover:bg-[#081e48] hover:text-white transition-all group cursor-pointer"
+                                                onClick={() => !sidebarCollapsed && toggleMenu("students")}
+                                                title="Students"
+                                                className={`w-full flex items-center ${sidebarCollapsed ? "justify-center px-2" : "justify-between px-3.5"} py-2.5 rounded-xl text-xs font-medium text-slate-300 hover:bg-[#081e48] hover:text-white transition-all group cursor-pointer`}
                                             >
-                                                <div className="flex items-center space-x-3">
-                                                    <Users className="w-4 h-4 text-amber-400" />
-                                                    <span>Students</span>
+                                                <div className={`flex items-center ${sidebarCollapsed ? "" : "space-x-3"}`}>
+                                                    <Users className="w-4 h-4 text-amber-400 shrink-0" />
+                                                    {!sidebarCollapsed && <span>Students</span>}
                                                 </div>
-                                                {openMenus.students ? 
+                                                {!sidebarCollapsed && (openMenus.students ? 
                                                     <ChevronDown className="w-3.5 h-3.5 text-slate-400 group-hover:text-white" /> : 
                                                     <ChevronRight className="w-3.5 h-3.5 text-slate-500 group-hover:text-slate-300" />
-                                                }
+                                                )}
                                             </button>
-                                            {openMenus.students && (
+                                            {openMenus.students && !sidebarCollapsed && (
                                                 <div className="pl-8 pr-2 py-1.5 space-y-1 bg-[#020e24]/60 rounded-xl my-1 border-l border-slate-700/50">
                                                     <Link href="/dashboard/students" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/students" ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>All Students</Link>
                                                     <Link href="/dashboard/students/enrollments" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname.startsWith("/dashboard/students/enrollments") ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>Student Enrollments</Link>
@@ -811,19 +875,20 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                                         {/* Teachers Group */}
                                         <div className="pt-1">
                                             <button 
-                                                onClick={() => toggleMenu("teachers")}
-                                                className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-medium text-slate-300 hover:bg-[#081e48] hover:text-white transition-all group cursor-pointer"
+                                                onClick={() => !sidebarCollapsed && toggleMenu("teachers")}
+                                                title="Teachers"
+                                                className={`w-full flex items-center ${sidebarCollapsed ? "justify-center px-2" : "justify-between px-3.5"} py-2.5 rounded-xl text-xs font-medium text-slate-300 hover:bg-[#081e48] hover:text-white transition-all group cursor-pointer`}
                                             >
-                                                <div className="flex items-center space-x-3">
-                                                    <GraduationCap className="w-4 h-4 text-amber-400" />
-                                                    <span>Teachers</span>
+                                                <div className={`flex items-center ${sidebarCollapsed ? "" : "space-x-3"}`}>
+                                                    <GraduationCap className="w-4 h-4 text-amber-400 shrink-0" />
+                                                    {!sidebarCollapsed && <span>Teachers</span>}
                                                 </div>
-                                                {openMenus.teachers ? 
+                                                {!sidebarCollapsed && (openMenus.teachers ? 
                                                     <ChevronDown className="w-3.5 h-3.5 text-slate-400 group-hover:text-white" /> : 
                                                     <ChevronRight className="w-3.5 h-3.5 text-slate-500 group-hover:text-slate-300" />
-                                                }
+                                                )}
                                             </button>
-                                            {openMenus.teachers && (
+                                            {openMenus.teachers && !sidebarCollapsed && (
                                                 <div className="pl-8 pr-2 py-1.5 space-y-1 bg-[#020e24]/60 rounded-xl my-1 border-l border-slate-700/50">
                                                     <Link href="/dashboard/teachers" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/teachers" ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>All Teachers</Link>
                                                     <Link href="/dashboard/teachers/assignments" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname.startsWith("/dashboard/teachers/assignments") ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>Teaching Assignments</Link>
@@ -834,19 +899,20 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                                         {/* Attendance Group */}
                                         <div className="pt-1">
                                             <button 
-                                                onClick={() => toggleMenu("attendance")}
-                                                className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-medium text-slate-300 hover:bg-[#081e48] hover:text-white transition-all group cursor-pointer"
+                                                onClick={() => !sidebarCollapsed && toggleMenu("attendance")}
+                                                title="Attendance"
+                                                className={`w-full flex items-center ${sidebarCollapsed ? "justify-center px-2" : "justify-between px-3.5"} py-2.5 rounded-xl text-xs font-medium text-slate-300 hover:bg-[#081e48] hover:text-white transition-all group cursor-pointer`}
                                             >
-                                                <div className="flex items-center space-x-3">
-                                                    <ClipboardCheck className="w-4 h-4 text-amber-400" />
-                                                    <span>Attendance</span>
+                                                <div className={`flex items-center ${sidebarCollapsed ? "" : "space-x-3"}`}>
+                                                    <ClipboardCheck className="w-4 h-4 text-amber-400 shrink-0" />
+                                                    {!sidebarCollapsed && <span>Attendance</span>}
                                                 </div>
-                                                {openMenus.attendance ? 
+                                                {!sidebarCollapsed && (openMenus.attendance ? 
                                                     <ChevronDown className="w-3.5 h-3.5 text-slate-400 group-hover:text-white" /> : 
                                                     <ChevronRight className="w-3.5 h-3.5 text-slate-500 group-hover:text-slate-300" />
-                                                }
+                                                )}
                                             </button>
-                                            {openMenus.attendance && (
+                                            {openMenus.attendance && !sidebarCollapsed && (
                                                 <div className="pl-8 pr-2 py-1.5 space-y-1 bg-[#020e24]/60 rounded-xl my-1 border-l border-slate-700/50">
                                                     <Link href="/dashboard/attendance/overview" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/attendance/overview" ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>Executive Overview</Link>
                                                     <Link href="/dashboard/attendance/student" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/attendance/student" ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>Student Attendance</Link>
@@ -860,19 +926,20 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                                         {/* Assessment Group */}
                                         <div className="pt-1">
                                             <button 
-                                                onClick={() => toggleMenu("assessment")}
-                                                className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-medium text-slate-300 hover:bg-[#081e48] hover:text-white transition-all group cursor-pointer"
+                                                onClick={() => !sidebarCollapsed && toggleMenu("assessment")}
+                                                title="Assessment"
+                                                className={`w-full flex items-center ${sidebarCollapsed ? "justify-center px-2" : "justify-between px-3.5"} py-2.5 rounded-xl text-xs font-medium text-slate-300 hover:bg-[#081e48] hover:text-white transition-all group cursor-pointer`}
                                             >
-                                                <div className="flex items-center space-x-3">
-                                                    <FileText className="w-4 h-4 text-amber-400" />
-                                                    <span>Assessment</span>
+                                                <div className={`flex items-center ${sidebarCollapsed ? "" : "space-x-3"}`}>
+                                                    <FileText className="w-4 h-4 text-amber-400 shrink-0" />
+                                                    {!sidebarCollapsed && <span>Assessment</span>}
                                                 </div>
-                                                {openMenus.assessment ? 
+                                                {!sidebarCollapsed && (openMenus.assessment ? 
                                                     <ChevronDown className="w-3.5 h-3.5 text-slate-400 group-hover:text-white" /> : 
                                                     <ChevronRight className="w-3.5 h-3.5 text-slate-500 group-hover:text-slate-300" />
-                                                }
+                                                )}
                                             </button>
-                                            {openMenus.assessment && (
+                                            {openMenus.assessment && !sidebarCollapsed && (
                                                 <div className="pl-8 pr-2 py-1.5 space-y-1 bg-[#020e24]/60 rounded-xl my-1 border-l border-slate-700/50">
                                                     <Link href="/dashboard/assessment" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/assessment" ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>Assessments Catalog</Link>
                                                     <Link href="/dashboard/assessment/schedules" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/assessment/schedules" ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>Exam Schedules</Link>
@@ -887,19 +954,20 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                                         {/* Learning Group */}
                                         <div className="pt-1">
                                             <button 
-                                                onClick={() => toggleMenu("learning")}
-                                                className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-medium text-slate-300 hover:bg-[#081e48] hover:text-white transition-all group cursor-pointer"
+                                                onClick={() => !sidebarCollapsed && toggleMenu("learning")}
+                                                title="Learning & Support"
+                                                className={`w-full flex items-center ${sidebarCollapsed ? "justify-center px-2" : "justify-between px-3.5"} py-2.5 rounded-xl text-xs font-medium text-slate-300 hover:bg-[#081e48] hover:text-white transition-all group cursor-pointer`}
                                             >
-                                                <div className="flex items-center space-x-3">
-                                                    <BookOpen className="w-4 h-4 text-amber-400" />
-                                                    <span>Learning & Support</span>
+                                                <div className={`flex items-center ${sidebarCollapsed ? "" : "space-x-3"}`}>
+                                                    <BookOpen className="w-4 h-4 text-amber-400 shrink-0" />
+                                                    {!sidebarCollapsed && <span>Learning & Support</span>}
                                                 </div>
-                                                {openMenus.learning ? 
+                                                {!sidebarCollapsed && (openMenus.learning ? 
                                                     <ChevronDown className="w-3.5 h-3.5 text-slate-400 group-hover:text-white" /> : 
                                                     <ChevronRight className="w-3.5 h-3.5 text-slate-500 group-hover:text-slate-300" />
-                                                }
+                                                )}
                                             </button>
-                                            {openMenus.learning && (
+                                            {openMenus.learning && !sidebarCollapsed && (
                                                 <div className="pl-8 pr-2 py-1.5 space-y-1 bg-[#020e24]/60 rounded-xl my-1 border-l border-slate-700/50">
                                                     <Link href="/dashboard/support/at-risk" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/support/at-risk" ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>1. At-Risk Students</Link>
                                                     <Link href="/dashboard/support/learning-difficulties" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/support/learning-difficulties" ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>2. Learning Difficulties</Link>
@@ -915,19 +983,20 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                                         {/* Parents Group */}
                                         <div className="pt-1">
                                             <button 
-                                                onClick={() => toggleMenu("parents")}
-                                                className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-medium text-slate-300 hover:bg-[#081e48] hover:text-white transition-all group cursor-pointer"
+                                                onClick={() => !sidebarCollapsed && toggleMenu("parents")}
+                                                title="Parents"
+                                                className={`w-full flex items-center ${sidebarCollapsed ? "justify-center px-2" : "justify-between px-3.5"} py-2.5 rounded-xl text-xs font-medium text-slate-300 hover:bg-[#081e48] hover:text-white transition-all group cursor-pointer`}
                                             >
-                                                <div className="flex items-center space-x-3">
-                                                    <Users className="w-4 h-4 text-amber-400" />
-                                                    <span>Parents</span>
+                                                <div className={`flex items-center ${sidebarCollapsed ? "" : "space-x-3"}`}>
+                                                    <Users className="w-4 h-4 text-amber-400 shrink-0" />
+                                                    {!sidebarCollapsed && <span>Parents</span>}
                                                 </div>
-                                                {openMenus.parents ? 
+                                                {!sidebarCollapsed && (openMenus.parents ? 
                                                     <ChevronDown className="w-3.5 h-3.5 text-slate-400 group-hover:text-white" /> : 
                                                     <ChevronRight className="w-3.5 h-3.5 text-slate-500 group-hover:text-slate-300" />
-                                                }
+                                                )}
                                             </button>
-                                            {openMenus.parents && (
+                                            {openMenus.parents && !sidebarCollapsed && (
                                                 <div className="pl-8 pr-2 py-1.5 space-y-1 bg-[#020e24]/60 rounded-xl my-1 border-l border-slate-700/50">
                                                     <Link href="/dashboard/parents/accounts" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/parents/accounts" ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>1. Parent Accounts</Link>
                                                     <Link href="/dashboard/parents/relationships" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/parents/relationships" ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>2. Relationships</Link>
@@ -942,19 +1011,20 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                                         {/* Communication Group */}
                                         <div className="pt-1">
                                             <button 
-                                                onClick={() => toggleMenu("communication")}
-                                                className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-medium text-slate-300 hover:bg-[#081e48] hover:text-white transition-all group cursor-pointer"
+                                                onClick={() => !sidebarCollapsed && toggleMenu("communication")}
+                                                title="Communication"
+                                                className={`w-full flex items-center ${sidebarCollapsed ? "justify-center px-2" : "justify-between px-3.5"} py-2.5 rounded-xl text-xs font-medium text-slate-300 hover:bg-[#081e48] hover:text-white transition-all group cursor-pointer`}
                                             >
-                                                <div className="flex items-center space-x-3">
-                                                    <Megaphone className="w-4 h-4 text-amber-400" />
-                                                    <span>Communication</span>
+                                                <div className={`flex items-center ${sidebarCollapsed ? "" : "space-x-3"}`}>
+                                                    <Megaphone className="w-4 h-4 text-amber-400 shrink-0" />
+                                                    {!sidebarCollapsed && <span>Communication</span>}
                                                 </div>
-                                                {openMenus.communication ? 
+                                                {!sidebarCollapsed && (openMenus.communication ? 
                                                     <ChevronDown className="w-3.5 h-3.5 text-slate-400 group-hover:text-white" /> : 
                                                     <ChevronRight className="w-3.5 h-3.5 text-slate-500 group-hover:text-slate-300" />
-                                                }
+                                                )}
                                             </button>
-                                            {openMenus.communication && (
+                                            {openMenus.communication && !sidebarCollapsed && (
                                                 <div className="pl-8 pr-2 py-1.5 space-y-1 bg-[#020e24]/60 rounded-xl my-1 border-l border-slate-700/50">
                                                     <Link href="/dashboard/communication/announcements" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/communication/announcements" ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>1. School Announcements</Link>
                                                     <Link href="/dashboard/communication/teacher" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/communication/teacher" ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>2. Teacher Communication</Link>
@@ -969,19 +1039,20 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                                         {/* School Improvement Group */}
                                         <div className="pt-1">
                                             <button 
-                                                onClick={() => toggleMenu("improvement")}
-                                                className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-medium text-slate-300 hover:bg-[#081e48] hover:text-white transition-all group cursor-pointer"
+                                                onClick={() => !sidebarCollapsed && toggleMenu("improvement")}
+                                                title="School Improvement"
+                                                className={`w-full flex items-center ${sidebarCollapsed ? "justify-center px-2" : "justify-between px-3.5"} py-2.5 rounded-xl text-xs font-medium text-slate-300 hover:bg-[#081e48] hover:text-white transition-all group cursor-pointer`}
                                             >
-                                                <div className="flex items-center space-x-3">
-                                                    <TrendingUp className="w-4 h-4 text-amber-400" />
-                                                    <span>School Improvement</span>
+                                                <div className={`flex items-center ${sidebarCollapsed ? "" : "space-x-3"}`}>
+                                                    <TrendingUp className="w-4 h-4 text-amber-400 shrink-0" />
+                                                    {!sidebarCollapsed && <span>School Improvement</span>}
                                                 </div>
-                                                {openMenus.improvement ? 
+                                                {!sidebarCollapsed && (openMenus.improvement ? 
                                                     <ChevronDown className="w-3.5 h-3.5 text-slate-400 group-hover:text-white" /> : 
                                                     <ChevronRight className="w-3.5 h-3.5 text-slate-500 group-hover:text-slate-300" />
-                                                }
+                                                )}
                                             </button>
-                                            {openMenus.improvement && (
+                                            {openMenus.improvement && !sidebarCollapsed && (
                                                 <div className="pl-8 pr-2 py-1.5 space-y-1 bg-[#020e24]/60 rounded-xl my-1 border-l border-slate-700/50">
                                                     <Link href="/dashboard/improvement/problems" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/improvement/problems" ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>1. Identify Problems</Link>
                                                     <Link href="/dashboard/improvement/priorities" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/improvement/priorities" ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>2. Improvement Priorities</Link>
@@ -997,19 +1068,20 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                                         {/* Reports & Analytics Group */}
                                         <div className="pt-1">
                                             <button 
-                                                onClick={() => toggleMenu("reports")}
-                                                className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-medium text-slate-300 hover:bg-[#081e48] hover:text-white transition-all group cursor-pointer"
+                                                onClick={() => !sidebarCollapsed && toggleMenu("reports")}
+                                                title="Reports & Analytics"
+                                                className={`w-full flex items-center ${sidebarCollapsed ? "justify-center px-2" : "justify-between px-3.5"} py-2.5 rounded-xl text-xs font-medium text-slate-300 hover:bg-[#081e48] hover:text-white transition-all group cursor-pointer`}
                                             >
-                                                <div className="flex items-center space-x-3">
-                                                    <BarChart2 className="w-4 h-4 text-amber-400" />
-                                                    <span>Reports & Analytics</span>
+                                                <div className={`flex items-center ${sidebarCollapsed ? "" : "space-x-3"}`}>
+                                                    <BarChart2 className="w-4 h-4 text-amber-400 shrink-0" />
+                                                    {!sidebarCollapsed && <span>Reports & Analytics</span>}
                                                 </div>
-                                                {openMenus.reports ? 
+                                                {!sidebarCollapsed && (openMenus.reports ? 
                                                     <ChevronDown className="w-3.5 h-3.5 text-slate-400 group-hover:text-white" /> : 
                                                     <ChevronRight className="w-3.5 h-3.5 text-slate-500 group-hover:text-slate-300" />
-                                                }
+                                                )}
                                             </button>
-                                            {openMenus.reports && (
+                                            {openMenus.reports && !sidebarCollapsed && (
                                                 <div className="pl-8 pr-2 py-1.5 space-y-1 bg-[#020e24]/60 rounded-xl my-1 border-l border-slate-700/50">
                                                     <Link href="/dashboard/reports/enrollment" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/reports/enrollment" ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>1. Enrollment Reports</Link>
                                                     <Link href="/dashboard/reports/attendance" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/reports/attendance" ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>2. Attendance Reports</Link>
@@ -1026,19 +1098,20 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                                         {/* AI School Leadership Group */}
                                         <div className="pt-1">
                                             <button 
-                                                onClick={() => toggleMenu("aiLeadership")}
-                                                className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-medium text-slate-300 hover:bg-[#081e48] hover:text-white transition-all group cursor-pointer"
+                                                onClick={() => !sidebarCollapsed && toggleMenu("aiLeadership")}
+                                                title="AI School Leadership"
+                                                className={`w-full flex items-center ${sidebarCollapsed ? "justify-center px-2" : "justify-between px-3.5"} py-2.5 rounded-xl text-xs font-medium text-slate-300 hover:bg-[#081e48] hover:text-white transition-all group cursor-pointer`}
                                             >
-                                                <div className="flex items-center space-x-3">
-                                                    <Brain className="w-4 h-4 text-purple-400" />
-                                                    <span>AI School Leadership</span>
+                                                <div className={`flex items-center ${sidebarCollapsed ? "" : "space-x-3"}`}>
+                                                    <Brain className="w-4 h-4 text-purple-400 shrink-0" />
+                                                    {!sidebarCollapsed && <span>AI School Leadership</span>}
                                                 </div>
-                                                {openMenus.aiLeadership ? 
+                                                {!sidebarCollapsed && (openMenus.aiLeadership ? 
                                                     <ChevronDown className="w-3.5 h-3.5 text-slate-400 group-hover:text-white" /> : 
                                                     <ChevronRight className="w-3.5 h-3.5 text-slate-500 group-hover:text-slate-300" />
-                                                }
+                                                )}
                                             </button>
-                                            {openMenus.aiLeadership && (
+                                            {openMenus.aiLeadership && !sidebarCollapsed && (
                                                 <div className="pl-8 pr-2 py-1.5 space-y-1 bg-[#020e24]/60 rounded-xl my-1 border-l border-slate-700/50">
                                                     <Link href="/dashboard/ai-leadership/school-performance" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/ai-leadership/school-performance" ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>1. Performance Analysis</Link>
                                                     <Link href="/dashboard/ai-leadership/attendance" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/ai-leadership/attendance" ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>2. Attendance Modeling</Link>
@@ -1055,19 +1128,20 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                                         {/* Users & Permissions Group */}
                                         <div className="pt-1">
                                             <button 
-                                                onClick={() => toggleMenu("usersPermissions")}
-                                                className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-medium text-slate-300 hover:bg-[#081e48] hover:text-white transition-all group cursor-pointer"
+                                                onClick={() => !sidebarCollapsed && toggleMenu("usersPermissions")}
+                                                title="Users & Permissions"
+                                                className={`w-full flex items-center ${sidebarCollapsed ? "justify-center px-2" : "justify-between px-3.5"} py-2.5 rounded-xl text-xs font-medium text-slate-300 hover:bg-[#081e48] hover:text-white transition-all group cursor-pointer`}
                                             >
-                                                <div className="flex items-center space-x-3">
-                                                    <Lock className="w-4 h-4 text-amber-400" />
-                                                    <span>Users & Permissions</span>
+                                                <div className={`flex items-center ${sidebarCollapsed ? "" : "space-x-3"}`}>
+                                                    <Lock className="w-4 h-4 text-amber-400 shrink-0" />
+                                                    {!sidebarCollapsed && <span>Users & Permissions</span>}
                                                 </div>
-                                                {openMenus.usersPermissions ? 
+                                                {!sidebarCollapsed && (openMenus.usersPermissions ? 
                                                     <ChevronDown className="w-3.5 h-3.5 text-slate-400 group-hover:text-white" /> : 
                                                     <ChevronRight className="w-3.5 h-3.5 text-slate-500 group-hover:text-slate-300" />
-                                                }
+                                                )}
                                             </button>
-                                            {openMenus.usersPermissions && (
+                                            {openMenus.usersPermissions && !sidebarCollapsed && (
                                                 <div className="pl-8 pr-2 py-1.5 space-y-1 bg-[#020e24]/60 rounded-xl my-1 border-l border-slate-700/50">
                                                     <Link href="/dashboard/users-permissions/school-users" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/users-permissions/school-users" ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>1. School Users</Link>
                                                     <Link href="/dashboard/users-permissions/roles" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/users-permissions/roles" ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>2. Roles</Link>
