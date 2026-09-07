@@ -325,7 +325,7 @@ export default function TimetablePage() {
             });
             const data = await res.json();
             if (!res.ok) {
-                throw new Error(data.error || "Failed to delete period");
+                throw new Error(data.error || data.message || "Failed to delete period");
             }
             setSuccessMessage(`Period "${periodName}" deleted successfully.`);
             setTimeout(() => setSuccessMessage(null), 3000);
@@ -454,6 +454,45 @@ export default function TimetablePage() {
     const closedDayEvents = useMemo(() => {
         return workspace?.closedEvents || [];
     }, [workspace?.closedEvents]);
+
+    // Filter available teaching assignments for scheduling modal
+    const availableTeachingAssignments = useMemo(() => {
+        if (!workspace?.teachingAssignments) return [];
+        const targetDay = selectedSlotTarget ? selectedSlotTarget.dayOfWeek : customDayOfWeek;
+
+        // Find subject IDs already scheduled on this target day for this section
+        const scheduledSubjectIdsOnDay = new Set(
+            workspace.sectionTimetable
+                ?.filter((s: any) => s.dayOfWeek === targetDay)
+                ?.map((s: any) => s.teachingAssignment?.subjectId || s.teachingAssignment?.subject?.id)
+                ?.filter(Boolean) || []
+        );
+
+        return workspace.teachingAssignments.filter((ta: any) => {
+            // 1. If required weekly periods are completely fulfilled, exclude from list
+            if (ta.remainingPeriods <= 0 || ta.isComplete || (ta.scheduledPeriods !== undefined && ta.scheduledPeriods >= ta.requiredPeriods)) {
+                return false;
+            }
+
+            // 2. If this subject is already scheduled on this day for this section, exclude from list
+            const subId = ta.subjectId || ta.subject?.id;
+            if (targetDay && subId && scheduledSubjectIdsOnDay.has(subId)) {
+                return false;
+            }
+
+            return true;
+        });
+    }, [workspace?.teachingAssignments, workspace?.sectionTimetable, selectedSlotTarget, customDayOfWeek]);
+
+    // Auto-reset selected assignment if it is no longer valid for the selected target day
+    useEffect(() => {
+        if (selectedTeachingAssignmentId) {
+            const exists = availableTeachingAssignments.some((ta: any) => ta.id === selectedTeachingAssignmentId);
+            if (!exists) {
+                setSelectedTeachingAssignmentId("");
+            }
+        }
+    }, [availableTeachingAssignments, selectedTeachingAssignmentId]);
 
     if (loading) {
         return <LoadingState message="Initializing Timetable & Scheduling Workspace..." />;
@@ -881,6 +920,8 @@ export default function TimetablePage() {
                                                     <Button
                                                         onClick={() => {
                                                             setSelectedSlotTarget(null);
+                                                            setSelectedTeachingAssignmentId("");
+                                                            setConflictError(null);
                                                             setIsAssignModalOpen(true);
                                                         }}
                                                         className="text-xs flex items-center gap-1 py-1.5 px-3 h-auto"
@@ -1050,6 +1091,8 @@ export default function TimetablePage() {
                                                                                             periodId: period.id,
                                                                                             periodName: periodCode
                                                                                         });
+                                                                                        setSelectedTeachingAssignmentId("");
+                                                                                        setConflictError(null);
                                                                                         setIsAssignModalOpen(true);
                                                                                     }}
                                                                                     className="w-full h-full min-h-[75px] rounded-xl border-2 border-dashed border-slate-200 hover:border-[#4085b3] hover:bg-[#4085b3]/5 transition-all flex flex-col items-center justify-center text-slate-400 hover:text-[#4085b3] group p-2 cursor-pointer"
@@ -1328,15 +1371,25 @@ export default function TimetablePage() {
                         <select
                             value={selectedTeachingAssignmentId}
                             onChange={(e) => setSelectedTeachingAssignmentId(e.target.value)}
-                            className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm text-slate-900 bg-white focus:outline-hidden focus:ring-2 focus:ring-[#4085b3]"
+                            disabled={availableTeachingAssignments.length === 0}
+                            className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm text-slate-900 bg-white focus:outline-hidden focus:ring-2 focus:ring-[#4085b3] disabled:bg-slate-100 disabled:text-slate-400"
                         >
-                            <option value="">-- Choose Teaching Assignment --</option>
-                            {workspace?.teachingAssignments?.map((ta: any) => (
+                            <option value="">
+                                {availableTeachingAssignments.length === 0
+                                    ? "-- No eligible subjects remaining for this day / week --"
+                                    : "-- Choose Teaching Assignment --"}
+                            </option>
+                            {availableTeachingAssignments.map((ta: any) => (
                                 <option key={ta.id} value={ta.id}>
                                     {ta.subject.name} — {ta.teacher.firstName} {ta.teacher.lastName} ({ta.scheduledPeriods}/{ta.requiredPeriods} periods scheduled)
                                 </option>
                             ))}
                         </select>
+                        {availableTeachingAssignments.length === 0 && (
+                            <p className="text-xs text-amber-600 mt-1.5">
+                                All weekly periods are fully scheduled, or remaining subjects are already scheduled on this day.
+                            </p>
+                        )}
                     </div>
 
                     <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100">

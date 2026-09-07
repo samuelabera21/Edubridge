@@ -53,7 +53,7 @@ router.get("/my", getMyTimetable);
  *     summary: Create a class period for the school
  */
 router.post("/periods", requirePermission("ACADEMIC:CREATE"), createClassPeriod);
-router.delete("/periods/:id", requirePermission("ACADEMIC:DELETE"), deleteClassPeriod);
+router.delete("/periods/:id", requirePermission("ACADEMIC:MANAGE"), deleteClassPeriod);
 router.post("/periods/default", requirePermission("ACADEMIC:CREATE"), generateDefaultPeriods);
 
 /**
@@ -145,8 +145,8 @@ router.put("/teacher/:teacherId/availability", requirePermission("ACADEMIC:CREAT
  *     tags: [Timetable]
  *     summary: Delete a timetable entry
  */
-router.delete("/slots/:id", requirePermission("ACADEMIC:DELETE"), deleteTimetable);
-router.delete("/:id", requirePermission("ACADEMIC:DELETE"), deleteTimetable);
+router.delete("/slots/:id", requirePermission("ACADEMIC:MANAGE"), deleteTimetable);
+router.delete("/:id", requirePermission("ACADEMIC:MANAGE"), deleteTimetable);
 
 /**
  * @openapi
