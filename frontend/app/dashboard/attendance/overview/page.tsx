@@ -213,32 +213,53 @@ export default function AttendanceOverviewPage() {
     return (
         <div className="space-y-6 text-black">
             {/* Header & Controls */}
-            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
-                <div>
-                    <div className="flex items-center space-x-3">
-                        <div className="p-2.5 bg-emerald-100 text-[#006b3f] rounded-lg">
-                            <ClipboardCheck className="w-7 h-7" />
-                        </div>
-                        <div>
-                            <h1 className="text-2xl font-bold text-gray-900">
-                                Executive Attendance Oversight
-                            </h1>
-                            <p className="text-sm text-gray-500">
-                                School-wide daily presence metrics, grade-level health analytics, and risk governance.
-                            </p>
-                        </div>
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
+                <div className="flex items-center space-x-3">
+                    <div className="p-2.5 bg-emerald-50 text-[#006b3f] rounded-lg">
+                        <ClipboardCheck className="w-6 h-6" />
+                    </div>
+                    <div>
+                        <h1 className="text-xl font-bold text-gray-900">Attendance Overview</h1>
+                        <p className="text-xs text-gray-500">School-wide attendance metrics and trends</p>
                     </div>
                 </div>
 
                 <div className="flex flex-wrap items-center gap-3">
+                    {/* Quick Navigation Badges */}
+                    <button
+                        onClick={() => router.push("/dashboard/attendance/alerts")}
+                        className="flex items-center space-x-2 px-3 py-1.5 rounded-lg border border-red-200 bg-red-50/70 text-red-800 text-xs font-semibold hover:bg-red-100 transition-colors"
+                    >
+                        <ShieldAlert className="w-3.5 h-3.5 text-red-600" />
+                        <span>Risk Alerts</span>
+                        <span className={`px-1.5 py-0.2 rounded-full text-[11px] font-bold ${
+                            riskCounters && riskCounters.totalAlerts > 0 ? "bg-red-600 text-white" : "bg-red-200 text-red-800"
+                        }`}>
+                            {riskCounters?.totalAlerts || 0}
+                        </span>
+                    </button>
+
+                    <button
+                        onClick={() => router.push("/dashboard/attendance/corrections")}
+                        className="flex items-center space-x-2 px-3 py-1.5 rounded-lg border border-emerald-200 bg-emerald-50/70 text-emerald-800 text-xs font-semibold hover:bg-emerald-100 transition-colors"
+                    >
+                        <FileCheck className="w-3.5 h-3.5 text-emerald-600" />
+                        <span>Corrections</span>
+                        <span className={`px-1.5 py-0.2 rounded-full text-[11px] font-bold ${
+                            riskCounters && riskCounters.pendingCorrections > 0 ? "bg-amber-500 text-white" : "bg-emerald-200 text-emerald-800"
+                        }`}>
+                            {riskCounters?.pendingCorrections || 0}
+                        </span>
+                    </button>
+
                     {/* Academic Year Switcher */}
                     {data?.academicYearList && data.academicYearList.length > 0 && (
                         <div className="flex items-center space-x-2 bg-gray-50 border border-gray-200 rounded-lg px-3 py-1.5">
-                            <Calendar className="w-4 h-4 text-gray-500" />
+                            <Calendar className="w-3.5 h-3.5 text-gray-500" />
                             <select
                                 value={selectedYearId}
                                 onChange={(e) => setSelectedYearId(e.target.value)}
-                                className="bg-transparent text-sm font-semibold text-gray-800 focus:outline-none cursor-pointer"
+                                className="bg-transparent text-xs font-semibold text-gray-800 focus:outline-none cursor-pointer"
                             >
                                 {data.academicYearList.map(y => (
                                     <option key={y.id} value={y.id}>
@@ -250,7 +271,7 @@ export default function AttendanceOverviewPage() {
                     )}
 
                     {/* Trend Period Selector */}
-                    <div className="inline-flex rounded-lg border border-gray-200 bg-gray-50 p-1">
+                    <div className="inline-flex rounded-lg border border-gray-200 bg-gray-50 p-0.5">
                         {[
                             { label: "7D", value: 7 },
                             { label: "14D", value: 14 },
@@ -259,7 +280,7 @@ export default function AttendanceOverviewPage() {
                             <button
                                 key={btn.value}
                                 onClick={() => setRangeDays(btn.value)}
-                                className={`px-3 py-1 text-xs font-semibold rounded-md transition-all ${
+                                className={`px-2.5 py-1 text-xs font-semibold rounded-md transition-all ${
                                     rangeDays === btn.value
                                         ? "bg-white text-[#006b3f] shadow-sm font-bold"
                                         : "text-gray-500 hover:text-gray-900"
@@ -275,99 +296,30 @@ export default function AttendanceOverviewPage() {
                         size="sm"
                         onClick={() => loadData(true)}
                         disabled={refreshing}
-                        className="flex items-center space-x-1"
+                        className="h-8 px-2.5 text-xs flex items-center space-x-1"
                     >
-                        <RefreshCw className={`w-4 h-4 ${refreshing ? "animate-spin" : ""}`} />
+                        <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? "animate-spin" : ""}`} />
                         <span>Refresh</span>
                     </Button>
                 </div>
             </div>
 
-            {/* High Priority Action Banners */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div 
-                    onClick={() => router.push("/dashboard/attendance/alerts")}
-                    className="cursor-pointer group relative overflow-hidden rounded-xl border border-red-200 bg-gradient-to-r from-red-50 to-orange-50 p-5 shadow-sm transition hover:shadow-md"
-                >
-                    <div className="flex items-start justify-between">
-                        <div className="space-y-1">
-                            <div className="flex items-center space-x-2">
-                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-red-100 text-red-800">
-                                    <ShieldAlert className="w-3.5 h-3.5 mr-1 text-red-600" />
-                                    Risk Queue
-                                </span>
-                                {riskCounters && riskCounters.critical > 0 && (
-                                    <span className="text-xs font-bold px-2 py-0.5 rounded bg-red-600 text-white animate-pulse">
-                                        {riskCounters.critical} Critical
-                                    </span>
-                                )}
-                            </div>
-                            <h3 className="text-lg font-bold text-gray-900 pt-1 group-hover:text-red-700 transition-colors">
-                                Absence Risk & Disengagement Alerts
-                            </h3>
-                            <p className="text-xs text-gray-600 max-w-md">
-                                {riskCounters && riskCounters.totalAlerts > 0
-                                    ? `${riskCounters.totalAlerts} students/sections flagged with 3+ consecutive absences or <80% attendance rate.`
-                                    : "All student and section attendance streaks currently within normal bounds."}
-                            </p>
-                        </div>
-                        <div className="p-3 bg-red-100/80 rounded-full text-red-700 group-hover:scale-110 transition-transform">
-                            <ArrowRight className="w-5 h-5" />
-                        </div>
-                    </div>
-                </div>
-
-                <div 
-                    onClick={() => router.push("/dashboard/attendance/corrections")}
-                    className="cursor-pointer group relative overflow-hidden rounded-xl border border-emerald-200 bg-gradient-to-r from-emerald-50 to-teal-50 p-5 shadow-sm transition hover:shadow-md"
-                >
-                    <div className="flex items-start justify-between">
-                        <div className="space-y-1">
-                            <div className="flex items-center space-x-2">
-                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800">
-                                    <FileCheck className="w-3.5 h-3.5 mr-1 text-emerald-600" />
-                                    Authorization
-                                </span>
-                                {riskCounters && riskCounters.pendingCorrections > 0 && (
-                                    <span className="text-xs font-bold px-2 py-0.5 rounded bg-amber-500 text-white">
-                                        {riskCounters.pendingCorrections} Pending
-                                    </span>
-                                )}
-                            </div>
-                            <h3 className="text-lg font-bold text-gray-900 pt-1 group-hover:text-[#006b3f] transition-colors">
-                                Official Attendance Corrections & Overrides
-                            </h3>
-                            <p className="text-xs text-gray-600 max-w-md">
-                                {riskCounters && riskCounters.pendingCorrections > 0
-                                    ? `${riskCounters.pendingCorrections} teacher correction requests awaiting administrative approval and audit logging.`
-                                    : "Review and approve medical excuses or official principal status overrides."}
-                            </p>
-                        </div>
-                        <div className="p-3 bg-emerald-100/80 rounded-full text-emerald-700 group-hover:scale-110 transition-transform">
-                            <ArrowRight className="w-5 h-5" />
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            {/* Core Executive KPI Row */}
+            {/* Core KPI Cards */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                {/* 1. Student Presence Rate */}
+                {/* 1. Student Attendance Rate */}
                 <Card className="border-gray-200 shadow-sm hover:border-emerald-300 transition-colors">
-                    <CardContent className="p-5">
+                    <CardContent className="p-4">
                         <div className="flex items-center justify-between">
-                            <span className="text-xs font-semibold tracking-wider text-gray-500 uppercase">
-                                Student Term Rate
-                            </span>
-                            <div className="p-2 bg-emerald-50 text-[#006b3f] rounded-lg">
-                                <TrendingUp className="w-5 h-5" />
+                            <span className="text-xs font-semibold text-gray-500">Student Attendance</span>
+                            <div className="p-1.5 bg-emerald-50 text-[#006b3f] rounded-md">
+                                <TrendingUp className="w-4 h-4" />
                             </div>
                         </div>
-                        <div className="mt-3 flex items-baseline justify-between">
-                            <span className="text-3xl font-extrabold text-gray-900">
+                        <div className="mt-2 flex items-baseline justify-between">
+                            <span className="text-2xl font-bold text-gray-900">
                                 {summary ? `${summary.studentAttendanceRate}%` : "—"}
                             </span>
-                            <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
+                            <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${
                                 (summary?.studentAttendanceRate || 0) >= 90
                                     ? "bg-emerald-100 text-emerald-800"
                                     : (summary?.studentAttendanceRate || 0) >= 80
@@ -377,123 +329,112 @@ export default function AttendanceOverviewPage() {
                                 {(summary?.studentAttendanceRate || 0) >= 90 ? "Healthy" : (summary?.studentAttendanceRate || 0) >= 80 ? "Attention" : "Critical"}
                             </span>
                         </div>
-                        <p className="text-xs text-gray-500 mt-2">
-                            Based on {summary?.totalStudentRecords.toLocaleString() || 0} recorded sessions across {summary?.totalEnrolledStudents || 0} enrolled students
+                        <p className="text-xs text-gray-400 mt-1">
+                            {summary?.totalEnrolledStudents || 0} enrolled students
                         </p>
                     </CardContent>
                 </Card>
 
-                {/* 2. Faculty Presence Rate */}
+                {/* 2. Teacher Attendance Rate */}
                 <Card className="border-gray-200 shadow-sm hover:border-blue-300 transition-colors">
-                    <CardContent className="p-5">
+                    <CardContent className="p-4">
                         <div className="flex items-center justify-between">
-                            <span className="text-xs font-semibold tracking-wider text-gray-500 uppercase">
-                                Faculty Presence Rate
-                            </span>
-                            <div className="p-2 bg-blue-50 text-blue-600 rounded-lg">
-                                <UserCheck className="w-5 h-5" />
+                            <span className="text-xs font-semibold text-gray-500">Teacher Attendance</span>
+                            <div className="p-1.5 bg-blue-50 text-blue-600 rounded-md">
+                                <UserCheck className="w-4 h-4" />
                             </div>
                         </div>
-                        <div className="mt-3 flex items-baseline justify-between">
-                            <span className="text-3xl font-extrabold text-gray-900">
+                        <div className="mt-2 flex items-baseline justify-between">
+                            <span className="text-2xl font-bold text-gray-900">
                                 {summary ? `${summary.teacherAttendanceRate}%` : "—"}
                             </span>
-                            <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-800">
-                                {summary?.totalActiveTeachers || 0} Faculty
+                            <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-800">
+                                Term Avg
                             </span>
                         </div>
-                        <p className="text-xs text-gray-500 mt-2">
-                            {summary?.teacherStats.present || 0} Present, {summary?.teacherStats.late || 0} Late, {summary?.teacherStats.absent || 0} Absent overall
+                        <p className="text-xs text-gray-400 mt-1">
+                            {summary?.totalActiveTeachers || 0} active teachers
                         </p>
                     </CardContent>
                 </Card>
 
-                {/* 3. Today's Student Snapshot */}
+                {/* 3. Students Today */}
                 <Card className="border-gray-200 shadow-sm">
-                    <CardContent className="p-5">
+                    <CardContent className="p-4">
                         <div className="flex items-center justify-between">
-                            <span className="text-xs font-semibold tracking-wider text-gray-500 uppercase">
-                                Student Snapshot Today
-                            </span>
-                            <div className="p-2 bg-indigo-50 text-indigo-600 rounded-lg">
-                                <School className="w-5 h-5" />
+                            <span className="text-xs font-semibold text-gray-500">Students Today</span>
+                            <div className="p-1.5 bg-indigo-50 text-indigo-600 rounded-md">
+                                <School className="w-4 h-4" />
                             </div>
                         </div>
-                        <div className="mt-3 flex items-baseline justify-between">
-                            <span className="text-3xl font-extrabold text-gray-900">
+                        <div className="mt-2 flex items-baseline justify-between">
+                            <span className="text-2xl font-bold text-gray-900">
                                 {today ? `${today.student.present + today.student.late}` : "0"}
-                                <span className="text-sm font-normal text-gray-400"> / {today?.student.totalEnrolled || 0}</span>
+                                <span className="text-xs font-normal text-gray-400"> / {today?.student.totalEnrolled || 0}</span>
                             </span>
-                            <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-800">
+                            <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-800">
                                 {today?.student.rate || 0}%
                             </span>
                         </div>
-                        <div className="mt-2 flex items-center justify-between text-xs text-gray-500">
-                            <span>Absent: <strong className="text-red-600">{today?.student.absent || 0}</strong></span>
-                            <span>Late: <strong className="text-amber-600">{today?.student.late || 0}</strong></span>
-                            <span>Excused: <strong className="text-blue-600">{today?.student.excused || 0}</strong></span>
-                        </div>
+                        <p className="text-xs text-gray-400 mt-1">
+                            {today?.student.present || 0} Present · <span className="text-red-600 font-medium">{today?.student.absent || 0} Absent</span>
+                        </p>
                     </CardContent>
                 </Card>
 
-                {/* 4. Today's Faculty Snapshot */}
+                {/* 4. Teachers Today */}
                 <Card className="border-gray-200 shadow-sm">
-                    <CardContent className="p-5">
+                    <CardContent className="p-4">
                         <div className="flex items-center justify-between">
-                            <span className="text-xs font-semibold tracking-wider text-gray-500 uppercase">
-                                Faculty Roster Today
-                            </span>
-                            <div className="p-2 bg-purple-50 text-purple-600 rounded-lg">
-                                <Users className="w-5 h-5" />
+                            <span className="text-xs font-semibold text-gray-500">Teachers Today</span>
+                            <div className="p-1.5 bg-purple-50 text-purple-600 rounded-md">
+                                <Users className="w-4 h-4" />
                             </div>
                         </div>
-                        <div className="mt-3 flex items-baseline justify-between">
-                            <span className="text-3xl font-extrabold text-gray-900">
+                        <div className="mt-2 flex items-baseline justify-between">
+                            <span className="text-2xl font-bold text-gray-900">
                                 {today ? `${today.teacher.present + today.teacher.late}` : "0"}
-                                <span className="text-sm font-normal text-gray-400"> / {today?.teacher.totalActive || 0}</span>
+                                <span className="text-xs font-normal text-gray-400"> / {today?.teacher.totalActive || 0}</span>
                             </span>
-                            <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-purple-100 text-purple-800">
+                            <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-purple-100 text-purple-800">
                                 {today?.teacher.rate || 0}%
                             </span>
                         </div>
-                        <div className="mt-2 flex items-center justify-between text-xs text-gray-500">
-                            <span>Absent: <strong className="text-red-600">{today?.teacher.absent || 0}</strong></span>
-                            <span>Late: <strong className="text-amber-600">{today?.teacher.late || 0}</strong></span>
-                            <span>Marked: <strong>{today?.teacher.totalMarked || 0}</strong></span>
-                        </div>
+                        <p className="text-xs text-gray-400 mt-1">
+                            {today?.teacher.present || 0} Present · <span className="text-red-600 font-medium">{today?.teacher.absent || 0} Absent</span>
+                        </p>
                     </CardContent>
                 </Card>
             </div>
 
             {/* Multi-Line Attendance Rate Trends Chart */}
             <Card className="border-gray-200 shadow-sm">
-                <CardHeader className="py-4 px-6 border-b border-gray-100 flex flex-row items-center justify-between">
+                <CardHeader className="py-3.5 px-5 border-b border-gray-100 flex flex-row items-center justify-between">
                     <div>
                         <CardTitle className="text-base font-bold text-gray-900 flex items-center">
-                            <Activity className="w-5 h-5 mr-2 text-[#006b3f]" />
-                            Presence Rate Trends (Last {rangeDays} Days)
+                            <Activity className="w-4 h-4 mr-2 text-[#006b3f]" />
+                            Attendance Trends
                         </CardTitle>
-                        <p className="text-xs text-gray-500 mt-0.5">
-                            Daily percentage of active students and teachers present or on-time
+                        <p className="text-xs text-gray-400 mt-0.5">
+                            Daily rate over the last {rangeDays} days
                         </p>
                     </div>
                     <div className="flex items-center space-x-4 text-xs">
                         <div className="flex items-center space-x-1.5">
-                            <span className="w-3 h-3 rounded-full bg-[#006b3f]" />
+                            <span className="w-2.5 h-2.5 rounded-full bg-[#006b3f]" />
                             <span className="font-semibold text-gray-700">Students</span>
                         </div>
                         <div className="flex items-center space-x-1.5">
-                            <span className="w-3 h-3 rounded-full bg-blue-600" />
-                            <span className="font-semibold text-gray-700">Faculty</span>
+                            <span className="w-2.5 h-2.5 rounded-full bg-blue-600" />
+                            <span className="font-semibold text-gray-700">Teachers</span>
                         </div>
                     </div>
                 </CardHeader>
                 <CardContent className="p-6">
                     {validTrends.length === 0 ? (
-                        <div className="py-12 text-center text-gray-400">
-                            <Clock className="w-10 h-10 mx-auto mb-2 text-gray-300" />
-                            <p className="text-sm font-semibold text-gray-600">No attendance data recorded in the selected period</p>
-                            <p className="text-xs text-gray-400 mt-1">Daily records entered by homeroom teachers and staff will appear here.</p>
+                        <div className="py-10 text-center text-gray-400">
+                            <Clock className="w-8 h-8 mx-auto mb-2 text-gray-300" />
+                            <p className="text-sm font-medium text-gray-600">No attendance data recorded for this period</p>
                         </div>
                     ) : (
                         <div className="relative">
@@ -628,14 +569,14 @@ export default function AttendanceOverviewPage() {
 
             {/* Grade & Section Performance Matrix */}
             <Card className="border-gray-200 shadow-sm">
-                <CardHeader className="py-4 px-6 border-b border-gray-100 flex flex-row items-center justify-between">
+                <CardHeader className="py-3.5 px-5 border-b border-gray-100 flex flex-row items-center justify-between">
                     <div>
                         <CardTitle className="text-base font-bold text-gray-900 flex items-center">
-                            <Layers className="w-5 h-5 mr-2 text-[#006b3f]" />
-                            Grade & Section Attendance Breakdown
+                            <Layers className="w-4 h-4 mr-2 text-[#006b3f]" />
+                            Grade Breakdown
                         </CardTitle>
-                        <p className="text-xs text-gray-500 mt-0.5">
-                            Cumulative presence health across all educational levels
+                        <p className="text-xs text-gray-400 mt-0.5">
+                            Attendance rate by grade and section
                         </p>
                     </div>
                     <div className="flex items-center space-x-2 text-xs">
