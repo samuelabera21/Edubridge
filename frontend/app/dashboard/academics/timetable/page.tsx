@@ -3,10 +3,11 @@
 import { useEffect, useState, useMemo } from "react";
 import { fetchApi } from "@/lib/api";
 import { useAuth } from "@/hooks/useAuth";
+import Link from "next/link";
 import { 
     Clock, Plus, Calendar, BookOpen, User, Home, Trash2, ShieldAlert, 
     Check, ClipboardList, GraduationCap, Settings, Building, AlertCircle, 
-    CheckCircle2, RefreshCw, ChevronRight, Lock, Unlock, Users, Info, CalendarOff
+    CheckCircle2, RefreshCw, ChevronRight, ChevronDown, Lock, Unlock, Users, Info, CalendarOff
 } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -87,6 +88,7 @@ export default function TimetablePage() {
     const [periods, setPeriods] = useState<any[]>([]);
     const [isPeriodModalOpen, setIsPeriodModalOpen] = useState(false);
     const [newPeriod, setNewPeriod] = useState({ name: "", startTime: "", endTime: "", isBreak: false });
+    const [showHolidays, setShowHolidays] = useState(false);
 
     // Schedule Config states
     const [scheduleConfig, setScheduleConfig] = useState({
@@ -509,44 +511,51 @@ export default function TimetablePage() {
 
     return (
         <div className="space-y-6 pb-12">
-            {/* Top Bar: Title & Year Selector */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-slate-200/80 shadow-xs">
+            {/* Breadcrumbs */}
+            <div className="flex items-center space-x-2 text-xs text-slate-500">
+                <Link href="/dashboard" className="hover:text-slate-900 transition-colors">Dashboard</Link>
+                <span>/</span>
+                <Link href="/dashboard/academics/years" className="hover:text-slate-900 transition-colors">Academics</Link>
+                <span>/</span>
+                <span className="text-slate-900 font-medium">Timetable</span>
+            </div>
+
+            {/* Header: Clean Government Style */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-slate-200">
                 <div>
-                    <div className="flex items-center gap-2">
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-[#4085b3]/10 text-[#4085b3] border border-[#4085b3]/20">
-                            Step 6: Timetable & Scheduling
-                        </span>
+                    <div className="flex items-center gap-2.5">
+                        <h1 className="text-xl font-bold text-slate-900 tracking-tight">
+                            Instructional Timetable
+                        </h1>
                         {isPublished ? (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                                <CheckCircle2 className="w-3.5 h-3.5" /> Official Timetable Published
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> Published
                             </span>
                         ) : (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200">
-                                <Clock className="w-3.5 h-3.5" /> Draft Mode (Unpublished)
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200">
+                                <Clock className="w-3.5 h-3.5 text-amber-600" /> Draft
                             </span>
                         )}
                         {isYearLocked && (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-100 text-slate-600 border border-slate-300">
-                                <Lock className="w-3 h-3" /> Academic Year Locked
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold bg-slate-100 text-slate-600 border border-slate-200">
+                                <Lock className="w-3 h-3 text-slate-500" /> Year Locked
                             </span>
                         )}
                     </div>
-                    <h1 className="text-2xl font-bold text-slate-900 mt-1.5 tracking-tight">
-                        Instructional Timetable & Scheduling
-                    </h1>
-                    <p className="text-sm text-slate-500 mt-0.5">
-                        Configure weekly section lesson allocations, collision engine enforcement, and live student/teacher schedules.
+                    <p className="text-xs text-slate-500 mt-1">
+                        Weekly classroom schedule, subject allocations, and teacher master timetable.
                     </p>
                 </div>
 
-                {/* Academic Year Selector & Actions */}
-                <div className="flex items-center gap-3">
-                    <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5">
-                        <Calendar className="w-4 h-4 text-slate-500" />
+                {/* Right controls: Academic Year selector & Publish button */}
+                <div className="flex items-center gap-2.5">
+                    <div className="flex items-center gap-2 bg-white border border-slate-300 rounded-lg px-3 py-1.5 shadow-2xs">
+                        <Calendar className="w-3.5 h-3.5 text-slate-500" />
+                        <span className="text-xs font-medium text-slate-500">Year:</span>
                         <select
                             value={selectedYearId}
                             onChange={(e) => setSelectedYearId(e.target.value)}
-                            className="bg-transparent text-sm font-semibold text-slate-800 focus:outline-hidden cursor-pointer"
+                            className="bg-transparent text-xs font-semibold text-slate-900 focus:outline-hidden cursor-pointer"
                         >
                             {academicYears.map((yr) => (
                                 <option key={yr.id} value={yr.id}>
@@ -557,45 +566,48 @@ export default function TimetablePage() {
                     </div>
 
                     {!isYearLocked && (
-                        <Button
-                            variant={isPublished ? "outline" : "primary"}
+                        <button
                             onClick={() => setIsPublishModalOpen(true)}
-                            className="flex items-center gap-2"
+                            className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer shadow-2xs ${
+                                isPublished
+                                    ? "bg-white text-slate-700 border border-slate-300 hover:bg-slate-50"
+                                    : "bg-[#4085b3] text-white hover:bg-[#356f96]"
+                            }`}
                         >
                             {isPublished ? (
                                 <>
-                                    <Unlock className="w-4 h-4 text-amber-600" />
-                                    <span>Unpublish / Revert to Draft</span>
+                                    <Unlock className="w-3.5 h-3.5 text-amber-600" />
+                                    <span>Revert to Draft</span>
                                 </>
                             ) : (
                                 <>
-                                    <CheckCircle2 className="w-4 h-4 text-white" />
-                                    <span>Publish Official Timetable</span>
+                                    <CheckCircle2 className="w-3.5 h-3.5" />
+                                    <span>Publish Timetable</span>
                                 </>
                             )}
-                        </Button>
+                        </button>
                     )}
                 </div>
             </div>
 
             {/* Navigation Tabs */}
-            <div className="flex border-b border-slate-200 bg-white px-6 pt-2 rounded-xl shadow-xs gap-4 overflow-x-auto">
+            <div className="flex border-b border-slate-200 gap-6 text-xs font-medium">
                 <button
                     onClick={() => setActiveTab("workspace")}
-                    className={`pb-3 text-sm font-semibold border-b-2 transition-colors flex items-center gap-2 ${
+                    className={`pb-2.5 transition-colors flex items-center gap-1.5 border-b-2 -mb-px cursor-pointer ${
                         activeTab === "workspace"
-                            ? "border-[#4085b3] text-[#4085b3]"
+                            ? "border-[#4085b3] text-[#4085b3] font-semibold"
                             : "border-transparent text-slate-500 hover:text-slate-800"
                     }`}
                 >
                     <GraduationCap className="w-4 h-4" />
-                    <span>Section Scheduling Workspace</span>
+                    <span>Section Schedule</span>
                 </button>
                 <button
                     onClick={() => setActiveTab("teacherView")}
-                    className={`pb-3 text-sm font-semibold border-b-2 transition-colors flex items-center gap-2 ${
+                    className={`pb-2.5 transition-colors flex items-center gap-1.5 border-b-2 -mb-px cursor-pointer ${
                         activeTab === "teacherView"
-                            ? "border-[#4085b3] text-[#4085b3]"
+                            ? "border-[#4085b3] text-[#4085b3] font-semibold"
                             : "border-transparent text-slate-500 hover:text-slate-800"
                     }`}
                 >
@@ -604,9 +616,9 @@ export default function TimetablePage() {
                 </button>
                 <button
                     onClick={() => setActiveTab("periods")}
-                    className={`pb-3 text-sm font-semibold border-b-2 transition-colors flex items-center gap-2 ${
+                    className={`pb-2.5 transition-colors flex items-center gap-1.5 border-b-2 -mb-px cursor-pointer ${
                         activeTab === "periods"
-                            ? "border-[#4085b3] text-[#4085b3]"
+                            ? "border-[#4085b3] text-[#4085b3] font-semibold"
                             : "border-transparent text-slate-500 hover:text-slate-800"
                     }`}
                 >
@@ -617,64 +629,77 @@ export default function TimetablePage() {
 
             {/* Notification Alerts */}
             {successMessage && (
-                <div className="flex items-center gap-3 p-4 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-800 text-sm animate-in fade-in duration-300">
-                    <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
+                <div className="flex items-center gap-2.5 px-3.5 py-2.5 bg-emerald-50 border border-emerald-200 rounded-lg text-emerald-800 text-xs animate-in fade-in duration-200">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
                     <p className="font-medium">{successMessage}</p>
                 </div>
             )}
 
             {conflictError && (
-                <div className="flex items-start gap-3 p-4 bg-red-50 border border-red-200 rounded-xl text-red-800 text-sm animate-in fade-in duration-300">
-                    <ShieldAlert className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
+                <div className="flex items-start gap-2.5 px-3.5 py-2.5 bg-red-50 border border-red-200 rounded-lg text-red-800 text-xs animate-in fade-in duration-200">
+                    <ShieldAlert className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
                     <div>
-                        <h4 className="font-semibold">Scheduling Conflict Rejection</h4>
-                        <p className="mt-0.5 text-xs text-red-700 leading-relaxed">{conflictError}</p>
+                        <h4 className="font-semibold text-red-900">Scheduling Conflict Rejection</h4>
+                        <p className="mt-0.5 text-red-700 leading-relaxed">{conflictError}</p>
                     </div>
                 </div>
             )}
 
-            {/* Academic Calendar Closed Days Banner */}
+            {/* Academic Calendar Notice: Clean Collapsible Bar */}
             {closedDayEvents.length > 0 && (
-                <div className="flex items-start gap-3 p-4 bg-amber-50/80 border border-amber-200/80 rounded-xl text-amber-900 text-xs leading-relaxed">
-                    <CalendarOff className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
-                    <div>
-                        <span className="font-semibold text-amber-950">Academic Calendar Closures & Holidays:</span>
-                        <div className="flex flex-wrap gap-2 mt-1.5">
+                <div className="bg-slate-50 border border-slate-200 rounded-lg px-3.5 py-2.5 text-xs text-slate-700">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                            <CalendarOff className="w-4 h-4 text-slate-500 shrink-0" />
+                            <span>
+                                <strong className="font-semibold text-slate-900">Academic Calendar:</strong>{" "}
+                                {closedDayEvents.length} official school closures &amp; holidays registered for this academic year.
+                            </span>
+                        </div>
+                        <button
+                            type="button"
+                            onClick={() => setShowHolidays(!showHolidays)}
+                            className="text-[#4085b3] hover:text-[#356f96] font-medium flex items-center gap-1 cursor-pointer transition-colors ml-2"
+                        >
+                            <span>{showHolidays ? "Hide dates" : `View dates (${closedDayEvents.length})`}</span>
+                            <ChevronDown className={`w-3.5 h-3.5 transition-transform ${showHolidays ? "rotate-180" : ""}`} />
+                        </button>
+                    </div>
+
+                    {showHolidays && (
+                        <div className="mt-2.5 pt-2.5 border-t border-slate-200 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
                             {closedDayEvents.map((ev: any) => (
-                                <span key={ev.id} className="inline-flex items-center gap-1 bg-amber-100/70 border border-amber-300/60 px-2 py-0.5 rounded-md text-[11px] font-medium text-amber-900">
-                                    <span>{ev.title}</span>
-                                    <span className="text-amber-700 text-[10px]">
-                                        ({new Date(ev.startDate).toISOString().slice(0, 10)})
+                                <div key={ev.id} className="flex items-center justify-between bg-white border border-slate-200 px-2.5 py-1.5 rounded text-slate-800 text-[11px]">
+                                    <span className="font-medium truncate mr-2">{ev.title}</span>
+                                    <span className="text-slate-500 font-mono text-[10px] shrink-0">
+                                        {new Date(ev.startDate).toISOString().slice(0, 10)}
                                     </span>
-                                </span>
+                                </div>
                             ))}
                         </div>
-                        <p className="text-[11px] text-amber-700 mt-1">
-                            Instructional timetable slots represent weekly recurring lessons. On designated academic calendar closed days, standard school operations observe official closure.
-                        </p>
-                    </div>
+                    )}
                 </div>
             )}
 
             {/* TAB 1: SECTION SCHEDULING WORKSPACE */}
             {activeTab === "workspace" && (
                 <div className="space-y-6">
-                    {/* Grade & Section Selector Header */}
-                    <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
-                        <div className="flex flex-wrap items-center gap-4">
-                            {/* Grade Selector */}
-                            <div>
-                                <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">
-                                    Grade Level
-                                </label>
+                    {/* Grade, Section & Metric Control Bar */}
+                    <div className="bg-white border border-slate-200 rounded-lg p-3.5 shadow-2xs space-y-3">
+                        {/* Grade Selector Row */}
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                            <div className="flex items-center gap-2.5">
+                                <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider w-16 shrink-0">
+                                    Grade:
+                                </span>
                                 <div className="flex flex-wrap gap-1.5">
                                     {workspace?.schoolGrades?.map((sg: any) => (
                                         <button
                                             key={sg.id}
                                             onClick={() => handleGradeSelect(sg.id)}
-                                            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                                            className={`px-3 py-1 rounded-md text-xs font-semibold transition-colors cursor-pointer ${
                                                 selectedGradeId === sg.id
-                                                    ? "bg-[#4085b3] text-white shadow-xs"
+                                                    ? "bg-[#4085b3] text-white shadow-2xs"
                                                     : "bg-slate-100 text-slate-700 hover:bg-slate-200"
                                             }`}
                                         >
@@ -684,105 +709,89 @@ export default function TimetablePage() {
                                 </div>
                             </div>
 
-                            {/* Section Selector */}
-                            {selectedGrade && (
-                                <div className="border-l border-slate-200 pl-4">
-                                    <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-1">
-                                        Section Roster
-                                    </label>
-                                    <div className="flex flex-wrap gap-1.5">
-                                        {workspace?.schoolGrades
-                                            ?.find((g: any) => g.id === selectedGradeId)
-                                            ?.sections?.map((sec: any) => (
-                                                <button
-                                                    key={sec.id}
-                                                    onClick={() => handleSectionSelect(sec.id)}
-                                                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                                                        selectedSectionId === sec.id
-                                                            ? "bg-slate-900 text-white shadow-xs"
-                                                            : "bg-slate-100 text-slate-700 hover:bg-slate-200"
-                                                    }`}
-                                                >
-                                                    Section {sec.name}
-                                                </button>
-                                            ))}
-                                    </div>
+                            {/* Section Enrollment info */}
+                            {selectedSection && (
+                                <div className="flex items-center gap-1.5 text-xs text-slate-600 sm:ml-auto shrink-0">
+                                    <Users className="w-3.5 h-3.5 text-slate-400" />
+                                    <span>
+                                        Section {selectedSection.name}: <strong className="text-slate-900">{selectedSection.enrolledStudentsCount || 0}</strong> students
+                                    </span>
                                 </div>
                             )}
                         </div>
 
-                        {/* Selected Section KPI Summary */}
-                        {selectedSection && (
-                            <div className="flex items-center gap-3 bg-slate-50 border border-slate-200/90 rounded-xl px-4 py-2.5">
-                                <div className="text-right">
-                                    <div className="text-xs text-slate-500 font-medium">Placed Students (Step 5)</div>
-                                    <div className="text-base font-bold text-slate-900 flex items-center justify-end gap-1.5">
-                                        <Users className="w-4 h-4 text-[#4085b3]" />
-                                        <span>{selectedSection.enrolledStudentsCount || 0} students</span>
+                        {/* Section Selector Row (Dedicated aligned row) */}
+                        {selectedGrade && (
+                            <div className="flex items-center gap-2.5 pt-2 border-t border-slate-100">
+                                <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider w-16 shrink-0">
+                                    Section:
+                                </span>
+                                <div className="flex flex-wrap gap-1.5">
+                                    {workspace?.schoolGrades
+                                        ?.find((g: any) => g.id === selectedGradeId)
+                                        ?.sections?.map((sec: any) => (
+                                            <button
+                                                key={sec.id}
+                                                onClick={() => handleSectionSelect(sec.id)}
+                                                className={`px-2.5 py-1 rounded-md text-xs font-semibold transition-colors cursor-pointer ${
+                                                    selectedSectionId === sec.id
+                                                        ? "bg-[#4085b3] text-white shadow-2xs"
+                                                        : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                                                }`}
+                                            >
+                                                Section {sec.name}
+                                            </button>
+                                        ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Bottom: Inline Numbers & Allocation Progress Strip */}
+                        {selectedSection && workspace?.coverage && (
+                            <div className="flex flex-wrap items-center justify-between gap-3 pt-2.5 border-t border-slate-100 text-xs">
+                                <div className="flex flex-wrap items-center gap-4 text-slate-600">
+                                    <div className="flex items-center gap-1.5">
+                                        <span className="text-slate-500">Curriculum Demand:</span>
+                                        <span className="font-bold text-slate-900">
+                                            {workspace.coverage.totalRequired} Periods
+                                        </span>
+                                    </div>
+                                    <span className="text-slate-200">|</span>
+                                    <div className="flex items-center gap-1.5">
+                                        <span className="text-slate-500">Scheduled:</span>
+                                        <span className="font-bold text-emerald-700">
+                                            {workspace.coverage.totalScheduled}
+                                        </span>
+                                    </div>
+                                    <span className="text-slate-200">|</span>
+                                    <div className="flex items-center gap-1.5">
+                                        <span className="text-slate-500">Remaining Deficit:</span>
+                                        <span className={`font-bold ${workspace.coverage.totalRemaining > 0 ? "text-amber-700" : "text-slate-500"}`}>
+                                            {workspace.coverage.totalRemaining}
+                                        </span>
                                     </div>
                                 </div>
-                                <div className="w-px h-8 bg-slate-200" />
-                                <div className="text-right">
-                                    <div className="text-xs text-slate-500 font-medium">Coverage Progress</div>
-                                    <div className="text-base font-bold text-slate-900">
-                                        {workspace?.coverage?.coveragePercentage || 0}%
+
+                                {/* Progress Indicator */}
+                                <div className="flex items-center gap-2">
+                                    <span className="text-slate-500">Coverage:</span>
+                                    <span className="font-bold text-slate-900">
+                                        {workspace.coverage.coveragePercentage}%
+                                    </span>
+                                    <div className="w-20 h-2 bg-slate-100 rounded-full overflow-hidden">
+                                        <div
+                                            className={`h-full transition-all duration-300 ${
+                                                workspace.coverage.coveragePercentage === 100
+                                                    ? "bg-emerald-600"
+                                                    : "bg-[#4085b3]"
+                                            }`}
+                                            style={{ width: `${Math.min(100, workspace.coverage.coveragePercentage)}%` }}
+                                        />
                                     </div>
                                 </div>
                             </div>
                         )}
                     </div>
-
-                    {/* Section Instructional Demand KPIs */}
-                    {selectedSection && workspace?.coverage && (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                            <Card className="border-l-4 border-l-[#4085b3]">
-                                <CardContent className="p-4">
-                                    <span className="text-xs font-medium text-slate-500">Required Periods</span>
-                                    <div className="text-2xl font-bold text-slate-900 mt-1">
-                                        {workspace.coverage.totalRequired}
-                                    </div>
-                                    <p className="text-[11px] text-slate-400 mt-1">Weekly curriculum demand</p>
-                                </CardContent>
-                            </Card>
-                            <Card className="border-l-4 border-l-emerald-500">
-                                <CardContent className="p-4">
-                                    <span className="text-xs font-medium text-slate-500">Scheduled Periods</span>
-                                    <div className="text-2xl font-bold text-emerald-600 mt-1">
-                                        {workspace.coverage.totalScheduled}
-                                    </div>
-                                    <p className="text-[11px] text-slate-400 mt-1">Placed in weekly grid</p>
-                                </CardContent>
-                            </Card>
-                            <Card className={`border-l-4 ${workspace.coverage.totalRemaining > 0 ? "border-l-amber-500" : "border-l-slate-300"}`}>
-                                <CardContent className="p-4">
-                                    <span className="text-xs font-medium text-slate-500">Remaining Deficit</span>
-                                    <div className={`text-2xl font-bold mt-1 ${workspace.coverage.totalRemaining > 0 ? "text-amber-600" : "text-slate-400"}`}>
-                                        {workspace.coverage.totalRemaining}
-                                    </div>
-                                    <p className="text-[11px] text-slate-400 mt-1">Periods yet to be assigned</p>
-                                </CardContent>
-                            </Card>
-                            <Card className="border-l-4 border-l-purple-500">
-                                <CardContent className="p-4">
-                                    <span className="text-xs font-medium text-slate-500">Publication Status</span>
-                                    <div className="text-lg font-bold text-slate-900 mt-1 flex items-center gap-1.5">
-                                        {isPublished ? (
-                                            <span className="text-emerald-600 flex items-center gap-1">
-                                                <CheckCircle2 className="w-5 h-5" /> Published
-                                            </span>
-                                        ) : (
-                                            <span className="text-amber-600 flex items-center gap-1">
-                                                <Clock className="w-5 h-5" /> Draft
-                                            </span>
-                                        )}
-                                    </div>
-                                    <p className="text-[11px] text-slate-400 mt-1">
-                                        {isPublished ? "Visible to Students & Teachers" : "Only Admins/VPs can view"}
-                                    </p>
-                                </CardContent>
-                            </Card>
-                        </div>
-                    )}
 
                     {/* Workspace Split Layout: Left Assignment Pool, Right Timetable Grid */}
                     {workspaceLoading ? (
@@ -798,22 +807,22 @@ export default function TimetablePage() {
                         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
                             {/* LEFT PANEL: Teaching Assignment Pool (35% on lg) */}
                             <div className="lg:col-span-4 space-y-4">
-                                <Card>
-                                    <CardHeader className="py-4 px-5 border-b border-slate-100 flex items-center justify-between">
+                                <Card className="border border-slate-200 shadow-2xs">
+                                    <CardHeader className="py-3 px-4 border-b border-slate-100 flex items-center justify-between">
                                         <div>
                                             <CardTitle className="text-sm font-bold text-slate-900">
-                                                Assigned Subjects & Staffing
+                                                Subject Allocations
                                             </CardTitle>
-                                            <p className="text-xs text-slate-400">Step 3 Teaching Assignments</p>
+                                            <p className="text-xs text-slate-400">Weekly instructional demand for Section {selectedSection.name}</p>
                                         </div>
-                                        <span className="text-xs font-semibold bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full">
+                                        <span className="text-xs font-semibold bg-slate-100 text-slate-700 px-2 py-0.5 rounded">
                                             {workspace.teachingAssignments?.length || 0} subjects
                                         </span>
                                     </CardHeader>
-                                    <CardContent className="p-4 space-y-2.5 max-h-[620px] overflow-y-auto">
+                                    <CardContent className="p-3 space-y-2 max-h-[620px] overflow-y-auto">
                                         {workspace.teachingAssignments?.length === 0 ? (
                                             <div className="p-6 text-center text-xs text-slate-400">
-                                                No teaching assignments allocated for Section {selectedSection.name} in Step 3.
+                                                No teaching assignments allocated for Section {selectedSection.name}.
                                             </div>
                                         ) : (
                                             workspace.teachingAssignments?.map((ta: any) => {
@@ -821,16 +830,16 @@ export default function TimetablePage() {
                                                 return (
                                                     <div
                                                         key={ta.id}
-                                                        className={`p-3.5 rounded-xl border transition-all ${
+                                                        className={`p-3 rounded-lg border transition-all ${
                                                             isDone
-                                                                ? "bg-slate-50/80 border-slate-200"
-                                                                : "bg-white border-slate-200 hover:border-[#4085b3] shadow-2xs"
+                                                                ? "bg-slate-50/70 border-slate-200"
+                                                                : "bg-white border-slate-200 hover:border-slate-300 shadow-2xs"
                                                         }`}
                                                     >
-                                                        <div className="flex items-start justify-between">
-                                                            <div>
-                                                                <div className="flex items-center gap-1.5">
-                                                                    <span className="text-xs font-bold text-slate-900">
+                                                        <div className="flex items-start justify-between gap-2">
+                                                            <div className="min-w-0">
+                                                                <div className="flex items-center gap-1.5 flex-wrap">
+                                                                    <span className="text-xs font-bold text-slate-900 truncate">
                                                                         {ta.subject.name}
                                                                     </span>
                                                                     {ta.subject.code && (
@@ -839,28 +848,28 @@ export default function TimetablePage() {
                                                                         </span>
                                                                     )}
                                                                 </div>
-                                                                <p className="text-xs text-slate-500 mt-0.5 flex items-center gap-1">
-                                                                    <User className="w-3 h-3 text-slate-400" />
-                                                                    <span>{ta.teacher.firstName} {ta.teacher.lastName}</span>
+                                                                <p className="text-[11px] text-slate-500 mt-0.5 flex items-center gap-1">
+                                                                    <User className="w-3 h-3 text-slate-400 shrink-0" />
+                                                                    <span className="truncate">{ta.teacher.firstName} {ta.teacher.lastName}</span>
                                                                 </p>
                                                             </div>
 
                                                             {/* Status Badge */}
                                                             {isDone ? (
-                                                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 shrink-0">
                                                                     <Check className="w-3 h-3" /> Complete
                                                                 </span>
                                                             ) : (
-                                                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-50 text-amber-700 border border-amber-200">
+                                                                <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-amber-50 text-amber-700 border border-amber-200 shrink-0">
                                                                     {ta.remainingPeriods} left
                                                                 </span>
                                                             )}
                                                         </div>
 
                                                         {/* Progress bar */}
-                                                        <div className="mt-3">
+                                                        <div className="mt-2.5">
                                                             <div className="flex items-center justify-between text-[11px] text-slate-500 mb-1">
-                                                                <span>Allocated: <strong>{ta.scheduledPeriods}</strong> / {ta.requiredPeriods} periods</span>
+                                                                <span>Allocated: <strong>{ta.scheduledPeriods}</strong> / {ta.requiredPeriods}</span>
                                                                 <span>{Math.round((ta.scheduledPeriods / (ta.requiredPeriods || 1)) * 100)}%</span>
                                                             </div>
                                                             <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
@@ -880,10 +889,10 @@ export default function TimetablePage() {
                                                                     setSelectedSlotTarget(null);
                                                                     setIsAssignModalOpen(true);
                                                                 }}
-                                                                className="mt-2.5 w-full py-1.5 px-3 rounded-lg bg-[#4085b3]/10 hover:bg-[#4085b3]/20 text-[#4085b3] text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors border border-[#4085b3]/20"
+                                                                className="mt-2 w-full py-1 px-2 rounded-md bg-slate-50 hover:bg-slate-100 text-slate-700 hover:text-slate-900 text-xs font-medium flex items-center justify-center gap-1.5 transition-colors border border-slate-200 cursor-pointer"
                                                             >
-                                                                <Plus className="w-3.5 h-3.5" />
-                                                                <span>Place Lesson into Grid</span>
+                                                                <Plus className="w-3 h-3 text-[#4085b3]" />
+                                                                <span>Schedule in Grid</span>
                                                             </button>
                                                         )}
                                                     </div>
@@ -896,14 +905,14 @@ export default function TimetablePage() {
 
                             {/* RIGHT PANEL: Weekly Timetable Grid (65% on lg) */}
                             <div className="lg:col-span-8">
-                                <Card>
-                                    <CardHeader className="py-4 px-5 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                                <Card className="border border-slate-200 shadow-2xs">
+                                    <CardHeader className="py-3 px-4 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                                         <div>
                                             <CardTitle className="text-sm font-bold text-slate-900">
-                                                Section {selectedSection.name} Weekly Schedule
+                                                Weekly Schedule: Section {selectedSection.name}
                                             </CardTitle>
                                             <p className="text-xs text-slate-400">
-                                                Instructional grid for {selectedGrade?.grade?.name} Section {selectedSection.name}
+                                                {selectedGrade?.grade?.name} timetable grid
                                             </p>
                                         </div>
                                         <div className="flex items-center gap-2">
@@ -912,7 +921,7 @@ export default function TimetablePage() {
                                                     <Button
                                                         variant="outline"
                                                         onClick={() => setIsPeriodModalOpen(true)}
-                                                        className="text-xs flex items-center gap-1 py-1.5 px-3 h-auto"
+                                                        className="text-xs flex items-center gap-1 py-1 px-2.5 h-auto text-slate-700 hover:bg-slate-50"
                                                     >
                                                         <Plus className="w-3.5 h-3.5" />
                                                         <span>Add Period</span>
@@ -924,7 +933,7 @@ export default function TimetablePage() {
                                                             setConflictError(null);
                                                             setIsAssignModalOpen(true);
                                                         }}
-                                                        className="text-xs flex items-center gap-1 py-1.5 px-3 h-auto"
+                                                        className="text-xs flex items-center gap-1 py-1 px-2.5 h-auto bg-[#4085b3] hover:bg-[#356f96] text-white"
                                                     >
                                                         <Plus className="w-3.5 h-3.5" />
                                                         <span>Schedule Lesson</span>
@@ -938,11 +947,11 @@ export default function TimetablePage() {
                                         <table className="w-full border-collapse text-left min-w-[700px]">
                                             <thead>
                                                 <tr className="bg-slate-50 border-b border-slate-200">
-                                                    <th className="py-3 px-4 text-xs font-bold uppercase tracking-wider text-slate-500 w-24 text-center border-r border-slate-200">
+                                                    <th className="py-2.5 px-3 text-xs font-bold uppercase tracking-wider text-slate-500 w-24 text-center border-r border-slate-200">
                                                         Period
                                                     </th>
                                                     {operatingDaysList.map((d) => (
-                                                        <th key={d.value} className="py-3 px-3 text-xs font-bold text-slate-700 text-center border-r border-slate-200 last:border-r-0">
+                                                        <th key={d.value} className="py-2.5 px-3 text-xs font-bold text-slate-700 text-center border-r border-slate-200 last:border-r-0">
                                                             <div>{d.label}</div>
                                                         </th>
                                                     ))}
@@ -986,10 +995,10 @@ export default function TimetablePage() {
 
                                                         if (isBreak) {
                                                             return (
-                                                                <tr key={period.id} className="bg-amber-50/50 border-y border-amber-200/60">
-                                                                    <td className="py-2.5 px-3 text-center border-r border-amber-200/60 bg-amber-100/40 w-24">
+                                                                <tr key={period.id} className="bg-amber-50/50 border-y border-amber-200/50">
+                                                                    <td className="py-2 px-3 text-center border-r border-amber-200/50 bg-amber-50 w-24">
                                                                         <div className="flex items-center justify-center gap-1 group/p">
-                                                                            <span className="font-bold text-xs text-amber-800">{periodCode || "Break"}</span>
+                                                                            <span className="font-bold text-xs text-amber-900">{periodCode || "Break"}</span>
                                                                             {!isYearLocked && (
                                                                                 <button
                                                                                     onClick={() => handleDeletePeriod(period.id, periodCode || "Break")}
@@ -1003,7 +1012,7 @@ export default function TimetablePage() {
                                                                     </td>
                                                                     <td
                                                                         colSpan={operatingDaysList.length}
-                                                                        className="py-2.5 text-center text-xs font-semibold text-amber-700 tracking-wider uppercase bg-amber-50/70"
+                                                                        className="py-2 text-center text-xs font-semibold text-amber-800 tracking-wider uppercase bg-amber-50/40"
                                                                     >
                                                                         ☕ Recess / Non-Instructional Break
                                                                     </td>
@@ -1014,9 +1023,9 @@ export default function TimetablePage() {
                                                         return (
                                                             <tr key={period.id} className="hover:bg-slate-50/30 transition-colors">
                                                                 {/* Period Label with Hover Delete */}
-                                                                <td className="py-3 px-3 text-center border-r border-slate-200 bg-slate-50/60 w-24">
+                                                                <td className="py-2.5 px-3 text-center border-r border-slate-200 bg-slate-50/60 w-24">
                                                                     <div className="flex items-center justify-center gap-1 group/p">
-                                                                        <span className="font-extrabold text-sm text-slate-900">{periodCode}</span>
+                                                                        <span className="font-bold text-xs text-slate-800">{periodCode}</span>
                                                                         {!isYearLocked && (
                                                                             <button
                                                                                 onClick={() => handleDeletePeriod(period.id, periodCode)}
@@ -1029,88 +1038,88 @@ export default function TimetablePage() {
                                                                     </div>
                                                                 </td>
 
-                                                            {/* Day Cells */}
-                                                            {operatingDaysList.map((day) => {
-                                                                const cellKey = `${day.value}-${period.id}`;
-                                                                const slot = timetableGridMap.get(cellKey);
+                                                                {/* Day Cells */}
+                                                                {operatingDaysList.map((day) => {
+                                                                    const cellKey = `${day.value}-${period.id}`;
+                                                                    const slot = timetableGridMap.get(cellKey);
 
-                                                                return (
-                                                                    <td
-                                                                        key={day.value}
-                                                                        className="py-2 px-2 border-r border-slate-200 last:border-r-0 align-top h-24 min-w-[130px]"
-                                                                    >
-                                                                        {slot ? (
-                                                                            <div className="relative group p-2.5 rounded-xl bg-slate-900 text-white shadow-xs border border-slate-800 flex flex-col justify-between h-full min-h-[75px] transition-all">
-                                                                                <div>
-                                                                                    <div className="flex items-start justify-between gap-1">
-                                                                                        <span className="text-xs font-bold leading-tight line-clamp-1 text-white">
-                                                                                            {slot.teachingAssignment.subject.name}
-                                                                                        </span>
-                                                                                        {!isYearLocked && (
+                                                                    return (
+                                                                        <td
+                                                                            key={day.value}
+                                                                            className="py-1.5 px-1.5 border-r border-slate-200 last:border-r-0 align-top h-20 min-w-[130px]"
+                                                                        >
+                                                                            {slot ? (
+                                                                                <div className="relative group p-2 rounded-lg bg-white text-slate-900 shadow-2xs border border-slate-200 hover:border-[#4085b3] border-l-4 border-l-[#4085b3] flex flex-col justify-between h-full min-h-[72px] transition-all">
+                                                                                    <div>
+                                                                                        <div className="flex items-start justify-between gap-1">
+                                                                                            <span className="text-xs font-bold leading-tight line-clamp-1 text-slate-900">
+                                                                                                {slot.teachingAssignment.subject.name}
+                                                                                            </span>
+                                                                                            {!isYearLocked && (
+                                                                                                <button
+                                                                                                    onClick={() => {
+                                                                                                        setDeleteTargetId(slot.id);
+                                                                                                        setIsDeleteModalOpen(true);
+                                                                                                    }}
+                                                                                                    className="opacity-0 group-hover:opacity-100 p-0.5 text-slate-400 hover:text-red-600 rounded transition-opacity shrink-0 cursor-pointer"
+                                                                                                    title="Remove lesson"
+                                                                                                >
+                                                                                                    <Trash2 className="w-3.5 h-3.5" />
+                                                                                                </button>
+                                                                                            )}
+                                                                                        </div>
+                                                                                        <div className="text-[11px] text-slate-600 mt-1 flex items-center gap-1 line-clamp-1">
+                                                                                            <User className="w-3 h-3 text-slate-400 shrink-0" />
+                                                                                            <span className="truncate">
+                                                                                                {slot.teachingAssignment.teacher.firstName} {slot.teachingAssignment.teacher.lastName}
+                                                                                            </span>
+                                                                                        </div>
+                                                                                    </div>
+
+                                                                                    {!isYearLocked && (
+                                                                                        <div className="flex items-center justify-end mt-1 pt-1 border-t border-slate-100">
                                                                                             <button
                                                                                                 onClick={() => {
-                                                                                                    setDeleteTargetId(slot.id);
-                                                                                                    setIsDeleteModalOpen(true);
+                                                                                                    setReassignSlotTarget(slot);
+                                                                                                    setReassignAssignmentId(slot.teachingAssignmentId);
+                                                                                                    setIsReassignModalOpen(true);
                                                                                                 }}
-                                                                                                className="opacity-0 group-hover:opacity-100 p-1 text-slate-400 hover:text-red-400 hover:bg-slate-800 rounded-md transition-all shrink-0 cursor-pointer"
-                                                                                                title="Remove lesson"
+                                                                                                className="text-[10px] text-[#4085b3] hover:underline font-medium cursor-pointer"
                                                                                             >
-                                                                                                <Trash2 className="w-3.5 h-3.5" />
+                                                                                                Switch
                                                                                             </button>
-                                                                                        )}
-                                                                                    </div>
-                                                                                    <div className="text-[11px] text-slate-300 mt-1 flex items-center gap-1 line-clamp-1">
-                                                                                        <User className="w-3 h-3 text-slate-400 shrink-0" />
-                                                                                        <span>
-                                                                                            {slot.teachingAssignment.teacher.firstName} {slot.teachingAssignment.teacher.lastName}
-                                                                                        </span>
-                                                                                    </div>
+                                                                                        </div>
+                                                                                    )}
                                                                                 </div>
-
-                                                                                {!isYearLocked && (
-                                                                                    <div className="flex items-center justify-end mt-1.5 pt-1 border-t border-slate-800">
-                                                                                        <button
-                                                                                            onClick={() => {
-                                                                                                setReassignSlotTarget(slot);
-                                                                                                setReassignAssignmentId(slot.teachingAssignmentId);
-                                                                                                setIsReassignModalOpen(true);
-                                                                                            }}
-                                                                                            className="text-[10px] text-[#4085b3] hover:underline cursor-pointer"
-                                                                                        >
-                                                                                            Switch
-                                                                                        </button>
-                                                                                    </div>
-                                                                                )}
-                                                                            </div>
-                                                                        ) : (
-                                                                            !isYearLocked && (
-                                                                                <button
-                                                                                    onClick={() => {
-                                                                                        setSelectedSlotTarget({
-                                                                                            dayOfWeek: day.value,
-                                                                                            periodId: period.id,
-                                                                                            periodName: periodCode
-                                                                                        });
-                                                                                        setSelectedTeachingAssignmentId("");
-                                                                                        setConflictError(null);
-                                                                                        setIsAssignModalOpen(true);
-                                                                                    }}
-                                                                                    className="w-full h-full min-h-[75px] rounded-xl border-2 border-dashed border-slate-200 hover:border-[#4085b3] hover:bg-[#4085b3]/5 transition-all flex flex-col items-center justify-center text-slate-400 hover:text-[#4085b3] group p-2 cursor-pointer"
-                                                                                    title={`Schedule lesson on ${day.label} ${periodCode}`}
-                                                                                >
-                                                                                    <Plus className="w-4 h-4 group-hover:scale-125 transition-transform text-[#4085b3]" />
-                                                                                    <span className="text-[11px] font-semibold text-slate-500 group-hover:text-[#4085b3] mt-0.5">
-                                                                                        Assign
-                                                                                    </span>
-                                                                                </button>
-                                                                            )
-                                                                        )}
-                                                                    </td>
-                                                                );
-                                                            })}
-                                                        </tr>
-                                                    );
-                                                }))}
+                                                                            ) : (
+                                                                                !isYearLocked && (
+                                                                                    <button
+                                                                                        onClick={() => {
+                                                                                            setSelectedSlotTarget({
+                                                                                                dayOfWeek: day.value,
+                                                                                                periodId: period.id,
+                                                                                                periodName: periodCode
+                                                                                            });
+                                                                                            setSelectedTeachingAssignmentId("");
+                                                                                            setConflictError(null);
+                                                                                            setIsAssignModalOpen(true);
+                                                                                        }}
+                                                                                        className="w-full h-full min-h-[72px] rounded-lg border border-dashed border-slate-200 hover:border-[#4085b3] hover:bg-slate-50 transition-all flex flex-col items-center justify-center text-slate-400 hover:text-[#4085b3] group p-1.5 cursor-pointer"
+                                                                                        title={`Schedule lesson on ${day.label} ${periodCode}`}
+                                                                                    >
+                                                                                        <Plus className="w-3.5 h-3.5 group-hover:scale-110 transition-transform text-slate-400 group-hover:text-[#4085b3]" />
+                                                                                        <span className="text-[10px] font-medium text-slate-400 group-hover:text-[#4085b3] mt-0.5">
+                                                                                            Assign
+                                                                                        </span>
+                                                                                    </button>
+                                                                                )
+                                                                            )}
+                                                                        </td>
+                                                                    );
+                                                                })}
+                                                            </tr>
+                                                        );
+                                                    }))}
                                             </tbody>
                                         </table>
                                     </CardContent>
