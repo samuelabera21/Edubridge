@@ -17,6 +17,14 @@ import {
     getApprovalsHandler,
     createApprovalHandler
 } from "./student.controller.js";
+import {
+    getPlacementWorkspaceHandler,
+    assignStudentHandler,
+    bulkAssignStudentsHandler,
+    reassignStudentSectionHandler,
+    getSectionRosterHandler,
+    getEnrollmentPlacementHistoryHandler
+} from "./student.placement.controller.js";
 import { requirePermission, requireScope } from "../authentication/authorization.middleware.js";
 
 const router = Router();
@@ -158,6 +166,16 @@ router.get("/transfers/history", requireScope("SCHOOL"), requirePermission("ACAD
 router.post("/progression/execute", requireScope("SCHOOL"), requirePermission("ACADEMIC:UPDATE"), executeProgressionHandler);
 router.get("/approvals/queue", requireScope("SCHOOL"), requirePermission("ACADEMIC:VIEW"), getApprovalsHandler);
 router.post("/approvals/request", requireScope("SCHOOL"), requirePermission("ACADEMIC:CREATE"), createApprovalHandler);
+
+// ============================================================
+// STEP 5: STUDENT PLACEMENT & CLASSROOM ROSTER ROUTES
+// ============================================================
+router.get("/placement/workspace", requireScope("SCHOOL"), requirePermission("ACADEMIC:VIEW"), getPlacementWorkspaceHandler);
+router.post("/placement/assign", requireScope("SCHOOL"), requirePermission("ACADEMIC:UPDATE"), assignStudentHandler);
+router.post("/placement/bulk-assign", requireScope("SCHOOL"), requirePermission("ACADEMIC:UPDATE"), bulkAssignStudentsHandler);
+router.post("/placement/reassign", requireScope("SCHOOL"), requirePermission("ACADEMIC:UPDATE"), reassignStudentSectionHandler);
+router.get("/placement/sections/:sectionId/roster", requireScope("SCHOOL"), requirePermission("ACADEMIC:VIEW"), getSectionRosterHandler);
+router.get("/placement/enrollments/:enrollmentId/history", requireScope("SCHOOL"), requirePermission("ACADEMIC:VIEW"), getEnrollmentPlacementHistoryHandler);
 
 router.get("/:id", requireScope("SCHOOL"), requirePermission("ACADEMIC:VIEW"), getStudentById);
 

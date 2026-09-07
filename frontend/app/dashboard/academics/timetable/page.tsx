@@ -1,9 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { fetchApi } from "@/lib/api";
 import { useAuth } from "@/hooks/useAuth";
-import { Clock, Plus, Filter, Calendar, BookOpen, User, Home, Trash2, ShieldAlert, Check, ClipboardList, GraduationCap, Settings, Building } from "lucide-react";
+import Link from "next/link";
+import { 
+    Clock, Plus, Calendar, BookOpen, User, Home, Trash2, ShieldAlert, 
+    Check, ClipboardList, GraduationCap, Settings, Building, AlertCircle, 
+    CheckCircle2, RefreshCw, ChevronRight, ChevronDown, Lock, Unlock, Users, Info, CalendarOff
+} from "lucide-react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { LoadingState } from "@/components/ui/LoadingState";
@@ -11,60 +16,79 @@ import { ErrorState } from "@/components/ui/ErrorState";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Modal } from "@/components/ui/Modal";
 import { Input } from "@/components/ui/Input";
-import { Select } from "@/components/ui/Select";
 
-const DAYS = [
-    { value: 1, label: "Monday" },
-    { value: 2, label: "Tuesday" },
-    { value: 3, label: "Wednesday" },
-    { value: 4, label: "Thursday" },
-    { value: 5, label: "Friday" }
+interface DayDef {
+    value: number;
+    label: string;
+    shortLabel: string;
+}
+
+const ALL_DAYS: DayDef[] = [
+    { value: 1, label: "Monday", shortLabel: "Mon" },
+    { value: 2, label: "Tuesday", shortLabel: "Tue" },
+    { value: 3, label: "Wednesday", shortLabel: "Wed" },
+    { value: 4, label: "Thursday", shortLabel: "Thu" },
+    { value: 5, label: "Friday", shortLabel: "Fri" },
+    { value: 6, label: "Saturday", shortLabel: "Sat" },
+    { value: 7, label: "Sunday", shortLabel: "Sun" }
 ];
 
 export default function TimetablePage() {
     const { authData } = useAuth();
-    const [activeTab, setActiveTab] = useState<"grid" | "periods" | "requirements" | "availability" | "config" | "rooms">("grid");
-    const [activeRoomSubTab, setActiveRoomSubTab] = useState<"list" | "availability">("list");
-    
-    // Core data
-    const [periods, setPeriods] = useState<any[]>([]);
-    const [assignments, setAssignments] = useState<any[]>([]);
-    const [rooms, setRooms] = useState<any[]>([]);
-    const [teachers, setTeachers] = useState<any[]>([]);
-    const [grades, setGrades] = useState<any[]>([]);
-    const [sections, setSections] = useState<any[]>([]);
-    const [activeYear, setActiveYear] = useState<any>(null);
+    const [activeTab, setActiveTab] = useState<"workspace" | "teacherView" | "periods" | "config" | "rooms">("workspace");
 
-    // Filter selectors
-    const [viewType, setViewType] = useState<"section" | "teacher" | "room">("section");
+    // Academic Years
+    const [academicYears, setAcademicYears] = useState<any[]>([]);
+    const [selectedYearId, setSelectedYearId] = useState<string>("");
+
+    // Workspace Data
+    const [workspace, setWorkspace] = useState<any>(null);
     const [selectedGradeId, setSelectedGradeId] = useState<string>("");
     const [selectedSectionId, setSelectedSectionId] = useState<string>("");
-    const [selectedTeacherId, setSelectedTeacherId] = useState<string>("");
-    const [selectedRoomId, setSelectedRoomId] = useState<string>("");
 
-    // Timetable grid schedules
-    const [timetableEntries, setTimetableEntries] = useState<any[]>([]);
-
-    // Loading & Errors
+    // Loading & Action states
     const [loading, setLoading] = useState(true);
-    const [gridLoading, setGridLoading] = useState(false);
-    const [error, setError] = useState<string | null>(null);
+    const [workspaceLoading, setWorkspaceLoading] = useState(false);
+    const [actionLoading, setActionLoading] = useState(false);
+    const [errorMessage, setErrorMessage] = useState<string | null>(null);
+    const [conflictError, setConflictError] = useState<string | null>(null);
+    const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
     // Modals
-    const [isPeriodModalOpen, setIsPeriodModalOpen] = useState(false);
     const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
-    const [isRoomModalOpen, setIsRoomModalOpen] = useState(false);
-    const [selectedCell, setSelectedCell] = useState<{ dayOfWeek: number; periodId: string } | null>(null);
+    const [selectedSlotTarget, setSelectedSlotTarget] = useState<{ dayOfWeek: number; periodId: string; periodName: string } | null>(null);
+    const [selectedTeachingAssignmentId, setSelectedTeachingAssignmentId] = useState<string>("");
+    const [selectedRoomId, setSelectedRoomId] = useState<string>("");
+    const [customDayOfWeek, setCustomDayOfWeek] = useState<number>(1);
+    const [customPeriodId, setCustomPeriodId] = useState<string>("");
 
-    // Form inputs
+    // Reassignment Modal
+    const [isReassignModalOpen, setIsReassignModalOpen] = useState(false);
+    const [reassignSlotTarget, setReassignSlotTarget] = useState<any>(null);
+    const [reassignAssignmentId, setReassignAssignmentId] = useState<string>("");
+    const [reassignReason, setReassignReason] = useState<string>("");
+
+    // Deletion confirmation Modal
+    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+    const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
+
+    // Publication Modal
+    const [isPublishModalOpen, setIsPublishModalOpen] = useState(false);
+
+    // Rooms list for optional allocation
+    const [rooms, setRooms] = useState<any[]>([]);
+
+    // Secondary Teacher View states
+    const [teachers, setTeachers] = useState<any[]>([]);
+    const [selectedTeacherId, setSelectedTeacherId] = useState<string>("");
+    const [teacherTimetable, setTeacherTimetable] = useState<any[]>([]);
+    const [teacherLoading, setTeacherLoading] = useState(false);
+
+    // Period Management Form states
+    const [periods, setPeriods] = useState<any[]>([]);
+    const [isPeriodModalOpen, setIsPeriodModalOpen] = useState(false);
     const [newPeriod, setNewPeriod] = useState({ name: "", startTime: "", endTime: "", isBreak: false });
-    const [newAssignmentId, setNewAssignmentId] = useState("");
-    const [newRoomId, setNewRoomId] = useState("");
-    const [formError, setFormError] = useState<string | null>(null);
-
-    // Rooms Form
-    const [editingRoom, setEditingRoom] = useState<any>(null);
-    const [roomForm, setRoomForm] = useState({ name: "", type: "CLASSROOM", capacity: "", status: "AVAILABLE", description: "" });
+    const [showHolidays, setShowHolidays] = useState(false);
 
     // Schedule Config states
     const [scheduleConfig, setScheduleConfig] = useState({
@@ -79,1192 +103,1555 @@ export default function TimetablePage() {
         shift: "FULL"
     });
 
-    // Requirements & Availability states
-    const [editingRequirements, setEditingRequirements] = useState<{ [id: string]: number }>({});
-    const [selectedAvailabilityTeacherId, setSelectedAvailabilityTeacherId] = useState<string>("");
-    const [availabilityMap, setAvailabilityMap] = useState<{ [key: string]: boolean }>({});
+    // 1. Initial Load: Academic Years & Secondary data
+    useEffect(() => {
+        loadInitialData();
+    }, []);
 
-    // Room Availability states
-    const [selectedAvailabilityRoomId, setSelectedAvailabilityRoomId] = useState<string>("");
-    const [roomAvailabilityMap, setRoomAvailabilityMap] = useState<{ [key: string]: boolean }>({});
-
-    const hasCreatePermission = true; // Bypassing for Admin dashboard
-
-    const loadCoreData = async () => {
+    const loadInitialData = async () => {
         try {
             setLoading(true);
-            
-            // 1. Academic Years to find active
+            setErrorMessage(null);
+
+            // Academic Years
             const yearsRes = await fetchApi("/vice-principal/academic/years");
             if (!yearsRes.ok) throw new Error("Failed to load academic years");
             const yearsData = await yearsRes.json();
-            const active = yearsData.find((y: any) => y.status === "ACTIVE");
-            setActiveYear(active || null);
+            setAcademicYears(yearsData);
 
-            // 2. Class Periods
-            const periodsRes = await fetchApi("/timetable/periods");
-            if (!periodsRes.ok) throw new Error("Failed to load class periods");
-            const periodsData = await periodsRes.json();
-            setPeriods(periodsData);
+            const active = yearsData.find((y: any) => y.status === "ACTIVE") || yearsData[0];
+            if (active) {
+                setSelectedYearId(active.id);
+            }
 
-            // 3. Teaching Assignments
-            const assignmentsRes = await fetchApi("/vice-principal/teachers/assignments");
-            if (!assignmentsRes.ok) throw new Error("Failed to load assignments");
-            const assignmentsData = await assignmentsRes.json();
-            setAssignments(assignmentsData);
-
-            // Initialize editing requirements
-            const reqs: any = {};
-            assignmentsData.forEach((as: any) => {
-                reqs[as.id] = as.periodsPerWeek || 0;
-            });
-            setEditingRequirements(reqs);
-
-            // 4. Rooms (Academic Vice-Principal scope)
+            // Rooms (optional)
             const roomsRes = await fetchApi("/vice-principal/academic/rooms");
             if (roomsRes.ok) {
                 const roomsData = await roomsRes.json();
                 setRooms(roomsData);
             }
 
-            // 5. Teachers
+            // Teachers (for master teacher timetable tab)
             const teachersRes = await fetchApi("/vice-principal/teachers");
             if (teachersRes.ok) {
                 const teachersData = await teachersRes.json();
                 setTeachers(teachersData);
-            }
-
-            // 6. Grades (for section filter)
-            if (active) {
-                const gradesRes = await fetchApi(`/vice-principal/academic/years/${active.id}/grades`);
-                if (gradesRes.ok) {
-                    const gradesData = await gradesRes.json();
-                    setGrades(gradesData);
-                }
-
-                // Load existing configuration
-                const configRes = await fetchApi(`/timetable/config/${active.id}`);
-                if (configRes.ok) {
-                    const configData = await configRes.json();
-                    if (configData) {
-                        setScheduleConfig({
-                            operatingDays: configData.operatingDays || [1, 2, 3, 4, 5],
-                            startTime: configData.startTime || "08:00",
-                            periodDuration: configData.periodDuration || 40,
-                            periodsPerDay: configData.periodsPerDay || 6,
-                            breakDuration: configData.breakDuration || 20,
-                            breakAfter: configData.breakAfter || 2,
-                            lunchDuration: configData.lunchDuration || 50,
-                            lunchAfter: configData.lunchAfter || 4,
-                            shift: configData.shift || "FULL"
-                        });
-                    }
+                if (teachersData.length > 0) {
+                    setSelectedTeacherId(teachersData[0].id);
                 }
             }
-
-            setError(null);
         } catch (err: any) {
-            setError(err.message || "An error occurred");
+            setErrorMessage(err.message || "Failed to initialize timetable workspace");
         } finally {
             setLoading(false);
         }
     };
 
+    // 2. Load Workspace when Academic Year, Grade, or Section changes
     useEffect(() => {
-        loadCoreData();
-    }, []);
+        if (!selectedYearId) return;
+        loadWorkspace(selectedYearId, selectedGradeId, selectedSectionId);
+    }, [selectedYearId, selectedGradeId, selectedSectionId]);
 
-    // Load sections when grade changes
-    useEffect(() => {
-        const loadSections = async () => {
-            if (!selectedGradeId) {
-                setSections([]);
-                setSelectedSectionId("");
-                return;
-            }
-            try {
-                const res = await fetchApi(`/vice-principal/academic/grades/${selectedGradeId}/sections`);
-                if (res.ok) {
-                    const data = await res.json();
-                    setSections(data);
-                    if (data.length > 0) {
-                        setSelectedSectionId(data[0].id);
-                    } else {
-                        setSelectedSectionId("");
-                    }
-                }
-            } catch (err) {
-                console.error("Failed to load sections", err);
-            }
-        };
-        loadSections();
-    }, [selectedGradeId]);
+    const loadWorkspace = async (yearId: string, gradeId?: string, sectionId?: string) => {
+        try {
+            setWorkspaceLoading(true);
+            setConflictError(null);
 
-    // Load active timetable grid data based on selection
-    const loadTimetableGrid = async () => {
-        let endpoint = "";
-        if (viewType === "section" && selectedSectionId) {
-            endpoint = `/timetable/section/${selectedSectionId}`;
-        } else if (viewType === "teacher" && selectedTeacherId) {
-            endpoint = `/timetable/teacher/${selectedTeacherId}`;
-        } else if (viewType === "room" && selectedRoomId) {
-            endpoint = `/timetable/room/${selectedRoomId}`;
+            let url = `/timetable/workspace?academicYearId=${yearId}`;
+            if (gradeId) url += `&schoolGradeId=${gradeId}`;
+            if (sectionId) url += `&sectionId=${sectionId}`;
+
+            const res = await fetchApi(url);
+            if (!res.ok) {
+                const errJson = await res.json();
+                throw new Error(errJson.error || "Failed to load timetable workspace");
+            }
+
+            const data = await res.json();
+            setWorkspace(data);
+
+            // Synchronize selections
+            if (data.selectedGrade && data.selectedGrade.id !== selectedGradeId) {
+                setSelectedGradeId(data.selectedGrade.id);
+            }
+            if (data.selectedSection && data.selectedSection.id !== selectedSectionId) {
+                setSelectedSectionId(data.selectedSection.id);
+            }
+
+            // Also keep periods in state for other tabs
+            if (data.periods) {
+                setPeriods(data.periods);
+            }
+        } catch (err: any) {
+            console.error(err);
+            setErrorMessage(err.message || "Error fetching section workspace");
+        } finally {
+            setWorkspaceLoading(false);
         }
+    };
 
-        if (!endpoint) {
-            setTimetableEntries([]);
+    // 3. Quick grade switch handler
+    const handleGradeSelect = (gradeId: string) => {
+        setSelectedGradeId(gradeId);
+        // Find first section of this grade if present
+        const gradeObj = workspace?.schoolGrades?.find((g: any) => g.id === gradeId);
+        if (gradeObj && gradeObj.sections && gradeObj.sections.length > 0) {
+            setSelectedSectionId(gradeObj.sections[0].id);
+        } else {
+            setSelectedSectionId("");
+        }
+    };
+
+    // 4. Quick section switch handler
+    const handleSectionSelect = (secId: string) => {
+        setSelectedSectionId(secId);
+    };
+
+    // 5. Assign slot action
+    const handleAssignSlot = async () => {
+        if (!selectedTeachingAssignmentId || !selectedYearId) return;
+
+        const dayOfWeek = selectedSlotTarget ? selectedSlotTarget.dayOfWeek : customDayOfWeek;
+        const classPeriodId = selectedSlotTarget ? selectedSlotTarget.periodId : customPeriodId;
+
+        if (!dayOfWeek || !classPeriodId) {
+            setConflictError("Please select both a day and an instructional class period.");
             return;
         }
 
         try {
-            setGridLoading(true);
-            const res = await fetchApi(endpoint);
+            setActionLoading(true);
+            setConflictError(null);
+
+            const payload: any = {
+                academicYearId: selectedYearId,
+                teachingAssignmentId: selectedTeachingAssignmentId,
+                classPeriodId,
+                dayOfWeek
+            };
+            if (selectedRoomId) {
+                payload.roomId = selectedRoomId;
+            }
+
+            const res = await fetchApi("/timetable/assign", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload)
+            });
+
+            const data = await res.json();
+            if (!res.ok) {
+                throw new Error(data.error || "Failed to schedule slot");
+            }
+
+            setIsAssignModalOpen(false);
+            setSelectedSlotTarget(null);
+            setSelectedTeachingAssignmentId("");
+            setSelectedRoomId("");
+            setSuccessMessage("Instructional period scheduled successfully.");
+            setTimeout(() => setSuccessMessage(null), 4000);
+
+            // Reload workspace to refresh grid and counts
+            await loadWorkspace(selectedYearId, selectedGradeId, selectedSectionId);
+        } catch (err: any) {
+            setConflictError(err.message || "Conflict occurred while assigning period.");
+        } finally {
+            setActionLoading(false);
+        }
+    };
+
+    // 5b. Auto-generate standard Ethiopian class periods
+    const handleGenerateDefaultPeriods = async () => {
+        try {
+            setActionLoading(true);
+            setConflictError(null);
+            const res = await fetchApi("/timetable/periods/default", {
+                method: "POST"
+            });
+            if (!res.ok) {
+                const data = await res.json();
+                throw new Error(data.error || "Failed to generate default periods");
+            }
+            setSuccessMessage("Standard Ethiopian class periods (Periods 1-7 + Breaks) generated successfully!");
+            setTimeout(() => setSuccessMessage(null), 4000);
+            await loadWorkspace(selectedYearId, selectedGradeId, selectedSectionId);
+        } catch (err: any) {
+            setConflictError(err.message || "Failed to generate class periods");
+        } finally {
+            setActionLoading(false);
+        }
+    };
+
+    // 6. Delete slot action
+    const handleDeleteSlot = async () => {
+        if (!deleteTargetId) return;
+
+        try {
+            setActionLoading(true);
+            setConflictError(null);
+
+            const res = await fetchApi(`/timetable/slots/${deleteTargetId}`, {
+                method: "DELETE"
+            });
+
+            if (!res.ok) {
+                const data = await res.json();
+                throw new Error(data.error || "Failed to remove slot");
+            }
+
+            setIsDeleteModalOpen(false);
+            setDeleteTargetId(null);
+            setSuccessMessage("Lesson removed from timetable.");
+            setTimeout(() => setSuccessMessage(null), 4000);
+
+            await loadWorkspace(selectedYearId, selectedGradeId, selectedSectionId);
+        } catch (err: any) {
+            setConflictError(err.message || "Failed to delete slot");
+        } finally {
+            setActionLoading(false);
+        }
+    };
+
+    // 6b. Delete class period action
+    const handleDeletePeriod = async (periodId: string, periodName: string) => {
+        if (!confirm(`Are you sure you want to delete period "${periodName}"? This is only allowed if no lessons are scheduled in this period.`)) {
+            return;
+        }
+
+        try {
+            setActionLoading(true);
+            setConflictError(null);
+            const res = await fetchApi(`/timetable/periods/${periodId}`, {
+                method: "DELETE"
+            });
+            const data = await res.json();
+            if (!res.ok) {
+                throw new Error(data.error || data.message || "Failed to delete period");
+            }
+            setSuccessMessage(`Period "${periodName}" deleted successfully.`);
+            setTimeout(() => setSuccessMessage(null), 3000);
+            await loadWorkspace(selectedYearId, selectedGradeId, selectedSectionId);
+        } catch (err: any) {
+            setConflictError(err.message || "Failed to delete period");
+        } finally {
+            setActionLoading(false);
+        }
+    };
+
+    // 7. Reassign slot action
+    const handleReassignSlot = async () => {
+        if (!reassignSlotTarget || !reassignAssignmentId) return;
+
+        try {
+            setActionLoading(true);
+            setConflictError(null);
+
+            const res = await fetchApi("/timetable/reassign", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    timetableId: reassignSlotTarget.id,
+                    newTeachingAssignmentId: reassignAssignmentId,
+                    reason: reassignReason.trim() || undefined
+                })
+            });
+
+            const data = await res.json();
+            if (!res.ok) {
+                throw new Error(data.error || "Failed to reassign slot");
+            }
+
+            setIsReassignModalOpen(false);
+            setReassignSlotTarget(null);
+            setReassignAssignmentId("");
+            setReassignReason("");
+            setSuccessMessage("Timetable slot successfully reassigned.");
+            setTimeout(() => setSuccessMessage(null), 4000);
+
+            await loadWorkspace(selectedYearId, selectedGradeId, selectedSectionId);
+        } catch (err: any) {
+            setConflictError(err.message || "Conflict occurred during slot reassignment.");
+        } finally {
+            setActionLoading(false);
+        }
+    };
+
+    // 8. Publish / Unpublish action
+    const handleTogglePublish = async () => {
+        if (!selectedYearId || !workspace) return;
+
+        try {
+            setActionLoading(true);
+            const isCurrentlyPublished = workspace.status === "PUBLISHED";
+            const endpoint = isCurrentlyPublished ? "/timetable/unpublish" : "/timetable/publish";
+
+            const res = await fetchApi(endpoint, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ academicYearId: selectedYearId })
+            });
+
+            const data = await res.json();
+            if (!res.ok) {
+                throw new Error(data.error || "Failed to update publication status");
+            }
+
+            setIsPublishModalOpen(false);
+            setSuccessMessage(
+                isCurrentlyPublished 
+                    ? "Timetable returned to Draft mode. Students and Teachers cannot view unfinalized drafts."
+                    : "Timetable officially Published! Live schedules are now accessible to Students and Teachers."
+            );
+            setTimeout(() => setSuccessMessage(null), 5000);
+
+            await loadWorkspace(selectedYearId, selectedGradeId, selectedSectionId);
+        } catch (err: any) {
+            setConflictError(err.message || "Failed to toggle publication status");
+        } finally {
+            setActionLoading(false);
+        }
+    };
+
+    // 9. Load Teacher Timetable (for Teacher Master View tab)
+    const loadTeacherTimetable = async (teacherId: string) => {
+        if (!teacherId) return;
+        try {
+            setTeacherLoading(true);
+            const res = await fetchApi(`/timetable/teacher/${teacherId}`);
             if (res.ok) {
                 const data = await res.json();
-                setTimetableEntries(data);
+                setTeacherTimetable(data);
             }
         } catch (err) {
-            console.error("Failed to load timetable entries", err);
+            console.error("Failed to load teacher timetable", err);
         } finally {
-            setGridLoading(false);
+            setTeacherLoading(false);
         }
     };
 
     useEffect(() => {
-        loadTimetableGrid();
-    }, [viewType, selectedSectionId, selectedTeacherId, selectedRoomId]);
+        if (activeTab === "teacherView" && selectedTeacherId) {
+            loadTeacherTimetable(selectedTeacherId);
+        }
+    }, [activeTab, selectedTeacherId]);
 
-    // Fetch and Map teacher availability
-    useEffect(() => {
-        if (!selectedAvailabilityTeacherId) {
-            setAvailabilityMap({});
-            return;
-        }
-        const teacher = teachers.find(t => t.id === selectedAvailabilityTeacherId);
-        if (teacher && teacher.availability) {
-            const blocked = (teacher.availability as any).blockedSlots || [];
-            const mapping: any = {};
-            blocked.forEach((slot: any) => {
-                mapping[`${slot.dayOfWeek}-${slot.classPeriodId}`] = true;
-            });
-            setAvailabilityMap(mapping);
-        } else {
-            setAvailabilityMap({});
-        }
-    }, [selectedAvailabilityTeacherId, teachers]);
+    // Active operating days filter
+    const operatingDaysList: DayDef[] = useMemo(() => {
+        const opDays: number[] = workspace?.operatingDays || [1, 2, 3, 4, 5];
+        return ALL_DAYS.filter(d => opDays.includes(d.value));
+    }, [workspace?.operatingDays]);
 
-    // Fetch and Map room availability
-    useEffect(() => {
-        if (!selectedAvailabilityRoomId) {
-            setRoomAvailabilityMap({});
-            return;
+    // Fast timetable slot lookup: Map<"dayOfWeek-periodId", Entry>
+    const timetableGridMap = useMemo(() => {
+        const map = new Map<string, any>();
+        if (!workspace?.sectionTimetable) return map;
+        for (const entry of workspace.sectionTimetable) {
+            map.set(`${entry.dayOfWeek}-${entry.classPeriodId}`, entry);
         }
-        const room = rooms.find(r => r.id === selectedAvailabilityRoomId);
-        if (room && room.availability) {
-            const blocked = (room.availability as any).blockedSlots || [];
-            const mapping: any = {};
-            blocked.forEach((slot: any) => {
-                mapping[`${slot.dayOfWeek}-${slot.classPeriodId}`] = true;
-            });
-            setRoomAvailabilityMap(mapping);
-        } else {
-            setRoomAvailabilityMap({});
-        }
-    }, [selectedAvailabilityRoomId, rooms]);
+        return map;
+    }, [workspace?.sectionTimetable]);
 
-    const handleCreatePeriod = async (e: React.FormEvent) => {
-        e.preventDefault();
-        setFormError(null);
-        try {
-            const res = await fetchApi("/timetable/periods", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(newPeriod)
-            });
-            if (!res.ok) {
-                const errData = await res.json();
-                throw new Error(errData.error || "Failed to create class period");
+    // Check if a day has academic calendar closed day notes
+    const closedDayEvents = useMemo(() => {
+        return workspace?.closedEvents || [];
+    }, [workspace?.closedEvents]);
+
+    // Filter available teaching assignments for scheduling modal
+    const availableTeachingAssignments = useMemo(() => {
+        if (!workspace?.teachingAssignments) return [];
+        const targetDay = selectedSlotTarget ? selectedSlotTarget.dayOfWeek : customDayOfWeek;
+
+        // Find subject IDs already scheduled on this target day for this section
+        const scheduledSubjectIdsOnDay = new Set(
+            workspace.sectionTimetable
+                ?.filter((s: any) => s.dayOfWeek === targetDay)
+                ?.map((s: any) => s.teachingAssignment?.subjectId || s.teachingAssignment?.subject?.id)
+                ?.filter(Boolean) || []
+        );
+
+        return workspace.teachingAssignments.filter((ta: any) => {
+            // 1. If required weekly periods are completely fulfilled, exclude from list
+            if (ta.remainingPeriods <= 0 || ta.isComplete || (ta.scheduledPeriods !== undefined && ta.scheduledPeriods >= ta.requiredPeriods)) {
+                return false;
             }
-            setIsPeriodModalOpen(false);
-            setNewPeriod({ name: "", startTime: "", endTime: "", isBreak: false });
-            loadCoreData();
-        } catch (err: any) {
-            setFormError(err.message);
-        }
-    };
 
-    const handleAssignLesson = async (e: React.FormEvent) => {
-        e.preventDefault();
-        setFormError(null);
-        if (!selectedCell || !activeYear) return;
-
-        try {
-            const res = await fetchApi("/timetable", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    academicYearId: activeYear.id,
-                    teachingAssignmentId: newAssignmentId,
-                    classPeriodId: selectedCell.periodId,
-                    dayOfWeek: selectedCell.dayOfWeek,
-                    roomId: newRoomId || undefined
-                })
-            });
-            if (!res.ok) {
-                const errData = await res.json();
-                throw new Error(errData.error || "Failed to assign lesson");
+            // 2. If this subject is already scheduled on this day for this section, exclude from list
+            const subId = ta.subjectId || ta.subject?.id;
+            if (targetDay && subId && scheduledSubjectIdsOnDay.has(subId)) {
+                return false;
             }
-            setIsAssignModalOpen(false);
-            setNewAssignmentId("");
-            setNewRoomId("");
-            loadTimetableGrid();
-            
-            // Reload assignments count for requirements view
-            const assignmentsRes = await fetchApi("/vice-principal/teachers/assignments");
-            if (assignmentsRes.ok) {
-                const assignData = await assignmentsRes.json();
-                setAssignments(assignData);
-            }
-        } catch (err: any) {
-            setFormError(err.message);
-        }
-    };
 
-    const handleDeleteLesson = async (id: string) => {
-        if (!confirm("Are you sure you want to unassign this lesson?")) return;
-        try {
-            const res = await fetchApi(`/timetable/${id}`, {
-                method: "DELETE"
-            });
-            if (!res.ok) throw new Error("Failed to delete timetable entry");
-            loadTimetableGrid();
-        } catch (err: any) {
-            alert(err.message);
-        }
-    };
-
-    const handleUpdateRequirement = async (assignmentId: string, val: number) => {
-        try {
-            const res = await fetchApi(`/teacher/assignments/${assignmentId}`, {
-                method: "PUT",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ periodsPerWeek: Number(val) })
-            });
-            if (!res.ok) throw new Error("Failed to update weekly period requirement");
-            
-            setEditingRequirements(prev => ({ ...prev, [assignmentId]: val }));
-            setAssignments(prev => prev.map(as => as.id === assignmentId ? { ...as, periodsPerWeek: val } : as));
-        } catch (err: any) {
-            alert(err.message);
-        }
-    };
-
-    const toggleAvailabilitySlot = async (dayOfWeek: number, periodId: string) => {
-        if (!selectedAvailabilityTeacherId) return;
-        const key = `${dayOfWeek}-${periodId}`;
-        const currentlyBlocked = !!availabilityMap[key];
-        
-        const newMap = { ...availabilityMap, [key]: !currentlyBlocked };
-        const blockedSlots: any[] = [];
-        Object.keys(newMap).forEach(k => {
-            if (newMap[k]) {
-                const [d, p] = k.split("-");
-                blockedSlots.push({ dayOfWeek: Number(d), classPeriodId: p });
-            }
+            return true;
         });
+    }, [workspace?.teachingAssignments, workspace?.sectionTimetable, selectedSlotTarget, customDayOfWeek]);
 
-        try {
-            const res = await fetchApi(`/timetable/teacher/${selectedAvailabilityTeacherId}/availability`, {
-                method: "PUT",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ availability: { blockedSlots } })
-            });
-            if (!res.ok) throw new Error("Failed to update availability");
-            
-            setAvailabilityMap(newMap);
-            setTeachers(prev => prev.map(t => t.id === selectedAvailabilityTeacherId ? { ...t, availability: { blockedSlots } } : t));
-        } catch (err: any) {
-            alert(err.message);
-        }
-    };
-
-    // Toggle Room availability
-    const toggleRoomAvailabilitySlot = async (dayOfWeek: number, periodId: string) => {
-        if (!selectedAvailabilityRoomId) return;
-        const key = `${dayOfWeek}-${periodId}`;
-        const currentlyBlocked = !!roomAvailabilityMap[key];
-        
-        const newMap = { ...roomAvailabilityMap, [key]: !currentlyBlocked };
-        const blockedSlots: any[] = [];
-        Object.keys(newMap).forEach(k => {
-            if (newMap[k]) {
-                const [d, p] = k.split("-");
-                blockedSlots.push({ dayOfWeek: Number(d), classPeriodId: p });
+    // Auto-reset selected assignment if it is no longer valid for the selected target day
+    useEffect(() => {
+        if (selectedTeachingAssignmentId) {
+            const exists = availableTeachingAssignments.some((ta: any) => ta.id === selectedTeachingAssignmentId);
+            if (!exists) {
+                setSelectedTeachingAssignmentId("");
             }
-        });
-
-        try {
-            const res = await fetchApi(`/timetable/room/${selectedAvailabilityRoomId}/availability`, {
-                method: "PUT",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ availability: { blockedSlots } })
-            });
-            if (!res.ok) throw new Error("Failed to update room availability");
-            
-            setRoomAvailabilityMap(newMap);
-            setRooms(prev => prev.map(r => r.id === selectedAvailabilityRoomId ? { ...r, availability: { blockedSlots } } : r));
-        } catch (err: any) {
-            alert(err.message);
         }
-    };
+    }, [availableTeachingAssignments, selectedTeachingAssignmentId]);
 
-    // Save Schedule Config & Auto-Generate Periods
-    const handleSaveConfig = async (e: React.FormEvent) => {
-        e.preventDefault();
-        setFormError(null);
-        if (!activeYear) return;
+    if (loading) {
+        return <LoadingState message="Initializing Timetable & Scheduling Workspace..." />;
+    }
 
-        try {
-            const res = await fetchApi("/timetable/config", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    academicYearId: activeYear.id,
-                    ...scheduleConfig
-                })
-            });
+    if (errorMessage && !workspace) {
+        return <ErrorState message={errorMessage} onRetry={loadInitialData} />;
+    }
 
-            if (!res.ok) {
-                const errData = await res.json();
-                throw new Error(errData.error || "Failed to save configuration");
-            }
-
-            alert("Timetable config saved. Class periods have been auto-generated successfully!");
-            loadCoreData();
-        } catch (err: any) {
-            setFormError(err.message);
-        }
-    };
-
-    // Add / Edit Room
-    const handleSaveRoom = async (e: React.FormEvent) => {
-        e.preventDefault();
-        setFormError(null);
-        try {
-            const url = editingRoom ? `/vice-principal/academic/rooms/${editingRoom.id}` : "/vice-principal/academic/rooms";
-            const method = editingRoom ? "PUT" : "POST";
-            const res = await fetchApi(url, {
-                method,
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    name: roomForm.name,
-                    type: roomForm.type,
-                    capacity: roomForm.capacity ? Number(roomForm.capacity) : null,
-                    status: roomForm.status,
-                    description: roomForm.description
-                })
-            });
-
-            if (!res.ok) throw new Error("Failed to save room details");
-            
-            setIsRoomModalOpen(false);
-            setEditingRoom(null);
-            setRoomForm({ name: "", type: "CLASSROOM", capacity: "", status: "AVAILABLE", description: "" });
-            loadCoreData();
-        } catch (err: any) {
-            setFormError(err.message);
-        }
-    };
-
-    const handleDeleteRoom = async (id: string) => {
-        if (!confirm("Are you sure you want to delete this room?")) return;
-        try {
-            const res = await fetchApi(`/vice-principal/academic/rooms/${id}`, {
-                method: "DELETE"
-            });
-            if (!res.ok) throw new Error("Failed to delete room");
-            loadCoreData();
-        } catch (err: any) {
-            alert(err.message);
-        }
-    };
-
-    // Render cells helper for grid
-    const getCellContent = (dayOfWeek: number, periodId: string) => {
-        return timetableEntries.find(entry => entry.dayOfWeek === dayOfWeek && entry.classPeriodId === periodId);
-    };
+    const isYearLocked = workspace?.isYearLocked;
+    const isPublished = workspace?.status === "PUBLISHED";
+    const selectedSection = workspace?.selectedSection;
+    const selectedGrade = workspace?.selectedGrade;
 
     return (
-        <div className="space-y-6">
-            {/* Header */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="space-y-6 pb-12">
+            {/* Breadcrumbs */}
+            <div className="flex items-center space-x-2 text-xs text-slate-500">
+                <Link href="/dashboard" className="hover:text-slate-900 transition-colors">Dashboard</Link>
+                <span>/</span>
+                <Link href="/dashboard/academics/years" className="hover:text-slate-900 transition-colors">Academics</Link>
+                <span>/</span>
+                <span className="text-slate-900 font-medium">Timetable</span>
+            </div>
+
+            {/* Header: Clean Government Style */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-slate-200">
                 <div>
-                    <h1 className="text-xl font-bold text-gray-900 flex items-center">
-                        <Clock className="w-6 h-6 mr-2 text-[#4085b3]" />
-                        Ethiopian MoE Curriculum Timetable & Scheduler
-                    </h1>
-                    <p className="text-sm text-gray-500 mt-1">
-                        Configure school hours, standard periods, classrooms, subject requirements, and build schedules.
+                    <div className="flex items-center gap-2.5">
+                        <h1 className="text-xl font-bold text-slate-900 tracking-tight">
+                            Instructional Timetable
+                        </h1>
+                        {isPublished ? (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> Published
+                            </span>
+                        ) : (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200">
+                                <Clock className="w-3.5 h-3.5 text-amber-600" /> Draft
+                            </span>
+                        )}
+                        {isYearLocked && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold bg-slate-100 text-slate-600 border border-slate-200">
+                                <Lock className="w-3 h-3 text-slate-500" /> Year Locked
+                            </span>
+                        )}
+                    </div>
+                    <p className="text-xs text-slate-500 mt-1">
+                        Weekly classroom schedule, subject allocations, and teacher master timetable.
                     </p>
                 </div>
-                {activeYear && (
-                    <div className="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-semibold bg-sky-50 text-[#4085b3] border border-sky-200">
-                        <Calendar className="w-3.5 h-3.5 mr-1" />
-                        Active Calendar: {activeYear.name}
+
+                {/* Right controls: Academic Year selector & Publish button */}
+                <div className="flex items-center gap-2.5">
+                    <div className="flex items-center gap-2 bg-white border border-slate-300 rounded-lg px-3 py-1.5 shadow-2xs">
+                        <Calendar className="w-3.5 h-3.5 text-slate-500" />
+                        <span className="text-xs font-medium text-slate-500">Year:</span>
+                        <select
+                            value={selectedYearId}
+                            onChange={(e) => setSelectedYearId(e.target.value)}
+                            className="bg-transparent text-xs font-semibold text-slate-900 focus:outline-hidden cursor-pointer"
+                        >
+                            {academicYears.map((yr) => (
+                                <option key={yr.id} value={yr.id}>
+                                    {yr.name} {yr.status === "ACTIVE" ? "(Active)" : `(${yr.status})`}
+                                </option>
+                            ))}
+                        </select>
                     </div>
-                )}
+
+                    {!isYearLocked && (
+                        <button
+                            onClick={() => setIsPublishModalOpen(true)}
+                            className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer shadow-2xs ${
+                                isPublished
+                                    ? "bg-white text-slate-700 border border-slate-300 hover:bg-slate-50"
+                                    : "bg-[#4085b3] text-white hover:bg-[#356f96]"
+                            }`}
+                        >
+                            {isPublished ? (
+                                <>
+                                    <Unlock className="w-3.5 h-3.5 text-amber-600" />
+                                    <span>Revert to Draft</span>
+                                </>
+                            ) : (
+                                <>
+                                    <CheckCircle2 className="w-3.5 h-3.5" />
+                                    <span>Publish Timetable</span>
+                                </>
+                            )}
+                        </button>
+                    )}
+                </div>
             </div>
 
             {/* Navigation Tabs */}
-            <div className="flex flex-wrap border-b border-gray-200 gap-1">
-                <button 
-                    onClick={() => setActiveTab("grid")}
-                    className={`py-3 px-5 font-semibold text-sm border-b-2 transition-colors flex items-center ${activeTab === "grid" ? "border-[#4085b3] text-[#4085b3]" : "border-transparent text-gray-500 hover:text-gray-700"}`}
+            <div className="flex border-b border-slate-200 gap-6 text-xs font-medium">
+                <button
+                    onClick={() => setActiveTab("workspace")}
+                    className={`pb-2.5 transition-colors flex items-center gap-1.5 border-b-2 -mb-px cursor-pointer ${
+                        activeTab === "workspace"
+                            ? "border-[#4085b3] text-[#4085b3] font-semibold"
+                            : "border-transparent text-slate-500 hover:text-slate-800"
+                    }`}
                 >
-                    <BookOpen className="w-4 h-4 mr-2" />
-                    Master Timetable Grid
+                    <GraduationCap className="w-4 h-4" />
+                    <span>Section Schedule</span>
                 </button>
-                <button 
-                    onClick={() => setActiveTab("config")}
-                    className={`py-3 px-5 font-semibold text-sm border-b-2 transition-colors flex items-center ${activeTab === "config" ? "border-[#4085b3] text-[#4085b3]" : "border-transparent text-gray-500 hover:text-gray-700"}`}
+                <button
+                    onClick={() => setActiveTab("teacherView")}
+                    className={`pb-2.5 transition-colors flex items-center gap-1.5 border-b-2 -mb-px cursor-pointer ${
+                        activeTab === "teacherView"
+                            ? "border-[#4085b3] text-[#4085b3] font-semibold"
+                            : "border-transparent text-slate-500 hover:text-slate-800"
+                    }`}
                 >
-                    <Settings className="w-4 h-4 mr-2" />
-                    Schedule Configuration
+                    <User className="w-4 h-4" />
+                    <span>Teacher Master Schedule</span>
                 </button>
-
-                <button 
+                <button
                     onClick={() => setActiveTab("periods")}
-                    className={`py-3 px-5 font-semibold text-sm border-b-2 transition-colors flex items-center ${activeTab === "periods" ? "border-[#4085b3] text-[#4085b3]" : "border-transparent text-gray-500 hover:text-gray-700"}`}
+                    className={`pb-2.5 transition-colors flex items-center gap-1.5 border-b-2 -mb-px cursor-pointer ${
+                        activeTab === "periods"
+                            ? "border-[#4085b3] text-[#4085b3] font-semibold"
+                            : "border-transparent text-slate-500 hover:text-slate-800"
+                    }`}
                 >
-                    <Clock className="w-4 h-4 mr-2" />
-                    Period Configurator
-                </button>
-                <button 
-                    onClick={() => setActiveTab("requirements")}
-                    className={`py-3 px-5 font-semibold text-sm border-b-2 transition-colors flex items-center ${activeTab === "requirements" ? "border-[#4085b3] text-[#4085b3]" : "border-transparent text-gray-500 hover:text-gray-700"}`}
-                >
-                    <ClipboardList className="w-4 h-4 mr-2" />
-                    Subject Requirements
-                </button>
-                <button 
-                    onClick={() => setActiveTab("availability")}
-                    className={`py-3 px-5 font-semibold text-sm border-b-2 transition-colors flex items-center ${activeTab === "availability" ? "border-[#4085b3] text-[#4085b3]" : "border-transparent text-gray-500 hover:text-gray-700"}`}
-                >
-                    <User className="w-4 h-4 mr-2" />
-                    Teacher Availability
+                    <Clock className="w-4 h-4" />
+                    <span>Class Periods & Recess</span>
                 </button>
             </div>
 
-            {/* Tab 5: Schedule Configuration */}
-            {activeTab === "config" && (
-                <Card>
-                    <CardHeader className="bg-gray-50/50 py-4 border-b border-gray-200">
-                        <CardTitle className="text-gray-800 text-base font-semibold text-gray-900">Configure Weekly School Calendar</CardTitle>
-                        <p className="text-xs text-gray-500 mt-1">Define school week timings. Saving will automatically calculate and generate class periods.</p>
-                    </CardHeader>
-                    <CardContent className="p-6">
-                        <form onSubmit={handleSaveConfig} className="space-y-6 max-w-2xl">
-                            {formError && (
-                                <div className="p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-xs font-semibold flex items-center">
-                                    <ShieldAlert className="w-4 h-4 mr-2 flex-shrink-0" />
-                                    {formError}
-                                </div>
-                            )}
+            {/* Notification Alerts */}
+            {successMessage && (
+                <div className="flex items-center gap-2.5 px-3.5 py-2.5 bg-emerald-50 border border-emerald-200 rounded-lg text-emerald-800 text-xs animate-in fade-in duration-200">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                    <p className="font-medium">{successMessage}</p>
+                </div>
+            )}
 
-                            <div>
-                                <label className="block text-sm font-semibold text-gray-700 mb-2">School Operating Days</label>
-                                <div className="flex flex-wrap gap-4">
-                                    {DAYS.map(day => (
-                                        <label key={day.value} className="flex items-center space-x-2 text-sm font-medium text-gray-700 select-none">
-                                            <input 
-                                                type="checkbox"
-                                                className="w-4 h-4 rounded text-[#4085b3] focus:ring-[#4085b3]"
-                                                checked={scheduleConfig.operatingDays.includes(day.value)}
-                                                onChange={(e) => {
-                                                    const updated = e.target.checked
-                                                        ? [...scheduleConfig.operatingDays, day.value]
-                                                        : scheduleConfig.operatingDays.filter(d => d !== day.value);
-                                                    setScheduleConfig({ ...scheduleConfig, operatingDays: updated.sort() });
-                                                }}
-                                            />
-                                            <span>{day.label}</span>
-                                        </label>
+            {conflictError && (
+                <div className="flex items-start gap-2.5 px-3.5 py-2.5 bg-red-50 border border-red-200 rounded-lg text-red-800 text-xs animate-in fade-in duration-200">
+                    <ShieldAlert className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
+                    <div>
+                        <h4 className="font-semibold text-red-900">Scheduling Conflict Rejection</h4>
+                        <p className="mt-0.5 text-red-700 leading-relaxed">{conflictError}</p>
+                    </div>
+                </div>
+            )}
+
+            {/* Academic Calendar Notice: Clean Collapsible Bar */}
+            {closedDayEvents.length > 0 && (
+                <div className="bg-slate-50 border border-slate-200 rounded-lg px-3.5 py-2.5 text-xs text-slate-700">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                            <CalendarOff className="w-4 h-4 text-slate-500 shrink-0" />
+                            <span>
+                                <strong className="font-semibold text-slate-900">Academic Calendar:</strong>{" "}
+                                {closedDayEvents.length} official school closures &amp; holidays registered for this academic year.
+                            </span>
+                        </div>
+                        <button
+                            type="button"
+                            onClick={() => setShowHolidays(!showHolidays)}
+                            className="text-[#4085b3] hover:text-[#356f96] font-medium flex items-center gap-1 cursor-pointer transition-colors ml-2"
+                        >
+                            <span>{showHolidays ? "Hide dates" : `View dates (${closedDayEvents.length})`}</span>
+                            <ChevronDown className={`w-3.5 h-3.5 transition-transform ${showHolidays ? "rotate-180" : ""}`} />
+                        </button>
+                    </div>
+
+                    {showHolidays && (
+                        <div className="mt-2.5 pt-2.5 border-t border-slate-200 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                            {closedDayEvents.map((ev: any) => (
+                                <div key={ev.id} className="flex items-center justify-between bg-white border border-slate-200 px-2.5 py-1.5 rounded text-slate-800 text-[11px]">
+                                    <span className="font-medium truncate mr-2">{ev.title}</span>
+                                    <span className="text-slate-500 font-mono text-[10px] shrink-0">
+                                        {new Date(ev.startDate).toISOString().slice(0, 10)}
+                                    </span>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {/* TAB 1: SECTION SCHEDULING WORKSPACE */}
+            {activeTab === "workspace" && (
+                <div className="space-y-6">
+                    {/* Grade, Section & Metric Control Bar */}
+                    <div className="bg-white border border-slate-200 rounded-lg p-3.5 shadow-2xs space-y-3">
+                        {/* Grade Selector Row */}
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                            <div className="flex items-center gap-2.5">
+                                <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider w-16 shrink-0">
+                                    Grade:
+                                </span>
+                                <div className="flex flex-wrap gap-1.5">
+                                    {workspace?.schoolGrades?.map((sg: any) => (
+                                        <button
+                                            key={sg.id}
+                                            onClick={() => handleGradeSelect(sg.id)}
+                                            className={`px-3 py-1 rounded-md text-xs font-semibold transition-colors cursor-pointer ${
+                                                selectedGradeId === sg.id
+                                                    ? "bg-[#4085b3] text-white shadow-2xs"
+                                                    : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                                            }`}
+                                        >
+                                            {sg.grade.name}
+                                        </button>
                                     ))}
                                 </div>
                             </div>
 
-                            <div className="grid grid-cols-2 gap-4">
-                                <Input 
-                                    label="School Start Time"
-                                    type="time"
-                                    required
-                                    value={scheduleConfig.startTime}
-                                    onChange={(e) => setScheduleConfig({ ...scheduleConfig, startTime: e.target.value })}
-                                />
-                                <Select 
-                                    label="School Shift Type"
-                                    value={scheduleConfig.shift}
-                                    onChange={(e) => setScheduleConfig({ ...scheduleConfig, shift: e.target.value })}
-                                    options={[
-                                        { value: "FULL", label: "Full Day Shift" },
-                                        { value: "MORNING", label: "Morning Only Shift" },
-                                        { value: "AFTERNOON", label: "Afternoon Only Shift" }
-                                    ]}
-                                />
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-4">
-                                <Input 
-                                    label="Instructional Period Duration (minutes)"
-                                    type="number"
-                                    required
-                                    min="10"
-                                    max="120"
-                                    value={scheduleConfig.periodDuration}
-                                    onChange={(e) => setScheduleConfig({ ...scheduleConfig, periodDuration: Number(e.target.value) })}
-                                />
-                                <Input 
-                                    label="Number of Periods per Day"
-                                    type="number"
-                                    required
-                                    min="1"
-                                    max="15"
-                                    value={scheduleConfig.periodsPerDay}
-                                    onChange={(e) => setScheduleConfig({ ...scheduleConfig, periodsPerDay: Number(e.target.value) })}
-                                />
-                            </div>
-
-                            <div className="p-4 bg-gray-50 rounded-lg space-y-4 border border-gray-200">
-                                <h3 className="text-sm font-semibold text-gray-800">Recess & Break Recesses</h3>
-                                
-                                <div className="grid grid-cols-2 gap-4">
-                                    <Input 
-                                        label="Short Break Duration (minutes)"
-                                        type="number"
-                                        value={scheduleConfig.breakDuration}
-                                        onChange={(e) => setScheduleConfig({ ...scheduleConfig, breakDuration: Number(e.target.value) })}
-                                    />
-                                    <Input 
-                                        label="Short Break After Period"
-                                        type="number"
-                                        value={scheduleConfig.breakAfter}
-                                        onChange={(e) => setScheduleConfig({ ...scheduleConfig, breakAfter: Number(e.target.value) })}
-                                    />
-                                </div>
-
-                                <div className="grid grid-cols-2 gap-4 border-t pt-4 border-gray-200">
-                                    <Input 
-                                        label="Lunch Break Duration (minutes)"
-                                        type="number"
-                                        value={scheduleConfig.lunchDuration}
-                                        onChange={(e) => setScheduleConfig({ ...scheduleConfig, lunchDuration: Number(e.target.value) })}
-                                    />
-                                    <Input 
-                                        label="Lunch Break After Period"
-                                        type="number"
-                                        value={scheduleConfig.lunchAfter}
-                                        onChange={(e) => setScheduleConfig({ ...scheduleConfig, lunchAfter: Number(e.target.value) })}
-                                    />
-                                </div>
-                            </div>
-
-                            {hasCreatePermission && (
-                                <div className="flex justify-end pt-4">
-                                    <Button type="submit">
-                                        Save & Auto-Generate Periods
-                                    </Button>
+                            {/* Section Enrollment info */}
+                            {selectedSection && (
+                                <div className="flex items-center gap-1.5 text-xs text-slate-600 sm:ml-auto shrink-0">
+                                    <Users className="w-3.5 h-3.5 text-slate-400" />
+                                    <span>
+                                        Section {selectedSection.name}: <strong className="text-slate-900">{selectedSection.enrolledStudentsCount || 0}</strong> students
+                                    </span>
                                 </div>
                             )}
-                        </form>
-                    </CardContent>
-                </Card>
-            )}
+                        </div>
 
-
-
-            {/* Tab 1: Timetable Grid */}
-            {activeTab === "grid" && (
-                <div className="space-y-6">
-                    {/* Filter controls */}
-                    <Card className="bg-gray-50/50">
-                        <CardContent className="p-4 flex flex-col md:flex-row gap-4 items-end">
-                            <div className="flex-1 min-w-[200px]">
-                                <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">View Schedule For</label>
-                                <div className="flex rounded-md shadow-sm">
-                                    <button 
-                                        onClick={() => setViewType("section")}
-                                        className={`flex-1 px-4 py-2 text-xs font-bold rounded-l-md border transition-colors ${viewType === "section" ? "bg-[#4085b3] border-[#4085b3] text-white" : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50"}`}
-                                    >
-                                        Section
-                                    </button>
-                                    <button 
-                                        onClick={() => setViewType("teacher")}
-                                        className={`flex-1 px-4 py-2 text-xs font-bold border-y border-r transition-colors ${viewType === "teacher" ? "bg-[#4085b3] border-[#4085b3] text-white" : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50"}`}
-                                    >
-                                        Teacher
-                                    </button>
-                                    <button 
-                                        onClick={() => setViewType("room")}
-                                        className={`flex-1 px-4 py-2 text-xs font-bold border-y border-r rounded-r-md transition-colors ${viewType === "room" ? "bg-[#4085b3] border-[#4085b3] text-white" : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50"}`}
-                                    >
-                                        Room
-                                    </button>
+                        {/* Section Selector Row (Dedicated aligned row) */}
+                        {selectedGrade && (
+                            <div className="flex items-center gap-2.5 pt-2 border-t border-slate-100">
+                                <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider w-16 shrink-0">
+                                    Section:
+                                </span>
+                                <div className="flex flex-wrap gap-1.5">
+                                    {workspace?.schoolGrades
+                                        ?.find((g: any) => g.id === selectedGradeId)
+                                        ?.sections?.map((sec: any) => (
+                                            <button
+                                                key={sec.id}
+                                                onClick={() => handleSectionSelect(sec.id)}
+                                                className={`px-2.5 py-1 rounded-md text-xs font-semibold transition-colors cursor-pointer ${
+                                                    selectedSectionId === sec.id
+                                                        ? "bg-[#4085b3] text-white shadow-2xs"
+                                                        : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                                                }`}
+                                            >
+                                                Section {sec.name}
+                                            </button>
+                                        ))}
                                 </div>
                             </div>
+                        )}
 
-                            {/* Section filters */}
-                            {viewType === "section" && (
-                                <>
-                                    <div className="w-64">
-                                        <Select 
-                                            label="Select Grade"
-                                            value={selectedGradeId}
-                                            onChange={(e) => setSelectedGradeId(e.target.value)}
-                                            options={grades.map(g => ({ value: g.id, label: g.grade?.name || g.name }))}
+                        {/* Bottom: Inline Numbers & Allocation Progress Strip */}
+                        {selectedSection && workspace?.coverage && (
+                            <div className="flex flex-wrap items-center justify-between gap-3 pt-2.5 border-t border-slate-100 text-xs">
+                                <div className="flex flex-wrap items-center gap-4 text-slate-600">
+                                    <div className="flex items-center gap-1.5">
+                                        <span className="text-slate-500">Curriculum Demand:</span>
+                                        <span className="font-bold text-slate-900">
+                                            {workspace.coverage.totalRequired} Periods
+                                        </span>
+                                    </div>
+                                    <span className="text-slate-200">|</span>
+                                    <div className="flex items-center gap-1.5">
+                                        <span className="text-slate-500">Scheduled:</span>
+                                        <span className="font-bold text-emerald-700">
+                                            {workspace.coverage.totalScheduled}
+                                        </span>
+                                    </div>
+                                    <span className="text-slate-200">|</span>
+                                    <div className="flex items-center gap-1.5">
+                                        <span className="text-slate-500">Remaining Deficit:</span>
+                                        <span className={`font-bold ${workspace.coverage.totalRemaining > 0 ? "text-amber-700" : "text-slate-500"}`}>
+                                            {workspace.coverage.totalRemaining}
+                                        </span>
+                                    </div>
+                                </div>
+
+                                {/* Progress Indicator */}
+                                <div className="flex items-center gap-2">
+                                    <span className="text-slate-500">Coverage:</span>
+                                    <span className="font-bold text-slate-900">
+                                        {workspace.coverage.coveragePercentage}%
+                                    </span>
+                                    <div className="w-20 h-2 bg-slate-100 rounded-full overflow-hidden">
+                                        <div
+                                            className={`h-full transition-all duration-300 ${
+                                                workspace.coverage.coveragePercentage === 100
+                                                    ? "bg-emerald-600"
+                                                    : "bg-[#4085b3]"
+                                            }`}
+                                            style={{ width: `${Math.min(100, workspace.coverage.coveragePercentage)}%` }}
                                         />
                                     </div>
-                                    <div className="w-64">
-                                        <Select 
-                                            label="Select Section"
-                                            value={selectedSectionId}
-                                            onChange={(e) => setSelectedSectionId(e.target.value)}
-                                            options={sections.map(s => ({ value: s.id, label: s.name }))}
-                                        />
-                                    </div>
-                                </>
-                            )}
-
-                            {/* Teacher filter */}
-                            {viewType === "teacher" && (
-                                <div className="w-72">
-                                    <Select 
-                                        label="Select Teacher"
-                                        value={selectedTeacherId}
-                                        onChange={(e) => setSelectedTeacherId(e.target.value)}
-                                        options={teachers.map(t => ({ value: t.id, label: `${t.firstName} ${t.lastName} (${t.qualification || "Teacher"})` }))}
-                                    />
                                 </div>
-                            )}
+                            </div>
+                        )}
+                    </div>
 
-                            {/* Room filter */}
-                            {viewType === "room" && (
-                                <div className="w-72">
-                                    <Select 
-                                        label="Select Room"
-                                        value={selectedRoomId}
-                                        onChange={(e) => setSelectedRoomId(e.target.value)}
-                                        options={rooms.map(r => ({ value: r.id, label: `${r.name} (Cap: ${r.capacity || "N/A"})` }))}
-                                    />
-                                </div>
-                            )}
-                        </CardContent>
-                    </Card>
-
-                    {/* Master Grid Table */}
-                    {periods.length === 0 ? (
-                        <EmptyState 
-                            title="No periods defined" 
-                            message="You must define Class Periods first in the 'Schedule Configuration' tab before building schedules." 
+                    {/* Workspace Split Layout: Left Assignment Pool, Right Timetable Grid */}
+                    {workspaceLoading ? (
+                        <div className="py-16 text-center">
+                            <LoadingState message="Loading Section Timetable Grid..." />
+                        </div>
+                    ) : !selectedSection ? (
+                        <EmptyState
+                            title="No Section Selected"
+                            message="Select an active Grade and Section above to open its instructional scheduling workspace."
                         />
                     ) : (
-                        <Card>
-                            <CardHeader className="bg-gray-50/50 py-4 flex flex-row items-center justify-between border-b border-gray-200">
-                                <div className="flex items-center space-x-4">
-                                    <CardTitle className="text-gray-800 text-base font-semibold text-gray-900">Master Calendar Grid</CardTitle>
-                                    {gridLoading && <span className="text-xs text-gray-500 animate-pulse font-medium">Updating grid...</span>}
-                                </div>
-                                {hasCreatePermission && (
-                                    <Button 
-                                        onClick={async () => {
-                                            if(!confirm("Are you sure? This will overwrite the entire existing timetable schedule with an auto-generated one based on subject requirements.")) return;
-                                            try {
-                                                setGridLoading(true);
-                                                const res = await fetchApi('/timetable/auto-generate', {
-                                                    method: 'POST',
-                                                    body: JSON.stringify({ academicYearId: activeYear?.id })
-                                                });
-                                                if(res.ok) {
-                                                    alert("Timetable auto-generated successfully!");
-                                                    loadTimetableGrid(); // reload grid
-                                                } else {
-                                                    const err = await res.json();
-                                                    alert(err.error || "Failed to generate timetable");
-                                                }
-                                            } catch (e) {
-                                                console.error(e);
-                                                alert("An error occurred");
-                                            } finally {
-                                                setGridLoading(false);
-                                            }
-                                        }}
-                                        variant="outline"
-                                        className="text-[#4085b3] border-[#4085b3] hover:bg-sky-50"
-                                    >
-                                        Auto-Generate Timetable
-                                    </Button>
-                                )}
-                            </CardHeader>
-                            <CardContent className="p-0">
-                                <div className="overflow-x-auto">
-                                    <table className="w-full border-collapse border border-gray-200 min-w-[800px]">
-                                        <thead>
-                                            <tr className="bg-gray-50 text-gray-600 text-xs font-semibold uppercase border-b border-gray-200">
-                                                <th className="p-4 border-r border-gray-200 text-left w-48 text-gray-900">Period / Time</th>
-                                                {DAYS.map(day => (
-                                                    <th key={day.value} className="p-4 border-r border-gray-200 text-center w-40 text-gray-900">{day.label}</th>
-                                                ))}
-                                            </tr>
-                                        </thead>
-                                        <tbody className="divide-y divide-gray-200 bg-white">
-                                            {periods.map(period => (
-                                                <tr key={period.id} className="hover:bg-gray-50/20 transition-colors">
-                                                    {/* Period Meta */}
-                                                    <td className="p-4 border-r border-gray-200 font-medium">
-                                                        <div className="text-sm text-gray-900">{period.name}</div>
-                                                        <div className="text-xs text-gray-500 flex items-center mt-1 font-semibold">
-                                                            <Clock className="w-3.5 h-3.5 mr-1 text-gray-400" />
-                                                            {period.startTime} - {period.endTime}
-                                                        </div>
-                                                    </td>
-
-                                                    {/* Days */}
-                                                    {DAYS.map(day => {
-                                                        const entry = getCellContent(day.value, period.id);
-                                                        
-                                                        if (period.isBreak) {
-                                                            return (
-                                                                <td key={day.value} className="p-4 border-r border-gray-200 bg-orange-50/40 text-center select-none">
-                                                                    <span className="text-xs font-bold text-orange-600 tracking-widest uppercase">
-                                                                        Break / Recess
+                        <div className="space-y-4">
+                            {/* TOP: Subject Allocations & Demand Pool (Full Width, No Scrollbar) */}
+                            <Card className="border border-slate-200 shadow-2xs">
+                                <CardHeader className="py-2.5 px-4 border-b border-slate-100 flex flex-row items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                        <CardTitle className="text-xs font-bold uppercase tracking-wider text-slate-700">
+                                            Subject Allocations & Demand
+                                        </CardTitle>
+                                        <span className="text-[11px] text-slate-500 hidden sm:inline">
+                                            — Weekly instructional quota for Section {selectedSection.name}
+                                        </span>
+                                    </div>
+                                    <span className="text-xs font-semibold bg-slate-100 text-slate-700 px-2 py-0.5 rounded">
+                                        {workspace.teachingAssignments?.length || 0} subjects
+                                    </span>
+                                </CardHeader>
+                                <CardContent className="p-3">
+                                    {workspace.teachingAssignments?.length === 0 ? (
+                                        <div className="p-4 text-center text-xs text-slate-400">
+                                            No teaching assignments allocated for Section {selectedSection.name}.
+                                        </div>
+                                    ) : (
+                                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-7 gap-2.5">
+                                            {workspace.teachingAssignments?.map((ta: any) => {
+                                                const isDone = ta.isComplete;
+                                                return (
+                                                    <div
+                                                        key={ta.id}
+                                                        className={`p-2.5 rounded-lg border transition-all flex flex-col justify-between ${
+                                                            isDone
+                                                                ? "bg-slate-50/70 border-slate-200"
+                                                                : "bg-white border-slate-200 hover:border-slate-300 shadow-2xs"
+                                                        }`}
+                                                    >
+                                                        <div>
+                                                            <div className="flex items-start justify-between gap-1">
+                                                                <span className="text-xs font-bold text-slate-900 truncate" title={ta.subject.name}>
+                                                                    {ta.subject.name}
+                                                                </span>
+                                                                {isDone ? (
+                                                                    <span className="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 shrink-0">
+                                                                        <Check className="w-2.5 h-2.5" /> Done
                                                                     </span>
-                                                                </td>
+                                                                ) : (
+                                                                    <span className="inline-flex items-center px-1.5 py-0.2 rounded text-[10px] font-semibold bg-amber-50 text-amber-700 border border-amber-200 shrink-0">
+                                                                        {ta.remainingPeriods} left
+                                                                    </span>
+                                                                )}
+                                                            </div>
+
+                                                            <p className="text-[11px] text-slate-500 mt-1 flex items-center gap-1 truncate" title={`${ta.teacher.firstName} ${ta.teacher.lastName}`}>
+                                                                <User className="w-3 h-3 text-slate-400 shrink-0" />
+                                                                <span className="truncate">{ta.teacher.firstName} {ta.teacher.lastName}</span>
+                                                            </p>
+
+                                                            {/* Progress bar */}
+                                                            <div className="mt-2">
+                                                                <div className="flex items-center justify-between text-[10px] text-slate-500 mb-0.5">
+                                                                    <span>Allocated: <strong>{ta.scheduledPeriods}</strong>/{ta.requiredPeriods}</span>
+                                                                    <span>{Math.round((ta.scheduledPeriods / (ta.requiredPeriods || 1)) * 100)}%</span>
+                                                                </div>
+                                                                <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
+                                                                    <div
+                                                                        className={`h-full transition-all rounded-full ${
+                                                                            isDone ? "bg-emerald-500" : "bg-[#4085b3]"
+                                                                        }`}
+                                                                        style={{ width: `${Math.min(100, (ta.scheduledPeriods / (ta.requiredPeriods || 1)) * 100)}%` }}
+                                                                    />
+                                                                </div>
+                                                            </div>
+                                                        </div>
+
+                                                        {!isDone && !isYearLocked && (
+                                                            <button
+                                                                onClick={() => {
+                                                                    setSelectedTeachingAssignmentId(ta.id);
+                                                                    setSelectedSlotTarget(null);
+                                                                    setIsAssignModalOpen(true);
+                                                                }}
+                                                                className="mt-2 w-full py-1 px-1.5 rounded bg-slate-50 hover:bg-slate-100 text-slate-700 hover:text-slate-900 text-[11px] font-medium flex items-center justify-center gap-1 transition-colors border border-slate-200 cursor-pointer"
+                                                            >
+                                                                <Plus className="w-3 h-3 text-[#4085b3]" />
+                                                                <span>Schedule</span>
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    )}
+                                </CardContent>
+                            </Card>
+
+                            {/* BOTTOM: Full-Width Weekly Timetable Grid */}
+                            <Card className="border border-slate-200 shadow-2xs">
+                                <CardHeader className="py-2.5 px-4 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                                    <div>
+                                        <CardTitle className="text-sm font-bold text-slate-900">
+                                            Weekly Schedule: Section {selectedSection.name}
+                                        </CardTitle>
+                                        <p className="text-xs text-slate-400">
+                                            {selectedGrade?.grade?.name} timetable grid
+                                        </p>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        {!isYearLocked && (
+                                            <>
+                                                <Button
+                                                    variant="outline"
+                                                    onClick={() => setIsPeriodModalOpen(true)}
+                                                    className="text-xs flex items-center gap-1 py-1 px-2.5 h-auto text-slate-700 hover:bg-slate-50"
+                                                >
+                                                    <Plus className="w-3.5 h-3.5" />
+                                                    <span>Add Period</span>
+                                                </Button>
+                                                <Button
+                                                    onClick={() => {
+                                                        setSelectedSlotTarget(null);
+                                                        setSelectedTeachingAssignmentId("");
+                                                        setConflictError(null);
+                                                        setIsAssignModalOpen(true);
+                                                    }}
+                                                    className="text-xs flex items-center gap-1 py-1 px-2.5 h-auto bg-[#4085b3] hover:bg-[#356f96] text-white"
+                                                >
+                                                    <Plus className="w-3.5 h-3.5" />
+                                                    <span>Schedule Lesson</span>
+                                                </Button>
+                                            </>
+                                        )}
+                                    </div>
+                                </CardHeader>
+
+                                    <CardContent className="p-0 overflow-x-auto">
+                                        <table className="w-full table-fixed border-collapse text-left">
+                                            <thead>
+                                                <tr className="bg-slate-50 border-b border-slate-200">
+                                                    <th className="py-2.5 px-2 text-xs font-bold uppercase tracking-wider text-slate-500 w-20 text-center border-r border-slate-200">
+                                                        Period
+                                                    </th>
+                                                    {operatingDaysList.map((d) => (
+                                                        <th key={d.value} className="py-2.5 px-2 text-xs font-bold text-slate-700 text-center border-r border-slate-200 last:border-r-0">
+                                                            <div>{d.label}</div>
+                                                        </th>
+                                                    ))}
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-slate-100">
+                                                {workspace.periods?.length === 0 ? (
+                                                    <tr>
+                                                        <td colSpan={operatingDaysList.length + 1} className="py-12 px-6 text-center">
+                                                            <div className="max-w-md mx-auto space-y-3">
+                                                                <Calendar className="w-10 h-10 text-[#4085b3] mx-auto opacity-75" />
+                                                                <h4 className="text-sm font-bold text-slate-800">No Instructional Periods Configured</h4>
+                                                                <p className="text-xs text-slate-500 leading-relaxed">
+                                                                    This school has no periods configured yet. Start by adding periods (e.g. P1, P2, P3, Break) or seed the standard Ethiopian periods:
+                                                                </p>
+                                                                <div className="flex flex-wrap items-center justify-center gap-2 pt-2">
+                                                                    <Button
+                                                                        onClick={() => setIsPeriodModalOpen(true)}
+                                                                        className="flex items-center gap-1.5 text-xs bg-[#4085b3] hover:bg-[#356f96]"
+                                                                    >
+                                                                        <Plus className="w-4 h-4" />
+                                                                        <span>+ Add Period</span>
+                                                                    </Button>
+                                                                    <Button
+                                                                        variant="outline"
+                                                                        onClick={handleGenerateDefaultPeriods}
+                                                                        disabled={actionLoading}
+                                                                        className="flex items-center gap-1.5 text-xs"
+                                                                    >
+                                                                        <span>⚡ Standard Ethiopian Periods (P1–P7)</span>
+                                                                    </Button>
+                                                                </div>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                ) : (
+                                                    workspace.periods?.map((period: any) => {
+                                                        const isBreak = period.isBreak;
+                                                        const match = period.name.match(/\d+/);
+                                                        const periodCode = match ? `P${match[0]}` : period.name;
+
+                                                        if (isBreak) {
+                                                            return (
+                                                                <tr key={period.id} className="bg-amber-50/50 border-y border-amber-200/50">
+                                                                    <td className="py-2 px-2 text-center border-r border-amber-200/50 bg-amber-50 w-20">
+                                                                        <div className="flex items-center justify-center gap-1 group/p">
+                                                                            <span className="font-bold text-xs text-amber-900">{periodCode || "Break"}</span>
+                                                                            {!isYearLocked && (
+                                                                                <button
+                                                                                    onClick={() => handleDeletePeriod(period.id, periodCode || "Break")}
+                                                                                    className="opacity-0 group-hover/p:opacity-100 p-0.5 text-amber-600 hover:text-red-500 rounded transition-all cursor-pointer"
+                                                                                    title="Delete break period"
+                                                                                >
+                                                                                    <Trash2 className="w-3 h-3" />
+                                                                                </button>
+                                                                            )}
+                                                                        </div>
+                                                                    </td>
+                                                                    <td
+                                                                        colSpan={operatingDaysList.length}
+                                                                        className="py-2 text-center text-xs font-semibold text-amber-800 tracking-wider uppercase bg-amber-50/40"
+                                                                    >
+                                                                        ☕ Recess / Non-Instructional Break
+                                                                    </td>
+                                                                </tr>
                                                             );
                                                         }
 
                                                         return (
-                                                            <td key={day.value} className="p-3 border-r border-gray-200 align-middle text-center relative group min-h-[80px]">
-                                                                {entry ? (
-                                                                    <div className="bg-sky-50 border border-sky-200 text-[#4085b3] p-3 rounded-lg text-left shadow-sm relative transition-all">
-                                                                        <div className="text-xs font-bold uppercase tracking-wider text-[#4085b3]">
-                                                                            {entry.teachingAssignment?.subject?.name}
-                                                                        </div>
-                                                                        
-                                                                        {viewType !== "teacher" && (
-                                                                            <div className="text-xs mt-1 text-gray-900 flex items-center font-medium">
-                                                                                <User className="w-3 h-3 mr-1 text-[#4085b3]" />
-                                                                                {entry.teachingAssignment?.teacher?.firstName} {entry.teachingAssignment?.teacher?.lastName}
-                                                                            </div>
-                                                                        )}
-
-                                                                        {viewType !== "section" && (
-                                                                            <div className="text-xs mt-1 text-gray-900 flex items-center font-medium">
-                                                                                <GraduationCap className="w-3 h-3 mr-1 text-[#4085b3]" />
-                                                                                Section: {entry.teachingAssignment?.section?.name || "All"}
-                                                                            </div>
-                                                                        )}
-
-                                                                        <div className="text-xs mt-1.5 text-gray-500 font-bold flex items-center">
-                                                                            <Home className="w-3 h-3 mr-1 text-gray-400" />
-                                                                            {entry.roomId ? rooms.find(r => r.id === entry.roomId)?.name || "Room Assigned" : "No Room"}
-                                                                        </div>
-
-                                                                        {hasCreatePermission && (
-                                                                            <button 
-                                                                                onClick={() => handleDeleteLesson(entry.id)}
-                                                                                className="absolute top-2 right-2 p-1 text-red-500 hover:text-red-700 bg-white hover:bg-red-50 rounded border border-gray-200 opacity-0 group-hover:opacity-100 transition-opacity shadow-sm"
-                                                                                title="Unassign Slot"
+                                                            <tr key={period.id} className="hover:bg-slate-50/30 transition-colors">
+                                                                {/* Period Label with Hover Delete */}
+                                                                <td className="py-2.5 px-2 text-center border-r border-slate-200 bg-slate-50/60 w-20">
+                                                                    <div className="flex items-center justify-center gap-1 group/p">
+                                                                        <span className="font-bold text-xs text-slate-800">{periodCode}</span>
+                                                                        {!isYearLocked && (
+                                                                            <button
+                                                                                onClick={() => handleDeletePeriod(period.id, periodCode)}
+                                                                                className="opacity-0 group-hover/p:opacity-100 p-0.5 text-slate-400 hover:text-red-500 rounded transition-all cursor-pointer"
+                                                                                title={`Delete period ${periodCode}`}
                                                                             >
-                                                                                <Trash2 className="w-3.5 h-3.5" />
+                                                                                <Trash2 className="w-3 h-3" />
                                                                             </button>
                                                                         )}
                                                                     </div>
-                                                                ) : (
-                                                                    hasCreatePermission ? (
-                                                                        <button 
-                                                                            onClick={() => {
-                                                                                setSelectedCell({ dayOfWeek: day.value, periodId: period.id });
-                                                                                setIsAssignModalOpen(true);
-                                                                            }}
-                                                                            className="w-full min-h-[50px] border border-dashed border-gray-300 rounded-lg hover:border-[#4085b3] hover:bg-sky-50/20 transition-all flex items-center justify-center group/btn bg-white"
+                                                                </td>
+
+                                                                {/* Day Cells */}
+                                                                {operatingDaysList.map((day) => {
+                                                                    const cellKey = `${day.value}-${period.id}`;
+                                                                    const slot = timetableGridMap.get(cellKey);
+
+                                                                    return (
+                                                                        <td
+                                                                            key={day.value}
+                                                                            className="py-1.5 px-1.5 border-r border-slate-200 last:border-r-0 align-top h-20"
                                                                         >
-                                                                            <Plus className="w-5 h-5 text-gray-300 group-hover/btn:text-[#4085b3] transition-colors" />
-                                                                        </button>
-                                                                    ) : (
-                                                                        <div className="text-xs text-gray-450 italic">Empty Slot</div>
-                                                                    )
+                                                                            {slot ? (
+                                                                                <div className="relative group p-2 rounded-lg bg-white text-slate-900 shadow-2xs border border-slate-200 hover:border-[#4085b3] border-l-4 border-l-[#4085b3] flex flex-col justify-between h-full min-h-[72px] transition-all">
+                                                                                    <div>
+                                                                                        <div className="flex items-start justify-between gap-1">
+                                                                                            <span className="text-xs font-bold leading-tight line-clamp-1 text-slate-900" title={slot.teachingAssignment.subject.name}>
+                                                                                                {slot.teachingAssignment.subject.name}
+                                                                                            </span>
+                                                                                            {!isYearLocked && (
+                                                                                                <button
+                                                                                                    onClick={() => {
+                                                                                                        setDeleteTargetId(slot.id);
+                                                                                                        setIsDeleteModalOpen(true);
+                                                                                                    }}
+                                                                                                    className="opacity-0 group-hover:opacity-100 p-0.5 text-slate-400 hover:text-red-600 rounded transition-opacity shrink-0 cursor-pointer"
+                                                                                                    title="Remove lesson"
+                                                                                                >
+                                                                                                    <Trash2 className="w-3.5 h-3.5" />
+                                                                                                </button>
+                                                                                            )}
+                                                                                        </div>
+                                                                                        <div className="text-[11px] text-slate-600 mt-1 flex items-center gap-1 line-clamp-1">
+                                                                                            <User className="w-3 h-3 text-slate-400 shrink-0" />
+                                                                                            <span className="truncate">
+                                                                                                {slot.teachingAssignment.teacher.firstName} {slot.teachingAssignment.teacher.lastName}
+                                                                                            </span>
+                                                                                        </div>
+                                                                                    </div>
+
+                                                                                    {!isYearLocked && (
+                                                                                        <div className="flex items-center justify-end mt-1 pt-1 border-t border-slate-100">
+                                                                                            <button
+                                                                                                onClick={() => {
+                                                                                                    setReassignSlotTarget(slot);
+                                                                                                    setReassignAssignmentId(slot.teachingAssignmentId);
+                                                                                                    setIsReassignModalOpen(true);
+                                                                                                }}
+                                                                                                className="text-[10px] text-[#4085b3] hover:underline font-medium cursor-pointer"
+                                                                                            >
+                                                                                                Switch
+                                                                                            </button>
+                                                                                        </div>
+                                                                                    )}
+                                                                                </div>
+                                                                            ) : (
+                                                                                !isYearLocked && (
+                                                                                    <button
+                                                                                        onClick={() => {
+                                                                                            setSelectedSlotTarget({
+                                                                                                dayOfWeek: day.value,
+                                                                                                periodId: period.id,
+                                                                                                periodName: periodCode
+                                                                                            });
+                                                                                            setSelectedTeachingAssignmentId("");
+                                                                                            setConflictError(null);
+                                                                                            setIsAssignModalOpen(true);
+                                                                                        }}
+                                                                                        className="w-full h-full min-h-[72px] rounded-lg border border-dashed border-slate-200 hover:border-[#4085b3] hover:bg-slate-50 transition-all flex flex-col items-center justify-center text-slate-400 hover:text-[#4085b3] group p-1.5 cursor-pointer"
+                                                                                        title={`Schedule lesson on ${day.label} ${periodCode}`}
+                                                                                    >
+                                                                                        <Plus className="w-3.5 h-3.5 group-hover:scale-110 transition-transform text-slate-400 group-hover:text-[#4085b3]" />
+                                                                                        <span className="text-[10px] font-medium text-slate-400 group-hover:text-[#4085b3] mt-0.5">
+                                                                                            Assign
+                                                                                        </span>
+                                                                                    </button>
+                                                                                )
+                                                                            )}
+                                                                        </td>
+                                                                    );
+                                                                })}
+                                                            </tr>
+                                                        );
+                                                    }))}
+                                            </tbody>
+                                        </table>
+                                    </CardContent>
+                                </Card>
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {/* TAB 2: TEACHER MASTER SCHEDULE VIEW */}
+            {activeTab === "teacherView" && (
+                <div className="space-y-6">
+                    <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                        <div>
+                            <h3 className="text-base font-bold text-slate-900">Teacher Consolidated Timetable</h3>
+                            <p className="text-xs text-slate-500 mt-0.5">
+                                Inspect a teacher&apos;s full instructional schedule across all grades and sections.
+                            </p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <label className="text-xs font-semibold text-slate-600">Select Teacher:</label>
+                            <select
+                                value={selectedTeacherId}
+                                onChange={(e) => setSelectedTeacherId(e.target.value)}
+                                className="px-3 py-1.5 rounded-lg border border-slate-300 text-sm font-medium bg-white text-slate-800 focus:ring-2 focus:ring-[#4085b3]"
+                            >
+                                {teachers.map((t) => (
+                                    <option key={t.id} value={t.id}>
+                                        {t.firstName} {t.lastName}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+                    </div>
+
+                    {teacherLoading ? (
+                        <LoadingState message="Loading Teacher Schedule..." />
+                    ) : (
+                        <Card>
+                            <CardHeader className="py-4 px-5 border-b border-slate-100">
+                                <CardTitle className="text-sm font-bold text-slate-900">
+                                    Weekly Workload: {teachers.find(t => t.id === selectedTeacherId)?.firstName} {teachers.find(t => t.id === selectedTeacherId)?.lastName}
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent className="p-0 overflow-x-auto">
+                                <table className="w-full table-fixed border-collapse text-left">
+                                    <thead>
+                                        <tr className="bg-slate-50 border-b border-slate-200">
+                                            <th className="py-2.5 px-2 text-xs font-bold uppercase text-slate-500 w-20 text-center border-r border-slate-200">
+                                                Period
+                                            </th>
+                                            {operatingDaysList.map((d) => (
+                                                <th key={d.value} className="py-2.5 px-2 text-xs font-bold text-slate-700 text-center border-r border-slate-200 last:border-r-0">
+                                                    {d.label}
+                                                </th>
+                                            ))}
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-100">
+                                        {periods.map((period) => {
+                                            if (period.isBreak) {
+                                                return (
+                                                    <tr key={period.id} className="bg-amber-50/50">
+                                                        <td className="py-2 px-2 text-xs font-semibold text-center text-amber-800 border-r border-amber-200/60 w-20">
+                                                            {period.name.match(/\d+/) ? `P${period.name.match(/\d+/)[0]}` : period.name}
+                                                        </td>
+                                                        <td colSpan={operatingDaysList.length} className="py-2 text-center text-xs font-semibold text-amber-700 uppercase">
+                                                            ☕ Recess / Non-Instructional Break
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            }
+
+                                            return (
+                                                <tr key={period.id} className="hover:bg-slate-50/30 transition-colors">
+                                                    <td className="py-2.5 px-2 text-center font-bold text-xs text-slate-800 border-r border-slate-200 bg-slate-50/60 w-20">
+                                                        {period.name.match(/\d+/) ? `P${period.name.match(/\d+/)[0]}` : period.name}
+                                                    </td>
+                                                    {operatingDaysList.map((day) => {
+                                                        const slot = teacherTimetable.find(
+                                                            (s: any) => s.dayOfWeek === day.value && s.classPeriodId === period.id
+                                                        );
+
+                                                        return (
+                                                            <td key={day.value} className="py-1.5 px-1.5 border-r border-slate-200 last:border-r-0 h-20 align-top">
+                                                                {slot ? (
+                                                                    <div className="p-2 rounded-lg bg-white border border-slate-200 border-l-4 border-l-[#4085b3] text-slate-900 text-xs flex flex-col justify-between h-full shadow-2xs">
+                                                                        <div className="font-bold line-clamp-1" title={slot.teachingAssignment?.subject?.name}>
+                                                                            {slot.teachingAssignment?.subject?.name}
+                                                                        </div>
+                                                                        <div className="text-[11px] text-slate-500 mt-1">
+                                                                            {slot.teachingAssignment?.schoolGrade?.grade?.name} - Sec {slot.teachingAssignment?.section?.name}
+                                                                        </div>
+                                                                    </div>
+                                                                ) : (
+                                                                    <div className="w-full h-full rounded-lg bg-slate-50/50 border border-dashed border-slate-200 flex items-center justify-center text-[10px] text-slate-300">
+                                                                        Free
+                                                                    </div>
                                                                 )}
                                                             </td>
                                                         );
                                                     })}
                                                 </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                </div>
+                                            );
+                                        })}
+                                    </tbody>
+                                </table>
                             </CardContent>
                         </Card>
                     )}
                 </div>
             )}
 
-            {/* Tab 2: Period Configurator */}
+            {/* TAB 3: CLASS PERIODS & RECESS */}
             {activeTab === "periods" && (
-                <Card>
-                    <CardHeader className="bg-gray-50/50 py-4 flex flex-row items-center justify-between border-b border-gray-200">
-                        <CardTitle className="text-gray-800 text-base font-semibold">Standard School Periods</CardTitle>
-                        {hasCreatePermission && (
-                            <Button leftIcon={<Plus className="w-4 h-4" />} onClick={() => setIsPeriodModalOpen(true)}>
-                                Add Period / Break
+                <div className="space-y-6">
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <h3 className="text-base font-bold text-slate-900">Class Periods & Recess Settings</h3>
+                            <p className="text-xs text-slate-500 mt-0.5">
+                                Define instructional periods and breaks observed across all section timetables.
+                            </p>
+                        </div>
+                        {!isYearLocked && (
+                            <Button onClick={() => setIsPeriodModalOpen(true)} className="flex items-center gap-2">
+                                <Plus className="w-4 h-4" />
+                                <span>Add New Period</span>
                             </Button>
                         )}
-                    </CardHeader>
-                    <CardContent className="p-0">
-                        {periods.length === 0 ? (
-                            <div className="p-6 text-center">
-                                <EmptyState title="No periods configured" message="There are no class periods. Create one to begin scheduling." />
-                            </div>
-                        ) : (
-                            <div className="overflow-x-auto bg-white">
-                                <table className="w-full text-sm text-left">
-                                    <thead className="text-xs text-gray-500 uppercase bg-gray-50 border-b">
-                                        <tr>
-                                            <th className="px-6 py-3 font-semibold text-gray-900">Name</th>
-                                            <th className="px-6 py-3 font-semibold text-gray-900">Start Time</th>
-                                            <th className="px-6 py-3 font-semibold text-gray-900">End Time</th>
-                                            <th className="px-6 py-3 font-semibold text-gray-900">Type</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-gray-100">
-                                        {periods.map(period => (
-                                            <tr key={period.id} className="hover:bg-gray-50/50 transition-colors">
-                                                <td className="px-6 py-4 font-semibold text-gray-900 flex items-center">
-                                                    <Calendar className="w-4 h-4 mr-2 text-gray-400" />
-                                                    {period.name}
-                                                </td>
-                                                <td className="px-6 py-4 text-gray-650 font-semibold">{period.startTime}</td>
-                                                <td className="px-6 py-4 text-gray-650 font-semibold">{period.endTime}</td>
-                                                <td className="px-6 py-4">
-                                                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${period.isBreak ? 'bg-orange-100 text-orange-850' : 'bg-blue-100 text-blue-855'}`}>
-                                                        {period.isBreak ? 'Break / Recess' : 'Instructional Period'}
-                                                    </span>
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
-                        )}
-                    </CardContent>
-                </Card>
-            )}
+                    </div>
 
-            {/* Tab 3: Subject Requirements */}
-            {activeTab === "requirements" && (
-                <Card>
-                    <CardHeader className="bg-gray-50/50 py-4 border-b">
-                        <CardTitle className="text-gray-800 text-base font-semibold">Configure Weekly Subject Periods</CardTitle>
-                    </CardHeader>
-                    <CardContent className="p-0">
-                        {assignments.length === 0 ? (
-                            <div className="p-6">
-                                <EmptyState title="No Teaching Assignments" message="Configure teaching assignments under Teacher Core first." />
-                            </div>
-                        ) : (
-                            <div className="overflow-x-auto bg-white">
-                                <table className="w-full text-sm text-left">
-                                    <thead className="text-xs text-gray-500 uppercase bg-gray-50 border-b">
+                    <Card>
+                        <CardContent className="p-0">
+                            <table className="w-full text-left text-xs">
+                                <thead>
+                                    <tr className="bg-slate-50 border-b border-slate-200">
+                                        <th className="py-3 px-4 font-bold text-slate-700">Period Name</th>
+                                        <th className="py-3 px-4 font-bold text-slate-700">Type</th>
+                                        <th className="py-3 px-4 font-bold text-slate-700 text-right">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100">
+                                    {periods.length === 0 ? (
                                         <tr>
-                                            <th className="px-6 py-3 font-semibold text-gray-900">Teacher</th>
-                                            <th className="px-6 py-3 font-semibold text-gray-900">Grade / Section</th>
-                                            <th className="px-6 py-3 font-semibold text-gray-900">Subject</th>
-                                            <th className="px-6 py-3 font-semibold w-64 text-gray-900">Required Weekly Periods</th>
+                                            <td colSpan={3} className="py-8 text-center text-slate-400 text-xs">
+                                                No class periods configured yet. Click &quot;Add New Period&quot; above to create one.
+                                            </td>
                                         </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-gray-100">
-                                        {assignments.map(as => (
-                                            <tr key={as.id} className="hover:bg-gray-50/50 transition-colors">
-                                                <td className="px-6 py-4">
-                                                    <p className="font-semibold text-gray-900">{as.teacher?.firstName} {as.teacher?.lastName}</p>
-                                                    <p className="text-xs text-gray-500">{as.teacher?.employeeId || "Staff"}</p>
-                                                </td>
-                                                <td className="px-6 py-4 text-gray-700 font-semibold">
-                                                    {as.schoolGrade?.grade?.name} — {as.section?.name || "All Sections"}
-                                                </td>
-                                                <td className="px-6 py-4 font-semibold text-gray-900">
-                                                    {as.subject?.name}
-                                                </td>
-                                                <td className="px-6 py-4">
-                                                    {hasCreatePermission ? (
-                                                        <div className="flex items-center space-x-2">
-                                                            <input 
-                                                                type="number" 
-                                                                min="0"
-                                                                max="20"
-                                                                className="w-20 px-2 py-1.5 border border-gray-300 rounded text-center text-sm font-semibold text-gray-900 bg-white"
-                                                                value={editingRequirements[as.id] ?? 0}
-                                                                onChange={(e) => setEditingRequirements({ ...editingRequirements, [as.id]: Number(e.target.value) })}
-                                                            />
-                                                            <button 
-                                                                onClick={() => handleUpdateRequirement(as.id, editingRequirements[as.id])}
-                                                                className="p-1.5 bg-[#4085b3] hover:bg-[#32698e] text-white rounded shadow-sm flex items-center justify-center transition-colors"
-                                                                title="Save Requirement"
-                                                            >
-                                                                <Check className="w-4 h-4" />
-                                                            </button>
-                                                        </div>
+                                    ) : (
+                                        periods.map((p) => (
+                                            <tr key={p.id} className="hover:bg-slate-50/50">
+                                                <td className="py-3 px-4 font-bold text-slate-900">{p.name}</td>
+                                                <td className="py-3 px-4">
+                                                    {p.isBreak ? (
+                                                        <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-50 text-amber-700 border border-amber-200">
+                                                            Break / Recess
+                                                        </span>
                                                     ) : (
-                                                        <span className="font-bold text-gray-900">{as.periodsPerWeek || 0} periods/week</span>
+                                                        <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-blue-50 text-blue-700 border border-blue-200">
+                                                            Instructional Period
+                                                        </span>
+                                                    )}
+                                                </td>
+                                                <td className="py-3 px-4 text-right">
+                                                    {!isYearLocked && (
+                                                        <Button
+                                                            variant="outline"
+                                                            size="sm"
+                                                            onClick={() => handleDeletePeriod(p.id, p.name)}
+                                                            className="text-red-600 hover:text-red-700 hover:bg-red-50 text-xs h-7 px-2.5"
+                                                        >
+                                                            <Trash2 className="w-3.5 h-3.5 mr-1" />
+                                                            <span>Delete</span>
+                                                        </Button>
                                                     )}
                                                 </td>
                                             </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
-                        )}
-                    </CardContent>
-                </Card>
-            )}
-
-            {/* Tab 4: Teacher Availability */}
-            {activeTab === "availability" && (
-                <div className="space-y-6">
-                    <Card className="bg-gray-50/50">
-                        <CardContent className="p-4">
-                            <div className="w-96">
-                                <Select 
-                                    label="Select Teacher to Edit Availability"
-                                    value={selectedAvailabilityTeacherId}
-                                    onChange={(e) => setSelectedAvailabilityTeacherId(e.target.value)}
-                                    options={teachers.map(t => ({ value: t.id, label: `${t.firstName} ${t.lastName} (${t.qualification || "Teacher"})` }))}
-                                />
-                            </div>
+                                        ))
+                                    )}
+                                </tbody>
+                            </table>
                         </CardContent>
                     </Card>
-
-                    {selectedAvailabilityTeacherId && periods.length > 0 ? (
-                        <Card>
-                            <CardHeader className="bg-gray-50/50 border-b py-4">
-                                <CardTitle className="text-gray-800 text-base font-semibold flex items-center">
-                                    <ShieldAlert className="w-5 h-5 mr-2 text-red-500" />
-                                    Configure Unavailability Blocks
-                                </CardTitle>
-                                <p className="text-xs text-gray-500 mt-1">Check slots where the teacher is BLOCKED and cannot be scheduled.</p>
-                            </CardHeader>
-                            <CardContent className="p-0">
-                                <div className="overflow-x-auto bg-white">
-                                    <table className="w-full border-collapse border border-gray-200 min-w-[700px]">
-                                        <thead>
-                                            <tr className="bg-gray-50 text-gray-600 text-xs font-semibold uppercase border-b border-gray-200">
-                                                <th className="p-4 border-r text-left w-48 text-gray-900">Period / Time</th>
-                                                {DAYS.map(day => (
-                                                    <th key={day.value} className="p-4 border-r text-center w-36 text-gray-900">{day.label}</th>
-                                                ))}
-                                            </tr>
-                                        </thead>
-                                        <tbody className="divide-y divide-gray-200">
-                                            {periods.map(period => (
-                                                <tr key={period.id} className="hover:bg-gray-50/20">
-                                                    <td className="p-4 border-r font-medium bg-white">
-                                                        <div className="text-sm text-gray-900">{period.name}</div>
-                                                        <div className="text-xs text-gray-500 mt-0.5">{period.startTime} - {period.endTime}</div>
-                                                    </td>
-                                                    {DAYS.map(day => {
-                                                        const key = `${day.value}-${period.id}`;
-                                                        const isBlocked = !!availabilityMap[key];
-
-                                                        if (period.isBreak) {
-                                                            return (
-                                                                <td key={day.value} className="p-4 border-r bg-gray-100/50 text-center text-xs text-gray-400 italic select-none">
-                                                                    Break
-                                                                </td>
-                                                            );
-                                                        }
-
-                                                        return (
-                                                            <td key={day.value} className="p-4 border-r text-center align-middle bg-white">
-                                                                <button 
-                                                                    onClick={() => toggleAvailabilitySlot(day.value, period.id)}
-                                                                    className={`w-12 h-10 rounded-lg flex items-center justify-center border font-bold text-[10px] mx-auto shadow-sm transition-all ${isBlocked ? 'bg-red-100 border-red-300 text-red-700' : 'bg-green-100 border-green-300 text-green-700 hover:bg-green-200'}`}
-                                                                >
-                                                                    {isBlocked ? 'BLOCKED' : 'AVAIL'}
-                                                                </button>
-                                                            </td>
-                                                        );
-                                                    })}
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </CardContent>
-                        </Card>
-                    ) : (
-                        <div className="text-center py-12 bg-white border border-dashed rounded-lg">
-                            <User className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-                            <p className="text-sm text-gray-500 font-medium">Select a teacher above to manage availability slots.</p>
-                        </div>
-                    )}
                 </div>
             )}
 
-            {/* Modal 1: Add/Configure Period */}
-            <Modal isOpen={isPeriodModalOpen} onClose={() => setIsPeriodModalOpen(false)} title="Add Class Period / Break">
-                <form onSubmit={handleCreatePeriod} className="space-y-4">
-                    {formError && (
-                        <div className="p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-xs font-semibold flex items-center">
-                            <ShieldAlert className="w-4 h-4 mr-2" />
-                            {formError}
+
+            {/* ==================================================== */}
+            {/* MODAL: ASSIGN LESSON TO CELL */}
+            {/* ==================================================== */}
+            <Modal
+                isOpen={isAssignModalOpen}
+                onClose={() => {
+                    setIsAssignModalOpen(false);
+                    setSelectedSlotTarget(null);
+                    setConflictError(null);
+                }}
+                title={
+                    selectedSlotTarget 
+                        ? `Schedule Lesson: ${ALL_DAYS.find(d => d.value === selectedSlotTarget.dayOfWeek)?.label} - ${selectedSlotTarget.periodName}`
+                        : `Schedule Lesson for Section ${selectedSection?.name || ""}`
+                }
+                maxWidth="md"
+            >
+                <div className="space-y-4">
+                    {conflictError && (
+                        <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-red-800 text-xs">
+                            {conflictError}
                         </div>
                     )}
 
-                    <Input 
-                        label="Period Name (e.g. Period 1, Recess, Lunch)"
-                        required
-                        value={newPeriod.name}
-                        onChange={(e) => setNewPeriod({ ...newPeriod, name: e.target.value })}
-                    />
-                    
-                    <div className="grid grid-cols-2 gap-4">
-                        <Input 
-                            label="Start Time"
-                            type="time"
-                            required
-                            value={newPeriod.startTime}
-                            onChange={(e) => setNewPeriod({ ...newPeriod, startTime: e.target.value })}
-                        />
-                        <Input 
-                            label="End Time"
-                            type="time"
-                            required
-                            value={newPeriod.endTime}
-                            onChange={(e) => setNewPeriod({ ...newPeriod, endTime: e.target.value })}
+                    {/* If opened via "Schedule Lesson" or "Place Lesson", pick Day & Period */}
+                    {!selectedSlotTarget && (
+                        <div className="grid grid-cols-2 gap-3 bg-slate-50 p-3 rounded-xl border border-slate-200">
+                            <div>
+                                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                                    Day of Week:
+                                </label>
+                                <select
+                                    value={customDayOfWeek}
+                                    onChange={(e) => setCustomDayOfWeek(Number(e.target.value))}
+                                    className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs text-slate-900 bg-white focus:ring-2 focus:ring-[#4085b3]"
+                                >
+                                    {operatingDaysList.map(d => (
+                                        <option key={d.value} value={d.value}>{d.label}</option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                                    Class Period:
+                                </label>
+                                <select
+                                    value={customPeriodId}
+                                    onChange={(e) => setCustomPeriodId(e.target.value)}
+                                    className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs text-slate-900 bg-white focus:ring-2 focus:ring-[#4085b3]"
+                                >
+                                    <option value="">-- Choose Period --</option>
+                                    {workspace?.periods?.filter((p: any) => !p.isBreak).map((p: any) => {
+                                        const match = p.name.match(/\d+/);
+                                        const code = match ? `P${match[0]}` : p.name;
+                                        return (
+                                            <option key={p.id} value={p.id}>
+                                                {code}
+                                            </option>
+                                        );
+                                    })}
+                                </select>
+                            </div>
+                        </div>
+                    )}
+
+                    <div>
+                        <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                            Select Subject & Teacher to Schedule:
+                        </label>
+                        <select
+                            value={selectedTeachingAssignmentId}
+                            onChange={(e) => setSelectedTeachingAssignmentId(e.target.value)}
+                            disabled={availableTeachingAssignments.length === 0}
+                            className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm text-slate-900 bg-white focus:outline-hidden focus:ring-2 focus:ring-[#4085b3] disabled:bg-slate-100 disabled:text-slate-400"
+                        >
+                            <option value="">
+                                {availableTeachingAssignments.length === 0
+                                    ? "-- No eligible subjects remaining for this day / week --"
+                                    : "-- Choose Teaching Assignment --"}
+                            </option>
+                            {availableTeachingAssignments.map((ta: any) => (
+                                <option key={ta.id} value={ta.id}>
+                                    {ta.subject.name} — {ta.teacher.firstName} {ta.teacher.lastName} ({ta.scheduledPeriods}/{ta.requiredPeriods} periods scheduled)
+                                </option>
+                            ))}
+                        </select>
+                        {availableTeachingAssignments.length === 0 && (
+                            <p className="text-xs text-amber-600 mt-1.5">
+                                All weekly periods are fully scheduled, or remaining subjects are already scheduled on this day.
+                            </p>
+                        )}
+                    </div>
+
+                    <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100">
+                        <Button
+                            variant="outline"
+                            onClick={() => {
+                                setIsAssignModalOpen(false);
+                                setSelectedSlotTarget(null);
+                            }}
+                        >
+                            Cancel
+                        </Button>
+                        <Button
+                            onClick={handleAssignSlot}
+                            disabled={!selectedTeachingAssignmentId || actionLoading}
+                        >
+                            {actionLoading ? "Verifying Invariants..." : "Assign Lesson"}
+                        </Button>
+                    </div>
+                </div>
+            </Modal>
+
+            {/* ==================================================== */}
+            {/* MODAL: REASSIGN SLOT */}
+            {/* ==================================================== */}
+            <Modal
+                isOpen={isReassignModalOpen}
+                onClose={() => {
+                    setIsReassignModalOpen(false);
+                    setReassignSlotTarget(null);
+                    setConflictError(null);
+                }}
+                title="Reassign Timetable Slot"
+                maxWidth="md"
+            >
+                <div className="space-y-4">
+                    {conflictError && (
+                        <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-red-800 text-xs">
+                            {conflictError}
+                        </div>
+                    )}
+
+                    <p className="text-xs text-slate-500">
+                        Switch the current instructional assignment for this slot to another valid teaching assignment in Section {selectedSection?.name}.
+                    </p>
+
+                    <div>
+                        <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                            New Teaching Assignment:
+                        </label>
+                        <select
+                            value={reassignAssignmentId}
+                            onChange={(e) => setReassignAssignmentId(e.target.value)}
+                            className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm text-slate-900 bg-white focus:outline-hidden focus:ring-2 focus:ring-[#4085b3]"
+                        >
+                            {workspace?.teachingAssignments?.map((ta: any) => (
+                                <option key={ta.id} value={ta.id}>
+                                    {ta.subject.name} — {ta.teacher.firstName} {ta.teacher.lastName}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+
+                    <div>
+                        <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                            Reassignment Justification (Recorded in Audit Trail):
+                        </label>
+                        <Input
+                            placeholder="e.g. Adjusted teacher workload / lab availability shift"
+                            value={reassignReason}
+                            onChange={(e) => setReassignReason(e.target.value)}
                         />
                     </div>
 
-                    <div className="flex items-center space-x-2 pt-2">
-                        <input 
+                    <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100">
+                        <Button
+                            variant="outline"
+                            onClick={() => {
+                                setIsReassignModalOpen(false);
+                                setReassignSlotTarget(null);
+                            }}
+                        >
+                            Cancel
+                        </Button>
+                        <Button
+                            onClick={handleReassignSlot}
+                            disabled={!reassignAssignmentId || actionLoading}
+                        >
+                            {actionLoading ? "Reassigning..." : "Confirm Reassignment"}
+                        </Button>
+                    </div>
+                </div>
+            </Modal>
+
+            {/* ==================================================== */}
+            {/* MODAL: DELETE SLOT CONFIRMATION */}
+            {/* ==================================================== */}
+            <Modal
+                isOpen={isDeleteModalOpen}
+                onClose={() => {
+                    setIsDeleteModalOpen(false);
+                    setDeleteTargetId(null);
+                }}
+                title="Remove Timetable Lesson"
+                maxWidth="sm"
+            >
+                <div className="space-y-4">
+                    <p className="text-xs text-slate-600 leading-relaxed">
+                        Are you sure you want to remove this instructional lesson from the timetable? This will restore 1 period to the subject&apos;s remaining requirement pool.
+                    </p>
+                    <div className="flex items-center justify-end gap-2 pt-2">
+                        <Button
+                            variant="outline"
+                            onClick={() => {
+                                setIsDeleteModalOpen(false);
+                                setDeleteTargetId(null);
+                            }}
+                        >
+                            Cancel
+                        </Button>
+                        <Button
+                            variant="danger"
+                            onClick={handleDeleteSlot}
+                            disabled={actionLoading}
+                        >
+                            {actionLoading ? "Removing..." : "Yes, Remove Lesson"}
+                        </Button>
+                    </div>
+                </div>
+            </Modal>
+
+            {/* ==================================================== */}
+            {/* MODAL: PUBLISH / UNPUBLISH OFFICIAL TIMETABLE */}
+            {/* ==================================================== */}
+            <Modal
+                isOpen={isPublishModalOpen}
+                onClose={() => setIsPublishModalOpen(false)}
+                title={isPublished ? "Revert Timetable to Draft?" : "Publish Official School Timetable?"}
+                maxWidth="md"
+            >
+                <div className="space-y-4">
+                    <div className="flex items-start gap-3 p-3.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-600 leading-relaxed">
+                        <Info className="w-5 h-5 text-[#4085b3] shrink-0 mt-0.5" />
+                        <div>
+                            {isPublished ? (
+                                <p>
+                                    Reverting to Draft mode hides the timetable from Student and Teacher personal dashboards. Use this if major curriculum re-scheduling is underway.
+                                </p>
+                            ) : (
+                                <p>
+                                    Publishing makes the weekly instructional schedule officially visible on all Student and Teacher portals across this academic year.
+                                </p>
+                            )}
+                        </div>
+                    </div>
+
+                    <div className="flex items-center justify-end gap-2 pt-2">
+                        <Button variant="outline" onClick={() => setIsPublishModalOpen(false)}>
+                            Cancel
+                        </Button>
+                        <Button
+                            variant={isPublished ? "secondary" : "primary"}
+                            onClick={handleTogglePublish}
+                            disabled={actionLoading}
+                        >
+                            {actionLoading 
+                                ? "Updating..." 
+                                : isPublished ? "Revert to Draft" : "Confirm & Publish Timetable"
+                            }
+                        </Button>
+                    </div>
+                </div>
+            </Modal>
+
+            {/* ==================================================== */}
+            {/* MODAL: ADD CLASS PERIOD */}
+            {/* ==================================================== */}
+            <Modal
+                isOpen={isPeriodModalOpen}
+                onClose={() => setIsPeriodModalOpen(false)}
+                title="Add Class Period"
+                maxWidth="md"
+            >
+                <div className="space-y-4">
+                    <div>
+                        <label className="block text-xs font-semibold text-slate-700 mb-1">Period Name</label>
+                        <Input
+                            placeholder="e.g. P1, P2, Period 3, or Recess"
+                            value={newPeriod.name}
+                            onChange={(e) => setNewPeriod({ ...newPeriod, name: e.target.value })}
+                            autoFocus
+                        />
+                        {/* Quick Name Suggestions */}
+                        <div className="flex flex-wrap items-center gap-1.5 mt-2">
+                            <span className="text-[11px] text-slate-400 mr-1">Quick pick:</span>
+                            {["P1", "P2", "P3", "P4", "P5", "P6", "P7", "Recess"].map((pName) => (
+                                <button
+                                    key={pName}
+                                    type="button"
+                                    onClick={() => setNewPeriod({ 
+                                        ...newPeriod, 
+                                        name: pName,
+                                        isBreak: pName.toLowerCase().includes("recess") || pName.toLowerCase().includes("break")
+                                    })}
+                                    className="px-2.5 py-1 rounded-md text-xs bg-slate-100 hover:bg-[#4085b3]/10 hover:text-[#4085b3] text-slate-700 font-semibold transition-colors cursor-pointer"
+                                >
+                                    {pName}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 pt-1">
+                        <input
                             type="checkbox"
-                            id="isBreak"
-                            className="w-4 h-4 rounded text-[#4085b3] focus:ring-[#4085b3]"
+                            id="isBreakCheck"
                             checked={newPeriod.isBreak}
                             onChange={(e) => setNewPeriod({ ...newPeriod, isBreak: e.target.checked })}
+                            className="rounded border-slate-300 text-[#4085b3] focus:ring-[#4085b3]"
                         />
-                        <label htmlFor="isBreak" className="text-sm font-semibold text-gray-700 select-none">
-                            This is a Break (e.g. Recess, Lunch recess)
+                        <label htmlFor="isBreakCheck" className="text-xs font-medium text-slate-700 cursor-pointer">
+                            This is a Break / Recess period (lessons cannot be scheduled)
                         </label>
                     </div>
 
-                    <div className="flex justify-end space-x-2 pt-4">
-                        <Button variant="ghost" onClick={() => setIsPeriodModalOpen(false)}>Cancel</Button>
-                        <Button type="submit">Create Period</Button>
+                    <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+                        <Button variant="outline" onClick={() => setIsPeriodModalOpen(false)}>Cancel</Button>
+                        <Button
+                            onClick={async () => {
+                                try {
+                                    setActionLoading(true);
+                                    setConflictError(null);
+                                    const res = await fetchApi("/timetable/periods", {
+                                        method: "POST",
+                                        headers: { "Content-Type": "application/json" },
+                                        body: JSON.stringify({
+                                            name: newPeriod.name.trim(),
+                                            isBreak: newPeriod.isBreak
+                                        })
+                                    });
+                                    const data = await res.json();
+                                    if (!res.ok) {
+                                        throw new Error(data.error || "Failed to create period");
+                                    }
+                                    setIsPeriodModalOpen(false);
+                                    setNewPeriod({ name: "", startTime: "", endTime: "", isBreak: false });
+                                    setSuccessMessage(`Period "${data.name}" created successfully.`);
+                                    setTimeout(() => setSuccessMessage(null), 3000);
+                                    await loadWorkspace(selectedYearId, selectedGradeId, selectedSectionId);
+                                } catch (e: any) {
+                                    setConflictError(e.message || "Failed to create period");
+                                } finally {
+                                    setActionLoading(false);
+                                }
+                            }}
+                            disabled={!newPeriod.name.trim() || actionLoading}
+                        >
+                            {actionLoading ? "Saving..." : "Save Period"}
+                        </Button>
                     </div>
-                </form>
-            </Modal>
-
-            {/* Modal 2: Assign Lesson */}
-            <Modal isOpen={isAssignModalOpen} onClose={() => setIsAssignModalOpen(false)} title="Schedule Lesson Slot">
-                <form onSubmit={handleAssignLesson} className="space-y-4">
-                    {formError && (
-                        <div className="p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-xs font-semibold flex items-center">
-                            <ShieldAlert className="w-4 h-4 mr-2 flex-shrink-0" />
-                            <span>{formError}</span>
-                        </div>
-                    )}
-
-                    {selectedCell && (
-                        <div className="p-3 bg-gray-50 border border-gray-200 rounded-lg text-xs text-gray-600 font-semibold">
-                            Slot: {DAYS.find(d => d.value === selectedCell.dayOfWeek)?.label} | {periods.find(p => p.id === selectedCell.periodId)?.name} ({periods.find(p => p.id === selectedCell.periodId)?.startTime} - {periods.find(p => p.id === selectedCell.periodId)?.endTime})
-                        </div>
-                    )}
-
-                    <Select 
-                        label="Select Teaching Assignment"
-                        required
-                        value={newAssignmentId}
-                        onChange={(e) => setNewAssignmentId(e.target.value)}
-                        options={assignments.map(as => ({
-                            value: as.id,
-                            label: `${as.subject?.name} - ${as.teacher?.firstName} ${as.teacher?.lastName} (${as.schoolGrade?.grade?.name || ""} ${as.section?.name || "All"})`
-                        }))}
-                    />
-
-                    <Select 
-                        label="Select Classroom / Room"
-                        value={newRoomId}
-                        onChange={(e) => setNewRoomId(e.target.value)}
-                        options={rooms.map(r => ({
-                            value: r.id,
-                            label: `${r.name} (Capacity: ${r.capacity || "N/A"})`
-                        }))}
-                    />
-
-                    <div className="flex justify-end space-x-2 pt-4">
-                        <Button variant="ghost" onClick={() => setIsAssignModalOpen(false)}>Cancel</Button>
-                        <Button type="submit">Assign Slot</Button>
-                    </div>
-                </form>
-            </Modal>
-
-            {/* Modal 3: Add/Edit Room */}
-            <Modal isOpen={isRoomModalOpen} onClose={() => setIsRoomModalOpen(false)} title={editingRoom ? "Edit Room Details" : "Register School Room/Facility"}>
-                <form onSubmit={handleSaveRoom} className="space-y-4">
-                    {formError && (
-                        <div className="p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-xs font-semibold flex items-center">
-                            <ShieldAlert className="w-4 h-4 mr-2" />
-                            {formError}
-                        </div>
-                    )}
-
-                    <Input 
-                        label="Room Name/Number (e.g. Room 201, Chemistry Lab)"
-                        required
-                        value={roomForm.name}
-                        onChange={(e) => setRoomForm({ ...roomForm, name: e.target.value })}
-                    />
-
-                    <div className="grid grid-cols-2 gap-4">
-                        <Select 
-                            label="Room Type"
-                            value={roomForm.type}
-                            onChange={(e) => setRoomForm({ ...roomForm, type: e.target.value })}
-                            options={[
-                                { value: "CLASSROOM", label: "Normal Classroom" },
-                                { value: "LAB", label: "Laboratory" },
-                                { value: "LIBRARY", label: "Library" },
-                                { value: "SPORTS_FACILITY", label: "Sports Facility" },
-                                { value: "OTHER", label: "Other facility" }
-                            ]}
-                        />
-                        <Input 
-                            label="Room Capacity (Student Seats)"
-                            type="number"
-                            value={roomForm.capacity}
-                            onChange={(e) => setRoomForm({ ...roomForm, capacity: e.target.value })}
-                        />
-                    </div>
-
-                    <Select 
-                        label="Room Availability Status"
-                        value={roomForm.status}
-                        onChange={(e) => setRoomForm({ ...roomForm, status: e.target.value })}
-                        options={[
-                            { value: "AVAILABLE", label: "Available for classes" },
-                            { value: "MAINTENANCE", label: "Under Maintenance" }
-                        ]}
-                    />
-
-                    <Input 
-                        label="Brief Description"
-                        value={roomForm.description}
-                        onChange={(e) => setRoomForm({ ...roomForm, description: e.target.value })}
-                    />
-
-                    <div className="flex justify-end space-x-2 pt-4">
-                        <Button variant="ghost" onClick={() => setIsRoomModalOpen(false)}>Cancel</Button>
-                        <Button type="submit">Save Room</Button>
-                    </div>
-                </form>
+                </div>
             </Modal>
         </div>
     );

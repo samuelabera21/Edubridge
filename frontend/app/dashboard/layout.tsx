@@ -800,6 +800,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                                                 <div className="pl-10 pr-3 py-1 space-y-1">
                                                     <Link href="/dashboard/students" className={`block py-1.5 text-sm ${pathname === "/dashboard/students" ? "text-[#4085b3] font-medium" : "text-gray-500 hover:text-[#4085b3]"}`}>Students</Link>
                                                     <Link href="/dashboard/students/enrollments" className={`block py-1.5 text-sm ${pathname.startsWith("/dashboard/students/enrollments") ? "text-[#4085b3] font-medium" : "text-gray-500 hover:text-[#4085b3]"}`}>Enrollments</Link>
+                                                    <Link href="/dashboard/students/placement" className={`block py-1.5 text-sm ${pathname.startsWith("/dashboard/students/placement") ? "text-[#4085b3] font-medium" : "text-gray-500 hover:text-[#4085b3]"}`}>Classroom Placement</Link>
                                                 </div>
                                             )}
                                         </div>

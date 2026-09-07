@@ -76,7 +76,7 @@ describe("Timetable Controller", () => {
 
             await assignTimetable(mockReq as Request, mockRes as Response);
 
-            expect(TimetableService.assignTimetable).toHaveBeenCalledWith("school1", expect.objectContaining({ dayOfWeek: 1 }));
+            expect(TimetableService.assignTimetable).toHaveBeenCalledWith("school1", null, expect.objectContaining({ dayOfWeek: 1 }));
             expect(mockRes.status).toHaveBeenCalledWith(201);
             expect(mockRes.json).toHaveBeenCalledWith(mockTimetable);
         });
