@@ -39,7 +39,7 @@ describe("Timetable Controller", () => {
     describe("createClassPeriod", () => {
         it("should return 400 if validation fails", async () => {
             (mockReq as any).accessScope = { id: "school1" };
-            mockReq.body = { name: "Period 1" }; // missing start/endTime
+            mockReq.body = {}; // missing required period name
             
             await createClassPeriod(mockReq as Request, mockRes as Response);
             
