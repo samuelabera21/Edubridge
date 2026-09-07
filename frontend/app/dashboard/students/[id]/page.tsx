@@ -105,7 +105,7 @@ export default function StudentProfilePage() {
     const fullName = `${student.firstName} ${student.fatherName || student.lastName || ""} ${student.grandfatherName || ""}`.trim();
     const documentsList = student.studentDocuments || [];
     const enrollmentsList = student.enrollments || [];
-    const guardiansList = student.guardians || [];
+    const guardiansList = (student as any).parents || (student as any).guardians || [];
 
     return (
         <div className="space-y-6 max-w-7xl mx-auto pb-12">
@@ -291,31 +291,60 @@ export default function StudentProfilePage() {
                     </div>
                     <div className="p-5 space-y-3 text-xs">
                         {guardiansList.length > 0 ? (
-                            guardiansList.map((g: any, idx: number) => (
-                                <div key={idx} className="p-3 bg-slate-50 border border-slate-200 rounded-md space-y-1">
-                                    <div className="flex items-center justify-between">
-                                        <span className="font-semibold text-slate-900">{g.parent?.user?.name || "Guardian"}</span>
-                                        <span className="text-[11px] text-slate-600 bg-white border border-slate-200 px-2 py-0.5 rounded">
-                                            {g.relationship}
-                                        </span>
+                            guardiansList.map((g: any, idx: number) => {
+                                const parentName = g.parent ? `${g.parent.firstName} ${g.parent.lastName}` : (g.name || "Guardian");
+                                const parentPhone = g.parent?.phoneNumber || g.phoneNumber || "—";
+                                const parentEmail = g.parent?.email || g.email || null;
+                                return (
+                                    <div key={idx} className="p-3.5 bg-slate-50 border border-slate-200 rounded-lg space-y-2">
+                                        <div className="flex items-center justify-between">
+                                            <span className="font-bold text-slate-900 text-sm">{parentName}</span>
+                                            <div className="flex items-center gap-1.5">
+                                                {g.isPrimary && (
+                                                    <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100 border border-emerald-200 px-1.5 py-0.5 rounded">
+                                                        PRIMARY
+                                                    </span>
+                                                )}
+                                                <span className="text-[11px] font-medium text-slate-600 bg-white border border-slate-200 px-2 py-0.5 rounded">
+                                                    {g.relationship || "Guardian"}
+                                                </span>
+                                            </div>
+                                        </div>
+                                        <div className="space-y-1 text-slate-600">
+                                            <p>
+                                                Phone: <strong className="text-slate-800 font-mono">{parentPhone}</strong>
+                                                {parentEmail && <span className="ml-3 text-slate-500">• {parentEmail}</span>}
+                                            </p>
+                                            {g.canPickup !== undefined && (
+                                                <p className="text-[11px] text-slate-500">
+                                                    Campus Pickup: <span className={g.canPickup ? "text-emerald-700 font-medium" : "text-slate-500"}>{g.canPickup ? "Authorized" : "Not Authorized"}</span>
+                                                </p>
+                                            )}
+                                        </div>
+                                        <div className="pt-2 border-t border-slate-200 flex items-center justify-between">
+                                            <Link 
+                                                href={`/dashboard/parents?search=${encodeURIComponent(parentName)}`}
+                                                className="inline-flex items-center text-[11px] font-semibold text-[#0c2454] hover:underline"
+                                            >
+                                                <ExternalLink className="w-3 h-3 mr-1" />
+                                                View Guardian Dossier & Linked Siblings
+                                            </Link>
+                                        </div>
                                     </div>
-                                    <p className="text-slate-600">
-                                        Phone: <strong className="text-slate-800">{g.parent?.emergencyPhone || "—"}</strong>
-                                    </p>
-                                </div>
-                            ))
+                                );
+                            })
                         ) : (
-                            <p className="text-slate-500 text-xs">No primary guardian registered.</p>
+                            <p className="text-slate-500 text-xs">No registered legal guardian records found.</p>
                         )}
 
                         {student.emergencyContactName && (
-                            <div className="pt-3 border-t border-slate-200">
-                                <span className="text-slate-500 block font-medium">Secondary Emergency Contact</span>
+                            <div className="p-3 bg-white border border-slate-200 rounded-lg space-y-1">
+                                <span className="text-slate-500 block font-medium text-[11px]">Secondary Emergency Contact</span>
                                 <p className="font-semibold text-slate-900 mt-0.5">
                                     {student.emergencyContactName} ({student.emergencyContactRelation || "Contact"})
                                 </p>
                                 <p className="text-slate-600 mt-0.5">
-                                    Phone: <strong className="text-slate-800">{student.emergencyContactPhone || "—"}</strong>
+                                    Phone: <strong className="text-slate-800 font-mono">{student.emergencyContactPhone || "—"}</strong>
                                 </p>
                             </div>
                         )}

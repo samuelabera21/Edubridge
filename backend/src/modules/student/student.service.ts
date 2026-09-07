@@ -228,25 +228,43 @@ export class StudentService {
 
             // 6. Persist Guardians & Link to Student
             const createdGuardians = [];
-            for (const g of guardians) {
-                if (!g.firstName?.trim()) continue;
+            const incomingGuardians: any[] = [...(guardians || [])];
+            if (incomingGuardians.length === 0 && (studentData.emergencyContactName?.trim())) {
+                incomingGuardians.push({
+                    fullName: studentData.emergencyContactName.trim(),
+                    phoneNumber: studentData.emergencyContactPhone?.trim() || null,
+                    relationship: studentData.emergencyContactRelation?.trim() || "Guardian",
+                    isPrimary: true,
+                    canPickup: true
+                });
+            }
+
+            for (const g of incomingGuardians) {
+                const rawFullName = g.fullName || g.name || `${g.firstName || ""} ${g.lastName || ""}`.trim();
+                if (!rawFullName && !g.firstName?.trim()) continue;
+
+                const nameParts = rawFullName ? rawFullName.trim().split(/\s+/) : [];
+                const firstName = g.firstName?.trim() || nameParts[0] || "Guardian";
+                const lastName = g.lastName?.trim() || nameParts.slice(1).join(" ").trim() || firstName;
+                const phone = g.phoneNumber?.trim() || g.phone?.trim() || null;
+                const email = g.email?.trim() || null;
 
                 let parent = null;
                 if (g.id) {
                     parent = await tx.parent.findUnique({ where: { id: g.id } });
-                } else if (g.phoneNumber) {
+                } else if (phone) {
                     parent = await tx.parent.findFirst({
-                        where: { phoneNumber: g.phoneNumber.trim() }
+                        where: { phoneNumber: phone }
                     });
                 }
 
                 if (!parent) {
                     parent = await tx.parent.create({
                         data: {
-                            firstName: g.firstName.trim(),
-                            lastName: g.lastName?.trim() || g.firstName.trim(),
-                            phoneNumber: g.phoneNumber?.trim() || null,
-                            email: g.email?.trim() || null
+                            firstName,
+                            lastName,
+                            phoneNumber: phone,
+                            email
                         }
                     });
                 }
