@@ -113,8 +113,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     const isRouteAuthorized = (() => {
         const isAdmin = ["ADMIN", "SCHOOL_ADMIN", "ADMINISTRATOR", "PRINCIPAL"].includes(roleName);
 
-        // 0. The root /dashboard route is the School Administrator / Principal Dashboard
-        if (pathname === "/dashboard") {
+        // 0. The root /dashboard and /dashboard/admin are the School Administrator / Principal Dashboard
+        if (pathname === "/dashboard" || pathname === "/dashboard/admin") {
             return isAdmin;
         }
 
@@ -161,12 +161,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 case "ADMIN":
                 case "SCHOOL_ADMIN":
                 case "ADMINISTRATOR":
-                case "PRINCIPAL": return "/dashboard";
+                case "PRINCIPAL": return "/dashboard/admin";
                 case "TEACHER": return "/dashboard/teacher";
                 case "STUDENT": return "/dashboard/student";
                 case "PARENT": return "/dashboard/parent";
                 case "VICE_PRINCIPAL": return "/dashboard/vice-principal";
-                default: return "/dashboard";
+                default: return "/dashboard/admin";
             }
         };
 
