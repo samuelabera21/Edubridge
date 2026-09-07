@@ -217,53 +217,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 </div>
 
                 <div className="hidden md:flex items-center space-x-5">
-                    {!isTeacherRoute && (
-                        <nav className="flex space-x-1 text-xs font-bold text-gray-600 mr-4">
-                            <Link
-                                href="/dashboard/school/profile"
-                                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all ${
-                                    pathname === "/dashboard/school/profile"
-                                        ? "bg-amber-50 text-[#f59e0b] border border-amber-200"
-                                        : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
-                                }`}
-                            >
-                                <Building className="w-3.5 h-3.5"/>
-                                About
-                            </Link>
-                            <Link
-                                href="/dashboard/admin"
-                                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all ${
-                                    pathname === "/dashboard/admin" || pathname === "/dashboard"
-                                        ? "bg-amber-50 text-[#f59e0b] border border-amber-200"
-                                        : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
-                                }`}
-                            >
-                                <LayoutDashboard className="w-3.5 h-3.5"/>
-                                Dashboard
-                            </Link>
-                            <Link
-                                href="/dashboard/school/profile"
-                                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all ${
-                                    pathname.startsWith("/dashboard/school")
-                                        ? "bg-amber-50 text-[#f59e0b] border border-amber-200"
-                                        : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
-                                }`}
-                            >
-                                School Profile
-                            </Link>
-                            <Link
-                                href="/dashboard/academics/years"
-                                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all ${
-                                    pathname.startsWith("/dashboard/academics")
-                                        ? "bg-amber-50 text-[#f59e0b] border border-amber-200"
-                                        : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
-                                }`}
-                            >
-                                Academics
-                            </Link>
-                        </nav>
-                    )}
-
                     {/* Search Input */}
                     <div className="relative">
                         <input 
@@ -329,36 +282,38 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                             >
                                 {/* Header info */}
                                 <div className="px-4 py-2.5 border-b border-gray-100 bg-gray-50/50">
-                                    <p className="font-bold text-gray-900 text-xs">{authData?.user?.name || "Mr. Yohannes"}</p>
-                                    <p className="text-[10px] text-gray-500 truncate">{authData?.user?.email || "teacher@edubridge.local"}</p>
+                                    <p className="font-bold text-gray-900 text-xs">{authData?.user?.name || "System Administrator"}</p>
+                                    <p className="text-[10px] text-gray-500 truncate">{authData?.user?.email || "admin@edubridge.local"}</p>
                                     <span className="inline-block mt-1 px-2 py-0.5 bg-blue-50 text-[#4085b3] rounded font-bold text-[9px]">
                                         {isTeacherRoute ? "TEACHER ROLE" : roleName}
                                     </span>
                                 </div>
 
-                                {/* Links */}
-                                <div className="py-1">
-                                    <Link 
-                                        href="/dashboard/teacher/settings" 
-                                        onClick={() => setShowProfileDropdown(false)}
-                                        className="flex items-center px-4 py-2 hover:bg-gray-50 text-gray-700 space-x-2 transition-colors"
-                                    >
-                                        <User className="w-4 h-4 text-gray-500" />
-                                        <span>My Profile</span>
-                                    </Link>
+                                {/* Teacher-specific Links */}
+                                {isTeacherRoute && (
+                                    <div className="py-1">
+                                        <Link 
+                                            href="/dashboard/teacher/settings" 
+                                            onClick={() => setShowProfileDropdown(false)}
+                                            className="flex items-center px-4 py-2 hover:bg-gray-50 text-gray-700 space-x-2 transition-colors"
+                                        >
+                                            <User className="w-4 h-4 text-gray-500" />
+                                            <span>My Profile</span>
+                                        </Link>
 
-                                    <Link 
-                                        href="/dashboard/teacher/settings" 
-                                        onClick={() => setShowProfileDropdown(false)}
-                                        className="flex items-center px-4 py-2 hover:bg-gray-50 text-gray-700 space-x-2 transition-colors"
-                                    >
-                                        <Settings className="w-4 h-4 text-gray-500" />
-                                        <span>Account Settings</span>
-                                    </Link>
-                                </div>
+                                        <Link 
+                                            href="/dashboard/teacher/settings" 
+                                            onClick={() => setShowProfileDropdown(false)}
+                                            className="flex items-center px-4 py-2 hover:bg-gray-50 text-gray-700 space-x-2 transition-colors"
+                                        >
+                                            <Settings className="w-4 h-4 text-gray-500" />
+                                            <span>Account Settings</span>
+                                        </Link>
+                                    </div>
+                                )}
 
                                 {/* Logout button */}
-                                <div className="border-t border-gray-100 pt-1 mt-1">
+                                <div className={`${isTeacherRoute ? "border-t border-gray-100 pt-1 mt-1" : "pt-1"}`}>
                                     <button 
                                         onClick={() => {
                                             setShowProfileDropdown(false);
