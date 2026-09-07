@@ -213,53 +213,21 @@ export default function AttendanceOverviewPage() {
     return (
         <div className="space-y-6 text-black">
             {/* Header & Controls */}
-            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
-                <div className="flex items-center space-x-3">
-                    <div className="p-2.5 bg-emerald-50 text-[#006b3f] rounded-lg">
-                        <ClipboardCheck className="w-6 h-6" />
-                    </div>
-                    <div>
-                        <h1 className="text-xl font-bold text-gray-900">Attendance Overview</h1>
-                        <p className="text-xs text-gray-500">School-wide attendance metrics and trends</p>
-                    </div>
+            <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4 bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
+                <div>
+                    <h1 className="text-xl font-bold text-gray-900">Attendance Overview</h1>
+                    <p className="text-xs text-gray-500 mt-0.5">School-wide daily attendance metrics and trends</p>
                 </div>
 
-                <div className="flex flex-wrap items-center gap-3">
-                    {/* Quick Navigation Badges */}
-                    <button
-                        onClick={() => router.push("/dashboard/attendance/alerts")}
-                        className="flex items-center space-x-2 px-3 py-1.5 rounded-lg border border-red-200 bg-red-50/70 text-red-800 text-xs font-semibold hover:bg-red-100 transition-colors"
-                    >
-                        <ShieldAlert className="w-3.5 h-3.5 text-red-600" />
-                        <span>Risk Alerts</span>
-                        <span className={`px-1.5 py-0.2 rounded-full text-[11px] font-bold ${
-                            riskCounters && riskCounters.totalAlerts > 0 ? "bg-red-600 text-white" : "bg-red-200 text-red-800"
-                        }`}>
-                            {riskCounters?.totalAlerts || 0}
-                        </span>
-                    </button>
-
-                    <button
-                        onClick={() => router.push("/dashboard/attendance/corrections")}
-                        className="flex items-center space-x-2 px-3 py-1.5 rounded-lg border border-emerald-200 bg-emerald-50/70 text-emerald-800 text-xs font-semibold hover:bg-emerald-100 transition-colors"
-                    >
-                        <FileCheck className="w-3.5 h-3.5 text-emerald-600" />
-                        <span>Corrections</span>
-                        <span className={`px-1.5 py-0.2 rounded-full text-[11px] font-bold ${
-                            riskCounters && riskCounters.pendingCorrections > 0 ? "bg-amber-500 text-white" : "bg-emerald-200 text-emerald-800"
-                        }`}>
-                            {riskCounters?.pendingCorrections || 0}
-                        </span>
-                    </button>
-
+                <div className="flex flex-wrap items-center gap-2.5">
                     {/* Academic Year Switcher */}
                     {data?.academicYearList && data.academicYearList.length > 0 && (
-                        <div className="flex items-center space-x-2 bg-gray-50 border border-gray-200 rounded-lg px-3 py-1.5">
+                        <div className="flex items-center space-x-1.5 bg-gray-50 border border-gray-200 rounded-lg px-2.5 py-1.5">
                             <Calendar className="w-3.5 h-3.5 text-gray-500" />
                             <select
                                 value={selectedYearId}
                                 onChange={(e) => setSelectedYearId(e.target.value)}
-                                className="bg-transparent text-xs font-semibold text-gray-800 focus:outline-none cursor-pointer"
+                                className="bg-transparent text-xs font-medium text-gray-800 focus:outline-none cursor-pointer"
                             >
                                 {data.academicYearList.map(y => (
                                     <option key={y.id} value={y.id}>
@@ -280,9 +248,9 @@ export default function AttendanceOverviewPage() {
                             <button
                                 key={btn.value}
                                 onClick={() => setRangeDays(btn.value)}
-                                className={`px-2.5 py-1 text-xs font-semibold rounded-md transition-all ${
+                                className={`px-2.5 py-1 text-xs font-medium rounded-md transition-all ${
                                     rangeDays === btn.value
-                                        ? "bg-white text-[#006b3f] shadow-sm font-bold"
+                                        ? "bg-white text-gray-900 shadow-sm font-semibold"
                                         : "text-gray-500 hover:text-gray-900"
                                 }`}
                             >
@@ -290,6 +258,31 @@ export default function AttendanceOverviewPage() {
                             </button>
                         ))}
                     </div>
+
+                    {/* Quick Navigation Badges */}
+                    <button
+                        onClick={() => router.push("/dashboard/attendance/alerts")}
+                        className="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg border border-gray-200 bg-gray-50 text-xs font-medium text-gray-700 hover:bg-gray-100 hover:border-gray-300 transition-colors"
+                    >
+                        <span>Risk Alerts</span>
+                        <span className={`px-1.5 py-0.2 rounded text-[11px] font-semibold ${
+                            riskCounters && riskCounters.totalAlerts > 0 ? "bg-red-600 text-white" : "bg-gray-200 text-gray-700"
+                        }`}>
+                            {riskCounters?.totalAlerts || 0}
+                        </span>
+                    </button>
+
+                    <button
+                        onClick={() => router.push("/dashboard/attendance/corrections")}
+                        className="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg border border-gray-200 bg-gray-50 text-xs font-medium text-gray-700 hover:bg-gray-100 hover:border-gray-300 transition-colors"
+                    >
+                        <span>Corrections</span>
+                        <span className={`px-1.5 py-0.2 rounded text-[11px] font-semibold ${
+                            riskCounters && riskCounters.pendingCorrections > 0 ? "bg-amber-500 text-white" : "bg-gray-200 text-gray-700"
+                        }`}>
+                            {riskCounters?.pendingCorrections || 0}
+                        </span>
+                    </button>
 
                     <Button
                         variant="outline"
@@ -307,53 +300,35 @@ export default function AttendanceOverviewPage() {
             {/* Core KPI Cards */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 {/* 1. Student Attendance Rate */}
-                <Card className="border-gray-200 shadow-sm hover:border-emerald-300 transition-colors">
+                <Card className="border-gray-200 shadow-sm">
                     <CardContent className="p-4">
-                        <div className="flex items-center justify-between">
-                            <span className="text-xs font-semibold text-gray-500">Student Attendance</span>
-                            <div className="p-1.5 bg-emerald-50 text-[#006b3f] rounded-md">
-                                <TrendingUp className="w-4 h-4" />
-                            </div>
-                        </div>
-                        <div className="mt-2 flex items-baseline justify-between">
-                            <span className="text-2xl font-bold text-gray-900">
-                                {summary ? `${summary.studentAttendanceRate}%` : "—"}
-                            </span>
-                            <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${
-                                (summary?.studentAttendanceRate || 0) >= 90
-                                    ? "bg-emerald-100 text-emerald-800"
-                                    : (summary?.studentAttendanceRate || 0) >= 80
-                                    ? "bg-amber-100 text-amber-800"
-                                    : "bg-red-100 text-red-800"
-                            }`}>
-                                {(summary?.studentAttendanceRate || 0) >= 90 ? "Healthy" : (summary?.studentAttendanceRate || 0) >= 80 ? "Attention" : "Critical"}
+                        <span className="text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Student Attendance
+                        </span>
+                        <div className="mt-2">
+                            <span className="text-3xl font-extrabold text-gray-900">
+                                {summary && summary.totalStudentRecords > 0 ? `${summary.studentAttendanceRate}%` : "—"}
                             </span>
                         </div>
                         <p className="text-xs text-gray-400 mt-1">
-                            {summary?.totalEnrolledStudents || 0} enrolled students
+                            {summary?.totalEnrolledStudents || 0} enrolled · {summary?.totalStudentRecords || 0} records
                         </p>
                     </CardContent>
                 </Card>
 
                 {/* 2. Teacher Attendance Rate */}
-                <Card className="border-gray-200 shadow-sm hover:border-blue-300 transition-colors">
+                <Card className="border-gray-200 shadow-sm">
                     <CardContent className="p-4">
-                        <div className="flex items-center justify-between">
-                            <span className="text-xs font-semibold text-gray-500">Teacher Attendance</span>
-                            <div className="p-1.5 bg-blue-50 text-blue-600 rounded-md">
-                                <UserCheck className="w-4 h-4" />
-                            </div>
-                        </div>
-                        <div className="mt-2 flex items-baseline justify-between">
-                            <span className="text-2xl font-bold text-gray-900">
-                                {summary ? `${summary.teacherAttendanceRate}%` : "—"}
-                            </span>
-                            <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-800">
-                                Term Avg
+                        <span className="text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Teacher Attendance
+                        </span>
+                        <div className="mt-2">
+                            <span className="text-3xl font-extrabold text-gray-900">
+                                {summary && summary.totalTeacherRecords > 0 ? `${summary.teacherAttendanceRate}%` : "—"}
                             </span>
                         </div>
                         <p className="text-xs text-gray-400 mt-1">
-                            {summary?.totalActiveTeachers || 0} active teachers
+                            {summary?.totalActiveTeachers || 0} active teachers · {summary?.totalTeacherRecords || 0} records
                         </p>
                     </CardContent>
                 </Card>
@@ -361,19 +336,13 @@ export default function AttendanceOverviewPage() {
                 {/* 3. Students Today */}
                 <Card className="border-gray-200 shadow-sm">
                     <CardContent className="p-4">
-                        <div className="flex items-center justify-between">
-                            <span className="text-xs font-semibold text-gray-500">Students Today</span>
-                            <div className="p-1.5 bg-indigo-50 text-indigo-600 rounded-md">
-                                <School className="w-4 h-4" />
-                            </div>
-                        </div>
-                        <div className="mt-2 flex items-baseline justify-between">
-                            <span className="text-2xl font-bold text-gray-900">
-                                {today ? `${today.student.present + today.student.late}` : "0"}
-                                <span className="text-xs font-normal text-gray-400"> / {today?.student.totalEnrolled || 0}</span>
-                            </span>
-                            <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-800">
-                                {today?.student.rate || 0}%
+                        <span className="text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Students Today
+                        </span>
+                        <div className="mt-2">
+                            <span className="text-3xl font-extrabold text-gray-900">
+                                {today ? (today.student.present + today.student.late) : 0}
+                                <span className="text-sm font-normal text-gray-400"> / {today?.student.totalEnrolled || 0}</span>
                             </span>
                         </div>
                         <p className="text-xs text-gray-400 mt-1">
@@ -385,19 +354,13 @@ export default function AttendanceOverviewPage() {
                 {/* 4. Teachers Today */}
                 <Card className="border-gray-200 shadow-sm">
                     <CardContent className="p-4">
-                        <div className="flex items-center justify-between">
-                            <span className="text-xs font-semibold text-gray-500">Teachers Today</span>
-                            <div className="p-1.5 bg-purple-50 text-purple-600 rounded-md">
-                                <Users className="w-4 h-4" />
-                            </div>
-                        </div>
-                        <div className="mt-2 flex items-baseline justify-between">
-                            <span className="text-2xl font-bold text-gray-900">
-                                {today ? `${today.teacher.present + today.teacher.late}` : "0"}
-                                <span className="text-xs font-normal text-gray-400"> / {today?.teacher.totalActive || 0}</span>
-                            </span>
-                            <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-purple-100 text-purple-800">
-                                {today?.teacher.rate || 0}%
+                        <span className="text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Teachers Today
+                        </span>
+                        <div className="mt-2">
+                            <span className="text-3xl font-extrabold text-gray-900">
+                                {today ? (today.teacher.present + today.teacher.late) : 0}
+                                <span className="text-sm font-normal text-gray-400"> / {today?.teacher.totalActive || 0}</span>
                             </span>
                         </div>
                         <p className="text-xs text-gray-400 mt-1">
@@ -579,11 +542,6 @@ export default function AttendanceOverviewPage() {
                             Attendance rate by grade and section
                         </p>
                     </div>
-                    <div className="flex items-center space-x-2 text-xs">
-                        <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold bg-emerald-100 text-emerald-800">≥ 90% Healthy</span>
-                        <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold bg-amber-100 text-amber-800">80-89% Attention</span>
-                        <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold bg-red-100 text-red-800">&lt; 80% Critical</span>
-                    </div>
                 </CardHeader>
                 <CardContent className="p-0">
                     {gradeBreakdown.length === 0 ? (
@@ -601,18 +559,20 @@ export default function AttendanceOverviewPage() {
                                             className="p-4 sm:px-6 flex items-center justify-between cursor-pointer hover:bg-gray-50"
                                         >
                                             <div className="flex items-center space-x-3">
-                                                <div className={`w-3 h-3 rounded-full ${
-                                                    grade.healthStatus === "Healthy"
+                                                <div className={`w-2.5 h-2.5 rounded-full ${
+                                                    grade.totalRecords === 0
+                                                        ? "bg-gray-300"
+                                                        : grade.healthStatus === "Healthy"
                                                         ? "bg-emerald-500"
                                                         : grade.healthStatus === "Attention"
                                                         ? "bg-amber-500"
                                                         : "bg-red-500"
                                                 }`} />
                                                 <div>
-                                                    <h3 className="font-bold text-gray-900 text-sm sm:text-base">
+                                                    <h3 className="font-semibold text-gray-900 text-sm">
                                                         {grade.gradeName}
                                                     </h3>
-                                                    <p className="text-xs text-gray-500">
+                                                    <p className="text-xs text-gray-400">
                                                         {grade.totalStudents} Students • {grade.sections.length} Sections
                                                     </p>
                                                 </div>
@@ -620,13 +580,13 @@ export default function AttendanceOverviewPage() {
 
                                             <div className="flex items-center space-x-4">
                                                 <div className="text-right">
-                                                    <span className="text-base font-extrabold text-gray-900">
-                                                        {grade.attendanceRate}%
+                                                    <span className="text-base font-bold text-gray-900">
+                                                        {grade.totalRecords > 0 ? `${grade.attendanceRate}%` : "—"}
                                                     </span>
                                                     <p className="text-[10px] text-gray-400">Term Average</p>
                                                 </div>
                                                 <div className="text-gray-400">
-                                                    {isExpanded ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
+                                                    {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                                                 </div>
                                             </div>
                                         </div>
@@ -672,16 +632,20 @@ export default function AttendanceOverviewPage() {
                                                                         <td className="py-2.5 text-blue-700">
                                                                             {sec.excusedCount}
                                                                         </td>
-                                                                        <td className="py-2.5 text-right font-extrabold text-gray-900">
-                                                                            <span className={`inline-block px-2 py-0.5 rounded ${
-                                                                                sec.healthStatus === "Healthy"
-                                                                                    ? "bg-emerald-100 text-emerald-800"
-                                                                                    : sec.healthStatus === "Attention"
-                                                                                    ? "bg-amber-100 text-amber-800"
-                                                                                    : "bg-red-100 text-red-800"
-                                                                            }`}>
-                                                                                {sec.attendanceRate}%
-                                                                            </span>
+                                                                        <td className="py-2.5 text-right font-semibold text-gray-900">
+                                                                            {sec.totalRecords > 0 ? (
+                                                                                <span className={`inline-block px-2 py-0.5 rounded ${
+                                                                                    sec.healthStatus === "Healthy"
+                                                                                        ? "bg-emerald-100 text-emerald-800"
+                                                                                        : sec.healthStatus === "Attention"
+                                                                                        ? "bg-amber-100 text-amber-800"
+                                                                                        : "bg-red-100 text-red-800"
+                                                                                }`}>
+                                                                                    {sec.attendanceRate}%
+                                                                                </span>
+                                                                            ) : (
+                                                                                <span className="text-gray-400">—</span>
+                                                                            )}
                                                                         </td>
                                                                         <td className="py-2.5 text-right">
                                                                             <button

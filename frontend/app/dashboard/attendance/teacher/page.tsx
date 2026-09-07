@@ -261,14 +261,13 @@ export default function TeacherAttendancePage() {
     return (
         <div className="space-y-6 text-black">
             {/* Header */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-900 flex items-center space-x-2">
-                        <Users className="w-7 h-7 text-[#006b3f]" />
-                        <span>Faculty Attendance Oversight</span>
+                    <h1 className="text-xl font-bold text-gray-900 flex items-center space-x-2">
+                        <span>Faculty Attendance</span>
                     </h1>
-                    <p className="text-sm text-gray-500 mt-1">
-                        Comprehensive teacher presence records, check-in log investigation, and absence streak monitoring.
+                    <p className="text-xs text-gray-500 mt-0.5">
+                        Teacher presence records, check-in log, and daily roster
                     </p>
                 </div>
 
@@ -277,7 +276,7 @@ export default function TeacherAttendancePage() {
                         <select
                             value={selectedYearId}
                             onChange={(e) => { setSelectedYearId(e.target.value); setPage(1); }}
-                            className="border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white font-medium shadow-sm focus:ring-2 focus:ring-[#006b3f]"
+                            className="border border-gray-300 rounded-lg px-2.5 py-1.5 text-xs bg-white font-medium shadow-sm focus:ring-2 focus:ring-[#006b3f]"
                         >
                             {years.map(y => (
                                 <option key={y.id} value={y.id}>
@@ -390,24 +389,26 @@ export default function TeacherAttendancePage() {
                     {oversightData?.summary && (
                         <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
                             <div className="bg-white p-3 rounded-lg border border-gray-200 shadow-sm">
-                                <span className="text-[11px] font-bold text-gray-500 uppercase">Total Logged</span>
-                                <p className="text-xl font-extrabold text-gray-900">{oversightData.summary.totalMarked}</p>
+                                <span className="text-[11px] font-semibold text-gray-500 uppercase">Total Logged</span>
+                                <p className="text-xl font-bold text-gray-900 mt-0.5">{oversightData.summary.totalMarked}</p>
                             </div>
-                            <div className="bg-blue-50/70 p-3 rounded-lg border border-blue-200">
-                                <span className="text-[11px] font-bold text-blue-800 uppercase">Presence Rate</span>
-                                <p className="text-xl font-extrabold text-blue-900">{oversightData.summary.attendanceRate}%</p>
+                            <div className="bg-white p-3 rounded-lg border border-gray-200 shadow-sm">
+                                <span className="text-[11px] font-semibold text-gray-500 uppercase">Presence Rate</span>
+                                <p className="text-xl font-bold text-gray-900 mt-0.5">
+                                    {oversightData.summary.totalMarked > 0 ? `${oversightData.summary.attendanceRate}%` : "—"}
+                                </p>
                             </div>
-                            <div className="bg-emerald-50/50 p-3 rounded-lg border border-emerald-100">
-                                <span className="text-[11px] font-bold text-emerald-700 uppercase">Present</span>
-                                <p className="text-xl font-extrabold text-emerald-800">{oversightData.summary.presentCount}</p>
+                            <div className="bg-white p-3 rounded-lg border border-gray-200 shadow-sm">
+                                <span className="text-[11px] font-semibold text-emerald-700 uppercase">Present</span>
+                                <p className="text-xl font-bold text-emerald-700 mt-0.5">{oversightData.summary.presentCount}</p>
                             </div>
-                            <div className="bg-amber-50/60 p-3 rounded-lg border border-amber-200">
-                                <span className="text-[11px] font-bold text-amber-800 uppercase">Late</span>
-                                <p className="text-xl font-extrabold text-amber-900">{oversightData.summary.lateCount}</p>
+                            <div className="bg-white p-3 rounded-lg border border-gray-200 shadow-sm">
+                                <span className="text-[11px] font-semibold text-amber-700 uppercase">Late</span>
+                                <p className="text-xl font-bold text-amber-700 mt-0.5">{oversightData.summary.lateCount}</p>
                             </div>
-                            <div className="bg-red-50/60 p-3 rounded-lg border border-red-200">
-                                <span className="text-[11px] font-bold text-red-800 uppercase">Absent</span>
-                                <p className="text-xl font-extrabold text-red-900">{oversightData.summary.absentCount}</p>
+                            <div className="bg-white p-3 rounded-lg border border-gray-200 shadow-sm">
+                                <span className="text-[11px] font-semibold text-red-700 uppercase">Absent</span>
+                                <p className="text-xl font-bold text-red-700 mt-0.5">{oversightData.summary.absentCount}</p>
                             </div>
                         </div>
                     )}

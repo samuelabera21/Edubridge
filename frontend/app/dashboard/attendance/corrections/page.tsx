@@ -276,14 +276,13 @@ export default function AttendanceCorrectionsPage() {
     return (
         <div className="space-y-6 text-black">
             {/* Header */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-900 flex items-center space-x-2">
-                        <FileCheck className="w-7 h-7 text-[#006b3f]" />
-                        <span>Official Attendance Corrections & Overrides</span>
+                    <h1 className="text-xl font-bold text-gray-900 flex items-center space-x-2">
+                        <span>Attendance Corrections & Overrides</span>
                     </h1>
-                    <p className="text-sm text-gray-500 mt-1">
-                        Administrative authorization of attendance adjustments, medical exemptions, and immutable audit trails.
+                    <p className="text-xs text-gray-500 mt-0.5">
+                        Attendance adjustments, medical exemptions, and audit log
                     </p>
                 </div>
 
@@ -292,7 +291,7 @@ export default function AttendanceCorrectionsPage() {
                         <select
                             value={selectedYearId}
                             onChange={(e) => { setSelectedYearId(e.target.value); setPage(1); }}
-                            className="border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white font-medium shadow-sm focus:ring-2 focus:ring-[#006b3f]"
+                            className="border border-gray-300 rounded-lg px-2.5 py-1.5 text-xs bg-white font-medium shadow-sm focus:ring-2 focus:ring-[#006b3f]"
                         >
                             {years.map(y => (
                                 <option key={y.id} value={y.id}>
@@ -303,10 +302,10 @@ export default function AttendanceCorrectionsPage() {
                     )}
                     <Button
                         onClick={() => setIsCreateModalOpen(true)}
-                        className="bg-[#006b3f] hover:bg-[#005a34] text-white flex items-center space-x-1.5"
+                        className="h-8 px-3 text-xs bg-[#006b3f] hover:bg-[#005a34] text-white flex items-center space-x-1.5"
                     >
-                        <Plus className="w-4 h-4" />
-                        <span>New Override Request</span>
+                        <Plus className="w-3.5 h-3.5" />
+                        <span>New Override</span>
                     </Button>
                 </div>
             </div>
@@ -317,48 +316,48 @@ export default function AttendanceCorrectionsPage() {
                     onClick={() => { setStatusFilter("PENDING"); setPage(1); }}
                     className={`p-4 rounded-xl border cursor-pointer transition-all ${
                         statusFilter === "PENDING"
-                            ? "bg-amber-100/70 border-amber-300 ring-2 ring-amber-400"
-                            : "bg-amber-50/60 border-amber-200 hover:bg-amber-50"
+                            ? "bg-amber-50 border-amber-300 ring-2 ring-amber-400"
+                            : "bg-white border-gray-200 hover:bg-gray-50"
                     }`}
                 >
-                    <span className="text-[11px] font-bold text-amber-800 uppercase">Pending Authorization</span>
-                    <p className="text-2xl font-extrabold text-amber-900 mt-1">{summary?.pendingCount || 0}</p>
+                    <span className="text-xs font-medium text-gray-500 uppercase tracking-wider">Pending</span>
+                    <p className="text-2xl font-bold text-amber-600 mt-1">{summary?.pendingCount || 0}</p>
                 </div>
 
                 <div 
                     onClick={() => { setStatusFilter("APPROVED"); setPage(1); }}
                     className={`p-4 rounded-xl border cursor-pointer transition-all ${
                         statusFilter === "APPROVED"
-                            ? "bg-emerald-100/70 border-emerald-300 ring-2 ring-emerald-400"
-                            : "bg-emerald-50/60 border-emerald-200 hover:bg-emerald-50"
+                            ? "bg-emerald-50 border-emerald-300 ring-2 ring-emerald-400"
+                            : "bg-white border-gray-200 hover:bg-gray-50"
                     }`}
                 >
-                    <span className="text-[11px] font-bold text-emerald-800 uppercase">Approved Overrides</span>
-                    <p className="text-2xl font-extrabold text-emerald-900 mt-1">{summary?.approvedCount || 0}</p>
+                    <span className="text-xs font-medium text-gray-500 uppercase tracking-wider">Approved</span>
+                    <p className="text-2xl font-bold text-emerald-600 mt-1">{summary?.approvedCount || 0}</p>
                 </div>
 
                 <div 
                     onClick={() => { setStatusFilter("REJECTED"); setPage(1); }}
                     className={`p-4 rounded-xl border cursor-pointer transition-all ${
                         statusFilter === "REJECTED"
-                            ? "bg-red-100/70 border-red-300 ring-2 ring-red-400"
-                            : "bg-red-50/60 border-red-200 hover:bg-red-50"
+                            ? "bg-red-50 border-red-300 ring-2 ring-red-400"
+                            : "bg-white border-gray-200 hover:bg-gray-50"
                     }`}
                 >
-                    <span className="text-[11px] font-bold text-red-800 uppercase">Rejected Requests</span>
-                    <p className="text-2xl font-extrabold text-red-900 mt-1">{summary?.rejectedCount || 0}</p>
+                    <span className="text-xs font-medium text-gray-500 uppercase tracking-wider">Rejected</span>
+                    <p className="text-2xl font-bold text-red-600 mt-1">{summary?.rejectedCount || 0}</p>
                 </div>
 
                 <div 
                     onClick={() => { setStatusFilter("ALL"); setPage(1); }}
                     className={`p-4 rounded-xl border cursor-pointer transition-all ${
                         statusFilter === "ALL"
-                            ? "bg-gray-100 border-gray-400 ring-2 ring-gray-400"
+                            ? "bg-gray-50 border-gray-400 ring-2 ring-gray-400"
                             : "bg-white border-gray-200 hover:bg-gray-50"
                     }`}
                 >
-                    <span className="text-[11px] font-bold text-gray-500 uppercase">Total Audit Records</span>
-                    <p className="text-2xl font-extrabold text-gray-900 mt-1">{summary?.total || 0}</p>
+                    <span className="text-xs font-medium text-gray-500 uppercase tracking-wider">Total</span>
+                    <p className="text-2xl font-bold text-gray-900 mt-1">{summary?.totalCount || 0}</p>
                 </div>
             </div>
 

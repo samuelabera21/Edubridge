@@ -137,14 +137,13 @@ export default function AttendanceAlertsPage() {
     return (
         <div className="space-y-6 text-black">
             {/* Header */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-900 flex items-center space-x-2">
-                        <ShieldAlert className="w-7 h-7 text-red-600" />
-                        <span>Absence Risk & Early Warning Alerts</span>
+                    <h1 className="text-xl font-bold text-gray-900 flex items-center space-x-2">
+                        <span>Absence Risk Alerts</span>
                     </h1>
-                    <p className="text-sm text-gray-500 mt-1">
-                        Automated detection of consecutive student absences, chronic absenteeism, and section deficits.
+                    <p className="text-xs text-gray-500 mt-0.5">
+                        Consecutive absences, chronic absenteeism, and section deficits
                     </p>
                 </div>
 
@@ -153,7 +152,7 @@ export default function AttendanceAlertsPage() {
                         <select
                             value={selectedYearId}
                             onChange={(e) => setSelectedYearId(e.target.value)}
-                            className="border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white font-medium shadow-sm focus:ring-2 focus:ring-[#006b3f]"
+                            className="border border-gray-300 rounded-lg px-2.5 py-1.5 text-xs bg-white font-medium shadow-sm focus:ring-2 focus:ring-[#006b3f]"
                         >
                             {years.map(y => (
                                 <option key={y.id} value={y.id}>
@@ -167,9 +166,9 @@ export default function AttendanceAlertsPage() {
                         size="sm"
                         onClick={() => loadAlerts(true)}
                         disabled={refreshing}
-                        className="flex items-center space-x-1"
+                        className="h-8 px-2.5 text-xs flex items-center space-x-1"
                     >
-                        <RefreshCw className={`w-4 h-4 ${refreshing ? "animate-spin" : ""}`} />
+                        <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? "animate-spin" : ""}`} />
                         <span>Refresh</span>
                     </Button>
                 </div>
@@ -177,35 +176,32 @@ export default function AttendanceAlertsPage() {
 
             {/* Severity Counters */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div className="p-4 bg-red-50/80 border border-red-200 rounded-xl flex items-center justify-between">
-                    <div>
-                        <span className="text-xs font-bold text-red-800 uppercase">Critical Risks (Immediate Action)</span>
-                        <p className="text-2xl font-extrabold text-red-900">{criticalCount}</p>
-                    </div>
-                    <div className="p-3 bg-red-100 rounded-full text-red-700">
-                        <AlertTriangle className="w-6 h-6" />
-                    </div>
-                </div>
+                <Card className="border-gray-200 shadow-sm">
+                    <CardContent className="p-4">
+                        <span className="text-xs font-medium text-gray-500 uppercase tracking-wider">Critical Alerts</span>
+                        <div className="mt-1">
+                            <span className="text-2xl font-bold text-red-600">{criticalCount}</span>
+                        </div>
+                    </CardContent>
+                </Card>
 
-                <div className="p-4 bg-amber-50/80 border border-amber-200 rounded-xl flex items-center justify-between">
-                    <div>
-                        <span className="text-xs font-bold text-amber-800 uppercase">Attention Warnings</span>
-                        <p className="text-2xl font-extrabold text-amber-900">{warningCount}</p>
-                    </div>
-                    <div className="p-3 bg-amber-100 rounded-full text-amber-700">
-                        <Clock className="w-6 h-6" />
-                    </div>
-                </div>
+                <Card className="border-gray-200 shadow-sm">
+                    <CardContent className="p-4">
+                        <span className="text-xs font-medium text-gray-500 uppercase tracking-wider">Warnings</span>
+                        <div className="mt-1">
+                            <span className="text-2xl font-bold text-amber-600">{warningCount}</span>
+                        </div>
+                    </CardContent>
+                </Card>
 
-                <div className="p-4 bg-white border border-gray-200 rounded-xl flex items-center justify-between shadow-sm">
-                    <div>
-                        <span className="text-xs font-bold text-gray-500 uppercase">Total Flagged Items</span>
-                        <p className="text-2xl font-extrabold text-gray-900">{alerts.length}</p>
-                    </div>
-                    <div className="p-3 bg-gray-100 rounded-full text-gray-700">
-                        <ShieldAlert className="w-6 h-6" />
-                    </div>
-                </div>
+                <Card className="border-gray-200 shadow-sm">
+                    <CardContent className="p-4">
+                        <span className="text-xs font-medium text-gray-500 uppercase tracking-wider">Total Active</span>
+                        <div className="mt-1">
+                            <span className="text-2xl font-bold text-gray-900">{alerts.length}</span>
+                        </div>
+                    </CardContent>
+                </Card>
             </div>
 
             {/* Filter Toolbar */}

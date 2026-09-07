@@ -331,14 +331,13 @@ export default function StudentAttendancePage() {
     return (
         <div className="space-y-6 text-black">
             {/* Header */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-900 flex items-center space-x-2">
-                        <ClipboardCheck className="w-7 h-7 text-[#006b3f]" />
-                        <span>Student Attendance Oversight</span>
+                    <h1 className="text-xl font-bold text-gray-900 flex items-center space-x-2">
+                        <span>Student Attendance</span>
                     </h1>
-                    <p className="text-sm text-gray-500 mt-1">
-                        School-wide attendance records audit, student presence streaks, and section roster management.
+                    <p className="text-xs text-gray-500 mt-0.5">
+                        School-wide attendance records audit and section roll-call
                     </p>
                 </div>
 
@@ -348,7 +347,7 @@ export default function StudentAttendancePage() {
                         <select
                             value={selectedYearId}
                             onChange={(e) => { setSelectedYearId(e.target.value); setPage(1); }}
-                            className="border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white font-medium shadow-sm focus:ring-2 focus:ring-[#006b3f]"
+                            className="border border-gray-300 rounded-lg px-2.5 py-1.5 text-xs bg-white font-medium shadow-sm focus:ring-2 focus:ring-[#006b3f]"
                         >
                             {years.map(y => (
                                 <option key={y.id} value={y.id}>
@@ -493,24 +492,26 @@ export default function StudentAttendancePage() {
                     {investigationData?.summary && (
                         <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
                             <div className="bg-white p-3 rounded-lg border border-gray-200 shadow-sm">
-                                <span className="text-[11px] font-bold text-gray-500 uppercase">Filtered Records</span>
-                                <p className="text-xl font-extrabold text-gray-900">{investigationData.summary.total}</p>
+                                <span className="text-[11px] font-semibold text-gray-500 uppercase">Filtered Records</span>
+                                <p className="text-xl font-bold text-gray-900 mt-0.5">{investigationData.summary.total}</p>
                             </div>
-                            <div className="bg-emerald-50/70 p-3 rounded-lg border border-emerald-200">
-                                <span className="text-[11px] font-bold text-emerald-800 uppercase">Presence Rate</span>
-                                <p className="text-xl font-extrabold text-emerald-900">{investigationData.summary.attendanceRate}%</p>
+                            <div className="bg-white p-3 rounded-lg border border-gray-200 shadow-sm">
+                                <span className="text-[11px] font-semibold text-gray-500 uppercase">Presence Rate</span>
+                                <p className="text-xl font-bold text-gray-900 mt-0.5">
+                                    {investigationData.summary.total > 0 ? `${investigationData.summary.attendanceRate}%` : "—"}
+                                </p>
                             </div>
-                            <div className="bg-emerald-50/40 p-3 rounded-lg border border-emerald-100">
-                                <span className="text-[11px] font-bold text-emerald-700 uppercase">Present</span>
-                                <p className="text-xl font-bold text-emerald-800">{investigationData.summary.presentCount}</p>
+                            <div className="bg-white p-3 rounded-lg border border-gray-200 shadow-sm">
+                                <span className="text-[11px] font-semibold text-emerald-700 uppercase">Present</span>
+                                <p className="text-xl font-bold text-emerald-700 mt-0.5">{investigationData.summary.presentCount}</p>
                             </div>
-                            <div className="bg-amber-50/60 p-3 rounded-lg border border-amber-200">
-                                <span className="text-[11px] font-bold text-amber-800 uppercase">Late</span>
-                                <p className="text-xl font-bold text-amber-900">{investigationData.summary.lateCount}</p>
+                            <div className="bg-white p-3 rounded-lg border border-gray-200 shadow-sm">
+                                <span className="text-[11px] font-semibold text-amber-700 uppercase">Late</span>
+                                <p className="text-xl font-bold text-amber-700 mt-0.5">{investigationData.summary.lateCount}</p>
                             </div>
-                            <div className="bg-red-50/60 p-3 rounded-lg border border-red-200">
-                                <span className="text-[11px] font-bold text-red-800 uppercase">Absent</span>
-                                <p className="text-xl font-bold text-red-900">{investigationData.summary.absentCount}</p>
+                            <div className="bg-white p-3 rounded-lg border border-gray-200 shadow-sm">
+                                <span className="text-[11px] font-semibold text-red-700 uppercase">Absent</span>
+                                <p className="text-xl font-bold text-red-700 mt-0.5">{investigationData.summary.absentCount}</p>
                             </div>
                         </div>
                     )}

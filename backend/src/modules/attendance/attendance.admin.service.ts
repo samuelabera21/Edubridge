@@ -130,7 +130,7 @@ export class AttendanceAdminService {
         const studentEffectivePresent = studentPresentCount + studentLateCount;
         const studentAttendanceRate = studentTotalRecords > 0
             ? Number(((studentEffectivePresent / studentTotalRecords) * 100).toFixed(1))
-            : 100;
+            : 0;
 
         // 3. Teacher attendance records
         const teacherWhere = {
@@ -155,7 +155,7 @@ export class AttendanceAdminService {
         const teacherEffectivePresent = teacherPresentCount + teacherLateCount;
         const teacherAttendanceRate = teacherTotalRecords > 0
             ? Number(((teacherEffectivePresent / teacherTotalRecords) * 100).toFixed(1))
-            : 100;
+            : 0;
 
         // 4. Today's Snapshot
         const todayStudentRecords = await prisma.studentAttendance.findMany({
@@ -360,11 +360,13 @@ export class AttendanceAdminService {
                 const secEffectivePresent = secPresent + secLate;
                 const secRate = secRecords > 0
                     ? Number(((secEffectivePresent / secRecords) * 100).toFixed(1))
-                    : 100;
+                    : 0;
 
                 let healthStatus: "Healthy" | "Attention" | "Critical" = "Healthy";
-                if (secRate < 80) healthStatus = "Critical";
-                else if (secRate < 90) healthStatus = "Attention";
+                if (secRecords > 0) {
+                    if (secRate < 80) healthStatus = "Critical";
+                    else if (secRate < 90) healthStatus = "Attention";
+                }
 
                 return {
                     id: sec.id,
@@ -383,11 +385,13 @@ export class AttendanceAdminService {
             const gradeEffectivePresent = totalGradePresent + totalGradeLate;
             const gradeRate = totalGradeRecords > 0
                 ? Number(((gradeEffectivePresent / totalGradeRecords) * 100).toFixed(1))
-                : 100;
+                : 0;
 
             let healthStatus: "Healthy" | "Attention" | "Critical" = "Healthy";
-            if (gradeRate < 80) healthStatus = "Critical";
-            else if (gradeRate < 90) healthStatus = "Attention";
+            if (totalGradeRecords > 0) {
+                if (gradeRate < 80) healthStatus = "Critical";
+                else if (gradeRate < 90) healthStatus = "Attention";
+            }
 
             return {
                 gradeId: sg.gradeId,
@@ -556,7 +560,7 @@ export class AttendanceAdminService {
         }
 
         const effectivePresent = (countsMap["PRESENT"] || 0) + (countsMap["LATE"] || 0);
-        const aggregateRate = total > 0 ? Number(((effectivePresent / total) * 100).toFixed(1)) : 100;
+        const aggregateRate = total > 0 ? Number(((effectivePresent / total) * 100).toFixed(1)) : 0;
 
         return {
             data: records.map(r => ({
@@ -651,7 +655,7 @@ export class AttendanceAdminService {
         const effectivePresent = presentCount + lateCount;
         const attendanceRate = totalSessions > 0
             ? Number(((effectivePresent / totalSessions) * 100).toFixed(1))
-            : 100;
+            : 0;
 
         // Calculate consecutive absence streak from most recent records
         let consecutiveAbsences = 0;
@@ -785,7 +789,7 @@ export class AttendanceAdminService {
         }
 
         const effectivePresent = (countsMap["PRESENT"] || 0) + (countsMap["LATE"] || 0);
-        const aggregateRate = total > 0 ? Number(((effectivePresent / total) * 100).toFixed(1)) : 100;
+        const aggregateRate = total > 0 ? Number(((effectivePresent / total) * 100).toFixed(1)) : 0;
 
         return {
             data: records.map(r => ({
@@ -871,7 +875,7 @@ export class AttendanceAdminService {
         const effectivePresent = presentCount + lateCount;
         const attendanceRate = totalDays > 0
             ? Number(((effectivePresent / totalDays) * 100).toFixed(1))
-            : 100;
+            : 0;
 
         return {
             teacher: {
