@@ -283,8 +283,14 @@ export class AssessmentService {
         };
     }
 
-    static async getSubjectAnalytics(organizationId: string) {
+    static async getSubjectAnalytics(organizationId: string, academicYearId?: string) {
         const results = await prisma.studentResult.findMany({
+            where: {
+                assessment: {
+                    organizationId,
+                    ...(academicYearId ? { academicYearId } : {})
+                }
+            },
             include: {
                 assessment: {
                     include: {

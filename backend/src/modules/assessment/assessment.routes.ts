@@ -9,13 +9,27 @@ import {
     getStudentReportCard,
     getSubjectAnalytics,
     getAtRiskStudents,
-    getGradebookApprovals
+    getGradebookApprovals,
+    getAdminOverview,
+    getAdminResults,
+    getAdminStudentResultDetail,
+    getAdminFilterOptions,
+    getAdminStudentsRoster
 } from "./assessment.controller.js";
 import { requirePermission, requireScope } from "../authentication/authorization.middleware.js";
 
 const router = Router();
 
 router.use(requireScope("SCHOOL"));
+
+// ============================================================
+// SCHOOL ADMINISTRATOR / PRINCIPAL OVERSIGHT ROUTES
+// ============================================================
+router.get("/admin/overview", requirePermission("ACADEMIC:VIEW"), getAdminOverview);
+router.get("/admin/results", requirePermission("ACADEMIC:VIEW"), getAdminResults);
+router.get("/admin/students/:enrollmentId", requirePermission("ACADEMIC:VIEW"), getAdminStudentResultDetail);
+router.get("/admin/filters", requirePermission("ACADEMIC:VIEW"), getAdminFilterOptions);
+router.get("/admin/roster", requirePermission("ACADEMIC:VIEW"), getAdminStudentsRoster);
 
 /**
  * @openapi

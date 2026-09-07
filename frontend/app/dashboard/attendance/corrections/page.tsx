@@ -357,7 +357,7 @@ export default function AttendanceCorrectionsPage() {
                     }`}
                 >
                     <span className="text-xs font-medium text-gray-500 uppercase tracking-wider">Total</span>
-                    <p className="text-2xl font-bold text-gray-900 mt-1">{summary?.totalCount || 0}</p>
+                    <p className="text-2xl font-bold text-gray-900 mt-1">{summary?.total || 0}</p>
                 </div>
             </div>
 
