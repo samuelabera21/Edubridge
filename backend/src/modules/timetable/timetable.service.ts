@@ -28,6 +28,43 @@ export class TimetableService {
     }
 
     /**
+     * Auto-generates standard Ethiopian school instructional periods (Periods 1-7, Morning Recess, Lunch)
+     * when no periods are yet configured for the school.
+     */
+    static async generateDefaultPeriods(organizationId: string) {
+        const existing = await prisma.classPeriod.count({ where: { organizationId } });
+        if (existing > 0) {
+            return prisma.classPeriod.findMany({ where: { organizationId }, orderBy: { startTime: "asc" } });
+        }
+
+        const defaultPeriods = [
+            { name: "Period 1", startTime: "08:00", endTime: "08:45", isBreak: false },
+            { name: "Period 2", startTime: "08:45", endTime: "09:30", isBreak: false },
+            { name: "Morning Recess", startTime: "09:30", endTime: "09:50", isBreak: true },
+            { name: "Period 3", startTime: "09:50", endTime: "10:35", isBreak: false },
+            { name: "Period 4", startTime: "10:35", endTime: "11:20", isBreak: false },
+            { name: "Lunch Break", startTime: "11:20", endTime: "12:30", isBreak: true },
+            { name: "Period 5", startTime: "12:30", endTime: "13:15", isBreak: false },
+            { name: "Period 6", startTime: "13:15", endTime: "14:00", isBreak: false },
+            { name: "Period 7", startTime: "14:00", endTime: "14:45", isBreak: false }
+        ];
+
+        for (const p of defaultPeriods) {
+            await prisma.classPeriod.create({
+                data: {
+                    organizationId,
+                    name: p.name,
+                    startTime: p.startTime,
+                    endTime: p.endTime,
+                    isBreak: p.isBreak
+                }
+            });
+        }
+
+        return prisma.classPeriod.findMany({ where: { organizationId }, orderBy: { startTime: "asc" } });
+    }
+
+    /**
      * Section-Oriented Timetable Workspace
      * Aggregates:
      * - Academic year status & lock state
@@ -125,10 +162,15 @@ export class TimetableService {
         });
         const operatingDays: number[] = (config?.operatingDays as number[]) || [1, 2, 3, 4, 5];
 
-        const periods = await prisma.classPeriod.findMany({
+        let periods = await prisma.classPeriod.findMany({
             where: { organizationId },
             orderBy: { startTime: "asc" }
         });
+
+        // If no class periods exist yet for this school, auto-initialize standard Ethiopian periods
+        if (periods.length === 0) {
+            periods = await TimetableService.generateDefaultPeriods(organizationId);
+        }
 
         // 5. Academic Calendar Events (Closed Days / Holidays)
         const calendar = await prisma.academicCalendar.findUnique({

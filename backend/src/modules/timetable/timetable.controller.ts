@@ -50,6 +50,18 @@ export const getClassPeriods = async (req: Request, res: Response) => {
     }
 };
 
+export const generateDefaultPeriods = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        if (!organizationId) return res.status(403).json({ error: "Missing school scope" });
+
+        const periods = await TimetableService.generateDefaultPeriods(organizationId);
+        return res.status(201).json(periods);
+    } catch (error: any) {
+        return res.status(500).json({ error: error.message || "Failed to generate default periods" });
+    }
+};
+
 export const assignTimetable = async (req: Request, res: Response) => {
     try {
         const organizationId = (req as any).accessScope?.id;

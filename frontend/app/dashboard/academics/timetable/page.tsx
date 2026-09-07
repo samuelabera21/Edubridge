@@ -58,6 +58,8 @@ export default function TimetablePage() {
     const [selectedSlotTarget, setSelectedSlotTarget] = useState<{ dayOfWeek: number; periodId: string; periodName: string } | null>(null);
     const [selectedTeachingAssignmentId, setSelectedTeachingAssignmentId] = useState<string>("");
     const [selectedRoomId, setSelectedRoomId] = useState<string>("");
+    const [customDayOfWeek, setCustomDayOfWeek] = useState<number>(1);
+    const [customPeriodId, setCustomPeriodId] = useState<string>("");
 
     // Reassignment Modal
     const [isReassignModalOpen, setIsReassignModalOpen] = useState(false);
@@ -206,7 +208,15 @@ export default function TimetablePage() {
 
     // 5. Assign slot action
     const handleAssignSlot = async () => {
-        if (!selectedSlotTarget || !selectedTeachingAssignmentId || !selectedYearId) return;
+        if (!selectedTeachingAssignmentId || !selectedYearId) return;
+
+        const dayOfWeek = selectedSlotTarget ? selectedSlotTarget.dayOfWeek : customDayOfWeek;
+        const classPeriodId = selectedSlotTarget ? selectedSlotTarget.periodId : customPeriodId;
+
+        if (!dayOfWeek || !classPeriodId) {
+            setConflictError("Please select both a day and an instructional class period.");
+            return;
+        }
 
         try {
             setActionLoading(true);
@@ -215,8 +225,8 @@ export default function TimetablePage() {
             const payload: any = {
                 academicYearId: selectedYearId,
                 teachingAssignmentId: selectedTeachingAssignmentId,
-                classPeriodId: selectedSlotTarget.periodId,
-                dayOfWeek: selectedSlotTarget.dayOfWeek
+                classPeriodId,
+                dayOfWeek
             };
             if (selectedRoomId) {
                 payload.roomId = selectedRoomId;
@@ -244,6 +254,28 @@ export default function TimetablePage() {
             await loadWorkspace(selectedYearId, selectedGradeId, selectedSectionId);
         } catch (err: any) {
             setConflictError(err.message || "Conflict occurred while assigning period.");
+        } finally {
+            setActionLoading(false);
+        }
+    };
+
+    // 5b. Auto-generate standard Ethiopian class periods
+    const handleGenerateDefaultPeriods = async () => {
+        try {
+            setActionLoading(true);
+            setConflictError(null);
+            const res = await fetchApi("/timetable/periods/default", {
+                method: "POST"
+            });
+            if (!res.ok) {
+                const data = await res.json();
+                throw new Error(data.error || "Failed to generate default periods");
+            }
+            setSuccessMessage("Standard Ethiopian class periods (Periods 1-7 + Breaks) generated successfully!");
+            setTimeout(() => setSuccessMessage(null), 4000);
+            await loadWorkspace(selectedYearId, selectedGradeId, selectedSectionId);
+        } catch (err: any) {
+            setConflictError(err.message || "Failed to generate class periods");
         } finally {
             setActionLoading(false);
         }
@@ -786,6 +818,20 @@ export default function TimetablePage() {
                                                                 />
                                                             </div>
                                                         </div>
+
+                                                        {!isDone && !isYearLocked && (
+                                                            <button
+                                                                onClick={() => {
+                                                                    setSelectedTeachingAssignmentId(ta.id);
+                                                                    setSelectedSlotTarget(null);
+                                                                    setIsAssignModalOpen(true);
+                                                                }}
+                                                                className="mt-2.5 w-full py-1.5 px-3 rounded-lg bg-[#4085b3]/10 hover:bg-[#4085b3]/20 text-[#4085b3] text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors border border-[#4085b3]/20"
+                                                            >
+                                                                <Plus className="w-3.5 h-3.5" />
+                                                                <span>Place Lesson into Grid</span>
+                                                            </button>
+                                                        )}
                                                     </div>
                                                 );
                                             })
@@ -797,7 +843,7 @@ export default function TimetablePage() {
                             {/* RIGHT PANEL: Weekly Timetable Grid (65% on lg) */}
                             <div className="lg:col-span-8">
                                 <Card>
-                                    <CardHeader className="py-4 px-5 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                                    <CardHeader className="py-4 px-5 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                                         <div>
                                             <CardTitle className="text-sm font-bold text-slate-900">
                                                 Section {selectedSection.name} Weekly Schedule
@@ -807,9 +853,28 @@ export default function TimetablePage() {
                                             </p>
                                         </div>
                                         <div className="flex items-center gap-2">
-                                            <span className="text-[11px] text-slate-400">
-                                                Click <strong className="text-slate-700">+</strong> to place lesson
-                                            </span>
+                                            {!isYearLocked && (
+                                                <>
+                                                    <Button
+                                                        variant="outline"
+                                                        onClick={() => setIsPeriodModalOpen(true)}
+                                                        className="text-xs flex items-center gap-1 py-1.5 px-3 h-auto"
+                                                    >
+                                                        <Plus className="w-3.5 h-3.5" />
+                                                        <span>Add Period</span>
+                                                    </Button>
+                                                    <Button
+                                                        onClick={() => {
+                                                            setSelectedSlotTarget(null);
+                                                            setIsAssignModalOpen(true);
+                                                        }}
+                                                        className="text-xs flex items-center gap-1 py-1.5 px-3 h-auto"
+                                                    >
+                                                        <Plus className="w-3.5 h-3.5" />
+                                                        <span>Schedule Lesson</span>
+                                                    </Button>
+                                                </>
+                                            )}
                                         </div>
                                     </CardHeader>
 
@@ -830,8 +895,31 @@ export default function TimetablePage() {
                                             <tbody className="divide-y divide-slate-100">
                                                 {workspace.periods?.length === 0 ? (
                                                     <tr>
-                                                        <td colSpan={operatingDaysList.length + 1} className="py-8 text-center text-xs text-slate-400">
-                                                            No periods configured. Use the &quot;Class Periods &amp; Recess&quot; tab to set up school periods.
+                                                        <td colSpan={operatingDaysList.length + 1} className="py-12 px-6 text-center">
+                                                            <div className="max-w-md mx-auto space-y-3">
+                                                                <Clock className="w-10 h-10 text-slate-300 mx-auto" />
+                                                                <h4 className="text-sm font-bold text-slate-800">No Class Periods Defined Yet</h4>
+                                                                <p className="text-xs text-slate-500">
+                                                                    To schedule lessons, this school needs class periods (e.g. Period 1, Period 2, Recess). Click below to generate the standard Ethiopian school period schedule instantly:
+                                                                </p>
+                                                                <div className="flex flex-wrap items-center justify-center gap-2.5 pt-2">
+                                                                    <Button
+                                                                        onClick={handleGenerateDefaultPeriods}
+                                                                        disabled={actionLoading}
+                                                                        className="flex items-center gap-1.5 text-xs bg-[#4085b3] hover:bg-[#356f96]"
+                                                                    >
+                                                                        <span>⚡ Auto-Generate Standard Ethiopian Periods (1-7 + Recess)</span>
+                                                                    </Button>
+                                                                    <Button
+                                                                        variant="outline"
+                                                                        onClick={() => setIsPeriodModalOpen(true)}
+                                                                        className="flex items-center gap-1.5 text-xs"
+                                                                    >
+                                                                        <Plus className="w-3.5 h-3.5" />
+                                                                        <span>Add Custom Period</span>
+                                                                    </Button>
+                                                                </div>
+                                                            </div>
                                                         </td>
                                                     </tr>
                                                 ) : (
@@ -1188,13 +1276,54 @@ export default function TimetablePage() {
                     setSelectedSlotTarget(null);
                     setConflictError(null);
                 }}
-                title={`Schedule Lesson: ${ALL_DAYS.find(d => d.value === selectedSlotTarget?.dayOfWeek)?.label} - ${selectedSlotTarget?.periodName}`}
+                title={
+                    selectedSlotTarget 
+                        ? `Schedule Lesson: ${ALL_DAYS.find(d => d.value === selectedSlotTarget.dayOfWeek)?.label} - ${selectedSlotTarget.periodName}`
+                        : `Schedule Lesson for Section ${selectedSection?.name || ""}`
+                }
                 maxWidth="md"
             >
                 <div className="space-y-4">
                     {conflictError && (
                         <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-red-800 text-xs">
                             {conflictError}
+                        </div>
+                    )}
+
+                    {/* If opened via "Schedule Lesson" or "Place Lesson", pick Day & Period */}
+                    {!selectedSlotTarget && (
+                        <div className="grid grid-cols-2 gap-3 bg-slate-50 p-3 rounded-xl border border-slate-200">
+                            <div>
+                                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                                    Day of Week:
+                                </label>
+                                <select
+                                    value={customDayOfWeek}
+                                    onChange={(e) => setCustomDayOfWeek(Number(e.target.value))}
+                                    className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs text-slate-900 bg-white focus:ring-2 focus:ring-[#4085b3]"
+                                >
+                                    {operatingDaysList.map(d => (
+                                        <option key={d.value} value={d.value}>{d.label}</option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                                    Class Period:
+                                </label>
+                                <select
+                                    value={customPeriodId}
+                                    onChange={(e) => setCustomPeriodId(e.target.value)}
+                                    className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs text-slate-900 bg-white focus:ring-2 focus:ring-[#4085b3]"
+                                >
+                                    <option value="">-- Choose Period --</option>
+                                    {workspace?.periods?.filter((p: any) => !p.isBreak).map((p: any) => (
+                                        <option key={p.id} value={p.id}>
+                                            {p.name} ({p.startTime} - {p.endTime})
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
                         </div>
                     )}
 

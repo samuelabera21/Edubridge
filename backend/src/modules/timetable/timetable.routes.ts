@@ -3,6 +3,7 @@ import {
     getSectionWorkspace,
     createClassPeriod, 
     getClassPeriods,
+    generateDefaultPeriods,
     assignTimetable,
     reassignSlot,
     deleteTimetable,
@@ -51,6 +52,7 @@ router.get("/my", getMyTimetable);
  *     summary: Create a class period for the school
  */
 router.post("/periods", requirePermission("ACADEMIC:CREATE"), createClassPeriod);
+router.post("/periods/default", requirePermission("ACADEMIC:CREATE"), generateDefaultPeriods);
 
 /**
  * @openapi
