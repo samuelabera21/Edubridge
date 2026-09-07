@@ -5,7 +5,6 @@ import { fetchApi } from "@/lib/api";
 import { useAuth } from "@/hooks/useAuth";
 import { 
     FileText, 
-    Plus, 
     Calendar, 
     Award, 
     TrendingUp, 
@@ -15,426 +14,844 @@ import {
     BookOpen,
     User,
     Eye,
-    Save,
-    Sparkles
+    Search,
+    RefreshCw,
+    Filter,
+    ChevronLeft,
+    ChevronRight,
+    Layers,
+    BarChart3,
+    GraduationCap,
+    X
 } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { LoadingState } from "@/components/ui/LoadingState";
 import { ErrorState } from "@/components/ui/ErrorState";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { AcademicYear } from "@/types/api";
 
-type AssessmentType = "EXAM" | "QUIZ" | "ASSIGNMENT" | "PROJECT" | "OTHER";
+interface AcademicYearOption {
+    id: string;
+    name: string;
+    status: string;
+}
 
-export default function AssessmentsPage() {
+interface GradeOption {
+    id: string;
+    name: string;
+    sections: Array<{ id: string; name: string }>;
+}
+
+interface SubjectOption {
+    id: string;
+    name: string;
+    code: string;
+}
+
+interface AssessmentOption {
+    id: string;
+    title: string;
+    type: string;
+    maxScore: number;
+}
+
+interface OverviewData {
+    academicYear: { id: string; name: string; status: string } | null;
+    summary: {
+        totalAssessments: number;
+        studentsWithResults: number;
+        totalResults: number;
+        averageScore: number;
+        passRate: number;
+    };
+    gradePerformance: Array<{
+        gradeId: string;
+        gradeName: string;
+        students: number;
+        results: number;
+        average: number;
+        passRate: number;
+    }>;
+    subjectPerformance: Array<{
+        subjectId: string;
+        subjectName: string;
+        subjectCode: string;
+        results: number;
+        average: number;
+        passRate: number;
+    }>;
+}
+
+interface ResultItem {
+    id: string;
+    student: {
+        id: string;
+        studentId: string;
+        firstName: string;
+        lastName: string;
+        fullName: string;
+    } | null;
+    enrollmentId: string;
+    grade: string;
+    gradeId?: string;
+    section: string;
+    sectionId?: string;
+    subject: {
+        id: string;
+        name: string;
+        code: string;
+    } | null;
+    teacher: string;
+    assessment: {
+        id: string;
+        title: string;
+        type: string;
+        maxScore: number;
+        passingScore?: number | null;
+        dueDate?: string | null;
+    };
+    score: number;
+    maxScore: number;
+    percentage: number;
+    isPassing: boolean;
+    resultStatus: "PASS" | "FAIL";
+    feedback?: string | null;
+    academicYear: string;
+    createdAt: string;
+}
+
+interface StudentDetailData {
+    student: {
+        id: string;
+        studentId: string;
+        firstName: string;
+        lastName: string;
+        fullName: string;
+        gender?: string;
+        emergencyContactPhone?: string;
+    };
+    enrollment: {
+        id: string;
+        grade: string;
+        section: string;
+        academicYear: string;
+    };
+    summary: {
+        totalAssessments: number;
+        totalScore: number;
+        totalMax: number;
+        overallPercentage: number;
+        passCount: number;
+        failCount: number;
+        status: "PASS" | "FAIL" | "NO_RESULTS";
+    };
+    subjects: Array<{
+        subjectId: string;
+        subjectName: string;
+        subjectCode: string;
+        teacherName: string;
+        averagePercentage: number;
+        assessmentsCount: number;
+        assessments: Array<{
+            id: string;
+            title: string;
+            type: string;
+            score: number;
+            maxScore: number;
+            percentage: number;
+            isPassing: boolean;
+            feedback: string | null;
+            date: string | null;
+        }>;
+    }>;
+}
+
+export default function AssessmentOversightPage() {
     const { authData } = useAuth();
-    const [years, setYears] = useState<AcademicYear[]>([]);
-    const [activeYear, setActiveYear] = useState<AcademicYear | null>(null);
-    const [schoolGrades, setSchoolGrades] = useState<any[]>([]);
-    const [sections, setSections] = useState<any[]>([]);
-    const [teachingAssignments, setTeachingAssignments] = useState<any[]>([]);
-    const [assessments, setAssessments] = useState<any[]>([]);
 
-    // Selection States
+    // Filter Options
+    const [academicYears, setAcademicYears] = useState<AcademicYearOption[]>([]);
+    const [grades, setGrades] = useState<GradeOption[]>([]);
+    const [subjects, setSubjects] = useState<SubjectOption[]>([]);
+    const [assessments, setAssessments] = useState<AssessmentOption[]>([]);
+
+    // Active Filter Selections
+    const [selectedYearId, setSelectedYearId] = useState<string>("");
     const [selectedGradeId, setSelectedGradeId] = useState<string>("");
     const [selectedSectionId, setSelectedSectionId] = useState<string>("");
+    const [selectedSubjectId, setSelectedSubjectId] = useState<string>("");
+    const [selectedAssessmentId, setSelectedAssessmentId] = useState<string>("");
+    const [searchStudent, setSearchStudent] = useState<string>("");
+    const [debouncedSearch, setDebouncedSearch] = useState<string>("");
 
-    // Modal & Gradebook Inspection States
-    const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-    const [selectedAssessmentForGradebook, setSelectedAssessmentForGradebook] = useState<any>(null);
-    const [gradebookRoster, setGradebookRoster] = useState<any[]>([]);
-    const [loadingGradebook, setLoadingGradebook] = useState(false);
-    const [savingGradebook, setSavingGradebook] = useState(false);
+    // Data States
+    const [overview, setOverview] = useState<OverviewData | null>(null);
+    const [results, setResults] = useState<ResultItem[]>([]);
+    const [pagination, setPagination] = useState({ total: 0, page: 1, limit: 15, totalPages: 1 });
 
-    // Form State
-    const [createForm, setCreateForm] = useState({
-        teachingAssignmentId: "",
-        title: "",
-        type: "EXAM" as AssessmentType,
-        maxScore: "100",
-        passingScore: "50",
-        dueDate: new Date().toISOString().split("T")[0],
-        description: ""
-    });
-
-    const [loading, setLoading] = useState(true);
+    // UI & Loading States
+    const [loadingFilters, setLoadingFilters] = useState(true);
+    const [loadingOverview, setLoadingOverview] = useState(true);
+    const [loadingResults, setLoadingResults] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
-    // 1. Initial Load
-    const loadInitialData = async () => {
+    // Student Detail Modal
+    const [selectedEnrollmentForDetail, setSelectedEnrollmentForDetail] = useState<string | null>(null);
+    const [studentDetail, setStudentDetail] = useState<StudentDetailData | null>(null);
+    const [loadingDetail, setLoadingDetail] = useState(false);
+
+    // Active Sections for currently selected grade
+    const availableSections = useMemo(() => {
+        if (!selectedGradeId) return [];
+        const found = grades.find(g => g.id === selectedGradeId);
+        return found ? found.sections : [];
+    }, [selectedGradeId, grades]);
+
+    // Handle Search Debounce
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setDebouncedSearch(searchStudent);
+            setPagination(prev => ({ ...prev, page: 1 }));
+        }, 300);
+        return () => clearTimeout(timer);
+    }, [searchStudent]);
+
+    // 1. Fetch Filter Options
+    const loadFilterOptions = async (yearId?: string) => {
         try {
-            setLoading(true);
-            const yearsRes = await fetchApi("/academic/years");
-            if (!yearsRes.ok) throw new Error("Failed to load academic years");
-            const yearsData: AcademicYear[] = await yearsRes.json();
-            setYears(yearsData);
+            setLoadingFilters(true);
+            const query = yearId ? `?academicYearId=${yearId}` : "";
+            const res = await fetchApi(`/assessment/admin/filters${query}`);
+            if (!res.ok) throw new Error("Failed to load filter options");
+            const data = await res.json();
 
-            const active = yearsData.find(y => y.status === "ACTIVE");
-            setActiveYear(active || null);
+            setAcademicYears(data.academicYears || []);
+            setGrades(data.grades || []);
+            setSubjects(data.subjects || []);
+            setAssessments(data.assessments || []);
 
-            if (active) {
-                // Fetch SchoolGrades
-                let sgData: any[] = [];
-                const sgRes = await fetchApi(`/academic/years/${active.id}/grades`);
-                if (sgRes.ok) sgData = await sgRes.json();
-                setSchoolGrades(sgData);
-                if (sgData.length > 0) {
-                    setSelectedGradeId(sgData[0].id);
-                }
-
-                // Fetch Teaching Assignments for creating test assessments
-                const taRes = await fetchApi("/teacher/assignments");
-                if (taRes.ok) {
-                    const taData = await taRes.json();
-                    setTeachingAssignments(taData);
-                }
+            if (!selectedYearId && data.activeAcademicYear) {
+                setSelectedYearId(data.activeAcademicYear.id);
             }
-
             setError(null);
         } catch (err: any) {
-            setError(err.message || "An error occurred");
+            console.error("Filter loading error:", err);
+            setError(err.message || "Failed to initialize assessment filters");
         } finally {
-            setLoading(false);
+            setLoadingFilters(false);
         }
     };
 
+    // 2. Fetch Overview Data
+    const loadOverview = async () => {
+        try {
+            setLoadingOverview(true);
+            const params = new URLSearchParams();
+            if (selectedYearId) params.append("academicYearId", selectedYearId);
+            if (selectedGradeId) params.append("schoolGradeId", selectedGradeId);
+            if (selectedSectionId) params.append("sectionId", selectedSectionId);
+            if (selectedSubjectId) params.append("subjectId", selectedSubjectId);
+            if (selectedAssessmentId) params.append("assessmentId", selectedAssessmentId);
+
+            const res = await fetchApi(`/assessment/admin/overview?${params.toString()}`);
+            if (!res.ok) throw new Error("Failed to load assessment overview");
+            const data: OverviewData = await res.json();
+            setOverview(data);
+        } catch (err: any) {
+            console.error("Overview error:", err);
+        } finally {
+            setLoadingOverview(false);
+        }
+    };
+
+    // 3. Fetch Paginated Results
+    const loadResults = async () => {
+        try {
+            setLoadingResults(true);
+            const params = new URLSearchParams();
+            if (selectedYearId) params.append("academicYearId", selectedYearId);
+            if (selectedGradeId) params.append("schoolGradeId", selectedGradeId);
+            if (selectedSectionId) params.append("sectionId", selectedSectionId);
+            if (selectedSubjectId) params.append("subjectId", selectedSubjectId);
+            if (selectedAssessmentId) params.append("assessmentId", selectedAssessmentId);
+            if (debouncedSearch) params.append("search", debouncedSearch);
+            params.append("page", String(pagination.page));
+            params.append("limit", String(pagination.limit));
+
+            const res = await fetchApi(`/assessment/admin/results?${params.toString()}`);
+            if (!res.ok) throw new Error("Failed to load student results");
+            const data = await res.json();
+
+            setResults(data.results || []);
+            setPagination(prev => ({
+                ...prev,
+                total: data.pagination.total,
+                totalPages: data.pagination.totalPages
+            }));
+        } catch (err: any) {
+            console.error("Results error:", err);
+        } finally {
+            setLoadingResults(false);
+        }
+    };
+
+    // Initial load
     useEffect(() => {
-        loadInitialData();
+        loadFilterOptions();
     }, []);
 
-    // 2. Sections update on Grade change
+    // Fetch Overview & Results when filters change
     useEffect(() => {
-        if (!selectedGradeId) {
-            setSections([]);
-            setSelectedSectionId("");
-            return;
+        if (!loadingFilters) {
+            loadOverview();
+            loadResults();
         }
+    }, [selectedYearId, selectedGradeId, selectedSectionId, selectedSubjectId, selectedAssessmentId, debouncedSearch, pagination.page, loadingFilters]);
 
-        const currentSG = schoolGrades.find(sg => sg.id === selectedGradeId);
-        if (currentSG && currentSG.sections && currentSG.sections.length > 0) {
-            setSections(currentSG.sections);
-            setSelectedSectionId(currentSG.sections[0].id);
-        } else {
-            setSections([]);
-            setSelectedSectionId("");
-        }
-    }, [selectedGradeId, schoolGrades]);
-
-    // 3. Fetch Assessments for Selected Section
-    const loadAssessments = async () => {
-        if (!selectedSectionId || !activeYear) {
-            setAssessments([]);
-            return;
-        }
-
-        try {
-            const res = await fetchApi(`/assessment?sectionId=${selectedSectionId}&academicYearId=${activeYear.id}`);
-            if (res.ok) {
-                const data = await res.json();
-                setAssessments(data);
-            }
-        } catch (err) {
-            console.error("Failed to load assessments", err);
-        }
+    // Handle Year Change
+    const handleYearChange = (newYearId: string) => {
+        setSelectedYearId(newYearId);
+        setSelectedGradeId("");
+        setSelectedSectionId("");
+        setSelectedSubjectId("");
+        setSelectedAssessmentId("");
+        setPagination(prev => ({ ...prev, page: 1 }));
+        loadFilterOptions(newYearId);
     };
 
-    useEffect(() => {
-        loadAssessments();
-    }, [selectedSectionId, activeYear]);
-
-    // Available Teaching Assignments for selected section
-    const availableAssignmentsForSection = useMemo(() => {
-        if (!selectedSectionId) return [];
-        return teachingAssignments.filter(ta => ta.sectionId === selectedSectionId);
-    }, [selectedSectionId, teachingAssignments]);
-
-    // Open Gradebook Inspector for an Assessment
-    const handleOpenGradebook = async (assessment: any) => {
-        setSelectedAssessmentForGradebook(assessment);
+    // View Student Detail Modal
+    const handleOpenStudentDetail = async (enrollmentId: string) => {
         try {
-            setLoadingGradebook(true);
-            const res = await fetchApi(`/assessment/${assessment.id}/results`);
-            if (res.ok) {
-                const data = await res.json();
-                const roster = data.rosterResults.map((item: any) => ({
-                    enrollmentId: item.enrollment.id,
-                    studentName: `${item.enrollment.student?.firstName || ""} ${item.enrollment.student?.lastName || ""}`.trim(),
-                    studentIdCode: item.enrollment.studentIdCode || "N/A",
-                    score: item.result ? item.result.score : "",
-                    feedback: item.result ? item.result.feedback || "" : ""
-                }));
-                setGradebookRoster(roster);
-            }
-        } catch (err) {
-            console.error("Error loading gradebook roster", err);
-        } finally {
-            setLoadingGradebook(false);
-        }
-    };
-
-    // Save Gradebook Marks (Admin Test / Override)
-    const handleSaveGradebook = async () => {
-        if (!selectedAssessmentForGradebook) return;
-
-        const validResults = gradebookRoster
-            .filter(r => r.score !== "" && !isNaN(Number(r.score)))
-            .map(r => ({
-                enrollmentId: r.enrollmentId,
-                score: Number(r.score),
-                feedback: r.feedback
-            }));
-
-        if (validResults.length === 0) {
-            alert("Please enter a valid numeric score for at least one student.");
-            return;
-        }
-
-        try {
-            setSavingGradebook(true);
-            const res = await fetchApi("/assessment/results/bulk", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    assessmentId: selectedAssessmentForGradebook.id,
-                    results: validResults
-                })
-            });
-
-            if (!res.ok) throw new Error("Failed to save gradebook marks");
-
-            alert("Successfully saved student assessment marks!");
-            setSelectedAssessmentForGradebook(null);
-            loadAssessments();
+            setSelectedEnrollmentForDetail(enrollmentId);
+            setLoadingDetail(true);
+            const query = selectedYearId ? `?academicYearId=${selectedYearId}` : "";
+            const res = await fetchApi(`/assessment/admin/students/${enrollmentId}${query}`);
+            if (!res.ok) throw new Error("Failed to load student assessment detail");
+            const data: StudentDetailData = await res.json();
+            setStudentDetail(data);
         } catch (err: any) {
-            alert(err.message || "Failed to save marks");
+            console.error("Student detail error:", err);
         } finally {
-            setSavingGradebook(false);
+            setLoadingDetail(false);
         }
     };
 
-    // Create Assessment Handler (Admin Test Creation)
-    const handleCreateAssessment = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!activeYear || !createForm.teachingAssignmentId || !createForm.title) return;
-
-        try {
-            const res = await fetchApi("/assessment", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    academicYearId: activeYear.id,
-                    teachingAssignmentId: createForm.teachingAssignmentId,
-                    title: createForm.title,
-                    type: createForm.type,
-                    maxScore: Number(createForm.maxScore),
-                    passingScore: Number(createForm.passingScore),
-                    dueDate: createForm.dueDate,
-                    description: createForm.description
-                })
-            });
-
-            if (!res.ok) throw new Error("Failed to create assessment");
-
-            setIsCreateModalOpen(false);
-            setCreateForm({
-                teachingAssignmentId: "",
-                title: "",
-                type: "EXAM",
-                maxScore: "100",
-                passingScore: "50",
-                dueDate: new Date().toISOString().split("T")[0],
-                description: ""
-            });
-            loadAssessments();
-        } catch (err: any) {
-            alert(err.message || "Failed to create assessment");
-        }
+    const handleCloseStudentDetail = () => {
+        setSelectedEnrollmentForDetail(null);
+        setStudentDetail(null);
     };
 
-    // Calculate Class Metrics
-    const metrics = useMemo(() => {
-        const total = assessments.length;
-        let totalScoreSum = 0;
-        let totalMaxSum = 0;
-        let totalGradedCount = 0;
+    if (loadingFilters && !overview) {
+        return <LoadingState message="Initializing Assessment & Results Oversight..." />;
+    }
 
-        assessments.forEach(a => {
-            if (a.results && a.results.length > 0) {
-                a.results.forEach((r: any) => {
-                    totalScoreSum += r.score;
-                    totalMaxSum += a.maxScore;
-                    totalGradedCount++;
-                });
-            }
-        });
+    if (error && !overview) {
+        return <ErrorState message={error} onRetry={() => loadFilterOptions()} />;
+    }
 
-        const classAverage = totalMaxSum > 0 ? Math.round((totalScoreSum / totalMaxSum) * 100) : 0;
-
-        return { total, classAverage, totalGradedCount };
-    }, [assessments]);
-
-    if (loading) return <LoadingState message="Loading assessment oversight dashboard..." />;
-    if (error) return <ErrorState message={error} onRetry={loadInitialData} />;
+    const summary = overview?.summary || {
+        totalAssessments: 0,
+        studentsWithResults: 0,
+        totalResults: 0,
+        averageScore: 0,
+        passRate: 0
+    };
 
     return (
-        <div className="space-y-6">
-            {/* Header */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="space-y-8 pb-12">
+            {/* 1. Header & Navigation Context */}
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-gray-200 pb-5">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-900 flex items-center">
-                        <FileText className="w-7 h-7 mr-2 text-[#006b3f]" />
-                        Assessment & Gradebook Oversight
-                    </h1>
-                    <p className="text-sm text-gray-500 mt-1">
-                        Monitor published exams, quizzes, and continuous grades submitted by teachers for <span className="font-semibold text-[#006b3f]">{activeYear?.name}</span>
-                    </p>
+                    <div className="flex items-center space-x-3">
+                        <div className="p-2.5 bg-[#0c2454] text-white rounded-xl shadow-sm">
+                            <GraduationCap className="w-6 h-6 text-amber-400" />
+                        </div>
+                        <div>
+                            <h1 className="text-2xl font-bold tracking-tight text-gray-900">
+                                Assessment & Results Oversight
+                            </h1>
+                            <p className="text-sm text-gray-500">
+                                Monitor student assessment results and performance distributions across the school.
+                            </p>
+                        </div>
+                    </div>
                 </div>
 
-                <Button 
-                    onClick={() => setIsCreateModalOpen(true)}
-                    leftIcon={<Plus className="w-4 h-4" />}
-                    className="bg-[#006b3f] hover:bg-[#005432]"
-                >
-                    Create Test Assessment
-                </Button>
+                <div className="flex items-center space-x-3">
+                    <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => {
+                            loadOverview();
+                            loadResults();
+                        }}
+                        className="flex items-center space-x-2 text-xs font-semibold"
+                    >
+                        <RefreshCw className="w-3.5 h-3.5" />
+                        <span>Refresh Data</span>
+                    </Button>
+                </div>
             </div>
 
-            {/* Filter Bar */}
-            <Card className="bg-white border-gray-200 shadow-sm">
-                <CardContent className="p-4 sm:p-6 flex flex-col sm:flex-row items-center gap-4">
-                    <div className="w-full sm:w-1/2">
-                        <label className="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1.5">
-                            School Grade
+            {/* 2. Filter Bar */}
+            <div className="bg-white rounded-2xl border border-gray-200/80 p-5 shadow-sm space-y-4">
+                <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2 text-xs font-bold text-gray-700 uppercase tracking-wider">
+                        <Filter className="w-3.5 h-3.5 text-[#0c2454]" />
+                        <span>Filter & Scope Dimensions</span>
+                    </div>
+                    {(selectedGradeId || selectedSectionId || selectedSubjectId || selectedAssessmentId || searchStudent) && (
+                        <button
+                            onClick={() => {
+                                setSelectedGradeId("");
+                                setSelectedSectionId("");
+                                setSelectedSubjectId("");
+                                setSelectedAssessmentId("");
+                                setSearchStudent("");
+                                setPagination(prev => ({ ...prev, page: 1 }));
+                            }}
+                            className="text-xs font-medium text-blue-600 hover:text-blue-800 transition-colors"
+                        >
+                            Clear All Filters
+                        </button>
+                    )}
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3.5">
+                    {/* Academic Year */}
+                    <div>
+                        <label className="block text-[11px] font-semibold text-gray-600 mb-1.5 uppercase tracking-wider">
+                            Academic Year
                         </label>
                         <select
-                            value={selectedGradeId}
-                            onChange={(e) => setSelectedGradeId(e.target.value)}
-                            className="w-full h-10 px-3 border border-gray-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-[#006b3f] focus:border-transparent outline-none transition font-medium text-gray-900"
+                            value={selectedYearId}
+                            onChange={(e) => handleYearChange(e.target.value)}
+                            className="w-full h-9 px-3 bg-gray-50/80 border border-gray-300 rounded-xl text-xs font-medium text-gray-800 focus:ring-2 focus:ring-[#0c2454] focus:bg-white transition-all"
                         >
-                            {schoolGrades.map((sg) => (
-                                <option key={sg.id} value={sg.id}>
-                                    {sg.grade?.name || "Grade"}
+                            {academicYears.map(y => (
+                                <option key={y.id} value={y.id}>
+                                    {y.name} {y.status === "ACTIVE" ? "(Current)" : "(Archived)"}
                                 </option>
                             ))}
                         </select>
                     </div>
 
-                    <div className="w-full sm:w-1/2">
-                        <label className="block text-xs font-semibold uppercase tracking-wider text-gray-500 mb-1.5">
+                    {/* Grade Filter */}
+                    <div>
+                        <label className="block text-[11px] font-semibold text-gray-600 mb-1.5 uppercase tracking-wider">
+                            Grade Level
+                        </label>
+                        <select
+                            value={selectedGradeId}
+                            onChange={(e) => {
+                                setSelectedGradeId(e.target.value);
+                                setSelectedSectionId("");
+                                setPagination(prev => ({ ...prev, page: 1 }));
+                            }}
+                            className="w-full h-9 px-3 bg-gray-50/80 border border-gray-300 rounded-xl text-xs font-medium text-gray-800 focus:ring-2 focus:ring-[#0c2454] focus:bg-white transition-all"
+                        >
+                            <option value="">All Grades</option>
+                            {grades.map(g => (
+                                <option key={g.id} value={g.id}>{g.name}</option>
+                            ))}
+                        </select>
+                    </div>
+
+                    {/* Section Filter */}
+                    <div>
+                        <label className="block text-[11px] font-semibold text-gray-600 mb-1.5 uppercase tracking-wider">
                             Class Section
                         </label>
                         <select
                             value={selectedSectionId}
-                            onChange={(e) => setSelectedSectionId(e.target.value)}
-                            className="w-full h-10 px-3 border border-gray-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-[#006b3f] focus:border-transparent outline-none transition font-medium text-gray-900"
+                            onChange={(e) => {
+                                setSelectedSectionId(e.target.value);
+                                setPagination(prev => ({ ...prev, page: 1 }));
+                            }}
+                            disabled={!selectedGradeId || availableSections.length === 0}
+                            className="w-full h-9 px-3 bg-gray-50/80 border border-gray-300 rounded-xl text-xs font-medium text-gray-800 focus:ring-2 focus:ring-[#0c2454] focus:bg-white disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                         >
-                            {sections.map((s) => (
-                                <option key={s.id} value={s.id}>
-                                    Section {s.name}
-                                </option>
+                            <option value="">All Sections</option>
+                            {availableSections.map(s => (
+                                <option key={s.id} value={s.id}>{s.name}</option>
                             ))}
                         </select>
                     </div>
-                </CardContent>
-            </Card>
 
-            {/* Metrics */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <Card className="bg-white border-gray-200">
-                    <CardContent className="p-4 flex items-center justify-between">
+                    {/* Subject Filter */}
+                    <div>
+                        <label className="block text-[11px] font-semibold text-gray-600 mb-1.5 uppercase tracking-wider">
+                            Subject
+                        </label>
+                        <select
+                            value={selectedSubjectId}
+                            onChange={(e) => {
+                                setSelectedSubjectId(e.target.value);
+                                setPagination(prev => ({ ...prev, page: 1 }));
+                            }}
+                            className="w-full h-9 px-3 bg-gray-50/80 border border-gray-300 rounded-xl text-xs font-medium text-gray-800 focus:ring-2 focus:ring-[#0c2454] focus:bg-white transition-all"
+                        >
+                            <option value="">All Subjects</option>
+                            {subjects.map(s => (
+                                <option key={s.id} value={s.id}>{s.name} ({s.code || "SUB"})</option>
+                            ))}
+                        </select>
+                    </div>
+
+                    {/* Assessment Filter */}
+                    <div>
+                        <label className="block text-[11px] font-semibold text-gray-600 mb-1.5 uppercase tracking-wider">
+                            Assessment
+                        </label>
+                        <select
+                            value={selectedAssessmentId}
+                            onChange={(e) => {
+                                setSelectedAssessmentId(e.target.value);
+                                setPagination(prev => ({ ...prev, page: 1 }));
+                            }}
+                            className="w-full h-9 px-3 bg-gray-50/80 border border-gray-300 rounded-xl text-xs font-medium text-gray-800 focus:ring-2 focus:ring-[#0c2454] focus:bg-white transition-all"
+                        >
+                            <option value="">All Assessments</option>
+                            {assessments.map(a => (
+                                <option key={a.id} value={a.id}>{a.title} ({a.type})</option>
+                            ))}
+                        </select>
+                    </div>
+
+                    {/* Student Search */}
+                    <div>
+                        <label className="block text-[11px] font-semibold text-gray-600 mb-1.5 uppercase tracking-wider">
+                            Search Student
+                        </label>
+                        <div className="relative">
+                            <Search className="w-3.5 h-3.5 absolute left-3 top-3 text-gray-400" />
+                            <input
+                                type="text"
+                                value={searchStudent}
+                                onChange={(e) => setSearchStudent(e.target.value)}
+                                placeholder="Student name or ID..."
+                                className="w-full h-9 pl-8 pr-3 bg-gray-50/80 border border-gray-300 rounded-xl text-xs font-medium text-gray-800 focus:ring-2 focus:ring-[#0c2454] focus:bg-white transition-all"
+                            />
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {/* 3. Summary Cards (Real DB Metrics Only) */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+                {/* Students With Results */}
+                <div className="bg-white p-5 rounded-2xl border border-gray-200/80 shadow-sm relative overflow-hidden">
+                    <div className="flex items-center justify-between">
                         <div>
-                            <p className="text-xs text-gray-500 font-semibold uppercase">Total Assessments</p>
-                            <p className="text-2xl font-bold text-gray-900 mt-1">{metrics.total}</p>
+                            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                                Students With Results
+                            </p>
+                            <h3 className="text-2xl font-bold text-gray-900 mt-1">
+                                {loadingOverview ? "..." : summary.studentsWithResults.toLocaleString()}
+                            </h3>
+                            <p className="text-[11px] text-gray-400 mt-0.5">
+                                Unique students graded in scope
+                            </p>
                         </div>
-                        <div className="w-10 h-10 rounded-lg bg-emerald-50 flex items-center justify-center">
-                            <BookOpen className="w-5 h-5 text-[#006b3f]" />
+                        <div className="p-3 bg-blue-50 text-blue-700 rounded-2xl">
+                            <UserCheck className="w-6 h-6" />
                         </div>
+                    </div>
+                </div>
+
+                {/* Assessments in Scope */}
+                <div className="bg-white p-5 rounded-2xl border border-gray-200/80 shadow-sm relative overflow-hidden">
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                                Assessments
+                            </p>
+                            <h3 className="text-2xl font-bold text-gray-900 mt-1">
+                                {loadingOverview ? "..." : summary.totalAssessments.toLocaleString()}
+                            </h3>
+                            <p className="text-[11px] text-gray-400 mt-0.5">
+                                {summary.totalResults.toLocaleString()} total result records
+                            </p>
+                        </div>
+                        <div className="p-3 bg-indigo-50 text-indigo-700 rounded-2xl">
+                            <FileText className="w-6 h-6" />
+                        </div>
+                    </div>
+                </div>
+
+                {/* Average Score */}
+                <div className="bg-white p-5 rounded-2xl border border-gray-200/80 shadow-sm relative overflow-hidden">
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                                Average Score
+                            </p>
+                            <h3 className="text-2xl font-bold text-gray-900 mt-1">
+                                {loadingOverview ? "..." : `${summary.averageScore}%`}
+                            </h3>
+                            <p className="text-[11px] text-gray-400 mt-0.5">
+                                Weighted percentage average
+                            </p>
+                        </div>
+                        <div className="p-3 bg-amber-50 text-amber-700 rounded-2xl">
+                            <TrendingUp className="w-6 h-6" />
+                        </div>
+                    </div>
+                </div>
+
+                {/* Pass Rate */}
+                <div className="bg-white p-5 rounded-2xl border border-gray-200/80 shadow-sm relative overflow-hidden">
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                                Pass Rate
+                            </p>
+                            <h3 className="text-2xl font-bold text-gray-900 mt-1">
+                                {loadingOverview ? "..." : `${summary.passRate}%`}
+                            </h3>
+                            <p className="text-[11px] text-gray-400 mt-0.5">
+                                Meeting passing threshold
+                            </p>
+                        </div>
+                        <div className="p-3 bg-emerald-50 text-emerald-700 rounded-2xl">
+                            <Award className="w-6 h-6" />
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {/* 4. Grade Performance & Subject Performance Breakdown */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Grade Performance Table */}
+                <Card className="border border-gray-200/80 shadow-sm rounded-2xl overflow-hidden">
+                    <CardHeader className="bg-gray-50/50 border-b border-gray-100 py-3.5 px-5">
+                        <div className="flex items-center space-x-2">
+                            <Layers className="w-4 h-4 text-[#0c2454]" />
+                            <CardTitle className="text-sm font-bold text-gray-800">
+                                Grade-Level Performance
+                            </CardTitle>
+                        </div>
+                    </CardHeader>
+                    <CardContent className="p-0">
+                        {loadingOverview ? (
+                            <div className="p-8 text-center text-xs text-gray-400">Loading grade data...</div>
+                        ) : (overview?.gradePerformance || []).length === 0 ? (
+                            <div className="p-8 text-center text-xs text-gray-400">
+                                No assessment results available for this academic year.
+                            </div>
+                        ) : (
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-left text-xs">
+                                    <thead className="bg-gray-50/80 text-gray-600 font-semibold border-b border-gray-200">
+                                        <tr>
+                                            <th className="py-2.5 px-4">Grade</th>
+                                            <th className="py-2.5 px-4 text-center">Students</th>
+                                            <th className="py-2.5 px-4 text-center">Results</th>
+                                            <th className="py-2.5 px-4 text-center">Average</th>
+                                            <th className="py-2.5 px-4 text-center">Pass Rate</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-100 text-gray-700">
+                                        {overview?.gradePerformance.map(g => (
+                                            <tr key={g.gradeId} className="hover:bg-gray-50/50 transition-colors">
+                                                <td className="py-2.5 px-4 font-semibold text-gray-900">{g.gradeName}</td>
+                                                <td className="py-2.5 px-4 text-center">{g.students}</td>
+                                                <td className="py-2.5 px-4 text-center">{g.results}</td>
+                                                <td className="py-2.5 px-4 text-center font-bold text-gray-800">{g.average}%</td>
+                                                <td className="py-2.5 px-4 text-center">
+                                                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                                                        g.passRate >= 70 ? "bg-emerald-50 text-emerald-700 border border-emerald-200" :
+                                                        g.passRate >= 50 ? "bg-amber-50 text-amber-700 border border-amber-200" :
+                                                        "bg-rose-50 text-rose-700 border border-rose-200"
+                                                    }`}>
+                                                        {g.passRate}%
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
                     </CardContent>
                 </Card>
 
-                <Card className="bg-emerald-50/50 border-emerald-100">
-                    <CardContent className="p-4 flex items-center justify-between">
-                        <div>
-                            <p className="text-xs text-emerald-700 font-semibold uppercase">Section Avg Score</p>
-                            <p className="text-2xl font-bold text-emerald-900 mt-1">{metrics.classAverage}%</p>
+                {/* Subject Performance Table */}
+                <Card className="border border-gray-200/80 shadow-sm rounded-2xl overflow-hidden">
+                    <CardHeader className="bg-gray-50/50 border-b border-gray-100 py-3.5 px-5">
+                        <div className="flex items-center space-x-2">
+                            <BookOpen className="w-4 h-4 text-[#0c2454]" />
+                            <CardTitle className="text-sm font-bold text-gray-800">
+                                Subject-Level Performance
+                            </CardTitle>
                         </div>
-                        <div className="w-10 h-10 rounded-lg bg-emerald-100 flex items-center justify-center">
-                            <TrendingUp className="w-5 h-5 text-emerald-700" />
-                        </div>
-                    </CardContent>
-                </Card>
-
-                <Card className="bg-blue-50/50 border-blue-100">
-                    <CardContent className="p-4 flex items-center justify-between">
-                        <div>
-                            <p className="text-xs text-blue-700 font-semibold uppercase">Graded Records</p>
-                            <p className="text-2xl font-bold text-blue-900 mt-1">{metrics.totalGradedCount}</p>
-                        </div>
-                        <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center">
-                            <Award className="w-5 h-5 text-blue-700" />
-                        </div>
+                    </CardHeader>
+                    <CardContent className="p-0">
+                        {loadingOverview ? (
+                            <div className="p-8 text-center text-xs text-gray-400">Loading subject data...</div>
+                        ) : (overview?.subjectPerformance || []).length === 0 ? (
+                            <div className="p-8 text-center text-xs text-gray-400">
+                                No subject performance data available in this scope.
+                            </div>
+                        ) : (
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-left text-xs">
+                                    <thead className="bg-gray-50/80 text-gray-600 font-semibold border-b border-gray-200">
+                                        <tr>
+                                            <th className="py-2.5 px-4">Subject</th>
+                                            <th className="py-2.5 px-4 text-center">Results</th>
+                                            <th className="py-2.5 px-4 text-center">Average</th>
+                                            <th className="py-2.5 px-4 text-center">Pass Rate</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-100 text-gray-700">
+                                        {overview?.subjectPerformance.map(s => (
+                                            <tr key={s.subjectId} className="hover:bg-gray-50/50 transition-colors">
+                                                <td className="py-2.5 px-4 font-semibold text-gray-900">
+                                                    {s.subjectName} {s.subjectCode && <span className="text-[10px] text-gray-400 font-normal">({s.subjectCode})</span>}
+                                                </td>
+                                                <td className="py-2.5 px-4 text-center">{s.results}</td>
+                                                <td className="py-2.5 px-4 text-center font-bold text-gray-800">{s.average}%</td>
+                                                <td className="py-2.5 px-4 text-center">
+                                                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                                                        s.passRate >= 70 ? "bg-emerald-50 text-emerald-700 border border-emerald-200" :
+                                                        s.passRate >= 50 ? "bg-amber-50 text-amber-700 border border-amber-200" :
+                                                        "bg-rose-50 text-rose-700 border border-rose-200"
+                                                    }`}>
+                                                        {s.passRate}%
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
                     </CardContent>
                 </Card>
             </div>
 
-            {/* Assessments Table */}
-            {assessments.length === 0 ? (
-                <EmptyState 
-                    title="No Assessments Published" 
-                    message="There are no exams or quizzes created for this section yet. Click 'Create Test Assessment' above to test!" 
-                />
-            ) : (
-                <Card className="border-gray-200 shadow-sm overflow-hidden">
-                    <CardHeader className="bg-gray-50/70 border-b border-gray-200 py-4">
-                        <CardTitle className="text-base font-semibold text-gray-900">
-                            Section Assessments & Gradebook Status
-                        </CardTitle>
-                    </CardHeader>
+            {/* 5. Main Results Records Table */}
+            <Card className="border border-gray-200/80 shadow-sm rounded-2xl overflow-hidden">
+                <CardHeader className="bg-gray-50/50 border-b border-gray-100 py-4 px-6">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                        <div>
+                            <CardTitle className="text-base font-bold text-gray-900">
+                                Student Assessment Results
+                            </CardTitle>
+                            <p className="text-xs text-gray-500 mt-0.5">
+                                Showing teacher-entered marks recorded in the database ({pagination.total.toLocaleString()} total entries).
+                            </p>
+                        </div>
+                    </div>
+                </CardHeader>
 
-                    <CardContent className="p-0">
+                <CardContent className="p-0">
+                    {loadingResults ? (
+                        <div className="p-12 text-center text-xs text-gray-400">Loading student results...</div>
+                    ) : results.length === 0 ? (
+                        <div className="p-12 text-center space-y-3">
+                            <div className="w-12 h-12 bg-gray-100 text-gray-400 rounded-full flex items-center justify-center mx-auto">
+                                <FileText className="w-6 h-6" />
+                            </div>
+                            <h4 className="text-sm font-bold text-gray-800">No assessment results available yet</h4>
+                            <p className="text-xs text-gray-500 max-w-sm mx-auto">
+                                Results entered by teachers for this academic year and selected filters will appear here.
+                            </p>
+                        </div>
+                    ) : (
                         <div className="overflow-x-auto">
-                            <table className="w-full text-sm text-left">
-                                <thead className="text-xs text-gray-500 uppercase bg-gray-50 border-b border-gray-200">
+                            <table className="w-full text-left text-xs">
+                                <thead className="bg-gray-50/80 text-gray-600 font-semibold border-b border-gray-200">
                                     <tr>
-                                        <th className="px-6 py-3.5 font-semibold">Title & Type</th>
-                                        <th className="px-6 py-3.5 font-semibold">Subject & Teacher</th>
-                                        <th className="px-6 py-3.5 font-semibold">Max Score</th>
-                                        <th className="px-6 py-3.5 font-semibold">Due Date</th>
-                                        <th className="px-6 py-3.5 font-semibold text-right">Actions</th>
+                                        <th className="py-3 px-5">Student</th>
+                                        <th className="py-3 px-4">Grade</th>
+                                        <th className="py-3 px-4">Section</th>
+                                        <th className="py-3 px-4">Subject</th>
+                                        <th className="py-3 px-4">Assessment</th>
+                                        <th className="py-3 px-4 text-center">Score</th>
+                                        <th className="py-3 px-4 text-center">Percentage</th>
+                                        <th className="py-3 px-4 text-center">Result</th>
+                                        <th className="py-3 px-4 text-right">Actions</th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-gray-100 bg-white">
-                                    {assessments.map((assessment) => (
-                                        <tr key={assessment.id} className="hover:bg-gray-50/80 transition-colors">
-                                            <td className="px-6 py-4">
-                                                <p className="font-semibold text-gray-900">{assessment.title}</p>
-                                                <span className="inline-block mt-0.5 text-xs font-semibold bg-emerald-50 text-[#006b3f] px-2 py-0.5 rounded">
-                                                    {assessment.type}
+                                <tbody className="divide-y divide-gray-100 text-gray-700">
+                                    {results.map(r => (
+                                        <tr key={r.id} className="hover:bg-gray-50/60 transition-colors">
+                                            {/* Student */}
+                                            <td className="py-3 px-5">
+                                                <div className="font-semibold text-gray-900">
+                                                    {r.student ? r.student.fullName : "Unknown Student"}
+                                                </div>
+                                                <div className="text-[10px] text-gray-400">
+                                                    ID: {r.student?.studentId || "N/A"}
+                                                </div>
+                                            </td>
+
+                                            {/* Grade */}
+                                            <td className="py-3 px-4 text-gray-800 font-medium">{r.grade}</td>
+
+                                            {/* Section */}
+                                            <td className="py-3 px-4 text-gray-800 font-medium">Sec {r.section}</td>
+
+                                            {/* Subject */}
+                                            <td className="py-3 px-4">
+                                                <div className="font-medium text-gray-900">
+                                                    {r.subject?.name || "N/A"}
+                                                </div>
+                                                <div className="text-[10px] text-gray-400">
+                                                    Teacher: {r.teacher}
+                                                </div>
+                                            </td>
+
+                                            {/* Assessment */}
+                                            <td className="py-3 px-4">
+                                                <div className="font-medium text-gray-900">{r.assessment.title}</div>
+                                                <div className="text-[10px] text-gray-400 uppercase tracking-wider">
+                                                    {r.assessment.type}
+                                                </div>
+                                            </td>
+
+                                            {/* Score */}
+                                            <td className="py-3 px-4 text-center font-bold text-gray-900">
+                                                {r.score} <span className="text-gray-400 font-normal">/ {r.maxScore}</span>
+                                            </td>
+
+                                            {/* Percentage */}
+                                            <td className="py-3 px-4 text-center font-bold text-gray-900">
+                                                {r.percentage}%
+                                            </td>
+
+                                            {/* Pass / Fail Status */}
+                                            <td className="py-3 px-4 text-center">
+                                                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                                                    r.isPassing ? "bg-emerald-50 text-emerald-700 border border-emerald-200" :
+                                                    "bg-rose-50 text-rose-700 border border-rose-200"
+                                                }`}>
+                                                    {r.isPassing ? (
+                                                        <>
+                                                            <CheckCircle2 className="w-2.5 h-2.5 mr-1" />
+                                                            Pass
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <XCircle className="w-2.5 h-2.5 mr-1" />
+                                                            Fail
+                                                        </>
+                                                    )}
                                                 </span>
                                             </td>
-                                            <td className="px-6 py-4">
-                                                <p className="font-semibold text-gray-800">
-                                                    {assessment.teachingAssignment?.subject?.name || "Subject"}
-                                                </p>
-                                                <p className="text-xs text-gray-500">
-                                                    Teacher: {assessment.teachingAssignment?.teacher ? `${assessment.teachingAssignment.teacher.firstName} ${assessment.teachingAssignment.teacher.lastName}` : "Unassigned"}
-                                                </p>
-                                            </td>
-                                            <td className="px-6 py-4 font-semibold text-[#006b3f]">
-                                                {assessment.maxScore} pts
-                                            </td>
-                                            <td className="px-6 py-4 text-gray-600">
-                                                {assessment.dueDate ? new Date(assessment.dueDate).toLocaleDateString() : "No due date"}
-                                            </td>
-                                            <td className="px-6 py-4 text-right">
-                                                <Button 
-                                                    variant="outline" 
-                                                    size="sm" 
-                                                    onClick={() => handleOpenGradebook(assessment)}
-                                                    leftIcon={<Eye className="w-4 h-4" />}
+
+                                            {/* Actions */}
+                                            <td className="py-3 px-4 text-right">
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    onClick={() => handleOpenStudentDetail(r.enrollmentId)}
+                                                    className="h-7 px-2.5 text-[11px] font-medium text-blue-700 border-blue-200 hover:bg-blue-50"
                                                 >
-                                                    Inspect Gradebook
+                                                    <Eye className="w-3 h-3 mr-1" />
+                                                    View Detail
                                                 </Button>
                                             </td>
                                         </tr>
@@ -442,184 +859,173 @@ export default function AssessmentsPage() {
                                 </tbody>
                             </table>
                         </div>
-                    </CardContent>
-                </Card>
-            )}
+                    )}
 
-            {/* Gradebook Inspector Modal */}
-            {selectedAssessmentForGradebook && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-                    <div className="bg-white rounded-xl max-w-3xl w-full p-6 space-y-4 shadow-xl max-h-[90vh] overflow-y-auto">
-                        <div className="flex items-center justify-between border-b pb-3">
-                            <div>
-                                <h3 className="text-lg font-bold text-gray-900">
-                                    Gradebook Inspector: {selectedAssessmentForGradebook.title}
-                                </h3>
-                                <p className="text-xs text-gray-500">
-                                    Subject: {selectedAssessmentForGradebook.teachingAssignment?.subject?.name} | Max Score: {selectedAssessmentForGradebook.maxScore} pts
-                                </p>
+                    {/* Pagination Controls */}
+                    {pagination.totalPages > 1 && (
+                        <div className="flex items-center justify-between px-6 py-3.5 bg-gray-50/50 border-t border-gray-100">
+                            <span className="text-xs text-gray-500">
+                                Showing page <span className="font-semibold text-gray-800">{pagination.page}</span> of{" "}
+                                <span className="font-semibold text-gray-800">{pagination.totalPages}</span> ({pagination.total} total)
+                            </span>
+                            <div className="flex items-center space-x-2">
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    disabled={pagination.page <= 1}
+                                    onClick={() => setPagination(prev => ({ ...prev, page: prev.page - 1 }))}
+                                    className="h-7 px-2.5 text-xs"
+                                >
+                                    <ChevronLeft className="w-3.5 h-3.5 mr-1" />
+                                    Previous
+                                </Button>
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    disabled={pagination.page >= pagination.totalPages}
+                                    onClick={() => setPagination(prev => ({ ...prev, page: prev.page + 1 }))}
+                                    className="h-7 px-2.5 text-xs"
+                                >
+                                    Next
+                                    <ChevronRight className="w-3.5 h-3.5 ml-1" />
+                                </Button>
                             </div>
-                            <button 
-                                onClick={() => setSelectedAssessmentForGradebook(null)}
-                                className="text-gray-400 hover:text-gray-600 text-xl font-bold"
-                            >
-                                &times;
-                            </button>
                         </div>
+                    )}
+                </CardContent>
+            </Card>
 
-                        {loadingGradebook ? (
-                            <LoadingState message="Loading roster scores..." />
-                        ) : (
-                            <div className="space-y-4">
-                                <div className="overflow-x-auto border rounded-lg">
-                                    <table className="w-full text-sm text-left">
-                                        <thead className="text-xs text-gray-500 uppercase bg-gray-50 border-b">
-                                            <tr>
-                                                <th className="px-4 py-2.5">Student</th>
-                                                <th className="px-4 py-2.5">Score (out of {selectedAssessmentForGradebook.maxScore})</th>
-                                                <th className="px-4 py-2.5">Feedback / Note</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className="divide-y divide-gray-100">
-                                            {gradebookRoster.map((row, idx) => (
-                                                <tr key={row.enrollmentId}>
-                                                    <td className="px-4 py-3 font-semibold text-gray-900">
-                                                        {row.studentName}
-                                                        <span className="block text-xs font-mono text-gray-500 font-normal">{row.studentIdCode}</span>
-                                                    </td>
-                                                    <td className="px-4 py-3">
-                                                        <input
-                                                            type="number"
-                                                            max={selectedAssessmentForGradebook.maxScore}
-                                                            min={0}
-                                                            value={row.score}
-                                                            onChange={(e) => {
-                                                                const val = e.target.value;
-                                                                setGradebookRoster(prev => prev.map((item, i) => i === idx ? { ...item, score: val } : item));
-                                                            }}
-                                                            placeholder={`0 - ${selectedAssessmentForGradebook.maxScore}`}
-                                                            className="w-28 h-9 px-3 border border-gray-300 rounded-md text-sm font-semibold text-gray-900 outline-none focus:ring-2 focus:ring-[#006b3f]"
-                                                        />
-                                                    </td>
-                                                    <td className="px-4 py-3">
-                                                        <input
-                                                            type="text"
-                                                            value={row.feedback}
-                                                            onChange={(e) => {
-                                                                const val = e.target.value;
-                                                                setGradebookRoster(prev => prev.map((item, i) => i === idx ? { ...item, feedback: val } : item));
-                                                            }}
-                                                            placeholder="Optional comment..."
-                                                            className="w-full h-9 px-3 border border-gray-200 rounded-md text-xs outline-none focus:border-[#006b3f]"
-                                                        />
-                                                    </td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                </div>
-
-                                <div className="flex justify-end space-x-3 pt-2">
-                                    <Button variant="outline" onClick={() => setSelectedAssessmentForGradebook(null)}>
-                                        Cancel
-                                    </Button>
-                                    <Button 
-                                        onClick={handleSaveGradebook} 
-                                        isLoading={savingGradebook}
-                                        leftIcon={<Save className="w-4 h-4" />}
-                                        className="bg-[#006b3f] hover:bg-[#005432]"
-                                    >
-                                        Save All Marks
-                                    </Button>
-                                </div>
+            {/* 6. Individual Student Result Detail Modal */}
+            {selectedEnrollmentForDetail && (
+                <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto animate-fadeIn">
+                    <div className="bg-white rounded-3xl max-w-3xl w-full p-6 shadow-2xl border border-gray-100 max-h-[90vh] overflow-y-auto space-y-6">
+                        {loadingDetail ? (
+                            <div className="py-16 text-center text-xs text-gray-500">
+                                Loading student performance record...
                             </div>
+                        ) : !studentDetail ? (
+                            <div className="py-12 text-center text-xs text-gray-500">
+                                Student record not found.
+                            </div>
+                        ) : (
+                            <>
+                                {/* Modal Header */}
+                                <div className="flex items-start justify-between border-b border-gray-100 pb-4">
+                                    <div>
+                                        <div className="flex items-center space-x-2">
+                                            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-800">
+                                                {studentDetail.enrollment.academicYear}
+                                            </span>
+                                            <span className="text-xs text-gray-400">
+                                                ID: {studentDetail.student.studentId}
+                                            </span>
+                                        </div>
+                                        <h2 className="text-xl font-bold text-gray-900 mt-1">
+                                            {studentDetail.student.fullName}
+                                        </h2>
+                                        <p className="text-xs text-gray-500">
+                                            {studentDetail.enrollment.grade} — {studentDetail.enrollment.section}
+                                        </p>
+                                    </div>
+                                    <button
+                                        onClick={handleCloseStudentDetail}
+                                        className="p-1.5 text-gray-400 hover:text-gray-700 rounded-xl hover:bg-gray-100 transition-colors"
+                                    >
+                                        <X className="w-5 h-5" />
+                                    </button>
+                                </div>
+
+                                {/* Summary Stats */}
+                                <div className="grid grid-cols-3 gap-4 bg-gray-50/80 p-4 rounded-2xl border border-gray-100">
+                                    <div>
+                                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Overall Average</p>
+                                        <p className="text-xl font-black text-gray-900 mt-0.5">
+                                            {studentDetail.summary.overallPercentage}%
+                                        </p>
+                                    </div>
+                                    <div>
+                                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Assessments</p>
+                                        <p className="text-xl font-black text-gray-900 mt-0.5">
+                                            {studentDetail.summary.totalAssessments}
+                                        </p>
+                                    </div>
+                                    <div>
+                                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Pass / Fail</p>
+                                        <p className="text-xl font-black text-gray-900 mt-0.5">
+                                            <span className="text-emerald-600">{studentDetail.summary.passCount}P</span>
+                                            {" / "}
+                                            <span className="text-rose-600">{studentDetail.summary.failCount}F</span>
+                                        </p>
+                                    </div>
+                                </div>
+
+                                {/* Subject-by-Subject Result Breakdown */}
+                                <div className="space-y-4">
+                                    <h4 className="text-xs font-bold text-gray-800 uppercase tracking-wider">
+                                        Subject Results & Assessments
+                                    </h4>
+
+                                    {studentDetail.subjects.length === 0 ? (
+                                        <p className="text-xs text-gray-400 italic">No subject results recorded yet.</p>
+                                    ) : (
+                                        <div className="space-y-3">
+                                            {studentDetail.subjects.map(s => (
+                                                <div key={s.subjectId} className="border border-gray-200/80 rounded-2xl p-4 space-y-3 bg-white">
+                                                    <div className="flex items-center justify-between">
+                                                        <div>
+                                                            <h5 className="text-sm font-bold text-gray-900">{s.subjectName}</h5>
+                                                            <p className="text-[10px] text-gray-400">Teacher: {s.teacherName}</p>
+                                                        </div>
+                                                        <div className="text-right">
+                                                            <span className="text-sm font-black text-gray-900">{s.averagePercentage}%</span>
+                                                            <p className="text-[10px] text-gray-400">{s.assessmentsCount} assessment(s)</p>
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="overflow-x-auto">
+                                                        <table className="w-full text-left text-[11px]">
+                                                            <thead className="bg-gray-50 text-gray-500 font-semibold border-b border-gray-100">
+                                                                <tr>
+                                                                    <th className="py-1.5 px-3">Assessment</th>
+                                                                    <th className="py-1.5 px-3">Type</th>
+                                                                    <th className="py-1.5 px-3 text-center">Score</th>
+                                                                    <th className="py-1.5 px-3 text-center">%</th>
+                                                                    <th className="py-1.5 px-3 text-center">Status</th>
+                                                                </tr>
+                                                            </thead>
+                                                            <tbody className="divide-y divide-gray-100">
+                                                                {s.assessments.map(a => (
+                                                                    <tr key={a.id}>
+                                                                        <td className="py-1.5 px-3 font-medium text-gray-800">{a.title}</td>
+                                                                        <td className="py-1.5 px-3 text-gray-500 uppercase text-[10px]">{a.type}</td>
+                                                                        <td className="py-1.5 px-3 text-center font-bold text-gray-900">{a.score}/{a.maxScore}</td>
+                                                                        <td className="py-1.5 px-3 text-center font-bold">{a.percentage}%</td>
+                                                                        <td className="py-1.5 px-3 text-center">
+                                                                            <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${
+                                                                                a.isPassing ? "bg-emerald-50 text-emerald-700" : "bg-rose-50 text-rose-700"
+                                                                            }`}>
+                                                                                {a.isPassing ? "PASS" : "FAIL"}
+                                                                            </span>
+                                                                        </td>
+                                                                    </tr>
+                                                                ))}
+                                                            </tbody>
+                                                        </table>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+
+                                <div className="flex justify-end pt-2">
+                                    <Button variant="outline" onClick={handleCloseStudentDetail} className="text-xs">
+                                        Close
+                                    </Button>
+                                </div>
+                            </>
                         )}
                     </div>
-                </div>
-            )}
-
-            {/* Create Assessment Modal */}
-            {isCreateModalOpen && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-                    <form onSubmit={handleCreateAssessment} className="bg-white rounded-xl max-w-lg w-full p-6 space-y-4 shadow-xl">
-                        <h3 className="text-lg font-bold text-gray-900 border-b pb-2">
-                            Create Test Assessment
-                        </h3>
-
-                        <div>
-                            <label className="block text-xs font-semibold uppercase text-gray-500 mb-1">
-                                Subject & Teacher Assignment
-                            </label>
-                            <select
-                                required
-                                value={createForm.teachingAssignmentId}
-                                onChange={(e) => setCreateForm(prev => ({ ...prev, teachingAssignmentId: e.target.value }))}
-                                className="w-full h-10 px-3 border border-gray-300 rounded-lg text-sm bg-white focus:ring-2 focus:ring-[#006b3f] outline-none"
-                            >
-                                <option value="">-- Select Subject & Teacher --</option>
-                                {availableAssignmentsForSection.map((ta) => (
-                                    <option key={ta.id} value={ta.id}>
-                                        {ta.subject?.name} - Teacher: {ta.teacher?.firstName} {ta.teacher?.lastName}
-                                    </option>
-                                ))}
-                            </select>
-                        </div>
-
-                        <div>
-                            <label className="block text-xs font-semibold uppercase text-gray-500 mb-1">
-                                Assessment Title
-                            </label>
-                            <input
-                                required
-                                type="text"
-                                placeholder="e.g. Midterm Exam, Quiz 1"
-                                value={createForm.title}
-                                onChange={(e) => setCreateForm(prev => ({ ...prev, title: e.target.value }))}
-                                className="w-full h-10 px-3 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-[#006b3f]"
-                            />
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-4">
-                            <div>
-                                <label className="block text-xs font-semibold uppercase text-gray-500 mb-1">
-                                    Type
-                                </label>
-                                <select
-                                    value={createForm.type}
-                                    onChange={(e) => setCreateForm(prev => ({ ...prev, type: e.target.value as AssessmentType }))}
-                                    className="w-full h-10 px-3 border border-gray-300 rounded-lg text-sm bg-white outline-none focus:ring-2 focus:ring-[#006b3f]"
-                                >
-                                    <option value="EXAM">EXAM</option>
-                                    <option value="QUIZ">QUIZ</option>
-                                    <option value="ASSIGNMENT">ASSIGNMENT</option>
-                                    <option value="PROJECT">PROJECT</option>
-                                </select>
-                            </div>
-
-                            <div>
-                                <label className="block text-xs font-semibold uppercase text-gray-500 mb-1">
-                                    Max Score
-                                </label>
-                                <input
-                                    required
-                                    type="number"
-                                    min={1}
-                                    value={createForm.maxScore}
-                                    onChange={(e) => setCreateForm(prev => ({ ...prev, maxScore: e.target.value }))}
-                                    className="w-full h-10 px-3 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-[#006b3f]"
-                                />
-                            </div>
-                        </div>
-
-                        <div className="flex justify-end space-x-3 pt-3 border-t">
-                            <Button type="button" variant="outline" onClick={() => setIsCreateModalOpen(false)}>
-                                Cancel
-                            </Button>
-                            <Button type="submit" className="bg-[#006b3f] hover:bg-[#005432]">
-                                Publish Assessment
-                            </Button>
-                        </div>
-                    </form>
                 </div>
             )}
         </div>

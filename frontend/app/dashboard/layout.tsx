@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useAuth } from "../../hooks/useAuth";
 import { Loader2, BookOpen, LogOut, LayoutDashboard, Building, Search, Lock, ChevronDown, ChevronRight, Calendar, Users, GraduationCap, ClipboardCheck, FileText, Settings, User, Megaphone, Bell, MessageSquare, Package, AlertOctagon, TrendingUp, HeartHandshake, BarChart2, Sparkles, Menu, Brain } from "lucide-react";
 import Link from "next/link";
@@ -8,7 +8,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { fetchApi } from "../../lib/api";
 import StudentNavigation from "./student/StudentNavigation";
 
-export default function DashboardLayout({ children }: { children: React.ReactNode }) {
+function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
     const { authData, loading, error } = useAuth(true);
     const pathname = usePathname();
     const router = useRouter();
@@ -896,11 +896,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                                             </button>
                                             {openMenus.assessment && !sidebarCollapsed && (
                                                 <div className="pl-8 pr-2 py-1.5 space-y-1 bg-[#020e24]/60 rounded-xl my-1 border-l border-slate-700/50">
-                                                    <Link href="/dashboard/assessment" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/assessment" ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>Assessments Catalog</Link>
-                                                    <Link href="/dashboard/assessment/schedules" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/assessment/schedules" ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>Exam Schedules</Link>
-                                                    <Link href="/dashboard/assessment/analytics" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/assessment/analytics" ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>Performance Analytics</Link>
-                                                    <Link href="/dashboard/assessment/at-risk" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/assessment/at-risk" ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>Academic At-Risk List</Link>
-                                                    <Link href="/dashboard/assessment/approval" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/assessment/approval" ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>Report Cards & Approval</Link>
+                                                    <Link href="/dashboard/assessment" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/assessment" ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>Overview & Performance</Link>
                                                     <Link href="/dashboard/assessment/results" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname.startsWith("/dashboard/assessment/results") ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>Student Results</Link>
                                                 </div>
                                             )}
@@ -1338,6 +1334,19 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 </main>
             </div>
         </div>
+    );
+}
+
+export default function DashboardLayout({ children }: { children: React.ReactNode }) {
+    return (
+        <Suspense fallback={
+            <div className="min-h-screen flex items-center justify-center bg-[#f4f5f7] text-gray-700">
+                <Loader2 className="h-8 w-8 animate-spin text-[#4085b3] mr-3" />
+                <span className="text-lg font-medium">Loading EduBridge workspace...</span>
+            </div>
+        }>
+            <DashboardLayoutInner>{children}</DashboardLayoutInner>
+        </Suspense>
     );
 }
 
