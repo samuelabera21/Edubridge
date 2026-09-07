@@ -2,19 +2,36 @@ import { prisma } from "../../infrastructure/prisma/client.js";
 
 export class TimetableService {
     /**
-     * Create a class period definition
+     * Create a class period definition (name is primary; clock times defaulted if omitted)
      */
-    static async createClassPeriod(organizationId: string, data: { name: string; startTime: string; endTime: string; isBreak?: boolean }) {
+    static async createClassPeriod(organizationId: string, data: { name: string; startTime?: string; endTime?: string; isBreak?: boolean }) {
+        const count = await prisma.classPeriod.count({ where: { organizationId } });
         const period = await prisma.classPeriod.create({
             data: {
                 organizationId,
                 name: data.name,
-                startTime: data.startTime,
-                endTime: data.endTime,
+                startTime: data.startTime || String(count + 1),
+                endTime: data.endTime || String(count + 1),
                 isBreak: data.isBreak ?? false,
             }
         });
         return period;
+    }
+
+    /**
+     * Delete a class period if not currently used in any active timetable lesson
+     */
+    static async deleteClassPeriod(organizationId: string, id: string) {
+        const usage = await prisma.timetable.count({
+            where: { organizationId, classPeriodId: id }
+        });
+        if (usage > 0) {
+            throw new Error(`Cannot delete period: it is used by ${usage} scheduled lesson(s). Please remove or reassign those lessons first.`);
+        }
+        await prisma.classPeriod.deleteMany({
+            where: { id, organizationId }
+        });
+        return { success: true };
     }
 
     /**
@@ -186,16 +203,11 @@ export class TimetableService {
             where: { organizationId }
         });
 
-        // If no class periods exist yet for this school, automatically ensure standard P1 to P7 exist
-        if (periods.length === 0) {
-            periods = await TimetableService.generateDefaultPeriods(organizationId);
-        } else {
-            periods.sort((a, b) => {
-                const numA = parseInt(a.name.replace(/\D/g, ""), 10) || 0;
-                const numB = parseInt(b.name.replace(/\D/g, ""), 10) || 0;
-                return numA - numB;
-            });
-        }
+        periods.sort((a, b) => {
+            const numA = parseInt(a.name.replace(/\D/g, ""), 10) || 0;
+            const numB = parseInt(b.name.replace(/\D/g, ""), 10) || 0;
+            return numA - numB;
+        });
 
         // 5. Academic Calendar Events (Closed Days / Holidays)
         const calendar = await prisma.academicCalendar.findUnique({

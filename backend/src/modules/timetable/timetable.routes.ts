@@ -2,6 +2,7 @@ import { Router } from "express";
 import { 
     getSectionWorkspace,
     createClassPeriod, 
+    deleteClassPeriod,
     getClassPeriods,
     generateDefaultPeriods,
     assignTimetable,
@@ -52,6 +53,7 @@ router.get("/my", getMyTimetable);
  *     summary: Create a class period for the school
  */
 router.post("/periods", requirePermission("ACADEMIC:CREATE"), createClassPeriod);
+router.delete("/periods/:id", requirePermission("ACADEMIC:DELETE"), deleteClassPeriod);
 router.post("/periods/default", requirePermission("ACADEMIC:CREATE"), generateDefaultPeriods);
 
 /**
@@ -71,6 +73,7 @@ router.get("/periods", requirePermission("ACADEMIC:VIEW"), getClassPeriods);
  *     summary: Assign a teaching assignment to a specific period and day
  */
 router.post("/", requirePermission("ACADEMIC:CREATE"), assignTimetable);
+router.post("/assign", requirePermission("ACADEMIC:CREATE"), assignTimetable);
 
 /**
  * @openapi
@@ -142,6 +145,7 @@ router.put("/teacher/:teacherId/availability", requirePermission("ACADEMIC:CREAT
  *     tags: [Timetable]
  *     summary: Delete a timetable entry
  */
+router.delete("/slots/:id", requirePermission("ACADEMIC:DELETE"), deleteTimetable);
 router.delete("/:id", requirePermission("ACADEMIC:DELETE"), deleteTimetable);
 
 /**

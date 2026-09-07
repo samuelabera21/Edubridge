@@ -311,6 +311,32 @@ export default function TimetablePage() {
         }
     };
 
+    // 6b. Delete class period action
+    const handleDeletePeriod = async (periodId: string, periodName: string) => {
+        if (!confirm(`Are you sure you want to delete period "${periodName}"? This is only allowed if no lessons are scheduled in this period.`)) {
+            return;
+        }
+
+        try {
+            setActionLoading(true);
+            setConflictError(null);
+            const res = await fetchApi(`/timetable/periods/${periodId}`, {
+                method: "DELETE"
+            });
+            const data = await res.json();
+            if (!res.ok) {
+                throw new Error(data.error || "Failed to delete period");
+            }
+            setSuccessMessage(`Period "${periodName}" deleted successfully.`);
+            setTimeout(() => setSuccessMessage(null), 3000);
+            await loadWorkspace(selectedYearId, selectedGradeId, selectedSectionId);
+        } catch (err: any) {
+            setConflictError(err.message || "Failed to delete period");
+        } finally {
+            setActionLoading(false);
+        }
+    };
+
     // 7. Reassign slot action
     const handleReassignSlot = async () => {
         if (!reassignSlotTarget || !reassignAssignmentId) return;
@@ -882,33 +908,85 @@ export default function TimetablePage() {
                                                 </tr>
                                             </thead>
                                             <tbody className="divide-y divide-slate-100">
-                                                {workspace.periods?.map((period: any) => {
-                                                    const isBreak = period.isBreak;
-                                                    const match = period.name.match(/\d+/);
-                                                    const periodCode = match ? `P${match[0]}` : period.name;
+                                                {workspace.periods?.length === 0 ? (
+                                                    <tr>
+                                                        <td colSpan={operatingDaysList.length + 1} className="py-12 px-6 text-center">
+                                                            <div className="max-w-md mx-auto space-y-3">
+                                                                <Calendar className="w-10 h-10 text-[#4085b3] mx-auto opacity-75" />
+                                                                <h4 className="text-sm font-bold text-slate-800">No Instructional Periods Configured</h4>
+                                                                <p className="text-xs text-slate-500 leading-relaxed">
+                                                                    This school has no periods configured yet. Start by adding periods (e.g. P1, P2, P3, Break) or seed the standard Ethiopian periods:
+                                                                </p>
+                                                                <div className="flex flex-wrap items-center justify-center gap-2 pt-2">
+                                                                    <Button
+                                                                        onClick={() => setIsPeriodModalOpen(true)}
+                                                                        className="flex items-center gap-1.5 text-xs bg-[#4085b3] hover:bg-[#356f96]"
+                                                                    >
+                                                                        <Plus className="w-4 h-4" />
+                                                                        <span>+ Add Period</span>
+                                                                    </Button>
+                                                                    <Button
+                                                                        variant="outline"
+                                                                        onClick={handleGenerateDefaultPeriods}
+                                                                        disabled={actionLoading}
+                                                                        className="flex items-center gap-1.5 text-xs"
+                                                                    >
+                                                                        <span>⚡ Standard Ethiopian Periods (P1–P7)</span>
+                                                                    </Button>
+                                                                </div>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                ) : (
+                                                    workspace.periods?.map((period: any) => {
+                                                        const isBreak = period.isBreak;
+                                                        const match = period.name.match(/\d+/);
+                                                        const periodCode = match ? `P${match[0]}` : period.name;
 
-                                                    if (isBreak) {
+                                                        if (isBreak) {
+                                                            return (
+                                                                <tr key={period.id} className="bg-amber-50/50 border-y border-amber-200/60">
+                                                                    <td className="py-2.5 px-3 text-center border-r border-amber-200/60 bg-amber-100/40 w-24">
+                                                                        <div className="flex items-center justify-center gap-1 group/p">
+                                                                            <span className="font-bold text-xs text-amber-800">{periodCode || "Break"}</span>
+                                                                            {!isYearLocked && (
+                                                                                <button
+                                                                                    onClick={() => handleDeletePeriod(period.id, periodCode || "Break")}
+                                                                                    className="opacity-0 group-hover/p:opacity-100 p-0.5 text-amber-600 hover:text-red-500 rounded transition-all cursor-pointer"
+                                                                                    title="Delete break period"
+                                                                                >
+                                                                                    <Trash2 className="w-3 h-3" />
+                                                                                </button>
+                                                                            )}
+                                                                        </div>
+                                                                    </td>
+                                                                    <td
+                                                                        colSpan={operatingDaysList.length}
+                                                                        className="py-2.5 text-center text-xs font-semibold text-amber-700 tracking-wider uppercase bg-amber-50/70"
+                                                                    >
+                                                                        ☕ Recess / Non-Instructional Break
+                                                                    </td>
+                                                                </tr>
+                                                            );
+                                                        }
+
                                                         return (
-                                                            <tr key={period.id} className="bg-amber-50/50 border-y border-amber-200/60">
-                                                                <td className="py-2.5 px-4 text-center font-bold text-xs text-amber-800 border-r border-amber-200/60 bg-amber-100/40 w-24">
-                                                                    Break
+                                                            <tr key={period.id} className="hover:bg-slate-50/30 transition-colors">
+                                                                {/* Period Label with Hover Delete */}
+                                                                <td className="py-3 px-3 text-center border-r border-slate-200 bg-slate-50/60 w-24">
+                                                                    <div className="flex items-center justify-center gap-1 group/p">
+                                                                        <span className="font-extrabold text-sm text-slate-900">{periodCode}</span>
+                                                                        {!isYearLocked && (
+                                                                            <button
+                                                                                onClick={() => handleDeletePeriod(period.id, periodCode)}
+                                                                                className="opacity-0 group-hover/p:opacity-100 p-0.5 text-slate-400 hover:text-red-500 rounded transition-all cursor-pointer"
+                                                                                title={`Delete period ${periodCode}`}
+                                                                            >
+                                                                                <Trash2 className="w-3 h-3" />
+                                                                            </button>
+                                                                        )}
+                                                                    </div>
                                                                 </td>
-                                                                <td
-                                                                    colSpan={operatingDaysList.length}
-                                                                    className="py-2.5 text-center text-xs font-semibold text-amber-700 tracking-wider uppercase bg-amber-50/70"
-                                                                >
-                                                                    ☕ Recess / Non-Instructional Break
-                                                                </td>
-                                                            </tr>
-                                                        );
-                                                    }
-
-                                                    return (
-                                                        <tr key={period.id} className="hover:bg-slate-50/30 transition-colors">
-                                                            {/* Period Label: ONLY P1, P2, P3... NO clock times */}
-                                                            <td className="py-3 px-4 text-center font-extrabold text-sm text-slate-900 border-r border-slate-200 bg-slate-50/60 w-24">
-                                                                {periodCode}
-                                                            </td>
 
                                                             {/* Day Cells */}
                                                             {operatingDaysList.map((day) => {
@@ -989,7 +1067,7 @@ export default function TimetablePage() {
                                                             })}
                                                         </tr>
                                                     );
-                                                })}
+                                                }))}
                                             </tbody>
                                         </table>
                                     </CardContent>
@@ -1128,30 +1206,48 @@ export default function TimetablePage() {
                                 <thead>
                                     <tr className="bg-slate-50 border-b border-slate-200">
                                         <th className="py-3 px-4 font-bold text-slate-700">Period Name</th>
-                                        <th className="py-3 px-4 font-bold text-slate-700">Start Time</th>
-                                        <th className="py-3 px-4 font-bold text-slate-700">End Time</th>
                                         <th className="py-3 px-4 font-bold text-slate-700">Type</th>
+                                        <th className="py-3 px-4 font-bold text-slate-700 text-right">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-100">
-                                    {periods.map((p) => (
-                                        <tr key={p.id} className="hover:bg-slate-50/50">
-                                            <td className="py-3 px-4 font-bold text-slate-900">{p.name}</td>
-                                            <td className="py-3 px-4 font-mono text-slate-700">{p.startTime}</td>
-                                            <td className="py-3 px-4 font-mono text-slate-700">{p.endTime}</td>
-                                            <td className="py-3 px-4">
-                                                {p.isBreak ? (
-                                                    <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-50 text-amber-700 border border-amber-200">
-                                                        Break / Recess
-                                                    </span>
-                                                ) : (
-                                                    <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-blue-50 text-blue-700 border border-blue-200">
-                                                        Instructional Period
-                                                    </span>
-                                                )}
+                                    {periods.length === 0 ? (
+                                        <tr>
+                                            <td colSpan={3} className="py-8 text-center text-slate-400 text-xs">
+                                                No class periods configured yet. Click &quot;Add New Period&quot; above to create one.
                                             </td>
                                         </tr>
-                                    ))}
+                                    ) : (
+                                        periods.map((p) => (
+                                            <tr key={p.id} className="hover:bg-slate-50/50">
+                                                <td className="py-3 px-4 font-bold text-slate-900">{p.name}</td>
+                                                <td className="py-3 px-4">
+                                                    {p.isBreak ? (
+                                                        <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-50 text-amber-700 border border-amber-200">
+                                                            Break / Recess
+                                                        </span>
+                                                    ) : (
+                                                        <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-blue-50 text-blue-700 border border-blue-200">
+                                                            Instructional Period
+                                                        </span>
+                                                    )}
+                                                </td>
+                                                <td className="py-3 px-4 text-right">
+                                                    {!isYearLocked && (
+                                                        <Button
+                                                            variant="outline"
+                                                            size="sm"
+                                                            onClick={() => handleDeletePeriod(p.id, p.name)}
+                                                            className="text-red-600 hover:text-red-700 hover:bg-red-50 text-xs h-7 px-2.5"
+                                                        >
+                                                            <Trash2 className="w-3.5 h-3.5 mr-1" />
+                                                            <span>Delete</span>
+                                                        </Button>
+                                                    )}
+                                                </td>
+                                            </tr>
+                                        ))
+                                    )}
                                 </tbody>
                             </table>
                         </CardContent>
@@ -1421,36 +1517,38 @@ export default function TimetablePage() {
             <Modal
                 isOpen={isPeriodModalOpen}
                 onClose={() => setIsPeriodModalOpen(false)}
-                title="Create Class Period"
+                title="Add Class Period"
                 maxWidth="md"
             >
                 <div className="space-y-4">
                     <div>
                         <label className="block text-xs font-semibold text-slate-700 mb-1">Period Name</label>
                         <Input
-                            placeholder="e.g. Period 5 or Afternoon Recess"
+                            placeholder="e.g. P1, P2, Period 3, or Recess"
                             value={newPeriod.name}
                             onChange={(e) => setNewPeriod({ ...newPeriod, name: e.target.value })}
+                            autoFocus
                         />
-                    </div>
-                    <div className="grid grid-cols-2 gap-3">
-                        <div>
-                            <label className="block text-xs font-semibold text-slate-700 mb-1">Start Time (24h)</label>
-                            <Input
-                                placeholder="08:00"
-                                value={newPeriod.startTime}
-                                onChange={(e) => setNewPeriod({ ...newPeriod, startTime: e.target.value })}
-                            />
+                        {/* Quick Name Suggestions */}
+                        <div className="flex flex-wrap items-center gap-1.5 mt-2">
+                            <span className="text-[11px] text-slate-400 mr-1">Quick pick:</span>
+                            {["P1", "P2", "P3", "P4", "P5", "P6", "P7", "Recess"].map((pName) => (
+                                <button
+                                    key={pName}
+                                    type="button"
+                                    onClick={() => setNewPeriod({ 
+                                        ...newPeriod, 
+                                        name: pName,
+                                        isBreak: pName.toLowerCase().includes("recess") || pName.toLowerCase().includes("break")
+                                    })}
+                                    className="px-2.5 py-1 rounded-md text-xs bg-slate-100 hover:bg-[#4085b3]/10 hover:text-[#4085b3] text-slate-700 font-semibold transition-colors cursor-pointer"
+                                >
+                                    {pName}
+                                </button>
+                            ))}
                         </div>
-                        <div>
-                            <label className="block text-xs font-semibold text-slate-700 mb-1">End Time (24h)</label>
-                            <Input
-                                placeholder="08:40"
-                                value={newPeriod.endTime}
-                                onChange={(e) => setNewPeriod({ ...newPeriod, endTime: e.target.value })}
-                            />
-                        </div>
                     </div>
+
                     <div className="flex items-center gap-2 pt-1">
                         <input
                             type="checkbox"
@@ -1459,7 +1557,7 @@ export default function TimetablePage() {
                             onChange={(e) => setNewPeriod({ ...newPeriod, isBreak: e.target.checked })}
                             className="rounded border-slate-300 text-[#4085b3] focus:ring-[#4085b3]"
                         />
-                        <label htmlFor="isBreakCheck" className="text-xs font-medium text-slate-700">
+                        <label htmlFor="isBreakCheck" className="text-xs font-medium text-slate-700 cursor-pointer">
                             This is a Break / Recess period (lessons cannot be scheduled)
                         </label>
                     </div>
@@ -1469,23 +1567,34 @@ export default function TimetablePage() {
                         <Button
                             onClick={async () => {
                                 try {
+                                    setActionLoading(true);
+                                    setConflictError(null);
                                     const res = await fetchApi("/timetable/periods", {
                                         method: "POST",
                                         headers: { "Content-Type": "application/json" },
-                                        body: JSON.stringify(newPeriod)
+                                        body: JSON.stringify({
+                                            name: newPeriod.name.trim(),
+                                            isBreak: newPeriod.isBreak
+                                        })
                                     });
-                                    if (res.ok) {
-                                        setIsPeriodModalOpen(false);
-                                        setNewPeriod({ name: "", startTime: "", endTime: "", isBreak: false });
-                                        await loadWorkspace(selectedYearId, selectedGradeId, selectedSectionId);
+                                    const data = await res.json();
+                                    if (!res.ok) {
+                                        throw new Error(data.error || "Failed to create period");
                                     }
-                                } catch (e) {
-                                    console.error(e);
+                                    setIsPeriodModalOpen(false);
+                                    setNewPeriod({ name: "", startTime: "", endTime: "", isBreak: false });
+                                    setSuccessMessage(`Period "${data.name}" created successfully.`);
+                                    setTimeout(() => setSuccessMessage(null), 3000);
+                                    await loadWorkspace(selectedYearId, selectedGradeId, selectedSectionId);
+                                } catch (e: any) {
+                                    setConflictError(e.message || "Failed to create period");
+                                } finally {
+                                    setActionLoading(false);
                                 }
                             }}
-                            disabled={!newPeriod.name || !newPeriod.startTime || !newPeriod.endTime}
+                            disabled={!newPeriod.name.trim() || actionLoading}
                         >
-                            Save Period
+                            {actionLoading ? "Saving..." : "Save Period"}
                         </Button>
                     </div>
                 </div>

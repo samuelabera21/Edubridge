@@ -27,14 +27,34 @@ export const createClassPeriod = async (req: Request, res: Response) => {
         if (!organizationId) return res.status(403).json({ error: "Missing school scope" });
 
         const { name, startTime, endTime, isBreak } = req.body;
-        if (!name || !startTime || !endTime) {
-            return res.status(400).json({ error: "name, startTime, and endTime are required" });
+        if (!name || !name.trim()) {
+            return res.status(400).json({ error: "Period name is required" });
         }
 
-        const period = await TimetableService.createClassPeriod(organizationId, { name, startTime, endTime, isBreak });
+        const period = await TimetableService.createClassPeriod(organizationId, { 
+            name: name.trim(), 
+            startTime, 
+            endTime, 
+            isBreak: Boolean(isBreak) 
+        });
         return res.status(201).json(period);
     } catch (error: any) {
         return res.status(400).json({ error: error.message || "Failed to create class period" });
+    }
+};
+
+export const deleteClassPeriod = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        if (!organizationId) return res.status(403).json({ error: "Missing school scope" });
+
+        const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+        if (!id) return res.status(400).json({ error: "Period ID is required" });
+
+        await TimetableService.deleteClassPeriod(organizationId, id);
+        return res.json({ success: true, message: "Class period deleted successfully" });
+    } catch (error: any) {
+        return res.status(400).json({ error: error.message || "Failed to delete class period" });
     }
 };
 
