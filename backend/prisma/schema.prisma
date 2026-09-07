@@ -49,6 +49,8 @@ model User {
   uploadedTeacherDocuments      TeacherDocument[]      @relation("UploadedTeacherDocuments")
   verifiedTeacherDocuments      TeacherDocument[]      @relation("VerifiedTeacherDocuments")
   verifiedStudentDocuments      StudentDocument[]      @relation("VerifiedStudentDocuments")
+  requestedCorrections          AttendanceCorrection[] @relation("RequestedCorrections")
+  reviewedCorrections           AttendanceCorrection[] @relation("ReviewedCorrections")
 
   @@unique([email])
   @@map("user")
@@ -195,6 +197,7 @@ model OrganizationUnit {
   issues             Issue[]
   improvementPlans   ImprovementPlan[]
   timetableConfigs   TimetableConfig[]
+  attendanceCorrections AttendanceCorrection[]
 
   @@index([parentId])
   @@index([type])
@@ -265,6 +268,7 @@ model AcademicYear {
   assessments         Assessment[]
   learningActivities  LearningActivity[]
   timetableConfigs    TimetableConfig[]
+  attendanceCorrections AttendanceCorrection[]
 
   @@unique([organizationId, name])
   @@map("academic_year")
@@ -602,6 +606,7 @@ model StudentEnrollment {
   results       StudentResult[]
   submissions   Submission[]
   supportFlags  SupportFlag[]
+  attendanceCorrections AttendanceCorrection[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -974,6 +979,7 @@ model ClassPeriod {
   organization       OrganizationUnit    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   timetables         Timetable[]
   studentAttendances StudentAttendance[]
+  attendanceCorrections AttendanceCorrection[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1062,6 +1068,46 @@ model TeacherAttendance {
   @@unique([teacherId, date])
   @@index([organizationId, date])
   @@map("teacher_attendance")
+}
+
+enum AttendanceCorrectionStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model AttendanceCorrection {
+  id                  String                     @id @default(cuid())
+  organizationId      String
+  academicYearId      String
+  attendanceId        String?
+  enrollmentId        String
+  date                DateTime                   @db.Date
+  classPeriodId       String?
+  originalStatus      AttendanceStatus
+  requestedStatus     AttendanceStatus
+  reasonCategory      String
+  justification       String
+  evidenceDocumentUrl String?
+  status              AttendanceCorrectionStatus @default(PENDING)
+  requestedById       String
+  reviewedById        String?
+  reviewedAt          DateTime?
+  rejectionReason     String?
+  createdAt           DateTime                   @default(now())
+  updatedAt           DateTime                   @updatedAt
+
+  organization OrganizationUnit  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  academicYear AcademicYear      @relation(fields: [academicYearId], references: [id], onDelete: Cascade)
+  enrollment   StudentEnrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+  classPeriod  ClassPeriod?      @relation(fields: [classPeriodId], references: [id], onDelete: SetNull)
+  requestedBy  User              @relation("RequestedCorrections", fields: [requestedById], references: [id], onDelete: Cascade)
+  reviewedBy   User?             @relation("ReviewedCorrections", fields: [reviewedById], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, status])
+  @@index([enrollmentId])
+  @@index([academicYearId])
+  @@map("attendance_correction")
 }
 
 // ============================================================

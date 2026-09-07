@@ -7,7 +7,18 @@ import {
     recordTeacherAttendance,
     recordBulkTeacherAttendance,
     getTeacherAttendance,
-    getDailyTeacherAttendance
+    getDailyTeacherAttendance,
+    // School Administrator Oversight Controllers
+    getExecutiveOverview,
+    getSchoolStudentAttendance,
+    getStudentAttendanceDetail,
+    getSchoolTeacherAttendance,
+    getTeacherAttendanceDetail,
+    getAbsenceRiskAlerts,
+    getCorrections,
+    createCorrectionRequest,
+    approveCorrection,
+    rejectCorrection
 } from "./attendance.controller.js";
 import { requirePermission, requireScope } from "../authentication/authorization.middleware.js";
 
@@ -15,68 +26,42 @@ const router = Router();
 
 router.use(requireScope("SCHOOL"));
 
-/**
- * @openapi
- * /api/attendance/student:
- *   post:
- *     tags: [Attendance]
- *     summary: Record student attendance (daily or by period)
- *     security:
- *       - bearerAuth: []
- *       - cookieAuth: []
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required: [enrollmentId, date]
- *             properties:
- *               enrollmentId:
- *                 type: string
- *               date:
- *                 type: string
- *                 format: date
- *               status:
- *                 type: string
- *                 enum: [PRESENT, ABSENT, LATE, EXCUSED]
- *               remarks:
- *                 type: string
- *     responses:
- *       201:
- *         description: Student attendance recorded successfully
- *       400:
- *         description: Bad request
- */
-router.post("/student", requirePermission("ACADEMIC:CREATE"), recordStudentAttendance);
-router.post("/student/bulk", requirePermission("ACADEMIC:CREATE"), recordBulkStudentAttendance);
-router.get("/student/section/:sectionId", requirePermission("ACADEMIC:VIEW"), getSectionAttendance);
+// ============================================================
+// OPERATIONAL ATTENDANCE ROUTES (Teachers & General Staff)
+// ============================================================
 
-/**
- * @openapi
- * /api/attendance/student/{enrollmentId}:
- *   get:
- *     tags: [Attendance]
- *     summary: Get student attendance history
- *     security:
- *       - bearerAuth: []
- *       - cookieAuth: []
- *     parameters:
- *       - in: path
- *         name: enrollmentId
- *         required: true
- *         schema:
- *           type: string
- *     responses:
- *       200:
- *         description: Student attendance history records
- */
-router.get("/student/:enrollmentId", requirePermission("ACADEMIC:VIEW"), getStudentAttendance);
+router.post("/student", requirePermission("ATTENDANCE:RECORD"), recordStudentAttendance);
+router.post("/student/bulk", requirePermission("ATTENDANCE:RECORD"), recordBulkStudentAttendance);
+router.get("/student/section/:sectionId", requirePermission("ATTENDANCE:VIEW"), getSectionAttendance);
+router.get("/student/:enrollmentId", requirePermission("ATTENDANCE:VIEW"), getStudentAttendance);
 
-router.post("/teacher", requirePermission("ACADEMIC:CREATE"), recordTeacherAttendance);
-router.post("/teacher/bulk", requirePermission("ACADEMIC:CREATE"), recordBulkTeacherAttendance);
-router.get("/teacher/daily", requirePermission("ACADEMIC:VIEW"), getDailyTeacherAttendance);
-router.get("/teacher/:teacherId", requirePermission("ACADEMIC:VIEW"), getTeacherAttendance);
+router.post("/teacher", requirePermission("ATTENDANCE:RECORD"), recordTeacherAttendance);
+router.post("/teacher/bulk", requirePermission("ATTENDANCE:RECORD"), recordBulkTeacherAttendance);
+router.get("/teacher/daily", requirePermission("ATTENDANCE:VIEW"), getDailyTeacherAttendance);
+router.get("/teacher/:teacherId", requirePermission("ATTENDANCE:VIEW"), getTeacherAttendance);
+
+// ============================================================
+// SCHOOL ADMINISTRATOR / PRINCIPAL OVERSIGHT ROUTES
+// ============================================================
+
+// 1. Executive Overview & Daily Trends
+router.get("/admin/overview", requirePermission("ATTENDANCE:VIEW"), getExecutiveOverview);
+
+// 2. School-wide Student Attendance Investigation & Individual Detail
+router.get("/admin/students", requirePermission("ATTENDANCE:VIEW"), getSchoolStudentAttendance);
+router.get("/admin/students/:enrollmentId", requirePermission("ATTENDANCE:VIEW"), getStudentAttendanceDetail);
+
+// 3. School-wide Teacher Attendance Oversight & Individual Detail
+router.get("/admin/teachers", requirePermission("ATTENDANCE:VIEW"), getSchoolTeacherAttendance);
+router.get("/admin/teachers/:teacherId", requirePermission("ATTENDANCE:VIEW"), getTeacherAttendanceDetail);
+
+// 4. Automated Absence Risk Alerts
+router.get("/admin/alerts", requirePermission("ATTENDANCE:VIEW"), getAbsenceRiskAlerts);
+
+// 5. Official Attendance Corrections Workflow
+router.get("/admin/corrections", requirePermission("ATTENDANCE:VIEW"), getCorrections);
+router.post("/admin/corrections", requirePermission("ATTENDANCE:RECORD"), createCorrectionRequest);
+router.post("/admin/corrections/:id/approve", requirePermission("ATTENDANCE:RECORD"), approveCorrection);
+router.post("/admin/corrections/:id/reject", requirePermission("ATTENDANCE:RECORD"), rejectCorrection);
 
 export default router;
-

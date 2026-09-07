@@ -12,227 +12,465 @@ import {
     UserCheck, 
     ShieldCheck, 
     X, 
-    Edit3
+    Edit3,
+    Plus,
+    XCircle,
+    Calendar,
+    ChevronLeft,
+    ChevronRight,
+    RefreshCw,
+    FileText
 } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { LoadingState } from "@/components/ui/LoadingState";
+import { ErrorState } from "@/components/ui/ErrorState";
+import { AcademicYear } from "@/types/api";
 
-interface CorrectionAuditLog {
+type AttendanceCorrectionStatus = "PENDING" | "APPROVED" | "REJECTED";
+
+interface CorrectionItem {
     id: string;
-    studentName: string;
-    studentIdCode: string;
-    gradeSection: string;
+    attendanceId?: string | null;
+    enrollmentId: string;
     date: string;
-    previousStatus: string;
-    correctedStatus: string;
-    reason: string;
-    authorizedBy: string;
+    originalStatus: string;
+    requestedStatus: string;
+    reasonCategory: string;
+    justification: string;
+    evidenceDocumentUrl?: string | null;
+    status: AttendanceCorrectionStatus;
+    rejectionReason?: string | null;
+    studentName: string;
+    admissionNumber: string;
+    gradeName: string;
+    sectionName: string;
+    classPeriodName: string;
+    requestedBy?: { id: string; name: string } | null;
+    reviewedBy?: { id: string; name: string } | null;
+    reviewedAt?: string | null;
     createdAt: string;
 }
 
 export default function AttendanceCorrectionsPage() {
     const { authData } = useAuth();
+
+    const [years, setYears] = useState<AcademicYear[]>([]);
+    const [selectedYearId, setSelectedYearId] = useState<string>("");
+
+    const [corrections, setCorrections] = useState<CorrectionItem[]>([]);
+    const [summary, setSummary] = useState<{ total: number; pendingCount: number; approvedCount: number; rejectedCount: number } | null>(null);
     const [loading, setLoading] = useState(true);
-    const [submitting, setSubmitting] = useState(false);
-    const [successMsg, setSuccessMsg] = useState<string | null>(null);
-    const [errorMsg, setErrorMsg] = useState<string | null>(null);
+    const [refreshing, setRefreshing] = useState(false);
+    const [error, setError] = useState<string | null>(null);
 
-    const [auditLogs, setAuditLogs] = useState<CorrectionAuditLog[]>([]);
-    const [searchQuery, setSearchQuery] = useState("");
+    const [statusFilter, setStatusFilter] = useState<string>("ALL");
+    const [page, setPage] = useState<number>(1);
+    const [totalPages, setTotalPages] = useState<number>(1);
+    const limit = 20;
 
-    // Modal state for filing official override
-    const [isOverrideModalOpen, setIsOverrideModalOpen] = useState(false);
-    const [formData, setFormData] = useState({
-        studentName: "",
-        studentIdCode: "",
+    // Review Modal State (Approve / Reject)
+    const [reviewItem, setReviewItem] = useState<CorrectionItem | null>(null);
+    const [rejecting, setRejecting] = useState(false);
+    const [rejectionReason, setRejectionReason] = useState("");
+    const [actionLoading, setActionLoading] = useState(false);
+    const [actionSuccessMsg, setActionSuccessMsg] = useState<string | null>(null);
+
+    // New Correction Request Modal
+    const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+    const [searchStudentQuery, setSearchStudentQuery] = useState("");
+    const [searchResults, setSearchResults] = useState<any[]>([]);
+    const [selectedStudent, setSelectedStudent] = useState<any | null>(null);
+    const [searchingStudents, setSearchingStudents] = useState(false);
+    const [createFormData, setCreateFormData] = useState({
         date: new Date().toISOString().split("T")[0],
-        correctedStatus: "EXCUSED",
-        reasonCategory: "MEDICAL_CERTIFICATE",
-        officialJustification: ""
+        originalStatus: "ABSENT",
+        requestedStatus: "EXCUSED",
+        reasonCategory: "Medical Exemption",
+        justification: "",
+        evidenceDocumentUrl: ""
     });
+    const [creatingRequest, setCreatingRequest] = useState(false);
 
-    const loadAuditLogs = async () => {
-        try {
-            setLoading(true);
-            
-            // Sample Audit Log entries
-            const sampleLogs: CorrectionAuditLog[] = [
-                {
-                    id: "aud-01",
-                    studentName: "Abebe Kebede Tadesse",
-                    studentIdCode: "STU-9012",
-                    gradeSection: "Grade 9 - Sec A",
-                    date: new Date().toISOString().split("T")[0],
-                    previousStatus: "ABSENT",
-                    correctedStatus: "EXCUSED",
-                    reason: "Medical Certificate submitted from Tikur Anbessa Hospital",
-                    authorizedBy: authData?.user.name || "School Principal",
-                    createdAt: new Date().toISOString()
+    // Load academic years
+    useEffect(() => {
+        const init = async () => {
+            try {
+                const res = await fetchApi("/academic/years");
+                if (res.ok) {
+                    const data: AcademicYear[] = await res.json();
+                    setYears(data);
+                    const active = data.find(y => y.status === "ACTIVE");
+                    if (active) setSelectedYearId(active.id);
                 }
-            ];
+            } catch (e) {
+                console.error(e);
+            }
+        };
+        init();
+    }, []);
 
-            setAuditLogs(sampleLogs);
+    const loadCorrections = async (isManual = false) => {
+        try {
+            if (isManual) setRefreshing(true);
+            else setLoading(true);
+            setError(null);
+
+            const q = new URLSearchParams();
+            if (selectedYearId) q.set("academicYearId", selectedYearId);
+            if (statusFilter !== "ALL") q.set("status", statusFilter);
+            q.set("page", page.toString());
+            q.set("limit", limit.toString());
+
+            const res = await fetchApi(`/attendance/admin/corrections?${q.toString()}`);
+            if (!res.ok) {
+                const err = await res.json().catch(() => ({}));
+                throw new Error(err.error || "Failed to load attendance corrections");
+            }
+
+            const data = await res.json();
+            setCorrections(data.data || []);
+            setSummary(data.summary || null);
+            setTotalPages(data.pagination?.totalPages || 1);
         } catch (err: any) {
-            console.error(err);
+            setError(err.message || "Failed to load corrections");
         } finally {
             setLoading(false);
+            setRefreshing(false);
         }
     };
 
     useEffect(() => {
-        loadAuditLogs();
-    }, []);
+        loadCorrections();
+    }, [selectedYearId, statusFilter, page]);
 
-    const handleFormSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!formData.studentName.trim() || !formData.officialJustification.trim()) {
-            setErrorMsg("Student name and official justification are required.");
-            return;
-        }
-
+    // Handle Approve
+    const handleApprove = async (item: CorrectionItem) => {
         try {
-            setSubmitting(true);
-            setErrorMsg(null);
-
-            const newLog: CorrectionAuditLog = {
-                id: `aud-${Date.now()}`,
-                studentName: formData.studentName.trim(),
-                studentIdCode: formData.studentIdCode.trim() || "STU-0000",
-                gradeSection: "Grade 10 - Sec A",
-                date: formData.date,
-                previousStatus: "ABSENT",
-                correctedStatus: formData.correctedStatus,
-                reason: `${formData.reasonCategory.replace("_", " ")}: ${formData.officialJustification.trim()}`,
-                authorizedBy: authData?.user.name || "School Principal",
-                createdAt: new Date().toISOString()
-            };
-
-            setAuditLogs(prev => [newLog, ...prev]);
-            setSuccessMsg(`Official attendance override approved & recorded for ${formData.studentName}.`);
-            setIsOverrideModalOpen(false);
-            setFormData({
-                studentName: "",
-                studentIdCode: "",
-                date: new Date().toISOString().split("T")[0],
-                correctedStatus: "EXCUSED",
-                reasonCategory: "MEDICAL_CERTIFICATE",
-                officialJustification: ""
+            setActionLoading(true);
+            const res = await fetchApi(`/attendance/admin/corrections/${item.id}/approve`, {
+                method: "POST"
             });
+
+            if (!res.ok) {
+                const err = await res.json().catch(() => ({}));
+                throw new Error(err.error || "Failed to approve correction");
+            }
+
+            setActionSuccessMsg(`Correction for ${item.studentName} approved and attendance updated.`);
+            loadCorrections();
+            setTimeout(() => {
+                setReviewItem(null);
+                setActionSuccessMsg(null);
+            }, 1200);
         } catch (err: any) {
-            setErrorMsg(err.message || "Failed to submit attendance correction.");
+            alert(err.message || "Approval failed");
         } finally {
-            setSubmitting(false);
+            setActionLoading(false);
         }
     };
 
-    const filteredLogs = auditLogs.filter(log => {
-        if (!searchQuery.trim()) return true;
-        const q = searchQuery.toLowerCase();
-        return (
-            log.studentName.toLowerCase().includes(q) ||
-            log.studentIdCode.toLowerCase().includes(q) ||
-            log.reason.toLowerCase().includes(q)
-        );
-    });
+    // Handle Reject
+    const handleReject = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!reviewItem || !rejectionReason.trim()) return;
 
-    if (loading) return <LoadingState message="Loading Principal Attendance Corrections Hub..." />;
+        try {
+            setActionLoading(true);
+            const res = await fetchApi(`/attendance/admin/corrections/${reviewItem.id}/reject`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ rejectionReason: rejectionReason.trim() })
+            });
+
+            if (!res.ok) {
+                const err = await res.json().catch(() => ({}));
+                throw new Error(err.error || "Failed to reject correction");
+            }
+
+            setActionSuccessMsg(`Correction request rejected with official reason.`);
+            loadCorrections();
+            setTimeout(() => {
+                setReviewItem(null);
+                setRejecting(false);
+                setRejectionReason("");
+                setActionSuccessMsg(null);
+            }, 1200);
+        } catch (err: any) {
+            alert(err.message || "Rejection failed");
+        } finally {
+            setActionLoading(false);
+        }
+    };
+
+    // Student Search for New Override Request
+    const handleSearchStudents = async () => {
+        if (!searchStudentQuery.trim()) return;
+        try {
+            setSearchingStudents(true);
+            const q = new URLSearchParams({
+                search: searchStudentQuery.trim(),
+                limit: "5"
+            });
+            if (selectedYearId) q.set("academicYearId", selectedYearId);
+
+            const res = await fetchApi(`/attendance/admin/students?${q.toString()}`);
+            if (res.ok) {
+                const data = await res.json();
+                setSearchResults(data.data || []);
+            }
+        } catch (e) {
+            console.error(e);
+        } finally {
+            setSearchingStudents(false);
+        }
+    };
+
+    // Submit New Correction Request
+    const handleCreateRequest = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!selectedStudent || !selectedYearId) return;
+
+        try {
+            setCreatingRequest(true);
+            const res = await fetchApi("/attendance/admin/corrections", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    enrollmentId: selectedStudent.enrollmentId,
+                    academicYearId: selectedYearId,
+                    date: createFormData.date,
+                    originalStatus: createFormData.originalStatus,
+                    requestedStatus: createFormData.requestedStatus,
+                    reasonCategory: createFormData.reasonCategory,
+                    justification: createFormData.justification,
+                    evidenceDocumentUrl: createFormData.evidenceDocumentUrl || undefined
+                })
+            });
+
+            if (!res.ok) {
+                const err = await res.json().catch(() => ({}));
+                throw new Error(err.error || "Failed to file correction request");
+            }
+
+            setIsCreateModalOpen(false);
+            setSelectedStudent(null);
+            setSearchStudentQuery("");
+            setSearchResults([]);
+            setCreateFormData({
+                date: new Date().toISOString().split("T")[0],
+                originalStatus: "ABSENT",
+                requestedStatus: "EXCUSED",
+                reasonCategory: "Medical Exemption",
+                justification: "",
+                evidenceDocumentUrl: ""
+            });
+            loadCorrections();
+        } catch (err: any) {
+            alert(err.message || "Failed to submit request");
+        } finally {
+            setCreatingRequest(false);
+        }
+    };
 
     return (
         <div className="space-y-6 text-black">
             {/* Header */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
                 <div>
                     <h1 className="text-2xl font-bold text-gray-900 flex items-center space-x-2">
                         <FileCheck className="w-7 h-7 text-[#006b3f]" />
-                        <span>Principal Attendance Corrections & Override Hub</span>
+                        <span>Official Attendance Corrections & Overrides</span>
                     </h1>
-                    <p className="text-sm text-gray-500 mt-1">Authorize official excuses (Medical, Woreda events) and audit attendance override logs.</p>
+                    <p className="text-sm text-gray-500 mt-1">
+                        Administrative authorization of attendance adjustments, medical exemptions, and immutable audit trails.
+                    </p>
                 </div>
-                <Button 
-                    onClick={() => setIsOverrideModalOpen(true)}
-                    leftIcon={<Edit3 className="w-4 h-4" />}
-                    className="bg-[#006b3f] hover:bg-[#005432]"
-                >
-                    File Official Override
-                </Button>
+
+                <div className="flex items-center space-x-3">
+                    {years.length > 0 && (
+                        <select
+                            value={selectedYearId}
+                            onChange={(e) => { setSelectedYearId(e.target.value); setPage(1); }}
+                            className="border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white font-medium shadow-sm focus:ring-2 focus:ring-[#006b3f]"
+                        >
+                            {years.map(y => (
+                                <option key={y.id} value={y.id}>
+                                    {y.name} {y.status === "ACTIVE" ? "(Active)" : ""}
+                                </option>
+                            ))}
+                        </select>
+                    )}
+                    <Button
+                        onClick={() => setIsCreateModalOpen(true)}
+                        className="bg-[#006b3f] hover:bg-[#005a34] text-white flex items-center space-x-1.5"
+                    >
+                        <Plus className="w-4 h-4" />
+                        <span>New Override Request</span>
+                    </Button>
+                </div>
             </div>
 
-            {/* Notification messages */}
-            {successMsg && (
-                <div className="p-4 bg-green-50 text-green-800 rounded-lg border border-green-200 flex justify-between items-center text-sm shadow-sm">
-                    <span className="flex items-center space-x-2"><CheckCircle2 className="w-4 h-4 text-green-600" /><span>{successMsg}</span></span>
-                    <button onClick={() => setSuccessMsg(null)}><X className="w-4 h-4" /></button>
+            {/* Status Metric Ribbons */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                <div 
+                    onClick={() => { setStatusFilter("PENDING"); setPage(1); }}
+                    className={`p-4 rounded-xl border cursor-pointer transition-all ${
+                        statusFilter === "PENDING"
+                            ? "bg-amber-100/70 border-amber-300 ring-2 ring-amber-400"
+                            : "bg-amber-50/60 border-amber-200 hover:bg-amber-50"
+                    }`}
+                >
+                    <span className="text-[11px] font-bold text-amber-800 uppercase">Pending Authorization</span>
+                    <p className="text-2xl font-extrabold text-amber-900 mt-1">{summary?.pendingCount || 0}</p>
                 </div>
-            )}
-            {errorMsg && (
-                <div className="p-4 bg-red-50 text-red-800 rounded-lg border border-red-200 flex justify-between items-center text-sm shadow-sm">
-                    <span className="flex items-center space-x-2"><AlertTriangle className="w-4 h-4 text-red-600" /><span>{errorMsg}</span></span>
-                    <button onClick={() => setErrorMsg(null)}><X className="w-4 h-4" /></button>
-                </div>
-            )}
 
-            {/* Audit Trail Table */}
-            <Card className="shadow-sm">
-                <CardHeader className="py-4 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div 
+                    onClick={() => { setStatusFilter("APPROVED"); setPage(1); }}
+                    className={`p-4 rounded-xl border cursor-pointer transition-all ${
+                        statusFilter === "APPROVED"
+                            ? "bg-emerald-100/70 border-emerald-300 ring-2 ring-emerald-400"
+                            : "bg-emerald-50/60 border-emerald-200 hover:bg-emerald-50"
+                    }`}
+                >
+                    <span className="text-[11px] font-bold text-emerald-800 uppercase">Approved Overrides</span>
+                    <p className="text-2xl font-extrabold text-emerald-900 mt-1">{summary?.approvedCount || 0}</p>
+                </div>
+
+                <div 
+                    onClick={() => { setStatusFilter("REJECTED"); setPage(1); }}
+                    className={`p-4 rounded-xl border cursor-pointer transition-all ${
+                        statusFilter === "REJECTED"
+                            ? "bg-red-100/70 border-red-300 ring-2 ring-red-400"
+                            : "bg-red-50/60 border-red-200 hover:bg-red-50"
+                    }`}
+                >
+                    <span className="text-[11px] font-bold text-red-800 uppercase">Rejected Requests</span>
+                    <p className="text-2xl font-extrabold text-red-900 mt-1">{summary?.rejectedCount || 0}</p>
+                </div>
+
+                <div 
+                    onClick={() => { setStatusFilter("ALL"); setPage(1); }}
+                    className={`p-4 rounded-xl border cursor-pointer transition-all ${
+                        statusFilter === "ALL"
+                            ? "bg-gray-100 border-gray-400 ring-2 ring-gray-400"
+                            : "bg-white border-gray-200 hover:bg-gray-50"
+                    }`}
+                >
+                    <span className="text-[11px] font-bold text-gray-500 uppercase">Total Audit Records</span>
+                    <p className="text-2xl font-extrabold text-gray-900 mt-1">{summary?.total || 0}</p>
+                </div>
+            </div>
+
+            {/* Corrections & Audit Table */}
+            <Card className="border-gray-200 shadow-sm overflow-hidden">
+                <CardHeader className="py-4 px-6 border-b border-gray-100 flex flex-row items-center justify-between">
                     <CardTitle className="text-base font-bold text-gray-900 flex items-center">
-                        <ShieldCheck className="w-5 h-5 mr-2 text-[#006b3f]" />
-                        Principal Override Audit Log History
+                        <FileText className="w-5 h-5 mr-2 text-[#006b3f]" />
+                        Attendance Correction Requests & Audit Log
                     </CardTitle>
-                    <div className="relative w-full sm:w-64">
-                        <Search className="w-4 h-4 absolute left-3 top-2.5 text-gray-400" />
-                        <input
-                            type="text"
-                            placeholder="Search student or reason..."
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            className="w-full pl-9 pr-3 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#006b3f]"
-                        />
-                    </div>
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => loadCorrections(true)}
+                        disabled={refreshing}
+                        className="flex items-center space-x-1"
+                    >
+                        <RefreshCw className={`w-4 h-4 ${refreshing ? "animate-spin" : ""}`} />
+                        <span>Refresh</span>
+                    </Button>
                 </CardHeader>
                 <CardContent className="p-0">
-                    {filteredLogs.length === 0 ? (
-                        <div className="p-8 text-center text-gray-500">
-                            <FileCheck className="w-12 h-12 mx-auto text-gray-300 mb-2" />
-                            <p className="font-semibold text-gray-700">No attendance override audit logs found</p>
-                            <p className="text-xs text-gray-400 mt-1">Official principal attendance corrections will be permanently logged here.</p>
+                    {loading ? (
+                        <div className="p-12">
+                            <LoadingState message="Loading attendance correction requests..." />
+                        </div>
+                    ) : error ? (
+                        <div className="p-8">
+                            <ErrorState message={error} onRetry={() => loadCorrections()} />
+                        </div>
+                    ) : corrections.length === 0 ? (
+                        <div className="p-12 text-center text-gray-400">
+                            <ShieldCheck className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+                            <p className="font-bold text-gray-700">No attendance corrections logged</p>
+                            <p className="text-xs text-gray-500 mt-1">Pending and authorized overrides will appear here.</p>
                         </div>
                     ) : (
                         <div className="overflow-x-auto">
                             <table className="w-full text-sm text-left">
                                 <thead className="text-xs text-gray-500 uppercase bg-gray-50 border-b border-gray-200">
                                     <tr>
-                                        <th className="px-6 py-3.5 font-semibold">Student Name & ID</th>
-                                        <th className="px-6 py-3.5 font-semibold">Date</th>
-                                        <th className="px-6 py-3.5 font-semibold">Status Change</th>
-                                        <th className="px-6 py-3.5 font-semibold">Official Justification</th>
-                                        <th className="px-6 py-3.5 font-semibold">Authorized By</th>
+                                        <th className="px-6 py-3 font-semibold">Student</th>
+                                        <th className="px-4 py-3 font-semibold">Class / Section</th>
+                                        <th className="px-4 py-3 font-semibold">Target Date</th>
+                                        <th className="px-4 py-3 font-semibold">Status Change</th>
+                                        <th className="px-4 py-3 font-semibold">Reason Category</th>
+                                        <th className="px-4 py-3 font-semibold">Request State</th>
+                                        <th className="px-4 py-3 font-semibold">Requested By</th>
+                                        <th className="px-6 py-3 font-semibold text-right">Review</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-100">
-                                    {filteredLogs.map((log) => (
-                                        <tr key={log.id} className="hover:bg-gray-50/50 transition-colors">
-                                            <td className="px-6 py-4 font-bold text-gray-900">
-                                                <p>{log.studentName}</p>
-                                                <p className="text-xs font-mono font-normal text-gray-500">{log.studentIdCode}</p>
+                                    {corrections.map((item) => (
+                                        <tr key={item.id} className="hover:bg-gray-50/60 transition-colors">
+                                            <td className="px-6 py-3.5">
+                                                <p className="font-bold text-gray-900">{item.studentName}</p>
+                                                <p className="text-xs font-mono text-gray-500">{item.admissionNumber}</p>
                                             </td>
-                                            <td className="px-6 py-4 text-xs font-medium text-gray-700">
-                                                {log.date}
+                                            <td className="px-4 py-3.5 text-xs text-gray-700">
+                                                {item.gradeName} - {item.sectionName}
                                             </td>
-                                            <td className="px-6 py-4 text-xs">
-                                                <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-red-100 text-red-800 mr-1.5">
-                                                    {log.previousStatus}
+                                            <td className="px-4 py-3.5 text-xs font-medium text-gray-800">
+                                                {item.date}
+                                            </td>
+                                            <td className="px-4 py-3.5 text-xs font-bold">
+                                                <span className="text-red-700">{item.originalStatus}</span>
+                                                <span className="mx-1 text-gray-400">➔</span>
+                                                <span className="text-emerald-700">{item.requestedStatus}</span>
+                                            </td>
+                                            <td className="px-4 py-3.5 text-xs text-gray-700">
+                                                <span className="font-medium">{item.reasonCategory}</span>
+                                                <p className="text-[11px] text-gray-400 truncate max-w-xs">{item.justification}</p>
+                                            </td>
+                                            <td className="px-4 py-3.5">
+                                                <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-bold ${
+                                                    item.status === "APPROVED"
+                                                        ? "bg-emerald-100 text-emerald-800"
+                                                        : item.status === "REJECTED"
+                                                        ? "bg-red-100 text-red-800"
+                                                        : "bg-amber-100 text-amber-800"
+                                                }`}>
+                                                    {item.status}
                                                 </span>
-                                                <span className="text-gray-400 font-bold">&rarr;</span>
-                                                <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-emerald-100 text-emerald-800 ml-1.5">
-                                                    {log.correctedStatus}
-                                                </span>
                                             </td>
-                                            <td className="px-6 py-4 text-xs text-gray-700">
-                                                {log.reason}
+                                            <td className="px-4 py-3.5 text-xs text-gray-500">
+                                                {item.requestedBy?.name || "System"}
                                             </td>
-                                            <td className="px-6 py-4 text-xs font-semibold text-[#006b3f]">
-                                                {log.authorizedBy}
+                                            <td className="px-6 py-3.5 text-right">
+                                                {item.status === "PENDING" ? (
+                                                    <Button
+                                                        size="sm"
+                                                        onClick={() => {
+                                                            setReviewItem(item);
+                                                            setRejecting(false);
+                                                            setRejectionReason("");
+                                                            setActionSuccessMsg(null);
+                                                        }}
+                                                        className="bg-[#006b3f] hover:bg-[#005a34] text-white text-xs"
+                                                    >
+                                                        Review Request
+                                                    </Button>
+                                                ) : (
+                                                    <button
+                                                        onClick={() => {
+                                                            setReviewItem(item);
+                                                            setRejecting(false);
+                                                        }}
+                                                        className="text-xs font-semibold text-gray-600 hover:text-gray-900"
+                                                    >
+                                                        View Details
+                                                    </button>
+                                                )}
                                             </td>
                                         </tr>
                                     ))}
@@ -240,103 +478,328 @@ export default function AttendanceCorrectionsPage() {
                             </table>
                         </div>
                     )}
+
+                    {/* Pagination */}
+                    {totalPages > 1 && (
+                        <div className="p-4 border-t border-gray-100 flex items-center justify-between">
+                            <p className="text-xs text-gray-500">
+                                Page {page} of {totalPages}
+                            </p>
+                            <div className="flex items-center space-x-2">
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    disabled={page <= 1}
+                                    onClick={() => setPage(p => Math.max(1, p - 1))}
+                                >
+                                    <ChevronLeft className="w-4 h-4" />
+                                </Button>
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    disabled={page >= totalPages}
+                                    onClick={() => setPage(p => p + 1)}
+                                >
+                                    <ChevronRight className="w-4 h-4" />
+                                </Button>
+                            </div>
+                        </div>
+                    )}
                 </CardContent>
             </Card>
 
-            {/* Override Modal */}
-            {isOverrideModalOpen && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 animate-in fade-in duration-200">
-                    <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6 space-y-4">
-                        <div className="flex justify-between items-center border-b pb-3">
-                            <h3 className="text-lg font-bold text-gray-900">File Official Attendance Correction</h3>
-                            <button onClick={() => setIsOverrideModalOpen(false)} className="text-gray-400 hover:text-gray-600">
+            {/* Review & Authorization Modal */}
+            {reviewItem && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
+                    <div className="bg-white w-full max-w-lg rounded-xl shadow-2xl overflow-hidden border border-gray-200 animate-in fade-in zoom-in duration-150">
+                        <div className="p-5 border-b border-gray-100 flex items-center justify-between bg-gradient-to-r from-gray-50 to-white">
+                            <h3 className="text-base font-bold text-gray-900 flex items-center space-x-2">
+                                <ShieldCheck className="w-5 h-5 text-[#006b3f]" />
+                                <span>Review Attendance Correction</span>
+                            </h3>
+                            <button
+                                onClick={() => setReviewItem(null)}
+                                className="p-1.5 text-gray-400 hover:text-gray-700 rounded-full"
+                            >
                                 <X className="w-5 h-5" />
                             </button>
                         </div>
 
-                        <form onSubmit={handleFormSubmit} className="space-y-4">
-                            <div>
-                                <label className="block text-xs font-semibold text-gray-700 uppercase mb-1">Student Full Name *</label>
-                                <input
-                                    type="text"
-                                    required
-                                    value={formData.studentName}
-                                    onChange={(e) => setFormData({ ...formData, studentName: e.target.value })}
-                                    placeholder="e.g. Abebe Kebede Tadesse"
-                                    className="w-full border border-gray-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-[#006b3f]"
-                                />
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-xs font-semibold text-gray-700 uppercase mb-1">Student ID Code</label>
-                                    <input
-                                        type="text"
-                                        value={formData.studentIdCode}
-                                        onChange={(e) => setFormData({ ...formData, studentIdCode: e.target.value })}
-                                        placeholder="STU-9012"
-                                        className="w-full border border-gray-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-[#006b3f]"
-                                    />
+                        <div className="p-6 space-y-4">
+                            {actionSuccessMsg ? (
+                                <div className="p-4 bg-emerald-50 text-emerald-800 rounded-lg text-sm font-semibold flex items-center">
+                                    <CheckCircle2 className="w-5 h-5 mr-2 text-emerald-600" />
+                                    {actionSuccessMsg}
                                 </div>
-                                <div>
-                                    <label className="block text-xs font-semibold text-gray-700 uppercase mb-1">Absence Date *</label>
-                                    <input
-                                        type="date"
-                                        required
-                                        value={formData.date}
-                                        onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                                        className="w-full border border-gray-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-[#006b3f]"
-                                    />
-                                </div>
-                            </div>
+                            ) : (
+                                <>
+                                    <div className="bg-gray-50 p-4 rounded-lg space-y-2 text-xs">
+                                        <div className="flex justify-between">
+                                            <span className="text-gray-500 font-bold uppercase">Student</span>
+                                            <span className="font-bold text-gray-900">{reviewItem.studentName} ({reviewItem.admissionNumber})</span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                            <span className="text-gray-500 font-bold uppercase">Class & Section</span>
+                                            <span className="font-semibold text-gray-800">{reviewItem.gradeName} - {reviewItem.sectionName}</span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                            <span className="text-gray-500 font-bold uppercase">Date of Record</span>
+                                            <span className="font-semibold text-gray-800">{reviewItem.date}</span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                            <span className="text-gray-500 font-bold uppercase">Requested Transition</span>
+                                            <span className="font-bold">
+                                                <span className="text-red-700">{reviewItem.originalStatus}</span> ➔ <span className="text-emerald-700">{reviewItem.requestedStatus}</span>
+                                            </span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                            <span className="text-gray-500 font-bold uppercase">Reason Category</span>
+                                            <span className="font-semibold text-gray-800">{reviewItem.reasonCategory}</span>
+                                        </div>
+                                        <div className="pt-2 border-t border-gray-200">
+                                            <span className="text-gray-500 font-bold uppercase block mb-1">Teacher Justification:</span>
+                                            <p className="text-gray-700 font-normal italic">&ldquo;{reviewItem.justification}&rdquo;</p>
+                                        </div>
+                                        {reviewItem.rejectionReason && (
+                                            <div className="pt-2 border-t border-red-100 text-red-700">
+                                                <span className="font-bold block mb-1">Rejection Reason:</span>
+                                                <p className="italic">{reviewItem.rejectionReason}</p>
+                                            </div>
+                                        )}
+                                    </div>
 
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-xs font-semibold text-gray-700 uppercase mb-1">Corrected Status *</label>
-                                    <select
-                                        value={formData.correctedStatus}
-                                        onChange={(e) => setFormData({ ...formData, correctedStatus: e.target.value })}
-                                        className="w-full border border-gray-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-[#006b3f] bg-white"
+                                    {reviewItem.status === "PENDING" && (
+                                        <>
+                                            {rejecting ? (
+                                                <form onSubmit={handleReject} className="space-y-3">
+                                                    <div>
+                                                        <label className="block text-xs font-bold text-red-700 mb-1">
+                                                            Reason for Rejection (Required for Audit)
+                                                        </label>
+                                                        <textarea
+                                                            rows={3}
+                                                            required
+                                                            value={rejectionReason}
+                                                            onChange={(e) => setRejectionReason(e.target.value)}
+                                                            placeholder="State why this correction cannot be authorized..."
+                                                            className="w-full p-2.5 text-xs border border-red-300 rounded-lg focus:ring-2 focus:ring-red-500"
+                                                        />
+                                                    </div>
+                                                    <div className="flex justify-end space-x-2">
+                                                        <Button
+                                                            type="button"
+                                                            variant="outline"
+                                                            onClick={() => setRejecting(false)}
+                                                        >
+                                                            Back
+                                                        </Button>
+                                                        <Button
+                                                            type="submit"
+                                                            disabled={actionLoading}
+                                                            className="bg-red-600 hover:bg-red-700 text-white"
+                                                        >
+                                                            {actionLoading ? "Rejecting..." : "Confirm Rejection"}
+                                                        </Button>
+                                                    </div>
+                                                </form>
+                                            ) : (
+                                                <div className="flex items-center justify-end space-x-3 pt-2">
+                                                    <Button
+                                                        type="button"
+                                                        variant="outline"
+                                                        onClick={() => setRejecting(true)}
+                                                        className="text-red-700 border-red-200 hover:bg-red-50"
+                                                    >
+                                                        Reject Request
+                                                    </Button>
+                                                    <Button
+                                                        type="button"
+                                                        onClick={() => handleApprove(reviewItem)}
+                                                        disabled={actionLoading}
+                                                        className="bg-[#006b3f] hover:bg-[#005a34] text-white"
+                                                    >
+                                                        {actionLoading ? "Approving..." : "Approve & Update Attendance"}
+                                                    </Button>
+                                                </div>
+                                            )}
+                                        </>
+                                    )}
+                                </>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* New Official Override / Request Modal */}
+            {isCreateModalOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
+                    <div className="bg-white w-full max-w-lg rounded-xl shadow-2xl overflow-hidden border border-gray-200 animate-in fade-in zoom-in duration-150">
+                        <div className="p-5 border-b border-gray-100 flex items-center justify-between bg-gradient-to-r from-gray-50 to-white">
+                            <h3 className="text-base font-bold text-gray-900 flex items-center space-x-2">
+                                <Edit3 className="w-5 h-5 text-[#006b3f]" />
+                                <span>Submit Official Attendance Correction</span>
+                            </h3>
+                            <button
+                                onClick={() => setIsCreateModalOpen(false)}
+                                className="p-1.5 text-gray-400 hover:text-gray-700 rounded-full"
+                            >
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+
+                        <form onSubmit={handleCreateRequest} className="p-6 space-y-4">
+                            {/* Step 1: Select Student */}
+                            {!selectedStudent ? (
+                                <div className="space-y-3">
+                                    <label className="block text-xs font-bold text-gray-700">
+                                        Find Enrolled Student
+                                    </label>
+                                    <div className="flex space-x-2">
+                                        <input
+                                            type="text"
+                                            placeholder="Type student name or admission #..."
+                                            value={searchStudentQuery}
+                                            onChange={(e) => setSearchStudentQuery(e.target.value)}
+                                            onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleSearchStudents(); } }}
+                                            className="w-full px-3 py-2 text-xs border border-gray-300 rounded-lg"
+                                        />
+                                        <Button
+                                            type="button"
+                                            onClick={handleSearchStudents}
+                                            disabled={searchingStudents}
+                                            className="bg-gray-800 text-white text-xs"
+                                        >
+                                            {searchingStudents ? "Searching..." : "Search"}
+                                        </Button>
+                                    </div>
+
+                                    {searchResults.length > 0 && (
+                                        <div className="border border-gray-200 rounded-lg divide-y divide-gray-100 max-h-48 overflow-y-auto">
+                                            {searchResults.map((s) => (
+                                                <div
+                                                    key={s.enrollmentId}
+                                                    onClick={() => setSelectedStudent(s)}
+                                                    className="p-3 text-xs hover:bg-emerald-50 cursor-pointer flex items-center justify-between"
+                                                >
+                                                    <div>
+                                                        <p className="font-bold text-gray-900">{s.studentName}</p>
+                                                        <p className="text-gray-500">{s.admissionNumber} • {s.gradeName} - {s.sectionName}</p>
+                                                    </div>
+                                                    <span className="text-[#006b3f] font-semibold text-xs">Select</span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            ) : (
+                                <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-lg flex items-center justify-between text-xs">
+                                    <div>
+                                        <p className="font-bold text-emerald-950">{selectedStudent.studentName}</p>
+                                        <p className="text-emerald-700">{selectedStudent.admissionNumber} • {selectedStudent.gradeName} - {selectedStudent.sectionName}</p>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => setSelectedStudent(null)}
+                                        className="text-emerald-800 font-bold hover:underline"
                                     >
-                                        <option value="EXCUSED">EXCUSED (Medical/Official)</option>
-                                        <option value="PRESENT">PRESENT (Confirmed Attendance)</option>
-                                    </select>
+                                        Change
+                                    </button>
                                 </div>
-                                <div>
-                                    <label className="block text-xs font-semibold text-gray-700 uppercase mb-1">Excuse Category *</label>
-                                    <select
-                                        value={formData.reasonCategory}
-                                        onChange={(e) => setFormData({ ...formData, reasonCategory: e.target.value })}
-                                        className="w-full border border-gray-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-[#006b3f] bg-white"
-                                    >
-                                        <option value="MEDICAL_CERTIFICATE">Medical Certificate</option>
-                                        <option value="WOREDA_COMPETITION">Official Woreda Event</option>
-                                        <option value="FAMILY_BEREAVEMENT">Family Bereavement</option>
-                                        <option value="ADMINISTRATIVE_CORRECTION">Roster Error Correction</option>
-                                    </select>
-                                </div>
-                            </div>
+                            )}
 
-                            <div>
-                                <label className="block text-xs font-semibold text-gray-700 uppercase mb-1">Official Justification / Certificate No. *</label>
-                                <textarea
-                                    required
-                                    value={formData.officialJustification}
-                                    onChange={(e) => setFormData({ ...formData, officialJustification: e.target.value })}
-                                    placeholder="Enter clinic/hospital name, certificate reference number, or official explanation..."
-                                    rows={2}
-                                    className="w-full border border-gray-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-[#006b3f]"
-                                />
-                            </div>
+                            {selectedStudent && (
+                                <>
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <div>
+                                            <label className="block text-xs font-bold text-gray-700 mb-1">Target Date</label>
+                                            <input
+                                                type="date"
+                                                required
+                                                value={createFormData.date}
+                                                onChange={(e) => setCreateFormData({ ...createFormData, date: e.target.value })}
+                                                className="w-full px-3 py-2 text-xs border border-gray-300 rounded-lg"
+                                            />
+                                        </div>
 
-                            <div className="flex justify-end space-x-3 pt-3 border-t">
-                                <Button type="button" variant="outline" onClick={() => setIsOverrideModalOpen(false)}>
-                                    Cancel
-                                </Button>
-                                <Button type="submit" isLoading={submitting} className="bg-[#006b3f] hover:bg-[#005432]">
-                                    Approve & Log Correction
-                                </Button>
-                            </div>
+                                        <div>
+                                            <label className="block text-xs font-bold text-gray-700 mb-1">Reason Category</label>
+                                            <select
+                                                value={createFormData.reasonCategory}
+                                                onChange={(e) => setCreateFormData({ ...createFormData, reasonCategory: e.target.value })}
+                                                className="w-full px-3 py-2 text-xs border border-gray-300 rounded-lg bg-white"
+                                            >
+                                                <option value="Medical Exemption">Medical Exemption</option>
+                                                <option value="Official Representation / Sports">Official Representation / Sports</option>
+                                                <option value="Bereavement / Family Emergency">Bereavement / Family Emergency</option>
+                                                <option value="Administrative Logging Correction">Administrative Logging Correction</option>
+                                                <option value="Approved Leave of Absence">Approved Leave of Absence</option>
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <div>
+                                            <label className="block text-xs font-bold text-gray-700 mb-1">Original Status</label>
+                                            <select
+                                                value={createFormData.originalStatus}
+                                                onChange={(e) => setCreateFormData({ ...createFormData, originalStatus: e.target.value })}
+                                                className="w-full px-3 py-2 text-xs border border-gray-300 rounded-lg bg-white"
+                                            >
+                                                <option value="ABSENT">Absent</option>
+                                                <option value="LATE">Late</option>
+                                                <option value="PRESENT">Present</option>
+                                                <option value="EXCUSED">Excused</option>
+                                            </select>
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-xs font-bold text-gray-700 mb-1">Corrected Status</label>
+                                            <select
+                                                value={createFormData.requestedStatus}
+                                                onChange={(e) => setCreateFormData({ ...createFormData, requestedStatus: e.target.value })}
+                                                className="w-full px-3 py-2 text-xs border border-gray-300 rounded-lg bg-white"
+                                            >
+                                                <option value="EXCUSED">Excused</option>
+                                                <option value="PRESENT">Present</option>
+                                                <option value="LATE">Late</option>
+                                                <option value="ABSENT">Absent</option>
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-xs font-bold text-gray-700 mb-1">
+                                            Official Justification / Reference Notes
+                                        </label>
+                                        <textarea
+                                            rows={3}
+                                            required
+                                            value={createFormData.justification}
+                                            onChange={(e) => setCreateFormData({ ...createFormData, justification: e.target.value })}
+                                            placeholder="Provide hospital reference number, event authorization, or official basis..."
+                                            className="w-full p-2.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#006b3f]"
+                                        />
+                                    </div>
+
+                                    <div className="flex justify-end space-x-2 pt-2">
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            onClick={() => setIsCreateModalOpen(false)}
+                                        >
+                                            Cancel
+                                        </Button>
+                                        <Button
+                                            type="submit"
+                                            disabled={creatingRequest}
+                                            className="bg-[#006b3f] hover:bg-[#005a34] text-white"
+                                        >
+                                            {creatingRequest ? "Filing..." : "Submit Correction Request"}
+                                        </Button>
+                                    </div>
+                                </>
+                            )}
                         </form>
                     </div>
                 </div>
