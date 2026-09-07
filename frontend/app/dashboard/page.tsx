@@ -217,6 +217,67 @@ export default function SchoolDashboardPage() {
     const placedDash = (placedPercent / 100) * circumference;
     const unplacedDash = (unplacedPercent / 100) * circumference;
 
+    // Real data points for Timetable Wave Chart (Scheduled vs Required across grades)
+    const gradesData = timetable.byGrade.length > 0 
+        ? timetable.byGrade 
+        : [{ gradeId: "1", gradeName: "Configured Grades", level: 1, requiredPeriods: timetable.requiredPeriods || 1, scheduledPeriods: timetable.scheduledPeriods || 0, coverageRate: timetable.coverageRate }];
+    
+    const maxPeriodVal = Math.max(
+        ...gradesData.map(g => Math.max(g.requiredPeriods, g.scheduledPeriods, 1)),
+        10
+    );
+
+    // SVG coordinates generator for smooth wave chart (viewBox 0 0 500 160)
+    const chartWidth = 500;
+    const chartHeight = 160;
+    const paddingX = 40;
+    const paddingY = 25;
+    const usableW = chartWidth - paddingX * 2;
+    const usableH = chartHeight - paddingY * 2;
+    
+    const pointsCount = gradesData.length;
+    const getX = (index: number) => pointsCount > 1 
+        ? paddingX + (index / (pointsCount - 1)) * usableW 
+        : chartWidth / 2;
+    const getY = (val: number) => chartHeight - paddingY - (val / maxPeriodVal) * usableH;
+
+    // Build smooth SVG path using cubic bezier curves
+    const buildSmoothPath = (values: number[]) => {
+        if (values.length === 0) return "";
+        if (values.length === 1) return `M ${getX(0)} ${getY(values[0])} L ${getX(0) + 1} ${getY(values[0])}`;
+
+        const pts = values.map((v, i) => ({ x: getX(i), y: getY(v) }));
+        let path = `M ${pts[0].x} ${pts[0].y}`;
+
+        for (let i = 0; i < pts.length - 1; i++) {
+            const p0 = i > 0 ? pts[i - 1] : pts[i];
+            const p1 = pts[i];
+            const p2 = pts[i + 1];
+            const p3 = i != pts.length - 2 ? pts[i + 2] : p2;
+
+            const cp1x = p1.x + (p2.x - p0.x) / 6;
+            const cp1y = p1.y + (p2.y - p0.y) / 6;
+            const cp2x = p2.x - (p3.x - p1.x) / 6;
+            const cp2y = p2.y - (p3.y - p1.y) / 6;
+
+            path += ` C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${p2.x} ${p2.y}`;
+        }
+        return path;
+    };
+
+    const requiredValues = gradesData.map(g => g.requiredPeriods);
+    const scheduledValues = gradesData.map(g => g.scheduledPeriods);
+
+    const requiredPath = buildSmoothPath(requiredValues);
+    const scheduledPath = buildSmoothPath(scheduledValues);
+
+    const requiredArea = pointsCount > 1 
+        ? `${requiredPath} L ${getX(pointsCount - 1)} ${chartHeight - paddingY} L ${getX(0)} ${chartHeight - paddingY} Z`
+        : "";
+    const scheduledArea = pointsCount > 1 
+        ? `${scheduledPath} L ${getX(pointsCount - 1)} ${chartHeight - paddingY} L ${getX(0)} ${chartHeight - paddingY} Z`
+        : "";
+
     return (
         <div className="space-y-6 pb-12 font-sans">
             {/* TOP BAR: BREADCRUMBS, TITLE & ACADEMIC YEAR SELECTOR */}
@@ -225,20 +286,25 @@ export default function SchoolDashboardPage() {
                     <div className="flex items-center gap-1.5 text-xs text-slate-400 font-medium mb-1">
                         <span>Home</span>
                         <ChevronRight className="w-3 h-3 text-slate-300" />
-                        <span className="text-[#4085b3] font-semibold">Admin</span>
+                        <span className="text-[#f59e0b] font-semibold">Admin</span>
                         <ChevronRight className="w-3 h-3 text-slate-300" />
                         <span className="text-slate-600 font-semibold">{school.name}</span>
                     </div>
-                    <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
-                        Admin Dashboard
-                    </h1>
+                    <div className="flex items-center gap-3">
+                        <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">
+                            Admin Dashboard
+                        </h1>
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800">
+                            {school.status || "ACTIVE"}
+                        </span>
+                    </div>
                 </div>
 
                 {/* Right controls: Academic Year selector + refresh */}
                 <div className="flex items-center gap-2">
                     {availableAcademicYears.length > 0 && (
                         <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-xl border border-slate-200 shadow-2xs text-xs">
-                            <Calendar className="w-4 h-4 text-[#4085b3]" />
+                            <Calendar className="w-4 h-4 text-[#f59e0b]" />
                             <span className="text-slate-500 font-medium">Year:</span>
                             <select
                                 value={academicYear?.id || ""}
@@ -257,10 +323,10 @@ export default function SchoolDashboardPage() {
                     <button
                         onClick={() => loadDashboard(selectedYearId || undefined)}
                         disabled={refreshing}
-                        className="p-2 bg-white rounded-xl border border-slate-200 text-slate-600 hover:text-[#4085b3] hover:border-[#4085b3]/40 shadow-2xs transition-colors cursor-pointer"
+                        className="p-2 bg-white rounded-xl border border-slate-200 text-slate-600 hover:text-[#f59e0b] hover:border-[#f59e0b]/40 shadow-2xs transition-colors cursor-pointer"
                         title="Refresh metrics"
                     >
-                        <RefreshCw className={`w-4 h-4 ${refreshing ? "animate-spin text-[#4085b3]" : ""}`} />
+                        <RefreshCw className={`w-4 h-4 ${refreshing ? "animate-spin text-[#f59e0b]" : ""}`} />
                     </button>
                 </div>
             </div>
@@ -273,7 +339,7 @@ export default function SchoolDashboardPage() {
                         <Users className="w-7 h-7" />
                     </div>
                     <div className="text-right">
-                        <span className="text-xs font-medium text-slate-400 uppercase tracking-wider">Students</span>
+                        <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Students</span>
                         <div className="text-2xl font-black text-slate-800 tracking-tight mt-0.5">
                             {overview.totalStudents.toLocaleString()}
                         </div>
@@ -285,15 +351,15 @@ export default function SchoolDashboardPage() {
 
                 {/* CARD 2: TEACHERS */}
                 <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm flex items-center justify-between transition-all hover:shadow-md">
-                    <div className="w-14 h-14 rounded-full bg-blue-50 text-[#4085b3] flex items-center justify-center shrink-0">
+                    <div className="w-14 h-14 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
                         <GraduationCap className="w-7 h-7" />
                     </div>
                     <div className="text-right">
-                        <span className="text-xs font-medium text-slate-400 uppercase tracking-wider">Teachers</span>
+                        <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Teachers</span>
                         <div className="text-2xl font-black text-slate-800 tracking-tight mt-0.5">
                             {overview.totalTeachers.toLocaleString()}
                         </div>
-                        <div className="text-[11px] font-semibold text-[#4085b3] mt-0.5">
+                        <div className="text-[11px] font-semibold text-blue-600 mt-0.5">
                             {teachers.assigned} with assignments
                         </div>
                     </div>
@@ -305,7 +371,7 @@ export default function SchoolDashboardPage() {
                         <BookOpen className="w-7 h-7" />
                     </div>
                     <div className="text-right">
-                        <span className="text-xs font-medium text-slate-400 uppercase tracking-wider">Sections</span>
+                        <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Sections</span>
                         <div className="text-2xl font-black text-slate-800 tracking-tight mt-0.5">
                             {overview.totalSections.toLocaleString()}
                         </div>
@@ -317,194 +383,239 @@ export default function SchoolDashboardPage() {
 
                 {/* CARD 4: TIMETABLE & READINESS */}
                 <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm flex items-center justify-between transition-all hover:shadow-md">
-                    <div className="w-14 h-14 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0">
+                    <div className="w-14 h-14 rounded-full bg-rose-50 text-rose-600 flex items-center justify-center shrink-0">
                         <CalendarCheck className="w-7 h-7" />
                     </div>
                     <div className="text-right">
-                        <span className="text-xs font-medium text-slate-400 uppercase tracking-wider">Timetable</span>
+                        <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Readiness</span>
                         <div className="text-2xl font-black text-slate-800 tracking-tight mt-0.5">
-                            {overview.timetableCoveragePercentage}%
+                            {overview.readinessScore}%
                         </div>
-                        <div className="text-[11px] font-semibold text-indigo-600 mt-0.5">
-                            {overview.readinessScore}% Readiness ({overview.readinessStatus})
+                        <div className="text-[11px] font-semibold text-rose-600 mt-0.5">
+                            Coverage: {overview.timetableCoveragePercentage}% ({overview.readinessStatus})
                         </div>
                     </div>
                 </div>
             </div>
 
-            {/* 2. MAIN SECTION: VISUAL ANALYTICS & MONITORING (LEFT 8 COLUMNS + RIGHT 4 COLUMNS) */}
+            {/* 2. MIDDLE CHARTS ROW (MATCHING TEMPLATE: LINE/WAVE CHART + BAR CHART + DONUT CHART) */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
                 
-                {/* LEFT & CENTER COLUMN (8 COLS): DEMAND, GRADES & SCHEDULE VISUAL */}
-                <div className="lg:col-span-8 space-y-6">
-                    
-                    {/* INSTRUCTIONAL COVERAGE & DEMAND (BAR/PROGRESS COMPARISON) */}
-                    <div className="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm">
-                        <div className="flex items-center justify-between pb-4 border-b border-slate-100">
+                {/* CHART 1: INSTRUCTIONAL COVERAGE WAVE CHART (MATCHES EARNINGS CHART IN TEMPLATE) - 5 COLS */}
+                <div className="lg:col-span-5 bg-white rounded-2xl p-6 border border-slate-100 shadow-sm flex flex-col justify-between">
+                    <div>
+                        <div className="flex items-center justify-between pb-3 border-b border-slate-100">
                             <div>
                                 <h3 className="text-base font-bold text-slate-800">
-                                    Instructional Demand & Timetable Coverage
+                                    Timetable Coverage
                                 </h3>
                                 <p className="text-xs text-slate-400 mt-0.5">
-                                    Weekly instructional periods scheduled per grade in {academicYear?.name}
+                                    Instructional periods scheduled vs required
                                 </p>
                             </div>
-                            <div className="flex items-center gap-4 text-xs font-semibold">
-                                <span className="flex items-center gap-1.5 text-slate-600">
-                                    <span className="w-2.5 h-2.5 rounded-full bg-[#4085b3]"></span>
-                                    Scheduled: {timetable.scheduledPeriods}
+                            <div className="flex items-center gap-3 text-xs font-semibold">
+                                <span className="flex items-center gap-1 text-blue-600">
+                                    <span className="w-2.5 h-2.5 rounded-full bg-blue-500"></span>
+                                    Req: {timetable.requiredPeriods}
                                 </span>
-                                <span className="flex items-center gap-1.5 text-slate-400">
-                                    <span className="w-2.5 h-2.5 rounded-full bg-slate-300"></span>
-                                    Required: {timetable.requiredPeriods}
+                                <span className="flex items-center gap-1 text-red-600">
+                                    <span className="w-2.5 h-2.5 rounded-full bg-red-500"></span>
+                                    Sched: {timetable.scheduledPeriods}
                                 </span>
                             </div>
                         </div>
 
-                        {/* Grade coverage bars */}
-                        <div className="pt-5 space-y-4">
-                            {timetable.byGrade.length === 0 ? (
-                                <div className="text-center py-10 text-xs text-slate-400">
-                                    No grade curriculum schedules configured yet for this academic year.
+                        {/* Top summary figures */}
+                        <div className="pt-3 pb-1 flex items-baseline gap-6">
+                            <div>
+                                <span className="text-xs text-slate-400 font-medium">Scheduled</span>
+                                <div className="text-xl font-extrabold text-slate-800">
+                                    {timetable.scheduledPeriods} <span className="text-xs font-normal text-slate-400">periods</span>
                                 </div>
-                            ) : (
-                                timetable.byGrade.map((tg) => {
-                                    const isComplete = tg.coverageRate >= 100;
+                            </div>
+                            <div>
+                                <span className="text-xs text-slate-400 font-medium">Required</span>
+                                <div className="text-xl font-extrabold text-blue-600">
+                                    {timetable.requiredPeriods} <span className="text-xs font-normal text-slate-400">periods</span>
+                                </div>
+                            </div>
+                            <div>
+                                <span className="text-xs text-slate-400 font-medium">Coverage</span>
+                                <div className="text-xl font-extrabold text-emerald-600">
+                                    {timetable.coverageRate}%
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* SVG Wave Chart */}
+                        <div className="w-full pt-2">
+                            <svg className="w-full h-40 overflow-visible" viewBox={`0 0 ${chartWidth} ${chartHeight}`} preserveAspectRatio="none">
+                                <defs>
+                                    <linearGradient id="blueAreaGrad" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.3" />
+                                        <stop offset="100%" stopColor="#3b82f6" stopOpacity="0.0" />
+                                    </linearGradient>
+                                    <linearGradient id="redAreaGrad" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="0%" stopColor="#ef4444" stopOpacity="0.3" />
+                                        <stop offset="100%" stopColor="#ef4444" stopOpacity="0.0" />
+                                    </linearGradient>
+                                </defs>
+
+                                {/* Grid horizontal lines */}
+                                {[0.25, 0.5, 0.75, 1].map((ratio) => (
+                                    <line
+                                        key={ratio}
+                                        x1={paddingX}
+                                        y1={chartHeight - paddingY - ratio * usableH}
+                                        x2={chartWidth - paddingX}
+                                        y2={chartHeight - paddingY - ratio * usableH}
+                                        stroke="#f1f5f9"
+                                        strokeDasharray="4 4"
+                                    />
+                                ))}
+
+                                {/* Areas */}
+                                {requiredArea && <path d={requiredArea} fill="url(#blueAreaGrad)" />}
+                                {scheduledArea && <path d={scheduledArea} fill="url(#redAreaGrad)" />}
+
+                                {/* Lines */}
+                                {requiredPath && (
+                                    <path
+                                        d={requiredPath}
+                                        fill="none"
+                                        stroke="#3b82f6"
+                                        strokeWidth="3"
+                                        strokeLinecap="round"
+                                        className="transition-all duration-700 ease-out"
+                                    />
+                                )}
+                                {scheduledPath && (
+                                    <path
+                                        d={scheduledPath}
+                                        fill="none"
+                                        stroke="#ef4444"
+                                        strokeWidth="3"
+                                        strokeLinecap="round"
+                                        className="transition-all duration-700 ease-out"
+                                    />
+                                )}
+
+                                {/* Data circles and X-axis Labels */}
+                                {gradesData.map((g, i) => {
+                                    const cx = getX(i);
+                                    const reqY = getY(g.requiredPeriods);
+                                    const schY = getY(g.scheduledPeriods);
                                     return (
-                                        <div key={tg.gradeId} className="space-y-1.5">
-                                            <div className="flex items-center justify-between text-xs">
-                                                <span className="font-bold text-slate-700">{tg.gradeName}</span>
-                                                <div className="flex items-center gap-3">
-                                                    <span className="text-slate-500">
-                                                        {tg.scheduledPeriods} / {tg.requiredPeriods} periods
-                                                    </span>
-                                                    <span className={`font-bold px-2 py-0.5 rounded text-[10px] ${
-                                                        isComplete 
-                                                            ? "bg-emerald-50 text-emerald-700" 
-                                                            : "bg-blue-50 text-[#4085b3]"
-                                                    }`}>
-                                                        {tg.coverageRate}%
-                                                    </span>
-                                                </div>
-                                            </div>
-                                            <div className="w-full bg-slate-100 h-3 rounded-full overflow-hidden flex">
-                                                <div
-                                                    className={`h-full rounded-full transition-all ${
-                                                        isComplete ? "bg-emerald-500" : "bg-[#4085b3]"
-                                                    }`}
-                                                    style={{ width: `${Math.min(100, tg.coverageRate)}%` }}
-                                                />
-                                            </div>
-                                        </div>
+                                        <g key={g.gradeId || i}>
+                                            <circle cx={cx} cy={reqY} r="4" fill="#3b82f6" stroke="#ffffff" strokeWidth="2" />
+                                            <circle cx={cx} cy={schY} r="4" fill="#ef4444" stroke="#ffffff" strokeWidth="2" />
+                                            <text
+                                                x={cx}
+                                                y={chartHeight - 4}
+                                                textAnchor="middle"
+                                                fontSize="10"
+                                                fill="#94a3b8"
+                                                fontWeight="600"
+                                            >
+                                                {g.gradeName.replace(/Grade /i, "G")}
+                                            </text>
+                                        </g>
                                     );
-                                })
-                            )}
-                        </div>
-
-                        {/* Bottom metrics strip */}
-                        <div className="mt-6 pt-4 border-t border-slate-100 grid grid-cols-3 gap-4 text-center">
-                            <div>
-                                <span className="text-[11px] font-medium text-slate-400">Overall Coverage</span>
-                                <div className="text-lg font-bold text-[#4085b3]">{timetable.coverageRate}%</div>
-                            </div>
-                            <div>
-                                <span className="text-[11px] font-medium text-slate-400">Remaining Deficit</span>
-                                <div className={`text-lg font-bold ${timetable.remainingPeriods > 0 ? "text-amber-600" : "text-emerald-600"}`}>
-                                    {timetable.remainingPeriods} periods
-                                </div>
-                            </div>
-                            <div>
-                                <span className="text-[11px] font-medium text-slate-400">Timetable State</span>
-                                <div className="text-lg font-bold text-slate-800">
-                                    <span className={`inline-block px-2 py-0.5 rounded text-xs uppercase font-extrabold ${
-                                        timetable.status === "PUBLISHED" 
-                                            ? "bg-emerald-50 text-emerald-700" 
-                                            : "bg-amber-50 text-amber-700"
-                                    }`}>
-                                        {timetable.status}
-                                    </span>
-                                </div>
-                            </div>
+                                })}
+                            </svg>
                         </div>
                     </div>
 
-                    {/* OPERATIONAL ALERTS & NOTICE BOARD (EXACT MATCH TO NOTICE BOARD IN TEMPLATE) */}
-                    <div className="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm">
-                        <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-                            <div>
-                                <h3 className="text-base font-bold text-slate-800">Notice Board & Operational Alerts</h3>
-                                <p className="text-xs text-slate-400 mt-0.5">Real-time alerts requiring school administrator action</p>
-                            </div>
-                            <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-slate-100 text-slate-600">
-                                {alerts.length} Notices
-                            </span>
-                        </div>
-
-                        <div className="pt-4 space-y-3">
-                            {alerts.length === 0 ? (
-                                <div className="p-8 text-center text-xs text-slate-400 bg-slate-50/50 rounded-xl">
-                                    No active operational alerts. All academic operations are in compliance!
-                                </div>
-                            ) : (
-                                alerts.map((alert) => {
-                                    const isCritical = alert.severity === "CRITICAL";
-                                    const isWarning = alert.severity === "WARNING";
-                                    return (
-                                        <div 
-                                            key={alert.id}
-                                            className="p-4 rounded-xl border border-slate-100 hover:border-slate-200 bg-slate-50/40 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3"
-                                        >
-                                            <div className="space-y-1">
-                                                <div className="flex items-center gap-2">
-                                                    <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
-                                                        isCritical 
-                                                            ? "bg-red-100 text-red-700" 
-                                                            : isWarning 
-                                                                ? "bg-amber-100 text-amber-800" 
-                                                                : "bg-blue-100 text-[#4085b3]"
-                                                    }`}>
-                                                        {alert.category.replace(/_/g, " ")}
-                                                    </span>
-                                                    <h4 className="text-xs font-bold text-slate-900">{alert.title}</h4>
-                                                </div>
-                                                <p className="text-xs text-slate-600 leading-relaxed">
-                                                    {alert.message}
-                                                </p>
-                                            </div>
-
-                                            <Link
-                                                href={alert.actionUrl}
-                                                className="shrink-0 inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-white border border-slate-200 hover:border-[#4085b3] text-[#4085b3] hover:bg-blue-50 text-xs font-bold transition-all"
-                                            >
-                                                <span>{alert.actionLabel}</span>
-                                                <ArrowRight className="w-3.5 h-3.5" />
-                                            </Link>
-                                        </div>
-                                    );
-                                })
-                            )}
-                        </div>
+                    <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
+                        <span className="text-slate-400 font-medium">Timetable State:</span>
+                        <span className={`px-2.5 py-0.5 rounded-full text-xs font-extrabold uppercase ${
+                            timetable.status === "PUBLISHED" 
+                                ? "bg-emerald-50 text-emerald-700 border border-emerald-200" 
+                                : "bg-amber-50 text-amber-700 border border-amber-200"
+                        }`}>
+                            {timetable.status}
+                        </span>
                     </div>
                 </div>
 
-                {/* RIGHT COLUMN (4 COLS): DONUT CHART, RECENT ACTIVITY & QUICK ACTIONS */}
-                <div className="lg:col-span-4 space-y-6">
-                    
-                    {/* STUDENTS DONUT CHART (EXACT MATCH TO TEMPLATE) */}
-                    <div className="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm flex flex-col justify-between">
+                {/* CHART 2: INSTRUCTIONAL DEMAND BY GRADE (MATCHES EXPENSES BAR CHART IN TEMPLATE) - 3 COLS */}
+                <div className="lg:col-span-3 bg-white rounded-2xl p-6 border border-slate-100 shadow-sm flex flex-col justify-between">
+                    <div>
                         <div className="flex items-center justify-between pb-3 border-b border-slate-100">
                             <div>
-                                <h3 className="text-base font-bold text-slate-800">Students Placement</h3>
-                                <p className="text-xs text-slate-400 mt-0.5">Section allocation ratio</p>
+                                <h3 className="text-base font-bold text-slate-800">
+                                    Curriculum Demand
+                                </h3>
+                                <p className="text-xs text-slate-400 mt-0.5">
+                                    Periods required per grade
+                                </p>
                             </div>
-                            <Link href="/dashboard/students/placement" className="text-xs text-[#4085b3] hover:underline font-semibold flex items-center gap-0.5">
+                            <span className="text-xs font-bold text-slate-500">
+                                {overview.totalGrades} Grades
+                            </span>
+                        </div>
+
+                        {/* Top quick figure */}
+                        <div className="pt-3 pb-2">
+                            <span className="text-xs text-slate-400 font-medium">Total Demand</span>
+                            <div className="text-2xl font-black text-slate-800">
+                                {timetable.requiredPeriods} <span className="text-xs font-semibold text-slate-400">weekly periods</span>
+                            </div>
+                        </div>
+
+                        {/* Vertical Bar Chart */}
+                        <div className="h-44 pt-4 flex items-end justify-around gap-2">
+                            {gradesData.map((g, idx) => {
+                                const barColors = [
+                                    "bg-emerald-400 hover:bg-emerald-500",
+                                    "bg-blue-500 hover:bg-blue-600",
+                                    "bg-amber-400 hover:bg-amber-500",
+                                    "bg-indigo-500 hover:bg-indigo-600",
+                                    "bg-rose-400 hover:bg-rose-500"
+                                ];
+                                const colorClass = barColors[idx % barColors.length];
+                                const heightPercent = Math.max(12, Math.round((g.requiredPeriods / maxPeriodVal) * 100));
+
+                                return (
+                                    <div key={g.gradeId || idx} className="flex-1 flex flex-col items-center h-full justify-end group">
+                                        <span className="text-[10px] font-bold text-slate-500 mb-1 opacity-80 group-hover:opacity-100 transition-opacity">
+                                            {g.requiredPeriods}
+                                        </span>
+                                        <div 
+                                            className={`w-full max-w-[36px] rounded-t-lg transition-all duration-700 ${colorClass}`}
+                                            style={{ height: `${heightPercent}%` }}
+                                            title={`${g.gradeName}: ${g.requiredPeriods} required periods, ${g.scheduledPeriods} scheduled`}
+                                        />
+                                        <span className="text-[10px] font-bold text-slate-500 mt-2 truncate w-full text-center">
+                                            {g.gradeName.replace(/Grade /i, "G")}
+                                        </span>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+
+                    <div className="pt-3 border-t border-slate-100 text-center text-xs font-semibold text-slate-500">
+                        {timetable.incompleteAssignmentsCount} incomplete assignments
+                    </div>
+                </div>
+
+                {/* CHART 3: STUDENTS DONUT CHART (EXACT MATCH TO DONUT CHART IN TEMPLATE) - 4 COLS */}
+                <div className="lg:col-span-4 bg-white rounded-2xl p-6 border border-slate-100 shadow-sm flex flex-col justify-between">
+                    <div>
+                        <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                            <div>
+                                <h3 className="text-base font-bold text-slate-800">Students</h3>
+                                <p className="text-xs text-slate-400 mt-0.5">Placement & enrollment balance</p>
+                            </div>
+                            <Link href="/dashboard/students/placement" className="text-xs text-[#f59e0b] hover:underline font-semibold flex items-center gap-0.5">
                                 <span>Roster</span>
                                 <ArrowRight className="w-3 h-3" />
                             </Link>
                         </div>
 
                         {/* Circular SVG Donut Chart */}
-                        <div className="py-6 flex flex-col items-center justify-center">
+                        <div className="py-4 flex flex-col items-center justify-center">
                             <div className="relative w-44 h-44 flex items-center justify-center">
                                 <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
                                     {/* Background Circle */}
@@ -516,13 +627,13 @@ export default function SchoolDashboardPage() {
                                         stroke="#f1f5f9"
                                         strokeWidth="14"
                                     />
-                                    {/* Placed Slice (Blue #4085b3) */}
+                                    {/* Placed Slice (Blue #2563eb) */}
                                     <circle
                                         cx="50"
                                         cy="50"
                                         r="40"
                                         fill="transparent"
-                                        stroke="#4085b3"
+                                        stroke="#2563eb"
                                         strokeWidth="14"
                                         strokeDasharray={`${placedDash} ${circumference}`}
                                         strokeLinecap="round"
@@ -554,57 +665,160 @@ export default function SchoolDashboardPage() {
                                 </div>
                             </div>
                         </div>
+                    </div>
 
-                        {/* Legend Below Chart */}
-                        <div className="pt-4 border-t border-slate-100 grid grid-cols-2 gap-2 text-center">
-                            <div className="p-2 rounded-xl bg-blue-50/60 border border-blue-100">
-                                <div className="flex items-center justify-center gap-1.5 text-xs text-[#4085b3] font-bold">
-                                    <span className="w-2.5 h-2.5 rounded-full bg-[#4085b3]"></span>
-                                    Placed
-                                </div>
-                                <div className="text-base font-black text-slate-800 mt-0.5">
-                                    {placedCount} ({Math.round(placedPercent)}%)
-                                </div>
+                    {/* Legend Below Chart (Matching template) */}
+                    <div className="pt-3 border-t border-slate-100 grid grid-cols-2 gap-2 text-center">
+                        <div className="p-2 rounded-xl bg-blue-50/60 border border-blue-100">
+                            <div className="flex items-center justify-center gap-1.5 text-xs text-blue-700 font-bold">
+                                <span className="w-2.5 h-2.5 rounded-full bg-blue-600"></span>
+                                Placed
                             </div>
-                            <div className={`p-2 rounded-xl border ${
-                                unplacedCount > 0 
-                                    ? "bg-amber-50/60 border-amber-200" 
-                                    : "bg-slate-50 border-slate-100"
-                            }`}>
-                                <div className="flex items-center justify-center gap-1.5 text-xs text-amber-700 font-bold">
-                                    <span className="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
-                                    Unplaced
-                                </div>
-                                <div className="text-base font-black text-slate-800 mt-0.5">
-                                    {unplacedCount} ({Math.round(unplacedPercent)}%)
-                                </div>
+                            <div className="text-base font-black text-slate-800 mt-0.5">
+                                {placedCount} ({Math.round(placedPercent)}%)
+                            </div>
+                        </div>
+                        <div className={`p-2 rounded-xl border ${
+                            unplacedCount > 0 
+                                ? "bg-amber-50/60 border-amber-200" 
+                                : "bg-slate-50 border-slate-100"
+                        }`}>
+                            <div className="flex items-center justify-center gap-1.5 text-xs text-amber-700 font-bold">
+                                <span className="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
+                                Unplaced
+                            </div>
+                            <div className="text-base font-black text-slate-800 mt-0.5">
+                                {unplacedCount} ({Math.round(unplacedPercent)}%)
                             </div>
                         </div>
                     </div>
+                </div>
+            </div>
 
-                    {/* RECENT ADMINISTRATIVE ACTIVITY (AUDIT LOG) */}
-                    <div className="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm">
+            {/* 3. BOTTOM ROW (MATCHING TEMPLATE: READINESS CALENDAR + NOTICE BOARD ALERTS + RECENT ACTIVITY & QUICK ACTIONS) */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                
+                {/* BOTTOM LEFT: ACADEMIC READINESS STANDARDS (CALENDAR / SCHEDULE WIDGET IN TEMPLATE) - 4 COLS */}
+                <div className="lg:col-span-4 bg-white rounded-2xl p-6 border border-slate-100 shadow-sm flex flex-col justify-between">
+                    <div>
+                        <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                            <div>
+                                <h3 className="text-base font-bold text-slate-800">Readiness Standards</h3>
+                                <p className="text-xs text-slate-400 mt-0.5">10-point deterministic checks</p>
+                            </div>
+                            <span className="text-base font-black text-slate-800">
+                                {readiness.score}%
+                            </span>
+                        </div>
+
+                        <div className="pt-3 space-y-2">
+                            {readiness.checks.slice(0, 6).map((check) => {
+                                const isPassed = check.status === "PASSED";
+                                const isWarning = check.status === "WARNING";
+                                return (
+                                    <div key={check.id} className="flex items-center justify-between py-1.5 text-xs border-b border-slate-50 last:border-none">
+                                        <span className="font-semibold text-slate-700 truncate pr-2">
+                                            {check.name}
+                                        </span>
+                                        <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full shrink-0 ${
+                                            isPassed 
+                                                ? "text-emerald-700 bg-emerald-50" 
+                                                : isWarning 
+                                                    ? "text-amber-700 bg-amber-50" 
+                                                    : "text-red-700 bg-red-50"
+                                        }`}>
+                                            {isPassed ? "✓ Passed" : isWarning ? "⚠ Warning" : "✕ Failed"}
+                                        </span>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+
+                    <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
+                        <span className="text-slate-400">Status Evaluation:</span>
+                        <span className="font-bold text-emerald-600 uppercase">
+                            {readiness.status}
+                        </span>
+                    </div>
+                </div>
+
+                {/* BOTTOM CENTER: NOTICE BOARD & OPERATIONAL ALERTS (NOTICE BOARD IN TEMPLATE) - 4 COLS */}
+                <div className="lg:col-span-4 bg-white rounded-2xl p-6 border border-slate-100 shadow-sm flex flex-col justify-between">
+                    <div>
+                        <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                            <div>
+                                <h3 className="text-base font-bold text-slate-800">Notice Board</h3>
+                                <p className="text-xs text-slate-400 mt-0.5">Actionable operational alerts</p>
+                            </div>
+                            <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">
+                                {alerts.length} Items
+                            </span>
+                        </div>
+
+                        <div className="pt-3 space-y-3">
+                            {alerts.length === 0 ? (
+                                <div className="text-center py-10 text-xs text-slate-400">
+                                    No active operational alerts. All school records compliant!
+                                </div>
+                            ) : (
+                                alerts.slice(0, 3).map((alert) => (
+                                    <div key={alert.id} className="p-3 rounded-xl bg-slate-50/60 border border-slate-100 space-y-1.5">
+                                        <div className="flex items-center justify-between">
+                                            <span className={`px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase ${
+                                                alert.severity === "CRITICAL" 
+                                                    ? "bg-red-100 text-red-700" 
+                                                    : alert.severity === "WARNING" 
+                                                        ? "bg-amber-100 text-amber-800" 
+                                                        : "bg-blue-100 text-blue-700"
+                                            }`}>
+                                                {alert.category.replace(/_/g, " ")}
+                                            </span>
+                                            <Link
+                                                href={alert.actionUrl}
+                                                className="text-[11px] font-bold text-[#f59e0b] hover:underline inline-flex items-center gap-0.5"
+                                            >
+                                                <span>{alert.actionLabel}</span>
+                                                <ArrowRight className="w-3 h-3" />
+                                            </Link>
+                                        </div>
+                                        <h4 className="text-xs font-bold text-slate-800">{alert.title}</h4>
+                                        <p className="text-[11px] text-slate-500 leading-snug">{alert.message}</p>
+                                    </div>
+                                ))
+                            )}
+                        </div>
+                    </div>
+
+                    <div className="pt-3 border-t border-slate-100 text-center text-xs font-semibold text-slate-500">
+                        {alerts.length > 0 ? `${alerts.length} action items require attention` : "Operations Healthy"}
+                    </div>
+                </div>
+
+                {/* BOTTOM RIGHT: RECENT ACTIVITY & QUICK ACTIONS - 4 COLS */}
+                <div className="lg:col-span-4 bg-white rounded-2xl p-6 border border-slate-100 shadow-sm flex flex-col justify-between">
+                    <div>
                         <div className="flex items-center justify-between pb-3 border-b border-slate-100">
                             <div>
                                 <h3 className="text-base font-bold text-slate-800">Recent Activity</h3>
-                                <p className="text-xs text-slate-400 mt-0.5">System audit log events</p>
+                                <p className="text-xs text-slate-400 mt-0.5">Audit log records</p>
                             </div>
                             <Clock className="w-4 h-4 text-slate-400" />
                         </div>
 
-                        <div className="pt-4 space-y-3">
+                        <div className="pt-3 space-y-2.5">
                             {recentActivity.length === 0 ? (
                                 <div className="text-center py-6 text-xs text-slate-400">
                                     No administrative actions recorded yet.
                                 </div>
                             ) : (
-                                recentActivity.slice(0, 5).map((log) => (
-                                    <div key={log.id} className="flex items-start gap-3 text-xs">
-                                        <div className="w-7 h-7 rounded-full bg-blue-50 text-[#4085b3] flex items-center justify-center shrink-0 mt-0.5 font-bold text-[10px]">
+                                recentActivity.slice(0, 3).map((log) => (
+                                    <div key={log.id} className="flex items-start gap-2.5 text-xs">
+                                        <div className="w-6 h-6 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center shrink-0 mt-0.5 font-bold text-[10px]">
                                             {log.userName.charAt(0).toUpperCase()}
                                         </div>
                                         <div className="min-w-0 flex-1">
-                                            <p className="font-semibold text-slate-800 leading-snug">
+                                            <p className="font-semibold text-slate-800 leading-tight">
                                                 {log.actionLabel}
                                             </p>
                                             <div className="flex items-center justify-between text-[10px] text-slate-400 mt-0.5">
@@ -616,104 +830,36 @@ export default function SchoolDashboardPage() {
                                 ))
                             )}
                         </div>
-                    </div>
 
-                    {/* QUICK ACTIONS HUB */}
-                    <div className="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm">
-                        <h3 className="text-base font-bold text-slate-800 mb-3">Quick Navigation</h3>
-                        <div className="grid grid-cols-2 gap-2 text-center text-xs">
+                        {/* Quick Navigation buttons */}
+                        <div className="mt-4 pt-3 border-t border-slate-100 grid grid-cols-3 gap-2 text-center text-xs">
                             <Link
                                 href="/dashboard/students"
-                                className="p-3 rounded-xl border border-slate-100 hover:border-[#4085b3] hover:bg-blue-50/50 transition-all font-bold text-slate-700 hover:text-[#4085b3] flex flex-col items-center gap-1.5"
+                                className="p-2 rounded-xl bg-slate-50 hover:bg-amber-50 hover:text-amber-700 transition-colors font-bold text-slate-700 flex flex-col items-center gap-1"
                             >
-                                <Users className="w-4 h-4 text-[#4085b3]" />
-                                <span>Students</span>
+                                <Users className="w-4 h-4 text-emerald-600" />
+                                <span className="text-[10px]">Students</span>
                             </Link>
                             <Link
                                 href="/dashboard/teachers"
-                                className="p-3 rounded-xl border border-slate-100 hover:border-[#4085b3] hover:bg-blue-50/50 transition-all font-bold text-slate-700 hover:text-[#4085b3] flex flex-col items-center gap-1.5"
+                                className="p-2 rounded-xl bg-slate-50 hover:bg-amber-50 hover:text-amber-700 transition-colors font-bold text-slate-700 flex flex-col items-center gap-1"
                             >
-                                <GraduationCap className="w-4 h-4 text-purple-600" />
-                                <span>Teachers</span>
+                                <GraduationCap className="w-4 h-4 text-blue-600" />
+                                <span className="text-[10px]">Teachers</span>
                             </Link>
                             <Link
                                 href="/dashboard/academics/timetable"
-                                className="p-3 rounded-xl border border-slate-100 hover:border-[#4085b3] hover:bg-blue-50/50 transition-all font-bold text-slate-700 hover:text-[#4085b3] flex flex-col items-center gap-1.5"
+                                className="p-2 rounded-xl bg-slate-50 hover:bg-amber-50 hover:text-amber-700 transition-colors font-bold text-slate-700 flex flex-col items-center gap-1"
                             >
                                 <CalendarRange className="w-4 h-4 text-amber-600" />
-                                <span>Timetable</span>
-                            </Link>
-                            <Link
-                                href="/dashboard/school"
-                                className="p-3 rounded-xl border border-slate-100 hover:border-[#4085b3] hover:bg-blue-50/50 transition-all font-bold text-slate-700 hover:text-[#4085b3] flex flex-col items-center gap-1.5"
-                            >
-                                <Building2 className="w-4 h-4 text-emerald-600" />
-                                <span>School Profile</span>
+                                <span className="text-[10px]">Timetable</span>
                             </Link>
                         </div>
                     </div>
-                </div>
-            </div>
 
-            {/* 3. OPERATIONAL READINESS CHECKLIST (SLEEK BOTTOM CARD) */}
-            <div className="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100">
-                    <div>
-                        <div className="flex items-center gap-2">
-                            <CheckCircle2 className="w-5 h-5 text-emerald-600" />
-                            <h3 className="text-base font-bold text-slate-800">Academic & Operational Readiness Standards</h3>
-                        </div>
-                        <p className="text-xs text-slate-400 mt-1">
-                            {readiness.summary}
-                        </p>
+                    <div className="pt-3 border-t border-slate-100 text-center text-xs text-slate-400">
+                        School Operations &bull; EduBridge Principal Portal
                     </div>
-                    <div className="flex items-center gap-3">
-                        <span className="text-2xl font-black text-slate-800">{readiness.score}%</span>
-                        <span className={`px-3 py-1 rounded-full text-xs font-extrabold uppercase tracking-wider ${
-                            readiness.status === "READY" 
-                                ? "bg-emerald-50 text-emerald-700 border border-emerald-200" 
-                                : "bg-amber-50 text-amber-700 border border-amber-200"
-                        }`}>
-                            {readiness.status.replace(/_/g, " ")}
-                        </span>
-                    </div>
-                </div>
-
-                <div className="pt-4 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-                    {readiness.checks.map((check) => {
-                        const isPassed = check.status === "PASSED";
-                        const isWarning = check.status === "WARNING";
-                        return (
-                            <div 
-                                key={check.id}
-                                className={`p-3 rounded-xl border text-xs flex flex-col justify-between ${
-                                    isPassed 
-                                        ? "bg-slate-50/50 border-slate-100" 
-                                        : isWarning 
-                                            ? "bg-amber-50/40 border-amber-200" 
-                                            : "bg-red-50/40 border-red-200"
-                                }`}
-                            >
-                                <div className="flex items-center justify-between gap-1 mb-1">
-                                    <span className="font-bold text-slate-800 truncate" title={check.name}>
-                                        {check.name}
-                                    </span>
-                                    <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded ${
-                                        isPassed 
-                                            ? "text-emerald-700 bg-emerald-50" 
-                                            : isWarning 
-                                                ? "text-amber-700 bg-amber-50" 
-                                                : "text-red-700 bg-red-50"
-                                    }`}>
-                                        {isPassed ? "✓ Passed" : isWarning ? "⚠ Warning" : "✕ Failed"}
-                                    </span>
-                                </div>
-                                <p className="text-[11px] text-slate-500 leading-snug">
-                                    {check.message}
-                                </p>
-                            </div>
-                        );
-                    })}
                 </div>
             </div>
         </div>
