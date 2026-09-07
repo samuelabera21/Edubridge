@@ -804,81 +804,75 @@ export default function TimetablePage() {
                             message="Select an active Grade and Section above to open its instructional scheduling workspace."
                         />
                     ) : (
-                        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-                            {/* LEFT PANEL: Teaching Assignment Pool (35% on lg) */}
-                            <div className="lg:col-span-4 space-y-4">
-                                <Card className="border border-slate-200 shadow-2xs">
-                                    <CardHeader className="py-3 px-4 border-b border-slate-100 flex items-center justify-between">
-                                        <div>
-                                            <CardTitle className="text-sm font-bold text-slate-900">
-                                                Subject Allocations
-                                            </CardTitle>
-                                            <p className="text-xs text-slate-400">Weekly instructional demand for Section {selectedSection.name}</p>
-                                        </div>
-                                        <span className="text-xs font-semibold bg-slate-100 text-slate-700 px-2 py-0.5 rounded">
-                                            {workspace.teachingAssignments?.length || 0} subjects
+                        <div className="space-y-4">
+                            {/* TOP: Subject Allocations & Demand Pool (Full Width, No Scrollbar) */}
+                            <Card className="border border-slate-200 shadow-2xs">
+                                <CardHeader className="py-2.5 px-4 border-b border-slate-100 flex flex-row items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                        <CardTitle className="text-xs font-bold uppercase tracking-wider text-slate-700">
+                                            Subject Allocations & Demand
+                                        </CardTitle>
+                                        <span className="text-[11px] text-slate-500 hidden sm:inline">
+                                            — Weekly instructional quota for Section {selectedSection.name}
                                         </span>
-                                    </CardHeader>
-                                    <CardContent className="p-3 space-y-2 max-h-[620px] overflow-y-auto">
-                                        {workspace.teachingAssignments?.length === 0 ? (
-                                            <div className="p-6 text-center text-xs text-slate-400">
-                                                No teaching assignments allocated for Section {selectedSection.name}.
-                                            </div>
-                                        ) : (
-                                            workspace.teachingAssignments?.map((ta: any) => {
+                                    </div>
+                                    <span className="text-xs font-semibold bg-slate-100 text-slate-700 px-2 py-0.5 rounded">
+                                        {workspace.teachingAssignments?.length || 0} subjects
+                                    </span>
+                                </CardHeader>
+                                <CardContent className="p-3">
+                                    {workspace.teachingAssignments?.length === 0 ? (
+                                        <div className="p-4 text-center text-xs text-slate-400">
+                                            No teaching assignments allocated for Section {selectedSection.name}.
+                                        </div>
+                                    ) : (
+                                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-7 gap-2.5">
+                                            {workspace.teachingAssignments?.map((ta: any) => {
                                                 const isDone = ta.isComplete;
                                                 return (
                                                     <div
                                                         key={ta.id}
-                                                        className={`p-3 rounded-lg border transition-all ${
+                                                        className={`p-2.5 rounded-lg border transition-all flex flex-col justify-between ${
                                                             isDone
                                                                 ? "bg-slate-50/70 border-slate-200"
                                                                 : "bg-white border-slate-200 hover:border-slate-300 shadow-2xs"
                                                         }`}
                                                     >
-                                                        <div className="flex items-start justify-between gap-2">
-                                                            <div className="min-w-0">
-                                                                <div className="flex items-center gap-1.5 flex-wrap">
-                                                                    <span className="text-xs font-bold text-slate-900 truncate">
-                                                                        {ta.subject.name}
+                                                        <div>
+                                                            <div className="flex items-start justify-between gap-1">
+                                                                <span className="text-xs font-bold text-slate-900 truncate" title={ta.subject.name}>
+                                                                    {ta.subject.name}
+                                                                </span>
+                                                                {isDone ? (
+                                                                    <span className="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 shrink-0">
+                                                                        <Check className="w-2.5 h-2.5" /> Done
                                                                     </span>
-                                                                    {ta.subject.code && (
-                                                                        <span className="text-[10px] bg-slate-100 text-slate-600 px-1.5 py-0.2 rounded font-mono">
-                                                                            {ta.subject.code}
-                                                                        </span>
-                                                                    )}
+                                                                ) : (
+                                                                    <span className="inline-flex items-center px-1.5 py-0.2 rounded text-[10px] font-semibold bg-amber-50 text-amber-700 border border-amber-200 shrink-0">
+                                                                        {ta.remainingPeriods} left
+                                                                    </span>
+                                                                )}
+                                                            </div>
+
+                                                            <p className="text-[11px] text-slate-500 mt-1 flex items-center gap-1 truncate" title={`${ta.teacher.firstName} ${ta.teacher.lastName}`}>
+                                                                <User className="w-3 h-3 text-slate-400 shrink-0" />
+                                                                <span className="truncate">{ta.teacher.firstName} {ta.teacher.lastName}</span>
+                                                            </p>
+
+                                                            {/* Progress bar */}
+                                                            <div className="mt-2">
+                                                                <div className="flex items-center justify-between text-[10px] text-slate-500 mb-0.5">
+                                                                    <span>Allocated: <strong>{ta.scheduledPeriods}</strong>/{ta.requiredPeriods}</span>
+                                                                    <span>{Math.round((ta.scheduledPeriods / (ta.requiredPeriods || 1)) * 100)}%</span>
                                                                 </div>
-                                                                <p className="text-[11px] text-slate-500 mt-0.5 flex items-center gap-1">
-                                                                    <User className="w-3 h-3 text-slate-400 shrink-0" />
-                                                                    <span className="truncate">{ta.teacher.firstName} {ta.teacher.lastName}</span>
-                                                                </p>
-                                                            </div>
-
-                                                            {/* Status Badge */}
-                                                            {isDone ? (
-                                                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 shrink-0">
-                                                                    <Check className="w-3 h-3" /> Complete
-                                                                </span>
-                                                            ) : (
-                                                                <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-amber-50 text-amber-700 border border-amber-200 shrink-0">
-                                                                    {ta.remainingPeriods} left
-                                                                </span>
-                                                            )}
-                                                        </div>
-
-                                                        {/* Progress bar */}
-                                                        <div className="mt-2.5">
-                                                            <div className="flex items-center justify-between text-[11px] text-slate-500 mb-1">
-                                                                <span>Allocated: <strong>{ta.scheduledPeriods}</strong> / {ta.requiredPeriods}</span>
-                                                                <span>{Math.round((ta.scheduledPeriods / (ta.requiredPeriods || 1)) * 100)}%</span>
-                                                            </div>
-                                                            <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
-                                                                <div
-                                                                    className={`h-full transition-all rounded-full ${
-                                                                        isDone ? "bg-emerald-500" : "bg-[#4085b3]"
-                                                                    }`}
-                                                                    style={{ width: `${Math.min(100, (ta.scheduledPeriods / (ta.requiredPeriods || 1)) * 100)}%` }}
-                                                                />
+                                                                <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
+                                                                    <div
+                                                                        className={`h-full transition-all rounded-full ${
+                                                                            isDone ? "bg-emerald-500" : "bg-[#4085b3]"
+                                                                        }`}
+                                                                        style={{ width: `${Math.min(100, (ta.scheduledPeriods / (ta.requiredPeriods || 1)) * 100)}%` }}
+                                                                    />
+                                                                </div>
                                                             </div>
                                                         </div>
 
@@ -889,69 +883,68 @@ export default function TimetablePage() {
                                                                     setSelectedSlotTarget(null);
                                                                     setIsAssignModalOpen(true);
                                                                 }}
-                                                                className="mt-2 w-full py-1 px-2 rounded-md bg-slate-50 hover:bg-slate-100 text-slate-700 hover:text-slate-900 text-xs font-medium flex items-center justify-center gap-1.5 transition-colors border border-slate-200 cursor-pointer"
+                                                                className="mt-2 w-full py-1 px-1.5 rounded bg-slate-50 hover:bg-slate-100 text-slate-700 hover:text-slate-900 text-[11px] font-medium flex items-center justify-center gap-1 transition-colors border border-slate-200 cursor-pointer"
                                                             >
                                                                 <Plus className="w-3 h-3 text-[#4085b3]" />
-                                                                <span>Schedule in Grid</span>
+                                                                <span>Schedule</span>
                                                             </button>
                                                         )}
                                                     </div>
                                                 );
-                                            })
-                                        )}
-                                    </CardContent>
-                                </Card>
-                            </div>
+                                            })}
+                                        </div>
+                                    )}
+                                </CardContent>
+                            </Card>
 
-                            {/* RIGHT PANEL: Weekly Timetable Grid (65% on lg) */}
-                            <div className="lg:col-span-8">
-                                <Card className="border border-slate-200 shadow-2xs">
-                                    <CardHeader className="py-3 px-4 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                                        <div>
-                                            <CardTitle className="text-sm font-bold text-slate-900">
-                                                Weekly Schedule: Section {selectedSection.name}
-                                            </CardTitle>
-                                            <p className="text-xs text-slate-400">
-                                                {selectedGrade?.grade?.name} timetable grid
-                                            </p>
-                                        </div>
-                                        <div className="flex items-center gap-2">
-                                            {!isYearLocked && (
-                                                <>
-                                                    <Button
-                                                        variant="outline"
-                                                        onClick={() => setIsPeriodModalOpen(true)}
-                                                        className="text-xs flex items-center gap-1 py-1 px-2.5 h-auto text-slate-700 hover:bg-slate-50"
-                                                    >
-                                                        <Plus className="w-3.5 h-3.5" />
-                                                        <span>Add Period</span>
-                                                    </Button>
-                                                    <Button
-                                                        onClick={() => {
-                                                            setSelectedSlotTarget(null);
-                                                            setSelectedTeachingAssignmentId("");
-                                                            setConflictError(null);
-                                                            setIsAssignModalOpen(true);
-                                                        }}
-                                                        className="text-xs flex items-center gap-1 py-1 px-2.5 h-auto bg-[#4085b3] hover:bg-[#356f96] text-white"
-                                                    >
-                                                        <Plus className="w-3.5 h-3.5" />
-                                                        <span>Schedule Lesson</span>
-                                                    </Button>
-                                                </>
-                                            )}
-                                        </div>
-                                    </CardHeader>
+                            {/* BOTTOM: Full-Width Weekly Timetable Grid */}
+                            <Card className="border border-slate-200 shadow-2xs">
+                                <CardHeader className="py-2.5 px-4 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                                    <div>
+                                        <CardTitle className="text-sm font-bold text-slate-900">
+                                            Weekly Schedule: Section {selectedSection.name}
+                                        </CardTitle>
+                                        <p className="text-xs text-slate-400">
+                                            {selectedGrade?.grade?.name} timetable grid
+                                        </p>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        {!isYearLocked && (
+                                            <>
+                                                <Button
+                                                    variant="outline"
+                                                    onClick={() => setIsPeriodModalOpen(true)}
+                                                    className="text-xs flex items-center gap-1 py-1 px-2.5 h-auto text-slate-700 hover:bg-slate-50"
+                                                >
+                                                    <Plus className="w-3.5 h-3.5" />
+                                                    <span>Add Period</span>
+                                                </Button>
+                                                <Button
+                                                    onClick={() => {
+                                                        setSelectedSlotTarget(null);
+                                                        setSelectedTeachingAssignmentId("");
+                                                        setConflictError(null);
+                                                        setIsAssignModalOpen(true);
+                                                    }}
+                                                    className="text-xs flex items-center gap-1 py-1 px-2.5 h-auto bg-[#4085b3] hover:bg-[#356f96] text-white"
+                                                >
+                                                    <Plus className="w-3.5 h-3.5" />
+                                                    <span>Schedule Lesson</span>
+                                                </Button>
+                                            </>
+                                        )}
+                                    </div>
+                                </CardHeader>
 
                                     <CardContent className="p-0 overflow-x-auto">
-                                        <table className="w-full border-collapse text-left min-w-[700px]">
+                                        <table className="w-full table-fixed border-collapse text-left">
                                             <thead>
                                                 <tr className="bg-slate-50 border-b border-slate-200">
-                                                    <th className="py-2.5 px-3 text-xs font-bold uppercase tracking-wider text-slate-500 w-24 text-center border-r border-slate-200">
+                                                    <th className="py-2.5 px-2 text-xs font-bold uppercase tracking-wider text-slate-500 w-20 text-center border-r border-slate-200">
                                                         Period
                                                     </th>
                                                     {operatingDaysList.map((d) => (
-                                                        <th key={d.value} className="py-2.5 px-3 text-xs font-bold text-slate-700 text-center border-r border-slate-200 last:border-r-0">
+                                                        <th key={d.value} className="py-2.5 px-2 text-xs font-bold text-slate-700 text-center border-r border-slate-200 last:border-r-0">
                                                             <div>{d.label}</div>
                                                         </th>
                                                     ))}
@@ -996,7 +989,7 @@ export default function TimetablePage() {
                                                         if (isBreak) {
                                                             return (
                                                                 <tr key={period.id} className="bg-amber-50/50 border-y border-amber-200/50">
-                                                                    <td className="py-2 px-3 text-center border-r border-amber-200/50 bg-amber-50 w-24">
+                                                                    <td className="py-2 px-2 text-center border-r border-amber-200/50 bg-amber-50 w-20">
                                                                         <div className="flex items-center justify-center gap-1 group/p">
                                                                             <span className="font-bold text-xs text-amber-900">{periodCode || "Break"}</span>
                                                                             {!isYearLocked && (
@@ -1023,7 +1016,7 @@ export default function TimetablePage() {
                                                         return (
                                                             <tr key={period.id} className="hover:bg-slate-50/30 transition-colors">
                                                                 {/* Period Label with Hover Delete */}
-                                                                <td className="py-2.5 px-3 text-center border-r border-slate-200 bg-slate-50/60 w-24">
+                                                                <td className="py-2.5 px-2 text-center border-r border-slate-200 bg-slate-50/60 w-20">
                                                                     <div className="flex items-center justify-center gap-1 group/p">
                                                                         <span className="font-bold text-xs text-slate-800">{periodCode}</span>
                                                                         {!isYearLocked && (
@@ -1046,13 +1039,13 @@ export default function TimetablePage() {
                                                                     return (
                                                                         <td
                                                                             key={day.value}
-                                                                            className="py-1.5 px-1.5 border-r border-slate-200 last:border-r-0 align-top h-20 min-w-[130px]"
+                                                                            className="py-1.5 px-1.5 border-r border-slate-200 last:border-r-0 align-top h-20"
                                                                         >
                                                                             {slot ? (
                                                                                 <div className="relative group p-2 rounded-lg bg-white text-slate-900 shadow-2xs border border-slate-200 hover:border-[#4085b3] border-l-4 border-l-[#4085b3] flex flex-col justify-between h-full min-h-[72px] transition-all">
                                                                                     <div>
                                                                                         <div className="flex items-start justify-between gap-1">
-                                                                                            <span className="text-xs font-bold leading-tight line-clamp-1 text-slate-900">
+                                                                                            <span className="text-xs font-bold leading-tight line-clamp-1 text-slate-900" title={slot.teachingAssignment.subject.name}>
                                                                                                 {slot.teachingAssignment.subject.name}
                                                                                             </span>
                                                                                             {!isYearLocked && (
@@ -1124,7 +1117,6 @@ export default function TimetablePage() {
                                         </table>
                                     </CardContent>
                                 </Card>
-                            </div>
                         </div>
                     )}
                 </div>
@@ -1166,14 +1158,14 @@ export default function TimetablePage() {
                                 </CardTitle>
                             </CardHeader>
                             <CardContent className="p-0 overflow-x-auto">
-                                <table className="w-full border-collapse text-left min-w-[700px]">
+                                <table className="w-full table-fixed border-collapse text-left">
                                     <thead>
                                         <tr className="bg-slate-50 border-b border-slate-200">
-                                            <th className="py-3 px-4 text-xs font-bold uppercase text-slate-400 w-28 border-r border-slate-200">
+                                            <th className="py-2.5 px-2 text-xs font-bold uppercase text-slate-500 w-20 text-center border-r border-slate-200">
                                                 Period
                                             </th>
                                             {operatingDaysList.map((d) => (
-                                                <th key={d.value} className="py-3 px-3 text-xs font-bold text-slate-700 text-center border-r border-slate-200 last:border-r-0">
+                                                <th key={d.value} className="py-2.5 px-2 text-xs font-bold text-slate-700 text-center border-r border-slate-200 last:border-r-0">
                                                     {d.label}
                                                 </th>
                                             ))}
@@ -1184,19 +1176,19 @@ export default function TimetablePage() {
                                             if (period.isBreak) {
                                                 return (
                                                     <tr key={period.id} className="bg-amber-50/50">
-                                                        <td className="py-2 px-4 text-xs font-semibold text-amber-800 border-r border-amber-200/60">
-                                                            {period.name}
+                                                        <td className="py-2 px-2 text-xs font-semibold text-center text-amber-800 border-r border-amber-200/60 w-20">
+                                                            {period.name.match(/\d+/) ? `P${period.name.match(/\d+/)[0]}` : period.name}
                                                         </td>
                                                         <td colSpan={operatingDaysList.length} className="py-2 text-center text-xs font-semibold text-amber-700 uppercase">
-                                                            {period.name}
+                                                            ☕ Recess / Non-Instructional Break
                                                         </td>
                                                     </tr>
                                                 );
                                             }
 
                                             return (
-                                                <tr key={period.id}>
-                                                    <td className="py-3 px-4 text-center font-extrabold text-sm text-slate-900 border-r border-slate-200 bg-slate-50/60 w-24">
+                                                <tr key={period.id} className="hover:bg-slate-50/30 transition-colors">
+                                                    <td className="py-2.5 px-2 text-center font-bold text-xs text-slate-800 border-r border-slate-200 bg-slate-50/60 w-20">
                                                         {period.name.match(/\d+/) ? `P${period.name.match(/\d+/)[0]}` : period.name}
                                                     </td>
                                                     {operatingDaysList.map((day) => {
@@ -1205,18 +1197,18 @@ export default function TimetablePage() {
                                                         );
 
                                                         return (
-                                                            <td key={day.value} className="py-2 px-2 border-r border-slate-200 last:border-r-0 h-20 min-w-[130px] align-top">
+                                                            <td key={day.value} className="py-1.5 px-1.5 border-r border-slate-200 last:border-r-0 h-20 align-top">
                                                                 {slot ? (
-                                                                    <div className="p-2.5 rounded-xl bg-slate-900 text-white text-xs flex flex-col justify-between h-full">
-                                                                        <div className="font-bold line-clamp-1">
+                                                                    <div className="p-2 rounded-lg bg-white border border-slate-200 border-l-4 border-l-[#4085b3] text-slate-900 text-xs flex flex-col justify-between h-full shadow-2xs">
+                                                                        <div className="font-bold line-clamp-1" title={slot.teachingAssignment?.subject?.name}>
                                                                             {slot.teachingAssignment?.subject?.name}
                                                                         </div>
-                                                                        <div className="text-[11px] text-slate-300 mt-1">
+                                                                        <div className="text-[11px] text-slate-500 mt-1">
                                                                             {slot.teachingAssignment?.schoolGrade?.grade?.name} - Sec {slot.teachingAssignment?.section?.name}
                                                                         </div>
                                                                     </div>
                                                                 ) : (
-                                                                    <div className="w-full h-full rounded-xl bg-slate-50/50 border border-slate-100 flex items-center justify-center text-[10px] text-slate-300">
+                                                                    <div className="w-full h-full rounded-lg bg-slate-50/50 border border-dashed border-slate-200 flex items-center justify-center text-[10px] text-slate-300">
                                                                         Free
                                                                     </div>
                                                                 )}
