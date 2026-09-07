@@ -22,6 +22,7 @@ describe("Parent Controller", () => {
             body: {},
             params: {},
             query: {},
+            accessScope: { id: "org1" } as any,
         };
         mockRes = {
             status: vi.fn().mockReturnThis(),
@@ -70,7 +71,7 @@ describe("Parent Controller", () => {
 
             await linkParentToStudent(mockReq as Request, mockRes as Response);
 
-            expect(ParentService.linkParentToStudent).toHaveBeenCalledWith(expect.objectContaining({ relationship: "Father" }));
+            expect(ParentService.linkParentToStudent).toHaveBeenCalledWith("org1", expect.objectContaining({ relationship: "Father" }));
             expect(mockRes.status).toHaveBeenCalledWith(201);
             expect(mockRes.json).toHaveBeenCalledWith(mockLink);
         });

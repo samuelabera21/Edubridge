@@ -564,15 +564,21 @@ export function RegistrationForm() {
 
             // Build Guardians Array
             const guardianList = [];
-            if (formData.guardianName) {
+            if (formData.guardianName && formData.guardianName.trim()) {
+                const nameParts = formData.guardianName.trim().split(/\s+/);
+                const gFirstName = nameParts[0] || "Guardian";
+                const gLastName = nameParts.slice(1).join(" ") || gFirstName;
                 guardianList.push({
-                    fullName: formData.guardianName,
-                    relationship: formData.guardianRelationship,
-                    phone: formData.guardianPhone,
+                    fullName: formData.guardianName.trim(),
+                    firstName: gFirstName,
+                    lastName: gLastName,
+                    relationship: formData.guardianRelationship || "Guardian",
+                    phone: formData.guardianPhone || undefined,
+                    phoneNumber: formData.guardianPhone || undefined,
                     altPhone: formData.guardianAltPhone || undefined,
                     email: formData.guardianEmail || undefined,
-                    isPrimary: formData.guardianIsPrimary,
-                    canPickup: formData.guardianCanPickup
+                    isPrimary: formData.guardianIsPrimary !== undefined ? formData.guardianIsPrimary : true,
+                    canPickup: formData.guardianCanPickup !== undefined ? formData.guardianCanPickup : true
                 });
             }
 
