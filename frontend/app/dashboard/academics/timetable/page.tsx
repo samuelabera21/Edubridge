@@ -548,17 +548,6 @@ export default function TimetablePage() {
                     <Clock className="w-4 h-4" />
                     <span>Class Periods & Recess</span>
                 </button>
-                <button
-                    onClick={() => setActiveTab("rooms")}
-                    className={`pb-3 text-sm font-semibold border-b-2 transition-colors flex items-center gap-2 ${
-                        activeTab === "rooms"
-                            ? "border-[#4085b3] text-[#4085b3]"
-                            : "border-transparent text-slate-500 hover:text-slate-800"
-                    }`}
-                >
-                    <Building className="w-4 h-4" />
-                    <span>Facility Rooms</span>
-                </button>
             </div>
 
             {/* Notification Alerts */}
@@ -882,7 +871,7 @@ export default function TimetablePage() {
                                         <table className="w-full border-collapse text-left min-w-[700px]">
                                             <thead>
                                                 <tr className="bg-slate-50 border-b border-slate-200">
-                                                    <th className="py-3 px-4 text-xs font-bold uppercase tracking-wider text-slate-400 w-28 border-r border-slate-200">
+                                                    <th className="py-3 px-4 text-xs font-bold uppercase tracking-wider text-slate-500 w-24 text-center border-r border-slate-200">
                                                         Period
                                                     </th>
                                                     {operatingDaysList.map((d) => (
@@ -893,160 +882,114 @@ export default function TimetablePage() {
                                                 </tr>
                                             </thead>
                                             <tbody className="divide-y divide-slate-100">
-                                                {workspace.periods?.length === 0 ? (
-                                                    <tr>
-                                                        <td colSpan={operatingDaysList.length + 1} className="py-12 px-6 text-center">
-                                                            <div className="max-w-md mx-auto space-y-3">
-                                                                <Clock className="w-10 h-10 text-slate-300 mx-auto" />
-                                                                <h4 className="text-sm font-bold text-slate-800">No Class Periods Defined Yet</h4>
-                                                                <p className="text-xs text-slate-500">
-                                                                    To schedule lessons, this school needs class periods (e.g. Period 1, Period 2, Recess). Click below to generate the standard Ethiopian school period schedule instantly:
-                                                                </p>
-                                                                <div className="flex flex-wrap items-center justify-center gap-2.5 pt-2">
-                                                                    <Button
-                                                                        onClick={handleGenerateDefaultPeriods}
-                                                                        disabled={actionLoading}
-                                                                        className="flex items-center gap-1.5 text-xs bg-[#4085b3] hover:bg-[#356f96]"
-                                                                    >
-                                                                        <span>⚡ Auto-Generate Standard Ethiopian Periods (1-7 + Recess)</span>
-                                                                    </Button>
-                                                                    <Button
-                                                                        variant="outline"
-                                                                        onClick={() => setIsPeriodModalOpen(true)}
-                                                                        className="flex items-center gap-1.5 text-xs"
-                                                                    >
-                                                                        <Plus className="w-3.5 h-3.5" />
-                                                                        <span>Add Custom Period</span>
-                                                                    </Button>
-                                                                </div>
-                                                            </div>
-                                                        </td>
-                                                    </tr>
-                                                ) : (
-                                                    workspace.periods?.map((period: any) => {
-                                                        const isBreak = period.isBreak;
+                                                {workspace.periods?.map((period: any) => {
+                                                    const isBreak = period.isBreak;
+                                                    const match = period.name.match(/\d+/);
+                                                    const periodCode = match ? `P${match[0]}` : period.name;
 
-                                                        if (isBreak) {
-                                                            return (
-                                                                <tr key={period.id} className="bg-amber-50/50 border-y border-amber-200/60">
-                                                                    <td className="py-2 px-4 text-xs font-semibold text-amber-800 border-r border-amber-200/60 bg-amber-100/40">
-                                                                        <div className="flex items-center gap-1.5">
-                                                                            <Clock className="w-3.5 h-3.5 text-amber-600" />
-                                                                            <span>{period.name}</span>
-                                                                        </div>
-                                                                        <div className="text-[10px] text-amber-600 font-mono">
-                                                                            {period.startTime} - {period.endTime}
-                                                                        </div>
-                                                                    </td>
-                                                                    <td
-                                                                        colSpan={operatingDaysList.length}
-                                                                        className="py-2.5 text-center text-xs font-semibold text-amber-700 tracking-wider uppercase bg-amber-50/70"
-                                                                    >
-                                                                        ☕ {period.name} (Recess / Non-Instructional Break)
-                                                                    </td>
-                                                                </tr>
-                                                            );
-                                                        }
-
+                                                    if (isBreak) {
                                                         return (
-                                                            <tr key={period.id} className="hover:bg-slate-50/30 transition-colors">
-                                                                {/* Period Label */}
-                                                                <td className="py-3 px-4 text-xs font-semibold text-slate-800 border-r border-slate-200 bg-slate-50/60">
-                                                                    <div className="font-bold text-slate-900">{period.name}</div>
-                                                                    <div className="text-[11px] text-slate-400 font-mono">
-                                                                        {period.startTime} - {period.endTime}
-                                                                    </div>
+                                                            <tr key={period.id} className="bg-amber-50/50 border-y border-amber-200/60">
+                                                                <td className="py-2.5 px-4 text-center font-bold text-xs text-amber-800 border-r border-amber-200/60 bg-amber-100/40 w-24">
+                                                                    Break
                                                                 </td>
+                                                                <td
+                                                                    colSpan={operatingDaysList.length}
+                                                                    className="py-2.5 text-center text-xs font-semibold text-amber-700 tracking-wider uppercase bg-amber-50/70"
+                                                                >
+                                                                    ☕ Recess / Non-Instructional Break
+                                                                </td>
+                                                            </tr>
+                                                        );
+                                                    }
 
-                                                                {/* Day Cells */}
-                                                                {operatingDaysList.map((day) => {
-                                                                    const cellKey = `${day.value}-${period.id}`;
-                                                                    const slot = timetableGridMap.get(cellKey);
+                                                    return (
+                                                        <tr key={period.id} className="hover:bg-slate-50/30 transition-colors">
+                                                            {/* Period Label: ONLY P1, P2, P3... NO clock times */}
+                                                            <td className="py-3 px-4 text-center font-extrabold text-sm text-slate-900 border-r border-slate-200 bg-slate-50/60 w-24">
+                                                                {periodCode}
+                                                            </td>
 
-                                                                    return (
-                                                                        <td
-                                                                            key={day.value}
-                                                                            className="py-2 px-2 border-r border-slate-200 last:border-r-0 align-top h-24 min-w-[130px]"
-                                                                        >
-                                                                            {slot ? (
-                                                                                <div className="relative group p-2.5 rounded-xl bg-slate-900 text-white shadow-xs border border-slate-800 flex flex-col justify-between h-full transition-all">
-                                                                                    <div>
-                                                                                        <div className="flex items-start justify-between gap-1">
-                                                                                            <span className="text-xs font-bold leading-tight line-clamp-1">
-                                                                                                {slot.teachingAssignment.subject.name}
-                                                                                            </span>
-                                                                                            {!isYearLocked && (
-                                                                                                <button
-                                                                                                    onClick={() => {
-                                                                                                        setDeleteTargetId(slot.id);
-                                                                                                        setIsDeleteModalOpen(true);
-                                                                                                    }}
-                                                                                                    className="opacity-0 group-hover:opacity-100 p-1 text-slate-400 hover:text-red-400 hover:bg-slate-800 rounded-md transition-all"
-                                                                                                    title="Remove slot"
-                                                                                                >
-                                                                                                    <Trash2 className="w-3.5 h-3.5" />
-                                                                                                </button>
-                                                                                            )}
-                                                                                        </div>
-                                                                                        <div className="text-[11px] text-slate-300 mt-1 flex items-center gap-1 line-clamp-1">
-                                                                                            <User className="w-3 h-3 text-slate-400 shrink-0" />
-                                                                                            <span>
-                                                                                                {slot.teachingAssignment.teacher.firstName} {slot.teachingAssignment.teacher.lastName}
-                                                                                            </span>
-                                                                                        </div>
-                                                                                    </div>
+                                                            {/* Day Cells */}
+                                                            {operatingDaysList.map((day) => {
+                                                                const cellKey = `${day.value}-${period.id}`;
+                                                                const slot = timetableGridMap.get(cellKey);
 
-                                                                                    <div className="flex items-center justify-between mt-2 pt-1 border-t border-slate-800 text-[10px]">
-                                                                                        {slot.room ? (
-                                                                                            <span className="text-slate-400 flex items-center gap-0.5">
-                                                                                                <Building className="w-3 h-3 text-slate-400" />
-                                                                                                <span>{slot.room.name}</span>
-                                                                                            </span>
-                                                                                        ) : (
-                                                                                            <span className="text-slate-500">Sec {selectedSection.name}</span>
-                                                                                        )}
-
+                                                                return (
+                                                                    <td
+                                                                        key={day.value}
+                                                                        className="py-2 px-2 border-r border-slate-200 last:border-r-0 align-top h-24 min-w-[130px]"
+                                                                    >
+                                                                        {slot ? (
+                                                                            <div className="relative group p-2.5 rounded-xl bg-slate-900 text-white shadow-xs border border-slate-800 flex flex-col justify-between h-full min-h-[75px] transition-all">
+                                                                                <div>
+                                                                                    <div className="flex items-start justify-between gap-1">
+                                                                                        <span className="text-xs font-bold leading-tight line-clamp-1 text-white">
+                                                                                            {slot.teachingAssignment.subject.name}
+                                                                                        </span>
                                                                                         {!isYearLocked && (
                                                                                             <button
                                                                                                 onClick={() => {
-                                                                                                    setReassignSlotTarget(slot);
-                                                                                                    setReassignAssignmentId(slot.teachingAssignmentId);
-                                                                                                    setIsReassignModalOpen(true);
+                                                                                                    setDeleteTargetId(slot.id);
+                                                                                                    setIsDeleteModalOpen(true);
                                                                                                 }}
-                                                                                                className="text-[10px] text-[#4085b3] hover:underline"
+                                                                                                className="opacity-0 group-hover:opacity-100 p-1 text-slate-400 hover:text-red-400 hover:bg-slate-800 rounded-md transition-all shrink-0 cursor-pointer"
+                                                                                                title="Remove lesson"
                                                                                             >
-                                                                                                Switch
+                                                                                                <Trash2 className="w-3.5 h-3.5" />
                                                                                             </button>
                                                                                         )}
                                                                                     </div>
-                                                                                </div>
-                                                                            ) : (
-                                                                                !isYearLocked && (
-                                                                                    <button
-                                                                                        onClick={() => {
-                                                                                            setSelectedSlotTarget({
-                                                                                                dayOfWeek: day.value,
-                                                                                                periodId: period.id,
-                                                                                                periodName: period.name
-                                                                                            });
-                                                                                            setIsAssignModalOpen(true);
-                                                                                        }}
-                                                                                        className="w-full h-full rounded-xl border-2 border-dashed border-slate-200 hover:border-[#4085b3] hover:bg-[#4085b3]/5 transition-all flex flex-col items-center justify-center text-slate-400 hover:text-[#4085b3] group p-2"
-                                                                                    >
-                                                                                        <Plus className="w-4 h-4 group-hover:scale-110 transition-transform" />
-                                                                                        <span className="text-[10px] mt-0.5 font-medium opacity-0 group-hover:opacity-100 transition-opacity">
-                                                                                            Add
+                                                                                    <div className="text-[11px] text-slate-300 mt-1 flex items-center gap-1 line-clamp-1">
+                                                                                        <User className="w-3 h-3 text-slate-400 shrink-0" />
+                                                                                        <span>
+                                                                                            {slot.teachingAssignment.teacher.firstName} {slot.teachingAssignment.teacher.lastName}
                                                                                         </span>
-                                                                                    </button>
-                                                                                )
-                                                                            )}
-                                                                        </td>
-                                                                    );
-                                                                })}
-                                                            </tr>
-                                                        );
-                                                    })
-                                                )}
+                                                                                    </div>
+                                                                                </div>
+
+                                                                                {!isYearLocked && (
+                                                                                    <div className="flex items-center justify-end mt-1.5 pt-1 border-t border-slate-800">
+                                                                                        <button
+                                                                                            onClick={() => {
+                                                                                                setReassignSlotTarget(slot);
+                                                                                                setReassignAssignmentId(slot.teachingAssignmentId);
+                                                                                                setIsReassignModalOpen(true);
+                                                                                            }}
+                                                                                            className="text-[10px] text-[#4085b3] hover:underline cursor-pointer"
+                                                                                        >
+                                                                                            Switch
+                                                                                        </button>
+                                                                                    </div>
+                                                                                )}
+                                                                            </div>
+                                                                        ) : (
+                                                                            !isYearLocked && (
+                                                                                <button
+                                                                                    onClick={() => {
+                                                                                        setSelectedSlotTarget({
+                                                                                            dayOfWeek: day.value,
+                                                                                            periodId: period.id,
+                                                                                            periodName: periodCode
+                                                                                        });
+                                                                                        setIsAssignModalOpen(true);
+                                                                                    }}
+                                                                                    className="w-full h-full min-h-[75px] rounded-xl border-2 border-dashed border-slate-200 hover:border-[#4085b3] hover:bg-[#4085b3]/5 transition-all flex flex-col items-center justify-center text-slate-400 hover:text-[#4085b3] group p-2 cursor-pointer"
+                                                                                    title={`Schedule lesson on ${day.label} ${periodCode}`}
+                                                                                >
+                                                                                    <Plus className="w-4 h-4 group-hover:scale-125 transition-transform text-[#4085b3]" />
+                                                                                    <span className="text-[11px] font-semibold text-slate-500 group-hover:text-[#4085b3] mt-0.5">
+                                                                                        Assign
+                                                                                    </span>
+                                                                                </button>
+                                                                            )
+                                                                        )}
+                                                                    </td>
+                                                                );
+                                                            })}
+                                                        </tr>
+                                                    );
+                                                })}
                                             </tbody>
                                         </table>
                                     </CardContent>
@@ -1123,11 +1066,8 @@ export default function TimetablePage() {
 
                                             return (
                                                 <tr key={period.id}>
-                                                    <td className="py-3 px-4 text-xs font-bold text-slate-800 border-r border-slate-200 bg-slate-50/60">
-                                                        {period.name}
-                                                        <div className="text-[10px] text-slate-400 font-mono font-normal">
-                                                            {period.startTime} - {period.endTime}
-                                                        </div>
+                                                    <td className="py-3 px-4 text-center font-extrabold text-sm text-slate-900 border-r border-slate-200 bg-slate-50/60 w-24">
+                                                        {period.name.match(/\d+/) ? `P${period.name.match(/\d+/)[0]}` : period.name}
                                                     </td>
                                                     {operatingDaysList.map((day) => {
                                                         const slot = teacherTimetable.find(
@@ -1144,12 +1084,6 @@ export default function TimetablePage() {
                                                                         <div className="text-[11px] text-slate-300 mt-1">
                                                                             {slot.teachingAssignment?.schoolGrade?.grade?.name} - Sec {slot.teachingAssignment?.section?.name}
                                                                         </div>
-                                                                        {slot.room && (
-                                                                            <div className="text-[10px] text-slate-400 mt-1 flex items-center gap-1">
-                                                                                <Building className="w-3 h-3" />
-                                                                                <span>{slot.room.name}</span>
-                                                                            </div>
-                                                                        )}
                                                                     </div>
                                                                 ) : (
                                                                     <div className="w-full h-full rounded-xl bg-slate-50/50 border border-slate-100 flex items-center justify-center text-[10px] text-slate-300">
@@ -1225,46 +1159,6 @@ export default function TimetablePage() {
                 </div>
             )}
 
-            {/* TAB 4: FACILITY ROOMS (OPTIONAL) */}
-            {activeTab === "rooms" && (
-                <div className="space-y-6">
-                    <div>
-                        <h3 className="text-base font-bold text-slate-900">Facility Rooms & Specialized Labs</h3>
-                        <p className="text-xs text-slate-500 mt-0.5">
-                            Rooms are optional. Core Step 6 timetable scheduling is section-oriented (Section + Subject + Teacher).
-                        </p>
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {rooms.length === 0 ? (
-                            <div className="col-span-3 text-center py-12 text-slate-400 text-xs">
-                                No physical rooms or labs configured yet.
-                            </div>
-                        ) : (
-                            rooms.map((rm) => (
-                                <Card key={rm.id}>
-                                    <CardContent className="p-4">
-                                        <div className="flex items-start justify-between">
-                                            <div>
-                                                <h4 className="font-bold text-slate-900 text-sm">{rm.name}</h4>
-                                                <span className="text-[10px] uppercase font-semibold text-[#4085b3] tracking-wider">
-                                                    {rm.type}
-                                                </span>
-                                            </div>
-                                            <span className="text-xs bg-slate-100 text-slate-700 px-2 py-0.5 rounded-md font-medium">
-                                                Cap: {rm.capacity || "N/A"}
-                                            </span>
-                                        </div>
-                                        {rm.description && (
-                                            <p className="text-xs text-slate-500 mt-2">{rm.description}</p>
-                                        )}
-                                    </CardContent>
-                                </Card>
-                            ))
-                        )}
-                    </div>
-                </div>
-            )}
 
             {/* ==================================================== */}
             {/* MODAL: ASSIGN LESSON TO CELL */}
@@ -1317,11 +1211,15 @@ export default function TimetablePage() {
                                     className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs text-slate-900 bg-white focus:ring-2 focus:ring-[#4085b3]"
                                 >
                                     <option value="">-- Choose Period --</option>
-                                    {workspace?.periods?.filter((p: any) => !p.isBreak).map((p: any) => (
-                                        <option key={p.id} value={p.id}>
-                                            {p.name} ({p.startTime} - {p.endTime})
-                                        </option>
-                                    ))}
+                                    {workspace?.periods?.filter((p: any) => !p.isBreak).map((p: any) => {
+                                        const match = p.name.match(/\d+/);
+                                        const code = match ? `P${match[0]}` : p.name;
+                                        return (
+                                            <option key={p.id} value={p.id}>
+                                                {code}
+                                            </option>
+                                        );
+                                    })}
                                 </select>
                             </div>
                         </div>
@@ -1344,26 +1242,6 @@ export default function TimetablePage() {
                             ))}
                         </select>
                     </div>
-
-                    {rooms.length > 0 && (
-                        <div>
-                            <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                                Assigned Room / Lab (Optional):
-                            </label>
-                            <select
-                                value={selectedRoomId}
-                                onChange={(e) => setSelectedRoomId(e.target.value)}
-                                className="w-full px-3 py-2 border border-slate-300 rounded-xl text-sm text-slate-900 bg-white focus:outline-hidden focus:ring-2 focus:ring-[#4085b3]"
-                            >
-                                <option value="">Standard Section Classroom</option>
-                                {rooms.map((r) => (
-                                    <option key={r.id} value={r.id}>
-                                        {r.name} ({r.type})
-                                    </option>
-                                ))}
-                            </select>
-                        </div>
-                    )}
 
                     <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100">
                         <Button

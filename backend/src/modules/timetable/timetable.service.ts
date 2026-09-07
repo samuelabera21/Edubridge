@@ -28,25 +28,27 @@ export class TimetableService {
     }
 
     /**
-     * Auto-generates standard Ethiopian school instructional periods (Periods 1-7, Morning Recess, Lunch)
+     * Auto-generates standard instructional periods (P1 to P7)
      * when no periods are yet configured for the school.
      */
     static async generateDefaultPeriods(organizationId: string) {
-        const existing = await prisma.classPeriod.count({ where: { organizationId } });
-        if (existing > 0) {
-            return prisma.classPeriod.findMany({ where: { organizationId }, orderBy: { startTime: "asc" } });
+        const existing = await prisma.classPeriod.findMany({ where: { organizationId } });
+        if (existing.length > 0) {
+            return existing.sort((a, b) => {
+                const numA = parseInt(a.name.replace(/\D/g, ""), 10) || 0;
+                const numB = parseInt(b.name.replace(/\D/g, ""), 10) || 0;
+                return numA - numB;
+            });
         }
 
         const defaultPeriods = [
-            { name: "Period 1", startTime: "08:00", endTime: "08:45", isBreak: false },
-            { name: "Period 2", startTime: "08:45", endTime: "09:30", isBreak: false },
-            { name: "Morning Recess", startTime: "09:30", endTime: "09:50", isBreak: true },
-            { name: "Period 3", startTime: "09:50", endTime: "10:35", isBreak: false },
-            { name: "Period 4", startTime: "10:35", endTime: "11:20", isBreak: false },
-            { name: "Lunch Break", startTime: "11:20", endTime: "12:30", isBreak: true },
-            { name: "Period 5", startTime: "12:30", endTime: "13:15", isBreak: false },
-            { name: "Period 6", startTime: "13:15", endTime: "14:00", isBreak: false },
-            { name: "Period 7", startTime: "14:00", endTime: "14:45", isBreak: false }
+            { name: "P1", startTime: "1", endTime: "1", isBreak: false },
+            { name: "P2", startTime: "2", endTime: "2", isBreak: false },
+            { name: "P3", startTime: "3", endTime: "3", isBreak: false },
+            { name: "P4", startTime: "4", endTime: "4", isBreak: false },
+            { name: "P5", startTime: "5", endTime: "5", isBreak: false },
+            { name: "P6", startTime: "6", endTime: "6", isBreak: false },
+            { name: "P7", startTime: "7", endTime: "7", isBreak: false }
         ];
 
         for (const p of defaultPeriods) {
@@ -61,7 +63,12 @@ export class TimetableService {
             });
         }
 
-        return prisma.classPeriod.findMany({ where: { organizationId }, orderBy: { startTime: "asc" } });
+        const created = await prisma.classPeriod.findMany({ where: { organizationId } });
+        return created.sort((a, b) => {
+            const numA = parseInt(a.name.replace(/\D/g, ""), 10) || 0;
+            const numB = parseInt(b.name.replace(/\D/g, ""), 10) || 0;
+            return numA - numB;
+        });
     }
 
     /**
@@ -160,16 +167,34 @@ export class TimetableService {
                 }
             }
         });
-        const operatingDays: number[] = (config?.operatingDays as number[]) || [1, 2, 3, 4, 5];
+        const dayNameToNumber: Record<string, number> = {
+            MONDAY: 1, TUESDAY: 2, WEDNESDAY: 3, THURSDAY: 4, FRIDAY: 5, SATURDAY: 6, SUNDAY: 7,
+            MON: 1, TUE: 2, WED: 3, THU: 4, FRI: 5, SAT: 6, SUN: 7
+        };
+        const rawDays: any[] = Array.isArray(config?.operatingDays) ? config.operatingDays : [1, 2, 3, 4, 5];
+        const operatingDays = rawDays.map((d: any) => {
+            if (typeof d === "number") return d;
+            const upper = String(d).toUpperCase().trim();
+            if (dayNameToNumber[upper]) return dayNameToNumber[upper];
+            const num = parseInt(upper, 10);
+            return isNaN(num) ? null : num;
+        }).filter((d: any): d is number => d !== null);
+
+        const activeOperatingDays = operatingDays.length > 0 ? operatingDays : [1, 2, 3, 4, 5];
 
         let periods = await prisma.classPeriod.findMany({
-            where: { organizationId },
-            orderBy: { startTime: "asc" }
+            where: { organizationId }
         });
 
-        // If no class periods exist yet for this school, auto-initialize standard Ethiopian periods
+        // If no class periods exist yet for this school, automatically ensure standard P1 to P7 exist
         if (periods.length === 0) {
             periods = await TimetableService.generateDefaultPeriods(organizationId);
+        } else {
+            periods.sort((a, b) => {
+                const numA = parseInt(a.name.replace(/\D/g, ""), 10) || 0;
+                const numB = parseInt(b.name.replace(/\D/g, ""), 10) || 0;
+                return numA - numB;
+            });
         }
 
         // 5. Academic Calendar Events (Closed Days / Holidays)
@@ -206,7 +231,7 @@ export class TimetableService {
                 teachingAssignments: [],
                 sectionTimetable: [],
                 periods,
-                operatingDays,
+                operatingDays: activeOperatingDays,
                 coverage: { totalRequired: 0, totalScheduled: 0, totalRemaining: 0, coveragePercentage: 0 },
                 status,
                 closedEvents
@@ -308,7 +333,7 @@ export class TimetableService {
             teachingAssignments: teachingAssignmentsWithCoverage,
             sectionTimetable,
             periods,
-            operatingDays,
+            operatingDays: activeOperatingDays,
             coverage: {
                 totalRequired,
                 totalScheduled,
@@ -385,8 +410,21 @@ export class TimetableService {
             const config = await tx.timetableConfig.findUnique({
                 where: { organizationId_academicYearId: { organizationId, academicYearId: data.academicYearId } }
             });
-            const operatingDays: number[] = (config?.operatingDays as number[]) || [1, 2, 3, 4, 5];
-            if (!operatingDays.includes(data.dayOfWeek)) {
+            const rawOperatingDays = (config?.operatingDays as any[]) || [1, 2, 3, 4, 5];
+            const operatingDays: number[] = rawOperatingDays.map(d => {
+                if (typeof d === "number") return d;
+                const upper = String(d).toUpperCase().trim();
+                const dayMap: { [key: string]: number } = {
+                    "MONDAY": 1, "TUESDAY": 2, "WEDNESDAY": 3, "THURSDAY": 4, "FRIDAY": 5, "SATURDAY": 6, "SUNDAY": 7,
+                    "MON": 1, "TUE": 2, "WED": 3, "THU": 4, "FRI": 5, "SAT": 6, "SUN": 7
+                };
+                if (dayMap[upper] !== undefined) return dayMap[upper];
+                const num = parseInt(d, 10);
+                return isNaN(num) ? null : num;
+            }).filter((d: any): d is number => d !== null);
+            const activeOperatingDays = operatingDays.length > 0 ? operatingDays : [1, 2, 3, 4, 5];
+
+            if (!activeOperatingDays.includes(data.dayOfWeek)) {
                 throw new Error(`Day ${data.dayOfWeek} is not an active operating day for this school's timetable`);
             }
 
