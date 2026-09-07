@@ -1,6 +1,9 @@
 import { prisma } from "../../infrastructure/prisma/client.js";
 
 export class TimetableService {
+    /**
+     * Create a class period definition
+     */
     static async createClassPeriod(organizationId: string, data: { name: string; startTime: string; endTime: string; isBreak?: boolean }) {
         const period = await prisma.classPeriod.create({
             data: {
@@ -14,6 +17,9 @@ export class TimetableService {
         return period;
     }
 
+    /**
+     * Get all class periods for the school
+     */
     static async getClassPeriods(organizationId: string) {
         return prisma.classPeriod.findMany({
             where: { organizationId },
@@ -21,160 +27,849 @@ export class TimetableService {
         });
     }
 
-    static async assignTimetable(organizationId: string, data: { academicYearId: string; teachingAssignmentId: string; classPeriodId: string; dayOfWeek: number; roomId?: string }) {
-        // Validate assignment exists in this school
-        const assignment = await prisma.teachingAssignment.findFirst({
-            where: { id: data.teachingAssignmentId, teacher: { organizationId } },
-            include: { section: true, schoolGrade: true }
-        });
-        if (!assignment) throw new Error("Teaching assignment not found");
-
-        // Validate class period exists in this school
-        const period = await prisma.classPeriod.findFirst({
-            where: { id: data.classPeriodId, organizationId }
-        });
-        if (!period) throw new Error("Class period not found");
-
-        // Constraint: Cannot assign classes to Break periods
-        if (period.isBreak) {
-            throw new Error("Cannot assign lessons during break periods");
+    /**
+     * Section-Oriented Timetable Workspace
+     * Aggregates:
+     * - Academic year status & lock state
+     * - Section info and student enrollment count (from Step 5)
+     * - Section's TeachingAssignments (Step 3) with Required vs Scheduled vs Remaining
+     * - Section's current weekly timetable grid
+     * - Configured ClassPeriods and operating days
+     * - Academic calendar closed days / events
+     * - Timetable publication state
+     */
+    static async getSectionWorkspace(organizationId: string, query: {
+        academicYearId?: string;
+        schoolGradeId?: string;
+        sectionId?: string;
+    }) {
+        // 1. Resolve Academic Year
+        let academicYear;
+        if (query.academicYearId) {
+            academicYear = await prisma.academicYear.findFirst({
+                where: { id: query.academicYearId, organizationId }
+            });
+        }
+        if (!academicYear) {
+            academicYear = await prisma.academicYear.findFirst({
+                where: { organizationId, status: "ACTIVE" }
+            }) || await prisma.academicYear.findFirst({
+                where: { organizationId },
+                orderBy: { startDate: "desc" }
+            });
         }
 
-        // Conflict Detection 1: Teacher Conflict (Double-Booking)
-        const teacherConflict = await prisma.timetable.findFirst({
-            where: {
-                organizationId,
-                academicYearId: data.academicYearId,
-                dayOfWeek: data.dayOfWeek,
-                classPeriodId: data.classPeriodId,
-                teachingAssignment: { teacherId: assignment.teacherId }
-            },
-            include: { teachingAssignment: { include: { subject: true, section: true } } }
-        });
-
-        if (teacherConflict) {
-            throw new Error(`Teacher conflict: The teacher is already scheduled for ${teacherConflict.teachingAssignment.subject.name} during this period on this day.`);
+        if (!academicYear) {
+            return {
+                academicYear: null,
+                isYearLocked: false,
+                schoolGrades: [],
+                selectedGrade: null,
+                selectedSection: null,
+                teachingAssignments: [],
+                sectionTimetable: [],
+                periods: [],
+                operatingDays: [1, 2, 3, 4, 5],
+                coverage: { totalRequired: 0, totalScheduled: 0, totalRemaining: 0, coveragePercentage: 0 },
+                status: "DRAFT",
+                closedEvents: []
+            };
         }
 
-        // Conflict Detection 2: Teacher Availability
-        const teacher = await prisma.teacher.findFirst({
-            where: { id: assignment.teacherId, organizationId }
-        });
-        if (teacher && teacher.availability) {
-            const availability = teacher.availability as any;
-            if (availability.blockedSlots && Array.isArray(availability.blockedSlots)) {
-                const isBlocked = availability.blockedSlots.some((slot: any) =>
-                    slot.dayOfWeek === data.dayOfWeek && slot.classPeriodId === data.classPeriodId
-                );
-                if (isBlocked) {
-                    throw new Error("Teacher availability conflict: The teacher is not available during this period on this day.");
+        const isYearLocked = academicYear.status === "COMPLETED" || academicYear.status === "ARCHIVED";
+
+        // 2. Fetch School Grades for this Academic Year
+        const schoolGrades = await prisma.schoolGrade.findMany({
+            where: { academicYearId: academicYear.id },
+            include: {
+                grade: true,
+                sections: {
+                    where: { status: "ACTIVE" },
+                    orderBy: { name: "asc" },
+                    include: {
+                        homeroomTeacher: true,
+                        _count: {
+                            select: {
+                                studentEnrollments: { where: { status: "ENROLLED" } }
+                            }
+                        }
+                    }
                 }
+            },
+            orderBy: { grade: { level: "asc" } }
+        });
+
+        // 3. Resolve Selected Grade and Section
+        let selectedGrade = schoolGrades.find(g => g.id === query.schoolGradeId);
+        if (!selectedGrade && schoolGrades.length > 0) {
+            selectedGrade = schoolGrades[0];
+        }
+
+        let selectedSection = null;
+        if (selectedGrade && selectedGrade.sections.length > 0) {
+            if (query.sectionId) {
+                selectedSection = selectedGrade.sections.find(s => s.id === query.sectionId) || selectedGrade.sections[0];
+            } else {
+                selectedSection = selectedGrade.sections[0];
             }
         }
 
-        // Conflict Detection 3: Section Conflict (Double-Booking)
-        if (assignment.sectionId) {
-            const sectionConflict = await prisma.timetable.findFirst({
+        // 4. Fetch Configured Periods & Operating Days
+        const config = await prisma.timetableConfig.findUnique({
+            where: {
+                organizationId_academicYearId: {
+                    organizationId,
+                    academicYearId: academicYear.id
+                }
+            }
+        });
+        const operatingDays: number[] = (config?.operatingDays as number[]) || [1, 2, 3, 4, 5];
+
+        const periods = await prisma.classPeriod.findMany({
+            where: { organizationId },
+            orderBy: { startTime: "asc" }
+        });
+
+        // 5. Academic Calendar Events (Closed Days / Holidays)
+        const calendar = await prisma.academicCalendar.findUnique({
+            where: { academicYearId: academicYear.id },
+            include: {
+                events: {
+                    where: { isSchoolClosed: true },
+                    orderBy: { startDate: "asc" }
+                }
+            }
+        });
+        const closedEvents = calendar?.events || [];
+
+        // 6. Publication State
+        const publishAudit = await prisma.auditLog.findFirst({
+            where: {
+                organizationId,
+                resource: "Timetable",
+                action: { in: ["TIMETABLE_PUBLISHED", "TIMETABLE_UNPUBLISHED"] }
+            },
+            orderBy: { createdAt: "desc" }
+        });
+        const status = (publishAudit && publishAudit.action === "TIMETABLE_PUBLISHED") ? "PUBLISHED" : "DRAFT";
+
+        // If no section is selected or available
+        if (!selectedSection) {
+            return {
+                academicYear,
+                isYearLocked,
+                schoolGrades,
+                selectedGrade,
+                selectedSection: null,
+                teachingAssignments: [],
+                sectionTimetable: [],
+                periods,
+                operatingDays,
+                coverage: { totalRequired: 0, totalScheduled: 0, totalRemaining: 0, coveragePercentage: 0 },
+                status,
+                closedEvents
+            };
+        }
+
+        // 7. Fetch Section's Teaching Assignments (Step 3 Source of Truth)
+        const assignments = await prisma.teachingAssignment.findMany({
+            where: {
+                academicYearId: academicYear.id,
+                sectionId: selectedSection.id,
+                teacher: { organizationId }
+            },
+            include: {
+                teacher: true,
+                subject: true,
+                schoolGrade: { include: { grade: true } }
+            },
+            orderBy: { subject: { name: "asc" } }
+        });
+
+        // 8. Fetch Current Scheduled Entries for this Section
+        const sectionTimetable = await prisma.timetable.findMany({
+            where: {
+                organizationId,
+                academicYearId: academicYear.id,
+                teachingAssignment: { sectionId: selectedSection.id }
+            },
+            include: {
+                classPeriod: true,
+                room: true,
+                teachingAssignment: {
+                    include: {
+                        teacher: true,
+                        subject: true,
+                        schoolGrade: { include: { grade: true } }
+                    }
+                }
+            },
+            orderBy: [
+                { dayOfWeek: "asc" },
+                { classPeriod: { startTime: "asc" } }
+            ]
+        });
+
+        // Map assignment scheduled counts
+        const scheduledCountsMap: { [assignmentId: string]: number } = {};
+        sectionTimetable.forEach(item => {
+            scheduledCountsMap[item.teachingAssignmentId] = (scheduledCountsMap[item.teachingAssignmentId] || 0) + 1;
+        });
+
+        let totalRequired = 0;
+        let totalScheduled = 0;
+
+        const teachingAssignmentsWithCoverage = assignments.map(a => {
+            const required = a.periodsPerWeek || 0;
+            const scheduled = scheduledCountsMap[a.id] || 0;
+            const remaining = Math.max(0, required - scheduled);
+            totalRequired += required;
+            totalScheduled += scheduled;
+
+            return {
+                id: a.id,
+                teacherId: a.teacherId,
+                teacherName: `${a.teacher.firstName} ${a.teacher.fatherName || a.teacher.lastName || ""}`.trim(),
+                teacher: a.teacher,
+                subjectId: a.subjectId,
+                subjectName: a.subject.name,
+                subjectCode: a.subject.code,
+                subject: a.subject,
+                sectionId: a.sectionId,
+                status: a.status,
+                requiredPeriods: required,
+                scheduledPeriods: scheduled,
+                remainingPeriods: remaining,
+                isComplete: scheduled >= required && required > 0,
+                isOverScheduled: scheduled > required
+            };
+        });
+
+        const totalRemaining = Math.max(0, totalRequired - totalScheduled);
+        const coveragePercentage = totalRequired > 0 
+            ? Math.min(100, Math.round((totalScheduled / totalRequired) * 100)) 
+            : 100;
+
+        return {
+            academicYear,
+            isYearLocked,
+            schoolGrades,
+            selectedGrade,
+            selectedSection: {
+                id: selectedSection.id,
+                name: selectedSection.name,
+                capacity: selectedSection.capacity,
+                status: selectedSection.status,
+                enrolledStudentsCount: (selectedSection as any)._count?.studentEnrollments || 0,
+                homeroomTeacher: selectedSection.homeroomTeacher
+            },
+            teachingAssignments: teachingAssignmentsWithCoverage,
+            sectionTimetable,
+            periods,
+            operatingDays,
+            coverage: {
+                totalRequired,
+                totalScheduled,
+                totalRemaining,
+                coveragePercentage
+            },
+            status,
+            closedEvents
+        };
+    }
+
+    /**
+     * Atomically assigns a teaching assignment to a specific section timetable cell
+     * Protected by:
+     * - School scope & academic year lifecycle
+     * - Section conflict check
+     * - Teacher conflict check across all sections
+     * - Break period invariant
+     * - Operating day invariant
+     * - Weekly period requirement limit
+     * - Concurrency row-level locks on teacher and section
+     * - Audit logging
+     */
+    static async assignTimetable(organizationId: string, userId: string | null, data: {
+        academicYearId: string;
+        teachingAssignmentId: string;
+        classPeriodId: string;
+        dayOfWeek: number;
+        roomId?: string;
+    }) {
+        return prisma.$transaction(async (tx) => {
+            // 1. Validate Academic Year
+            const year = await tx.academicYear.findFirst({
+                where: { id: data.academicYearId, organizationId }
+            });
+            if (!year) throw new Error("Academic year not found in this school");
+            if (year.status === "COMPLETED" || year.status === "ARCHIVED") {
+                const err: any = new Error(`Academic year ${year.name} is ${year.status.toLowerCase()} and cannot be modified`);
+                err.statusCode = 403;
+                throw err;
+            }
+
+            // 2. Validate Teaching Assignment
+            const assignment = await tx.teachingAssignment.findFirst({
+                where: {
+                    id: data.teachingAssignmentId,
+                    academicYearId: data.academicYearId,
+                    teacher: { organizationId }
+                },
+                include: {
+                    teacher: true,
+                    subject: true,
+                    section: true,
+                    schoolGrade: { include: { grade: true } }
+                }
+            });
+            if (!assignment) {
+                throw new Error("Teaching assignment not found or does not belong to this school and academic year");
+            }
+            if (!assignment.sectionId) {
+                throw new Error("Teaching assignment must be allocated to a specific section before scheduling");
+            }
+
+            // 3. Validate Class Period
+            const period = await tx.classPeriod.findFirst({
+                where: { id: data.classPeriodId, organizationId }
+            });
+            if (!period) throw new Error("Class period not found in this school");
+            if (period.isBreak) {
+                throw new Error(`Cannot assign lessons during break period (${period.name})`);
+            }
+
+            // 4. Validate Operating Day
+            const config = await tx.timetableConfig.findUnique({
+                where: { organizationId_academicYearId: { organizationId, academicYearId: data.academicYearId } }
+            });
+            const operatingDays: number[] = (config?.operatingDays as number[]) || [1, 2, 3, 4, 5];
+            if (!operatingDays.includes(data.dayOfWeek)) {
+                throw new Error(`Day ${data.dayOfWeek} is not an active operating day for this school's timetable`);
+            }
+
+            // 4b. Academic Calendar Check: Closed days cannot have schedules
+            const calendar = await tx.academicCalendar.findUnique({
+                where: { academicYearId: data.academicYearId },
+                include: {
+                    events: {
+                        where: { isSchoolClosed: true }
+                    }
+                }
+            });
+            if (calendar?.events?.length) {
+                for (const ev of calendar.events) {
+                    const meta = ev.metadata as any;
+                    const closedDaysOfWeek: number[] = meta?.closedDaysOfWeek || [];
+                    if (closedDaysOfWeek.includes(data.dayOfWeek) || meta?.dayOfWeek === data.dayOfWeek) {
+                        throw new Error(`Cannot schedule on day ${data.dayOfWeek}: day is marked as closed in Academic Calendar ("${ev.title}").`);
+                    }
+                }
+            }
+
+            // 5. Concurrency row-level locks on teacher and section in PostgreSQL
+            await tx.$queryRaw`SELECT id FROM "teacher" WHERE id = ${assignment.teacherId} FOR UPDATE`;
+            await tx.$queryRaw`SELECT id FROM "section" WHERE id = ${assignment.sectionId} FOR UPDATE`;
+
+            // 6. Section Conflict (Section cannot have two classes simultaneously)
+            const sectionConflict = await tx.timetable.findFirst({
                 where: {
                     organizationId,
                     academicYearId: data.academicYearId,
                     dayOfWeek: data.dayOfWeek,
                     classPeriodId: data.classPeriodId,
                     teachingAssignment: { sectionId: assignment.sectionId }
+                },
+                include: {
+                    teachingAssignment: { include: { subject: true, teacher: true } }
                 }
             });
-
             if (sectionConflict) {
-                throw new Error("Section conflict: This section already has a class scheduled during this period on this day.");
+                throw new Error(
+                    `Section conflict: Section ${assignment.section?.name || ""} already has ${sectionConflict.teachingAssignment.subject.name} scheduled in this period.`
+                );
             }
-        }
 
-        // Conflict Detection 4: Room Conflict (Double-Booking)
-        if (data.roomId) {
-            const roomConflict = await prisma.timetable.findFirst({
+            // 7. Teacher Conflict (Teacher cannot be in two sections simultaneously)
+            const teacherConflict = await tx.timetable.findFirst({
                 where: {
                     organizationId,
                     academicYearId: data.academicYearId,
                     dayOfWeek: data.dayOfWeek,
                     classPeriodId: data.classPeriodId,
-                    roomId: data.roomId
+                    teachingAssignment: { teacherId: assignment.teacherId }
+                },
+                include: {
+                    teachingAssignment: { include: { subject: true, section: true, schoolGrade: { include: { grade: true } } } }
                 }
             });
-
-            if (roomConflict) {
-                throw new Error("Room conflict: Room is already booked for this period on this day.");
+            if (teacherConflict) {
+                const gradeName = teacherConflict.teachingAssignment.schoolGrade?.grade?.name || "Grade";
+                const secName = teacherConflict.teachingAssignment.section?.name ? `Section ${teacherConflict.teachingAssignment.section.name}` : "another section";
+                throw new Error(
+                    `Teacher conflict: Teacher ${assignment.teacher.firstName} ${assignment.teacher.lastName} is already scheduled for ${teacherConflict.teachingAssignment.subject.name} in ${gradeName} ${secName} during this period.`
+                );
             }
 
-            // Fetch room details
-            const room = await prisma.schoolResource.findFirst({
-                where: { id: data.roomId, organizationId }
-            });
-
-            // Room Availability check
-            if (room && room.availability) {
-                const availability = room.availability as any;
+            // 8. Teacher Availability Block Check
+            if (assignment.teacher.availability) {
+                const availability = assignment.teacher.availability as any;
                 if (availability.blockedSlots && Array.isArray(availability.blockedSlots)) {
-                    const isBlocked = availability.blockedSlots.some((slot: any) => 
+                    const isBlocked = availability.blockedSlots.some((slot: any) =>
                         slot.dayOfWeek === data.dayOfWeek && slot.classPeriodId === data.classPeriodId
                     );
                     if (isBlocked) {
-                        throw new Error(`Room availability conflict: Room ${room.name} is not available during this period on this day.`);
+                        throw new Error(`Teacher availability conflict: Teacher ${assignment.teacher.firstName} ${assignment.teacher.lastName} is not available during this period.`);
                     }
                 }
             }
 
-            // Room Capacity check
-            if (room && room.capacity !== null && assignment.sectionId) {
-                const sectionStudentsCount = await prisma.studentEnrollment.count({
+            // 9. Weekly Period Limit (scheduledCount >= periodsPerWeek)
+            if (assignment.periodsPerWeek > 0) {
+                const scheduledCount = await tx.timetable.count({
                     where: {
-                        sectionId: assignment.sectionId,
-                        status: "ENROLLED"
+                        teachingAssignmentId: data.teachingAssignmentId,
+                        academicYearId: data.academicYearId
                     }
                 });
-                if (sectionStudentsCount > room.capacity) {
-                    throw new Error(`Room capacity conflict: The section has ${sectionStudentsCount} students, but Room ${room.name} has a capacity of only ${room.capacity}.`);
+                if (scheduledCount >= assignment.periodsPerWeek) {
+                    throw new Error(
+                        `Weekly requirement exceeded: ${assignment.subject.name} requires ${assignment.periodsPerWeek} periods per week, and all ${scheduledCount} periods are already scheduled.`
+                    );
                 }
             }
-        }
 
-        // Conflict Detection 5: Subject Weekly Requirements
-        if (assignment.periodsPerWeek > 0) {
-            const scheduledCount = await prisma.timetable.count({
-                where: {
+            // 10. Optional Room collision check (if room is provided for specialized facility)
+            if (data.roomId) {
+                const roomConflict = await tx.timetable.findFirst({
+                    where: {
+                        organizationId,
+                        academicYearId: data.academicYearId,
+                        dayOfWeek: data.dayOfWeek,
+                        classPeriodId: data.classPeriodId,
+                        roomId: data.roomId
+                    },
+                    include: { room: true }
+                });
+                if (roomConflict) {
+                    throw new Error(`Room conflict: Room ${roomConflict.room?.name || ""} is already booked for this period.`);
+                }
+            }
+
+            // 11. Create Timetable Entry
+            const timetable = await tx.timetable.create({
+                data: {
+                    organizationId,
+                    academicYearId: data.academicYearId,
                     teachingAssignmentId: data.teachingAssignmentId,
-                    academicYearId: data.academicYearId
+                    classPeriodId: data.classPeriodId,
+                    dayOfWeek: data.dayOfWeek,
+                    roomId: data.roomId || null
+                },
+                include: {
+                    classPeriod: true,
+                    room: true,
+                    teachingAssignment: {
+                        include: {
+                            teacher: true,
+                            subject: true,
+                            section: true,
+                            schoolGrade: { include: { grade: true } }
+                        }
+                    }
                 }
             });
-            if (scheduledCount >= assignment.periodsPerWeek) {
-                throw new Error(`Weekly requirement conflict: This assignment requires ${assignment.periodsPerWeek} periods per week, and ${scheduledCount} periods are already scheduled.`);
+
+            // 12. Audit Logging
+            await tx.auditLog.create({
+                data: {
+                    organizationId,
+                    userId: userId || null,
+                    action: "TIMETABLE_SLOT_ASSIGNED",
+                    resource: "Timetable",
+                    resourceId: timetable.id,
+                    newValue: {
+                        id: timetable.id,
+                        dayOfWeek: data.dayOfWeek,
+                        classPeriodId: data.classPeriodId,
+                        periodName: period.name,
+                        teachingAssignmentId: data.teachingAssignmentId,
+                        subject: assignment.subject.name,
+                        teacher: `${assignment.teacher.firstName} ${assignment.teacher.lastName}`,
+                        section: assignment.section?.name,
+                        grade: assignment.schoolGrade?.grade?.name
+                    }
+                }
+            });
+
+            return timetable;
+        });
+    }
+
+    /**
+     * Delete a timetable entry
+     */
+    static async deleteTimetable(organizationId: string, userId: string | null, id: string) {
+        return prisma.$transaction(async (tx) => {
+            const entry = await tx.timetable.findFirst({
+                where: { id, organizationId },
+                include: {
+                    academicYear: true,
+                    classPeriod: true,
+                    teachingAssignment: {
+                        include: { teacher: true, subject: true, section: true }
+                    }
+                }
+            });
+            if (!entry) throw new Error("Timetable entry not found");
+
+            if (entry.academicYear.status === "COMPLETED" || entry.academicYear.status === "ARCHIVED") {
+                const err: any = new Error(`Cannot delete lessons from a ${entry.academicYear.status.toLowerCase()} academic year`);
+                err.statusCode = 403;
+                throw err;
             }
+
+            await tx.timetable.delete({
+                where: { id }
+            });
+
+            await tx.auditLog.create({
+                data: {
+                    organizationId,
+                    userId: userId || null,
+                    action: "TIMETABLE_SLOT_REMOVED",
+                    resource: "Timetable",
+                    resourceId: id,
+                    oldValue: {
+                        id,
+                        dayOfWeek: entry.dayOfWeek,
+                        periodName: entry.classPeriod.name,
+                        subject: entry.teachingAssignment.subject.name,
+                        teacher: `${entry.teachingAssignment.teacher.firstName} ${entry.teachingAssignment.teacher.lastName}`,
+                        section: entry.teachingAssignment.section?.name
+                    }
+                }
+            });
+
+            return { success: true };
+        });
+    }
+
+    /**
+     * In-place slot reassignment (for mid-year changes or switching teacher/subject in an existing slot)
+     */
+    static async reassignSlot(organizationId: string, userId: string | null, data: {
+        timetableId: string;
+        newTeachingAssignmentId: string;
+        reason?: string;
+    }) {
+        return prisma.$transaction(async (tx) => {
+            const currentEntry = await tx.timetable.findFirst({
+                where: { id: data.timetableId, organizationId },
+                include: {
+                    academicYear: true,
+                    classPeriod: true,
+                    teachingAssignment: {
+                        include: { teacher: true, subject: true, section: true }
+                    }
+                }
+            });
+            if (!currentEntry) throw new Error("Timetable entry not found");
+
+            if (currentEntry.academicYear.status === "COMPLETED" || currentEntry.academicYear.status === "ARCHIVED") {
+                const err: any = new Error("Cannot reassign lessons in completed or archived academic year");
+                err.statusCode = 403;
+                throw err;
+            }
+
+            const newAssignment = await tx.teachingAssignment.findFirst({
+                where: {
+                    id: data.newTeachingAssignmentId,
+                    academicYearId: currentEntry.academicYearId,
+                    teacher: { organizationId }
+                },
+                include: { teacher: true, subject: true, section: true }
+            });
+            if (!newAssignment) throw new Error("New teaching assignment not found");
+
+            // Must belong to the same section
+            if (newAssignment.sectionId !== currentEntry.teachingAssignment.sectionId) {
+                throw new Error("Reassignment must be for the same section");
+            }
+
+            // Lock teacher
+            await tx.$queryRaw`SELECT id FROM "teacher" WHERE id = ${newAssignment.teacherId} FOR UPDATE`;
+
+            // Check if the new teacher has a conflict at this slot
+            const teacherConflict = await tx.timetable.findFirst({
+                where: {
+                    id: { not: data.timetableId },
+                    organizationId,
+                    academicYearId: currentEntry.academicYearId,
+                    dayOfWeek: currentEntry.dayOfWeek,
+                    classPeriodId: currentEntry.classPeriodId,
+                    teachingAssignment: { teacherId: newAssignment.teacherId }
+                },
+                include: {
+                    teachingAssignment: { include: { subject: true, section: true } }
+                }
+            });
+            if (teacherConflict) {
+                throw new Error(
+                    `Teacher conflict: Target teacher ${newAssignment.teacher.firstName} is already teaching ${teacherConflict.teachingAssignment.subject.name} in this period.`
+                );
+            }
+
+            // Check weekly period limits for new assignment
+            const newScheduledCount = await tx.timetable.count({
+                where: {
+                    teachingAssignmentId: data.newTeachingAssignmentId,
+                    academicYearId: currentEntry.academicYearId
+                }
+            });
+            if (newScheduledCount >= newAssignment.periodsPerWeek) {
+                throw new Error(
+                    `Weekly requirement exceeded: ${newAssignment.subject.name} already has ${newScheduledCount} periods scheduled.`
+                );
+            }
+
+            const updated = await tx.timetable.update({
+                where: { id: data.timetableId },
+                data: {
+                    teachingAssignmentId: data.newTeachingAssignmentId
+                },
+                include: {
+                    classPeriod: true,
+                    teachingAssignment: {
+                        include: { teacher: true, subject: true, section: true }
+                    }
+                }
+            });
+
+            await tx.auditLog.create({
+                data: {
+                    organizationId,
+                    userId: userId || null,
+                    action: "TIMETABLE_SLOT_REASSIGNED",
+                    resource: "Timetable",
+                    resourceId: data.timetableId,
+                    oldValue: {
+                        teachingAssignmentId: currentEntry.teachingAssignmentId,
+                        teacher: `${currentEntry.teachingAssignment.teacher.firstName} ${currentEntry.teachingAssignment.teacher.lastName}`,
+                        subject: currentEntry.teachingAssignment.subject.name
+                    },
+                    newValue: {
+                        teachingAssignmentId: newAssignment.id,
+                        teacher: `${newAssignment.teacher.firstName} ${newAssignment.teacher.lastName}`,
+                        subject: newAssignment.subject.name,
+                        reason: data.reason || "Administrative reassignment"
+                    }
+                }
+            });
+
+            return updated;
+        });
+    }
+
+    /**
+     * Publish the timetable for the academic year
+     */
+    static async publishTimetable(organizationId: string, userId: string | null, academicYearId: string) {
+        const year = await prisma.academicYear.findFirst({
+            where: { id: academicYearId, organizationId }
+        });
+        if (!year) throw new Error("Academic year not found");
+        if (year.status === "COMPLETED" || year.status === "ARCHIVED") {
+            const err: any = new Error("Cannot publish timetable for completed or archived academic year");
+            err.statusCode = 403;
+            throw err;
         }
 
-        const timetable = await prisma.timetable.create({
-            data: {
-                organizationId,
-                academicYearId: data.academicYearId,
-                teachingAssignmentId: data.teachingAssignmentId,
-                classPeriodId: data.classPeriodId,
-                dayOfWeek: data.dayOfWeek,
-                roomId: data.roomId || null
-            }
+        const scheduledCount = await prisma.timetable.count({
+            where: { organizationId, academicYearId }
         });
+        if (scheduledCount === 0) {
+            throw new Error("Cannot publish an empty timetable with no scheduled lessons");
+        }
 
-        // Audit log
         await prisma.auditLog.create({
             data: {
                 organizationId,
-                action: "TIMETABLE_ASSIGNED",
+                userId: userId || null,
+                action: "TIMETABLE_PUBLISHED",
                 resource: "Timetable",
-                resourceId: timetable.id,
-                newValue: JSON.parse(JSON.stringify(timetable))
+                resourceId: academicYearId,
+                newValue: {
+                    academicYearId,
+                    scheduledCount,
+                    publishedAt: new Date().toISOString()
+                }
             }
         });
 
-        return timetable;
+        return {
+            success: true,
+            status: "PUBLISHED",
+            publishedAt: new Date().toISOString(),
+            publishedById: userId
+        };
     }
 
+    /**
+     * Unpublish timetable back to DRAFT
+     */
+    static async unpublishTimetable(organizationId: string, userId: string | null, academicYearId: string) {
+        await prisma.auditLog.create({
+            data: {
+                organizationId,
+                userId: userId || null,
+                action: "TIMETABLE_UNPUBLISHED",
+                resource: "Timetable",
+                resourceId: academicYearId,
+                newValue: {
+                    academicYearId,
+                    unpublishedAt: new Date().toISOString()
+                }
+            }
+        });
+
+        return {
+            success: true,
+            status: "DRAFT"
+        };
+    }
+
+    /**
+     * Get authorized personal timetable for authenticated student or teacher
+     */
+    static async getMyTimetable(organizationId: string, userId: string, roleName?: string) {
+        // 1. Try finding Student
+        const student = await prisma.student.findFirst({
+            where: { userId }
+        });
+
+        if (student) {
+            // Find active enrollment in active academic year
+            const enrollment = await prisma.studentEnrollment.findFirst({
+                where: {
+                    studentId: student.id,
+                    organizationId,
+                    status: "ENROLLED",
+                    academicYear: { status: "ACTIVE" }
+                },
+                include: {
+                    section: true,
+                    academicYear: true,
+                    schoolGrade: { include: { grade: true } }
+                }
+            }) || await prisma.studentEnrollment.findFirst({
+                where: {
+                    studentId: student.id,
+                    organizationId,
+                    status: "ENROLLED"
+                },
+                orderBy: { createdAt: "desc" },
+                include: {
+                    section: true,
+                    academicYear: true,
+                    schoolGrade: { include: { grade: true } }
+                }
+            });
+
+            if (!enrollment || !enrollment.sectionId) {
+                return {
+                    actorType: "STUDENT",
+                    section: null,
+                    timetable: [],
+                    message: "No active classroom section assignment found."
+                };
+            }
+
+            const timetable = await prisma.timetable.findMany({
+                where: {
+                    organizationId,
+                    academicYearId: enrollment.academicYearId,
+                    teachingAssignment: { sectionId: enrollment.sectionId }
+                },
+                include: {
+                    classPeriod: true,
+                    room: true,
+                    teachingAssignment: {
+                        include: {
+                            teacher: true,
+                            subject: true,
+                            schoolGrade: { include: { grade: true } }
+                        }
+                    }
+                },
+                orderBy: [
+                    { dayOfWeek: "asc" },
+                    { classPeriod: { startTime: "asc" } }
+                ]
+            });
+
+            return {
+                actorType: "STUDENT",
+                studentName: `${student.firstName} ${student.fatherName || ""}`.trim(),
+                gradeName: enrollment.schoolGrade?.grade?.name || "Grade",
+                section: enrollment.section,
+                academicYear: enrollment.academicYear,
+                timetable
+            };
+        }
+
+        // 2. Try finding Teacher
+        const teacher = await prisma.teacher.findFirst({
+            where: { userId, organizationId }
+        });
+
+        if (teacher) {
+            const activeYear = await prisma.academicYear.findFirst({
+                where: { organizationId, status: "ACTIVE" }
+            });
+
+            const timetable = await prisma.timetable.findMany({
+                where: {
+                    organizationId,
+                    ...(activeYear ? { academicYearId: activeYear.id } : {}),
+                    teachingAssignment: { teacherId: teacher.id }
+                },
+                include: {
+                    classPeriod: true,
+                    room: true,
+                    academicYear: true,
+                    teachingAssignment: {
+                        include: {
+                            subject: true,
+                            section: true,
+                            schoolGrade: { include: { grade: true } }
+                        }
+                    }
+                },
+                orderBy: [
+                    { dayOfWeek: "asc" },
+                    { classPeriod: { startTime: "asc" } }
+                ]
+            });
+
+            return {
+                actorType: "TEACHER",
+                teacherName: `${teacher.firstName} ${teacher.lastName}`,
+                academicYear: activeYear,
+                timetable
+            };
+        }
+
+        return {
+            actorType: "UNKNOWN",
+            timetable: [],
+            message: "User profile not linked to an active student or teacher record."
+        };
+    }
+
+    /**
+     * Backward-compatible section timetable endpoint
+     */
     static async getTimetableForSection(organizationId: string, sectionId: string, academicYearId?: string) {
         return prisma.timetable.findMany({
             where: {
@@ -197,6 +892,9 @@ export class TimetableService {
         });
     }
 
+    /**
+     * Backward-compatible teacher timetable endpoint
+     */
     static async getTimetableForTeacher(organizationId: string, teacherId: string) {
         return prisma.timetable.findMany({
             where: {
@@ -205,6 +903,7 @@ export class TimetableService {
             },
             include: {
                 classPeriod: true,
+                academicYear: true,
                 teachingAssignment: {
                     include: { subject: true, section: true, schoolGrade: { include: { grade: true } } }
                 }
@@ -216,6 +915,9 @@ export class TimetableService {
         });
     }
 
+    /**
+     * Backward-compatible room timetable endpoint
+     */
     static async getTimetableForRoom(organizationId: string, roomId: string) {
         return prisma.timetable.findMany({
             where: {
@@ -235,6 +937,9 @@ export class TimetableService {
         });
     }
 
+    /**
+     * Update teacher availability slots
+     */
     static async updateTeacherAvailability(organizationId: string, teacherId: string, availability: any) {
         const teacher = await prisma.teacher.findFirst({
             where: { id: teacherId, organizationId }
@@ -257,28 +962,5 @@ export class TimetableService {
         });
 
         return updated;
-    }
-
-    static async deleteTimetable(organizationId: string, id: string) {
-        const entry = await prisma.timetable.findFirst({
-            where: { id, organizationId }
-        });
-        if (!entry) throw new Error("Timetable entry not found");
-
-        await prisma.timetable.delete({
-            where: { id }
-        });
-
-        await prisma.auditLog.create({
-            data: {
-                organizationId,
-                action: "TIMETABLE_DELETED",
-                resource: "Timetable",
-                resourceId: id,
-                oldValue: JSON.parse(JSON.stringify(entry))
-            }
-        });
-
-        return { success: true };
     }
 }
