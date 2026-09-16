@@ -334,392 +334,294 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
             <div className="flex flex-1 overflow-hidden">
                 {/* Sidebar */}
                 {isTeacherRoute ? (
-                    <aside className="w-64 bg-white border-r border-gray-200 flex flex-col hidden md:flex overflow-y-auto text-gray-800">
-                        <div className="p-4 flex-1">
-                            <nav className="space-y-1 text-gray-700">
-                                {/* Active Dashboard Button */}
+                    <aside className="w-64 bg-[#041738] border-r border-[#092254] flex flex-col hidden md:flex overflow-y-auto text-slate-300 font-sans shadow-xl shrink-0" style={{ scrollbarWidth: "none", msOverflowStyle: "none" } as React.CSSProperties}>
+                        <div className="flex items-center px-3 pt-4 pb-2 border-b border-[#092254]/60">
+                            <p className="text-[10px] text-amber-400 font-bold uppercase tracking-widest px-1">Teacher Workspace</p>
+                        </div>
+                        <div className="p-3 pt-3 flex-1">
+                            <nav className="space-y-1">
+                                {/* Dashboard */}
                                 <Link 
                                     href="/dashboard/teacher" 
-                                    className={`flex items-center space-x-3 px-3.5 py-2 rounded-xl text-xs font-normal transition-colors ${
+                                    className={`flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all ${
                                         pathname === "/dashboard/teacher" 
-                                            ? "bg-[#4085b3] text-white shadow-2xs" 
-                                            : "text-gray-700 hover:bg-gray-100 hover:text-gray-900"
+                                            ? "bg-[#0c2454] text-[#f59e0b] border-l-4 border-[#f59e0b] shadow-inner" 
+                                            : "text-slate-300 hover:bg-[#081e48] hover:text-white"
                                     }`}
                                 >
-                                    <LayoutDashboard className="w-4 h-4" />
-                                    <span>Dashboard</span>
+                                    <div className="flex items-center space-x-3">
+                                        <LayoutDashboard className={`w-4 h-4 shrink-0 ${pathname === "/dashboard/teacher" ? "text-[#f59e0b]" : "text-amber-400"}`} />
+                                        <span>Dashboard</span>
+                                    </div>
                                 </Link>
 
                                 {/* Section 1: TEACHING ASSIGNMENTS */}
-                                <div className="pt-2">
+                                <div className="pt-1">
                                     <button 
                                         onClick={() => toggleMenu("teacherAssignments")}
-                                        className="w-full flex items-center justify-between px-3 py-2 text-xs font-normal text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                                        className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-medium text-slate-300 hover:bg-[#081e48] hover:text-white transition-all group cursor-pointer"
                                     >
-                                        <div className="flex items-center space-x-2.5">
-                                            <BookOpen className="w-4 h-4 text-[#4085b3]" />
+                                        <div className="flex items-center space-x-3">
+                                            <BookOpen className="w-4 h-4 text-amber-400 shrink-0" />
                                             <span>My Teaching Assignments</span>
                                         </div>
-                                        {openMenus.teacherAssignments ? <ChevronDown className="w-3.5 h-3.5 text-gray-400" /> : <ChevronRight className="w-3.5 h-3.5 text-gray-400" />}
+                                        {openMenus.teacherAssignments ? <ChevronDown className="w-3.5 h-3.5 text-slate-400 group-hover:text-white" /> : <ChevronRight className="w-3.5 h-3.5 text-slate-500 group-hover:text-slate-300" />}
                                     </button>
-                                     {openMenus.teacherAssignments && (
-                                        <div className="pl-6 pt-1 space-y-1">
-                                            <Link href="/dashboard/teacher/my-classes?tab=subjects" className="block px-3 py-1.5 rounded-lg text-xs font-medium text-gray-600 hover:bg-gray-50">
-                                                Subjects
-                                            </Link>
-                                            <Link href="/dashboard/teacher/my-classes?tab=grades" className="block px-3 py-1.5 rounded-lg text-xs font-medium text-gray-600 hover:bg-gray-50">
-                                                Grades
-                                            </Link>
-                                            <Link href="/dashboard/teacher/my-classes?tab=sections" className="block px-3 py-1.5 rounded-lg text-xs font-medium text-gray-600 hover:bg-gray-50">
-                                                Sections
-                                            </Link>
-                                            <Link href="/dashboard/teacher/my-classes?tab=classes" className="block px-3 py-1.5 rounded-lg text-xs font-medium text-gray-600 hover:bg-gray-50">
-                                                Classes
-                                            </Link>
-                                            <Link href="/dashboard/teacher/my-classes?tab=schedule" className="block px-3 py-1.5 rounded-lg text-xs font-medium text-gray-600 hover:bg-gray-50">
-                                                Teaching Schedule
-                                            </Link>
+                                    {openMenus.teacherAssignments && (
+                                        <div className="pl-8 pr-2 py-1.5 space-y-1 bg-[#020e24]/60 rounded-xl my-1 border-l border-slate-700/50">
+                                            <Link href="/dashboard/teacher/my-classes?tab=subjects" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40`}>Subjects</Link>
+                                            <Link href="/dashboard/teacher/my-classes?tab=grades" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40`}>Grades</Link>
+                                            <Link href="/dashboard/teacher/my-classes?tab=sections" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40`}>Sections</Link>
+                                            <Link href="/dashboard/teacher/my-classes?tab=classes" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40`}>Classes</Link>
+                                            <Link href="/dashboard/teacher/my-classes?tab=schedule" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40`}>Teaching Schedule</Link>
                                         </div>
                                     )}
                                 </div>
 
                                 {/* Section 2: STUDENT MANAGEMENT */}
-                                <div className="pt-2">
+                                <div className="pt-1">
                                     <Link 
                                         href="/dashboard/teacher/students"
-                                        className={`w-full flex items-center space-x-2.5 px-3 py-2 text-xs font-normal rounded-lg transition-colors ${
+                                        className={`flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-medium transition-all ${
                                             pathname === "/dashboard/teacher/students" 
-                                                ? "bg-blue-50 text-[#4085b3] font-medium" 
-                                                : "text-gray-700 hover:bg-gray-100"
+                                                ? "bg-[#0c2454] text-[#f59e0b] border-l-4 border-[#f59e0b]" 
+                                                : "text-slate-300 hover:bg-[#081e48] hover:text-white"
                                         }`}
                                     >
-                                        <Users className="w-4 h-4 text-[#4085b3]" />
-                                        <span>Student Management</span>
+                                        <div className="flex items-center space-x-3">
+                                            <Users className="w-4 h-4 text-amber-400 shrink-0" />
+                                            <span>Student Management</span>
+                                        </div>
                                     </Link>
                                 </div>
 
                                 {/* Section 3: ATTENDANCE */}
-                                <div className="pt-2">
+                                <div className="pt-1">
                                     <button 
                                         onClick={() => toggleMenu("teacherAttendance")}
-                                        className="w-full flex items-center justify-between px-3 py-2 text-xs font-normal text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                                        className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-medium text-slate-300 hover:bg-[#081e48] hover:text-white transition-all group cursor-pointer"
                                     >
-                                        <div className="flex items-center space-x-2.5">
-                                            <ClipboardCheck className="w-4 h-4 text-[#247297]" />
-                                            <span className="font-semibold text-gray-900">Attendance</span>
+                                        <div className="flex items-center space-x-3">
+                                            <ClipboardCheck className="w-4 h-4 text-amber-400 shrink-0" />
+                                            <span>Attendance</span>
                                         </div>
-                                        {openMenus.teacherAttendance ? <ChevronDown className="w-3.5 h-3.5 text-gray-400" /> : <ChevronRight className="w-3.5 h-3.5 text-gray-400" />}
+                                        {openMenus.teacherAttendance ? <ChevronDown className="w-3.5 h-3.5 text-slate-400 group-hover:text-white" /> : <ChevronRight className="w-3.5 h-3.5 text-slate-500 group-hover:text-slate-300" />}
                                     </button>
                                     {openMenus.teacherAttendance && (
-                                        <div className="pl-6 pt-1 space-y-1">
-                                            <Link 
-                                                href="/dashboard/teacher/attendance?tab=take" 
-                                                className={`block px-3 py-1.5 rounded-lg text-xs transition-colors ${
-                                                    pathname === "/dashboard/teacher/attendance" && (currentTab === "take" || !searchParams?.get("tab"))
-                                                        ? "bg-blue-50 text-[#247297] font-extrabold" 
-                                                        : "text-gray-600 hover:bg-gray-50 font-normal"
-                                                }`}
-                                            >
-                                                Take Student Attendance
-                                            </Link>
-                                            <Link 
-                                                href="/dashboard/teacher/attendance?tab=history" 
-                                                className={`block px-3 py-1.5 rounded-lg text-xs transition-colors ${
-                                                    pathname === "/dashboard/teacher/attendance" && currentTab === "history"
-                                                        ? "bg-blue-50 text-[#247297] font-extrabold" 
-                                                        : "text-gray-600 hover:bg-gray-50 font-normal"
-                                                }`}
-                                            >
-                                                View Attendance History
-                                            </Link>
-                                            <Link 
-                                                href="/dashboard/teacher/attendance?tab=reasons" 
-                                                className={`block px-3 py-1.5 rounded-lg text-xs transition-colors ${
-                                                    pathname === "/dashboard/teacher/attendance" && currentTab === "reasons"
-                                                        ? "bg-blue-50 text-[#247297] font-extrabold" 
-                                                        : "text-gray-600 hover:bg-gray-50 font-normal"
-                                                }`}
-                                            >
-                                                Record Absence Reason
-                                            </Link>
-                                            <Link 
-                                                href="/dashboard/teacher/attendance?tab=repeated" 
-                                                className={`block px-3 py-1.5 rounded-lg text-xs transition-colors ${
-                                                    pathname === "/dashboard/teacher/attendance" && currentTab === "repeated"
-                                                        ? "bg-blue-50 text-[#247297] font-extrabold" 
-                                                        : "text-gray-600 hover:bg-gray-50 font-normal"
-                                                }`}
-                                            >
-                                                Identify Repeated Absences
-                                            </Link>
-                                            <Link 
-                                                href="/dashboard/teacher/attendance?tab=report" 
-                                                className={`block px-3 py-1.5 rounded-lg text-xs transition-colors ${
-                                                    pathname === "/dashboard/teacher/attendance" && currentTab === "report"
-                                                        ? "bg-blue-50 text-[#247297] font-extrabold" 
-                                                        : "text-gray-600 hover:bg-gray-50 font-normal"
-                                                }`}
-                                            >
-                                                Report Attendance Problems
-                                            </Link>
+                                        <div className="pl-8 pr-2 py-1.5 space-y-1 bg-[#020e24]/60 rounded-xl my-1 border-l border-slate-700/50">
+                                            <Link href="/dashboard/teacher/attendance?tab=take" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/teacher/attendance" && (currentTab === "take" || !searchParams?.get("tab")) ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>Take Student Attendance</Link>
+                                            <Link href="/dashboard/teacher/attendance?tab=history" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/teacher/attendance" && currentTab === "history" ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>View Attendance History</Link>
+                                            <Link href="/dashboard/teacher/attendance?tab=reasons" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/teacher/attendance" && currentTab === "reasons" ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>Record Absence Reason</Link>
+                                            <Link href="/dashboard/teacher/attendance?tab=repeated" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/teacher/attendance" && currentTab === "repeated" ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>Identify Repeated Absences</Link>
+                                            <Link href="/dashboard/teacher/attendance?tab=report" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/teacher/attendance" && currentTab === "report" ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>Report Attendance Problems</Link>
                                         </div>
                                     )}
                                 </div>
 
                                 {/* Section 4: LESSON / CURRICULUM */}
-                                <div className="pt-2">
+                                <div className="pt-1">
                                     <button 
                                         onClick={() => toggleMenu("teacherCurriculum")}
-                                        className="w-full flex items-center justify-between px-3 py-2 text-xs font-normal text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                                        className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-medium text-slate-300 hover:bg-[#081e48] hover:text-white transition-all group cursor-pointer"
                                     >
-                                        <div className="flex items-center space-x-2.5">
-                                            <FileText className="w-4 h-4 text-[#4085b3]" />
+                                        <div className="flex items-center space-x-3">
+                                            <FileText className="w-4 h-4 text-amber-400 shrink-0" />
                                             <span>Lesson / Curriculum</span>
                                         </div>
-                                        {openMenus.teacherCurriculum ? <ChevronDown className="w-3.5 h-3.5 text-gray-400" /> : <ChevronRight className="w-3.5 h-3.5 text-gray-400" />}
+                                        {openMenus.teacherCurriculum ? <ChevronDown className="w-3.5 h-3.5 text-slate-400 group-hover:text-white" /> : <ChevronRight className="w-3.5 h-3.5 text-slate-500 group-hover:text-slate-300" />}
                                     </button>
                                     {openMenus.teacherCurriculum && (
-                                        <div className="pl-6 pt-1 space-y-1">
-                                            <Link href="/dashboard/teacher/curriculum?tab=view" className={`block px-3 py-1.5 rounded-lg text-xs font-normal ${pathname === "/dashboard/teacher/curriculum" ? "bg-blue-50 text-[#4085b3]" : "text-gray-600 hover:bg-gray-50"}`}>
-                                                View Curriculum
-                                            </Link>
-                                            <Link href="/dashboard/teacher/curriculum?tab=log" className="block px-3 py-1.5 rounded-lg text-xs font-normal text-gray-600 hover:bg-gray-50">
-                                                Record Lesson Progress
-                                            </Link>
-                                            <Link href="/dashboard/teacher/curriculum?tab=log" className="block px-3 py-1.5 rounded-lg text-xs font-normal text-gray-600 hover:bg-gray-50">
-                                                Record Topics Covered
-                                            </Link>
-                                            <Link href="/dashboard/teacher/curriculum?tab=progress" className="block px-3 py-1.5 rounded-lg text-xs font-normal text-gray-600 hover:bg-gray-50">
-                                                Track Curriculum Progress
-                                            </Link>
-                                            <Link href="/dashboard/teacher/curriculum?tab=difficulties" className="block px-3 py-1.5 rounded-lg text-xs font-normal text-gray-600 hover:bg-gray-50">
-                                                Record Learning Difficulties
-                                            </Link>
-                                            <Link href="/dashboard/teacher/curriculum?tab=notes" className="block px-3 py-1.5 rounded-lg text-xs font-normal text-gray-600 hover:bg-gray-50">
-                                                Record Teaching Notes
-                                            </Link>
+                                        <div className="pl-8 pr-2 py-1.5 space-y-1 bg-[#020e24]/60 rounded-xl my-1 border-l border-slate-700/50">
+                                            <Link href="/dashboard/teacher/curriculum?tab=view" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/teacher/curriculum" ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>View Curriculum</Link>
+                                            <Link href="/dashboard/teacher/curriculum?tab=log" className="block py-1.5 px-2 rounded-lg text-xs transition-colors text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40">Record Lesson Progress</Link>
+                                            <Link href="/dashboard/teacher/curriculum?tab=log" className="block py-1.5 px-2 rounded-lg text-xs transition-colors text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40">Record Topics Covered</Link>
+                                            <Link href="/dashboard/teacher/curriculum?tab=progress" className="block py-1.5 px-2 rounded-lg text-xs transition-colors text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40">Track Curriculum Progress</Link>
+                                            <Link href="/dashboard/teacher/curriculum?tab=difficulties" className="block py-1.5 px-2 rounded-lg text-xs transition-colors text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40">Record Learning Difficulties</Link>
+                                            <Link href="/dashboard/teacher/curriculum?tab=notes" className="block py-1.5 px-2 rounded-lg text-xs transition-colors text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40">Record Teaching Notes</Link>
                                         </div>
                                     )}
                                 </div>
 
                                 {/* Section 5: ASSESSMENT */}
-                                <div className="pt-2">
+                                <div className="pt-1">
                                     <button 
                                         onClick={() => toggleMenu("teacherAssessment")}
-                                        className="w-full flex items-center justify-between px-3 py-2 text-xs font-normal text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                                        className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-medium text-slate-300 hover:bg-[#081e48] hover:text-white transition-all group cursor-pointer"
                                     >
-                                        <div className="flex items-center space-x-2.5">
-                                            <GraduationCap className="w-4 h-4 text-[#4085b3]" />
+                                        <div className="flex items-center space-x-3">
+                                            <GraduationCap className="w-4 h-4 text-amber-400 shrink-0" />
                                             <span>Assessment & Grades</span>
                                         </div>
-                                        {openMenus.teacherAssessment ? <ChevronDown className="w-3.5 h-3.5 text-gray-400" /> : <ChevronRight className="w-3.5 h-3.5 text-gray-400" />}
+                                        {openMenus.teacherAssessment ? <ChevronDown className="w-3.5 h-3.5 text-slate-400 group-hover:text-white" /> : <ChevronRight className="w-3.5 h-3.5 text-slate-500 group-hover:text-slate-300" />}
                                     </button>
                                     {openMenus.teacherAssessment && (
-                                        <div className="pl-6 pt-1 space-y-1">
-                                            <Link href="/dashboard/teacher/assessment?type=ALL" className={`block px-3 py-1.5 rounded-lg text-xs font-normal ${pathname === "/dashboard/teacher/assessment" ? "bg-blue-50 text-[#4085b3]" : "text-gray-600 hover:bg-gray-50"}`}>
-                                                Create Assessment
-                                            </Link>
-                                            <Link href="/dashboard/teacher/assessment?type=QUIZ" className="block px-3 py-1.5 rounded-lg text-xs font-normal text-gray-600 hover:bg-gray-50">
-                                                Create Quiz
-                                            </Link>
-                                            <Link href="/dashboard/teacher/assessment?type=TEST" className="block px-3 py-1.5 rounded-lg text-xs font-normal text-gray-600 hover:bg-gray-50">
-                                                Create Test
-                                            </Link>
-                                            <Link href="/dashboard/teacher/assessment?type=ASSIGNMENT" className="block px-3 py-1.5 rounded-lg text-xs font-normal text-gray-600 hover:bg-gray-50">
-                                                Create Assignment
-                                            </Link>
-                                            <Link href="/dashboard/teacher/assessment?type=PROJECT" className="block px-3 py-1.5 rounded-lg text-xs font-normal text-gray-600 hover:bg-gray-50">
-                                                Create Project
-                                            </Link>
-                                            <Link href="/dashboard/teacher/assessment?tab=conduct" className="block px-3 py-1.5 rounded-lg text-xs font-normal text-gray-600 hover:bg-gray-50">
-                                                Conduct Assessment
-                                            </Link>
-                                            <Link href="/dashboard/teacher/assessment?tab=grade" className="block px-3 py-1.5 rounded-lg text-xs font-normal text-gray-600 hover:bg-gray-50">
-                                                Record Results & Grade
-                                            </Link>
-                                            <Link href="/dashboard/teacher/assessment?tab=feedback" className="block px-3 py-1.5 rounded-lg text-xs font-normal text-gray-600 hover:bg-gray-50">
-                                                Provide Feedback
-                                            </Link>
+                                        <div className="pl-8 pr-2 py-1.5 space-y-1 bg-[#020e24]/60 rounded-xl my-1 border-l border-slate-700/50">
+                                            <Link href="/dashboard/teacher/assessment?type=ALL" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/teacher/assessment" ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>Create Assessment</Link>
+                                            <Link href="/dashboard/teacher/assessment?type=QUIZ" className="block py-1.5 px-2 rounded-lg text-xs transition-colors text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40">Create Quiz</Link>
+                                            <Link href="/dashboard/teacher/assessment?type=TEST" className="block py-1.5 px-2 rounded-lg text-xs transition-colors text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40">Create Test</Link>
+                                            <Link href="/dashboard/teacher/assessment?type=ASSIGNMENT" className="block py-1.5 px-2 rounded-lg text-xs transition-colors text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40">Create Assignment</Link>
+                                            <Link href="/dashboard/teacher/assessment?type=PROJECT" className="block py-1.5 px-2 rounded-lg text-xs transition-colors text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40">Create Project</Link>
+                                            <Link href="/dashboard/teacher/assessment?tab=conduct" className="block py-1.5 px-2 rounded-lg text-xs transition-colors text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40">Conduct Assessment</Link>
+                                            <Link href="/dashboard/teacher/assessment?tab=grade" className="block py-1.5 px-2 rounded-lg text-xs transition-colors text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40">Record Results & Grade</Link>
+                                            <Link href="/dashboard/teacher/assessment?tab=feedback" className="block py-1.5 px-2 rounded-lg text-xs transition-colors text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40">Provide Feedback</Link>
                                         </div>
                                     )}
                                 </div>
 
                                 {/* Section 6: LEARNING ACTIVITIES */}
-                                <div className="pt-2">
+                                <div className="pt-1">
                                     <button 
                                         onClick={() => toggleMenu("teacherActivities")}
-                                        className="w-full flex items-center justify-between px-3 py-2 text-xs font-normal text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                                        className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-medium text-slate-300 hover:bg-[#081e48] hover:text-white transition-all group cursor-pointer"
                                     >
-                                        <div className="flex items-center space-x-2.5">
-                                            <ClipboardCheck className="w-4 h-4 text-[#4085b3]" />
+                                        <div className="flex items-center space-x-3">
+                                            <ClipboardCheck className="w-4 h-4 text-amber-400 shrink-0" />
                                             <span>Learning Activities</span>
                                         </div>
-                                        {openMenus.teacherActivities ? <ChevronDown className="w-3.5 h-3.5 text-gray-400" /> : <ChevronRight className="w-3.5 h-3.5 text-gray-400" />}
+                                        {openMenus.teacherActivities ? <ChevronDown className="w-3.5 h-3.5 text-slate-400 group-hover:text-white" /> : <ChevronRight className="w-3.5 h-3.5 text-slate-500 group-hover:text-slate-300" />}
                                     </button>
                                     {openMenus.teacherActivities && (
-                                        <div className="pl-6 pt-1 space-y-1">
-                                            <Link href="/dashboard/teacher/learning?type=HOMEWORK" className={`block px-3 py-1.5 rounded-lg text-xs font-normal ${pathname === "/dashboard/teacher/learning" ? "bg-blue-50 text-[#4085b3]" : "text-gray-600 hover:bg-gray-50"}`}>
-                                                Create Assignment
-                                            </Link>
-                                            <Link href="/dashboard/teacher/learning?type=QUIZ" className="block px-3 py-1.5 rounded-lg text-xs font-normal text-gray-600 hover:bg-gray-50">
-                                                Create Quiz
-                                            </Link>
-                                            <Link href="/dashboard/teacher/learning?type=CLASS_WORK" className="block px-3 py-1.5 rounded-lg text-xs font-normal text-gray-600 hover:bg-gray-50">
-                                                Create Class Activity
-                                            </Link>
-                                            <Link href="/dashboard/teacher/learning?tab=create" className="block px-3 py-1.5 rounded-lg text-xs font-normal text-gray-600 hover:bg-gray-50">
-                                                Set Deadline
-                                            </Link>
-                                            <Link href="/dashboard/teacher/learning?tab=submissions" className="block px-3 py-1.5 rounded-lg text-xs font-normal text-gray-600 hover:bg-gray-50">
-                                                Review Submissions
-                                            </Link>
-                                            <Link href="/dashboard/teacher/learning?tab=submissions" className="block px-3 py-1.5 rounded-lg text-xs font-normal text-gray-600 hover:bg-gray-50">
-                                                Mark Completion
-                                            </Link>
-                                            <Link href="/dashboard/teacher/learning?tab=submissions" className="block px-3 py-1.5 rounded-lg text-xs font-normal text-gray-600 hover:bg-gray-50">
-                                                Give Feedback
-                                            </Link>
+                                        <div className="pl-8 pr-2 py-1.5 space-y-1 bg-[#020e24]/60 rounded-xl my-1 border-l border-slate-700/50">
+                                            <Link href="/dashboard/teacher/learning?type=HOMEWORK" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/teacher/learning" ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>Create Assignment</Link>
+                                            <Link href="/dashboard/teacher/learning?type=QUIZ" className="block py-1.5 px-2 rounded-lg text-xs transition-colors text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40">Create Quiz</Link>
+                                            <Link href="/dashboard/teacher/learning?type=CLASS_WORK" className="block py-1.5 px-2 rounded-lg text-xs transition-colors text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40">Create Class Activity</Link>
+                                            <Link href="/dashboard/teacher/learning?tab=create" className="block py-1.5 px-2 rounded-lg text-xs transition-colors text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40">Set Deadline</Link>
+                                            <Link href="/dashboard/teacher/learning?tab=submissions" className="block py-1.5 px-2 rounded-lg text-xs transition-colors text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40">Review Submissions</Link>
+                                            <Link href="/dashboard/teacher/learning?tab=submissions" className="block py-1.5 px-2 rounded-lg text-xs transition-colors text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40">Mark Completion</Link>
+                                            <Link href="/dashboard/teacher/learning?tab=submissions" className="block py-1.5 px-2 rounded-lg text-xs transition-colors text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40">Give Feedback</Link>
                                         </div>
                                     )}
                                 </div>
 
                                 {/* Section 7: STUDENT SUPPORT */}
-                                <div className="pt-2">
+                                <div className="pt-1">
                                     <button 
                                         onClick={() => toggleMenu("teacherSupport")}
-                                        className="w-full flex items-center justify-between px-3 py-2 text-xs font-normal text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                                        className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-medium text-slate-300 hover:bg-[#081e48] hover:text-white transition-all group cursor-pointer"
                                     >
-                                        <div className="flex items-center space-x-2.5">
-                                            <HeartHandshake className="w-4 h-4 text-[#4085b3]" />
+                                        <div className="flex items-center space-x-3">
+                                            <HeartHandshake className="w-4 h-4 text-amber-400 shrink-0" />
                                             <span>Student Support</span>
                                         </div>
-                                        {openMenus.teacherSupport ? <ChevronDown className="w-3.5 h-3.5 text-gray-400" /> : <ChevronRight className="w-3.5 h-3.5 text-gray-400" />}
+                                        {openMenus.teacherSupport ? <ChevronDown className="w-3.5 h-3.5 text-slate-400 group-hover:text-white" /> : <ChevronRight className="w-3.5 h-3.5 text-slate-500 group-hover:text-slate-300" />}
                                     </button>
                                     {openMenus.teacherSupport && (
-                                        <div className="pl-6 pt-1 space-y-1">
-                                            <Link href="/dashboard/teacher/support" className={`block px-3 py-1.5 rounded-lg text-xs font-normal ${pathname === "/dashboard/teacher/support" ? "bg-blue-50 text-[#4085b3]" : "text-gray-600 hover:bg-gray-50"}`}>
-                                                Flag At-Risk Student
-                                            </Link>
-                                            <Link href="/dashboard/teacher/support" className="block px-3 py-1.5 rounded-lg text-xs font-normal text-gray-600 hover:bg-gray-50">
-                                                Monitor Interventions
-                                            </Link>
+                                        <div className="pl-8 pr-2 py-1.5 space-y-1 bg-[#020e24]/60 rounded-xl my-1 border-l border-slate-700/50">
+                                            <Link href="/dashboard/teacher/support" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/teacher/support" ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>Flag At-Risk Student</Link>
+                                            <Link href="/dashboard/teacher/support" className="block py-1.5 px-2 rounded-lg text-xs transition-colors text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40">Monitor Interventions</Link>
                                         </div>
                                     )}
                                 </div>
 
                                 {/* Section 8: PARENT COMMUNICATION */}
-                                <div className="pt-2">
+                                <div className="pt-1">
                                     <button 
                                         onClick={() => toggleMenu("teacherParentComm")}
-                                        className="w-full flex items-center justify-between px-3 py-2 text-xs font-normal text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                                        className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-medium text-slate-300 hover:bg-[#081e48] hover:text-white transition-all group cursor-pointer"
                                     >
-                                        <div className="flex items-center space-x-2.5">
-                                            <Users className="w-4 h-4 text-[#4085b3]" />
+                                        <div className="flex items-center space-x-3">
+                                            <Users className="w-4 h-4 text-amber-400 shrink-0" />
                                             <span>Parent Communication</span>
                                         </div>
-                                        {openMenus.teacherParentComm ? <ChevronDown className="w-3.5 h-3.5 text-gray-400" /> : <ChevronRight className="w-3.5 h-3.5 text-gray-400" />}
+                                        {openMenus.teacherParentComm ? <ChevronDown className="w-3.5 h-3.5 text-slate-400 group-hover:text-white" /> : <ChevronRight className="w-3.5 h-3.5 text-slate-500 group-hover:text-slate-300" />}
                                     </button>
                                     {openMenus.teacherParentComm && (
-                                        <div className="pl-6 pt-1 space-y-1">
-                                            <Link href="/dashboard/teacher/communication/parent" className={`block px-3 py-1.5 rounded-lg text-xs font-normal ${pathname.includes("parent") ? "bg-blue-50 text-[#4085b3]" : "text-gray-600 hover:bg-gray-50"}`}>
-                                                Send Parent Message
-                                            </Link>
-                                            <Link href="/dashboard/teacher/communication/parent" className="block px-3 py-1.5 rounded-lg text-xs font-normal text-gray-600 hover:bg-gray-50">
-                                                Attendance Notifications
-                                            </Link>
+                                        <div className="pl-8 pr-2 py-1.5 space-y-1 bg-[#020e24]/60 rounded-xl my-1 border-l border-slate-700/50">
+                                            <Link href="/dashboard/teacher/communication/parent" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname.includes("parent") ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>Send Parent Message</Link>
+                                            <Link href="/dashboard/teacher/communication/parent" className="block py-1.5 px-2 rounded-lg text-xs transition-colors text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40">Attendance Notifications</Link>
                                         </div>
                                     )}
                                 </div>
 
                                 {/* Section 9: STAFF COMMUNICATION */}
-                                <div className="pt-2">
+                                <div className="pt-1">
                                     <button 
                                         onClick={() => toggleMenu("teacherStaffComm")}
-                                        className="w-full flex items-center justify-between px-3 py-2 text-xs font-normal text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                                        className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-medium text-slate-300 hover:bg-[#081e48] hover:text-white transition-all group cursor-pointer"
                                     >
-                                        <div className="flex items-center space-x-2.5">
-                                            <MessageSquare className="w-4 h-4 text-[#4085b3]" />
+                                        <div className="flex items-center space-x-3">
+                                            <MessageSquare className="w-4 h-4 text-amber-400 shrink-0" />
                                             <span>Teacher Communication</span>
                                         </div>
-                                        {openMenus.teacherStaffComm ? <ChevronDown className="w-3.5 h-3.5 text-gray-400" /> : <ChevronRight className="w-3.5 h-3.5 text-gray-400" />}
+                                        {openMenus.teacherStaffComm ? <ChevronDown className="w-3.5 h-3.5 text-slate-400 group-hover:text-white" /> : <ChevronRight className="w-3.5 h-3.5 text-slate-500 group-hover:text-slate-300" />}
                                     </button>
                                     {openMenus.teacherStaffComm && (
-                                        <div className="pl-6 pt-1 space-y-1">
-                                            <Link href="/dashboard/teacher/communication/staff" className={`block px-3 py-1.5 rounded-lg text-xs font-normal ${pathname.includes("staff") ? "bg-blue-50 text-[#4085b3]" : "text-gray-600 hover:bg-gray-50"}`}>
-                                                School Announcements
-                                            </Link>
-                                            <Link href="/dashboard/teacher/communication/staff" className="block px-3 py-1.5 rounded-lg text-xs font-normal text-gray-600 hover:bg-gray-50">
-                                                Department Communication
-                                            </Link>
+                                        <div className="pl-8 pr-2 py-1.5 space-y-1 bg-[#020e24]/60 rounded-xl my-1 border-l border-slate-700/50">
+                                            <Link href="/dashboard/teacher/communication/staff" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname.includes("staff") ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>School Announcements</Link>
+                                            <Link href="/dashboard/teacher/communication/staff" className="block py-1.5 px-2 rounded-lg text-xs transition-colors text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40">Department Communication</Link>
                                         </div>
                                     )}
                                 </div>
 
                                 {/* Section 10: PROFESSIONAL DEVELOPMENT */}
-                                <div className="pt-2">
+                                <div className="pt-1">
                                     <button 
                                         onClick={() => toggleMenu("teacherPD")}
-                                        className="w-full flex items-center justify-between px-3 py-2 text-xs font-normal text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                                        className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-medium text-slate-300 hover:bg-[#081e48] hover:text-white transition-all group cursor-pointer"
                                     >
-                                        <div className="flex items-center space-x-2.5">
-                                            <GraduationCap className="w-4 h-4 text-[#4085b3]" />
+                                        <div className="flex items-center space-x-3">
+                                            <GraduationCap className="w-4 h-4 text-amber-400 shrink-0" />
                                             <span>Professional Dev.</span>
                                         </div>
-                                        {openMenus.teacherPD ? <ChevronDown className="w-3.5 h-3.5 text-gray-400" /> : <ChevronRight className="w-3.5 h-3.5 text-gray-400" />}
+                                        {openMenus.teacherPD ? <ChevronDown className="w-3.5 h-3.5 text-slate-400 group-hover:text-white" /> : <ChevronRight className="w-3.5 h-3.5 text-slate-500 group-hover:text-slate-300" />}
                                     </button>
                                     {openMenus.teacherPD && (
-                                        <div className="pl-6 pt-1 space-y-1">
-                                            <Link href="/dashboard/teacher/pd" className={`block px-3 py-1.5 rounded-lg text-xs font-normal ${pathname === "/dashboard/teacher/pd" ? "bg-blue-50 text-[#4085b3]" : "text-gray-600 hover:bg-gray-50"}`}>
-                                                Training & Workshops
-                                            </Link>
-                                            <Link href="/dashboard/teacher/pd" className="block px-3 py-1.5 rounded-lg text-xs font-normal text-gray-600 hover:bg-gray-50">
-                                                Certificates
-                                            </Link>
+                                        <div className="pl-8 pr-2 py-1.5 space-y-1 bg-[#020e24]/60 rounded-xl my-1 border-l border-slate-700/50">
+                                            <Link href="/dashboard/teacher/pd" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/teacher/pd" ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>Training & Workshops</Link>
+                                            <Link href="/dashboard/teacher/pd" className="block py-1.5 px-2 rounded-lg text-xs transition-colors text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40">Certificates</Link>
                                         </div>
                                     )}
                                 </div>
 
                                 {/* Section 11: REPORTS */}
-                                <div className="pt-2 pb-4">
+                                <div className="pt-1">
                                     <button 
                                         onClick={() => toggleMenu("teacherReports")}
-                                        className="w-full flex items-center justify-between px-3 py-2 text-xs font-normal text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                                        className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-medium text-slate-300 hover:bg-[#081e48] hover:text-white transition-all group cursor-pointer"
                                     >
-                                        <div className="flex items-center space-x-2.5">
-                                            <BarChart2 className="w-4 h-4 text-[#4085b3]" />
+                                        <div className="flex items-center space-x-3">
+                                            <BarChart2 className="w-4 h-4 text-amber-400 shrink-0" />
                                             <span>Teacher Reports</span>
                                         </div>
-                                        {openMenus.teacherReports ? <ChevronDown className="w-3.5 h-3.5 text-gray-400" /> : <ChevronRight className="w-3.5 h-3.5 text-gray-400" />}
+                                        {openMenus.teacherReports ? <ChevronDown className="w-3.5 h-3.5 text-slate-400 group-hover:text-white" /> : <ChevronRight className="w-3.5 h-3.5 text-slate-500 group-hover:text-slate-300" />}
                                     </button>
                                     {openMenus.teacherReports && (
-                                        <div className="pl-6 pt-1 space-y-1">
-                                            <Link href="/dashboard/teacher/reports" className={`block px-3 py-1.5 rounded-lg text-xs font-normal ${pathname === "/dashboard/teacher/reports" ? "bg-blue-50 text-[#4085b3]" : "text-gray-600 hover:bg-gray-50"}`}>
-                                                Class Attendance & Scores
-                                            </Link>
+                                        <div className="pl-8 pr-2 py-1.5 space-y-1 bg-[#020e24]/60 rounded-xl my-1 border-l border-slate-700/50">
+                                            <Link href="/dashboard/teacher/reports" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/teacher/reports" ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>Class Attendance & Scores</Link>
                                         </div>
                                     )}
                                 </div>
+
                                 {/* Section 12: AI TEACHER ASSISTANT (Inactive / Coming Soon) */}
-                                <div className="pt-2">
+                                <div className="pt-1">
                                     <div 
-                                        className="w-full flex items-center justify-between px-3 py-2 text-xs font-normal text-gray-400 bg-gray-50/60 rounded-lg cursor-not-allowed select-none"
+                                        className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-medium text-slate-500 bg-[#020e24]/30 cursor-not-allowed select-none"
                                         title="AI Teacher Assistant feature is under development"
                                     >
-                                        <div className="flex items-center space-x-2.5">
-                                            <Sparkles className="w-4 h-4 text-purple-400" />
-                                            <span className="font-medium text-gray-500">AI Teacher Assistant</span>
+                                        <div className="flex items-center space-x-3">
+                                            <Sparkles className="w-4 h-4 text-purple-400 shrink-0" />
+                                            <span>AI Teacher Assistant</span>
                                         </div>
-                                        <span className="text-[9px] font-bold px-1.5 py-0.5 bg-purple-100 text-purple-700 rounded-md uppercase tracking-wider">
+                                        <span className="text-[9px] font-bold px-1.5 py-0.5 bg-purple-900/50 text-purple-300 rounded-md uppercase tracking-wider">
                                             Soon
                                         </span>
                                     </div>
                                 </div>
 
-                                {/* Section 13: SETTINGS */}
-                                <div className="pt-4 border-t border-gray-100 mt-4 mb-4">
-                                    <Link href="/dashboard/teacher/settings" className="flex items-center space-x-2.5 px-3 py-2 text-xs font-normal text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
-                                        <Settings className="w-4 h-4 text-gray-500" />
-                                        <span>Settings</span>
+                                {/* Settings */}
+                                <div className="pt-4 border-t border-[#092254]/60 mt-4 mb-4">
+                                    <Link 
+                                        href="/dashboard/teacher/settings" 
+                                        className={`flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-medium transition-all ${
+                                            pathname === "/dashboard/teacher/settings"
+                                                ? "bg-[#0c2454] text-[#f59e0b] border-l-4 border-[#f59e0b]"
+                                                : "text-slate-300 hover:bg-[#081e48] hover:text-white"
+                                        }`}
+                                    >
+                                        <div className="flex items-center space-x-3">
+                                            <Settings className="w-4 h-4 text-amber-400 shrink-0" />
+                                            <span>Settings</span>
+                                        </div>
                                     </Link>
                                 </div>
                             </nav>
