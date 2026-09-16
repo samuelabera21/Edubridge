@@ -61,7 +61,7 @@ describe("Student Controller", () => {
 
             await enrollStudent(mockReq as Request, mockRes as Response);
 
-            expect(StudentService.enrollStudent).toHaveBeenCalledWith("school1", "s1", "ay1", "sg1", undefined);
+            expect(StudentService.enrollStudent).toHaveBeenCalledWith("school1", "s1", "ay1", "sg1", undefined, undefined);
             expect(mockRes.status).toHaveBeenCalledWith(201);
             expect(mockRes.json).toHaveBeenCalledWith(mockEnrollment);
         });

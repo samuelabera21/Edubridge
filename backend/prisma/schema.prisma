@@ -42,6 +42,15 @@ model User {
   receivedMessages   Message[]           @relation("ReceivedMessages")
   reportedIssues     Issue[]             @relation("ReportedIssues")
   assignedIssues     Issue[]             @relation("AssignedIssues")
+  createdCalendarEvents CalendarEvent[]   @relation("CreatedCalendarEvents")
+  updatedCalendarEvents CalendarEvent[]   @relation("UpdatedCalendarEvents")
+
+  verifiedTeacherQualifications TeacherQualification[] @relation("VerifiedTeacherQualifications")
+  uploadedTeacherDocuments      TeacherDocument[]      @relation("UploadedTeacherDocuments")
+  verifiedTeacherDocuments      TeacherDocument[]      @relation("VerifiedTeacherDocuments")
+  verifiedStudentDocuments      StudentDocument[]      @relation("VerifiedStudentDocuments")
+  requestedCorrections          AttendanceCorrection[] @relation("RequestedCorrections")
+  reviewedCorrections           AttendanceCorrection[] @relation("ReviewedCorrections")
 
   @@unique([email])
   @@map("user")
@@ -188,6 +197,7 @@ model OrganizationUnit {
   issues             Issue[]
   improvementPlans   ImprovementPlan[]
   timetableConfigs   TimetableConfig[]
+  attendanceCorrections AttendanceCorrection[]
 
   @@index([parentId])
   @@index([type])
@@ -258,6 +268,7 @@ model AcademicYear {
   assessments         Assessment[]
   learningActivities  LearningActivity[]
   timetableConfigs    TimetableConfig[]
+  attendanceCorrections AttendanceCorrection[]
 
   @@unique([organizationId, name])
   @@map("academic_year")
@@ -270,13 +281,62 @@ enum AcademicYearStatus {
   ARCHIVED
 }
 
+enum CalendarStatus {
+  DRAFT
+  REVIEW
+  PUBLISHED
+  ARCHIVED
+}
+
+enum CalendarEventCategory {
+  ACADEMIC_PERIOD
+  EXAMINATION
+  HOLIDAY_BREAK
+  SCHOOL_EVENT
+}
+
+enum CalendarEventType {
+  // Academic Periods
+  SEMESTER
+  TERM
+  QUARTER
+  // Examinations
+  MIDTERM_EXAM
+  FINAL_EXAM
+  MAKEUP_EXAM
+  NATIONAL_EXAM
+  REGIONAL_EXAM
+  // Holidays & Breaks
+  PUBLIC_HOLIDAY
+  SCHOOL_HOLIDAY
+  MIDYEAR_BREAK
+  TERM_BREAK
+  OTHER_BREAK
+  // School Events
+  REGISTRATION
+  ORIENTATION
+  SCHOOL_EVENT
+  MEETING
+  OTHER
+}
+
+enum CalendarEventSource {
+  SYSTEM
+  SCHOOL
+  IMPORTED
+}
+
 model AcademicCalendar {
-  id             String  @id @default(cuid())
-  academicYearId String  @unique
+  id             String         @id @default(cuid())
+  academicYearId String         @unique
   description    String?
+  status         CalendarStatus @default(DRAFT)
+  publishedAt    DateTime?
+  publishedById  String?
 
   academicYear AcademicYear     @relation(fields: [academicYearId], references: [id], onDelete: Cascade)
   periods      AcademicPeriod[]
+  events       CalendarEvent[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -293,11 +353,49 @@ model AcademicPeriod {
   type               String // e.g. SEMESTER, TERM
 
   academicCalendar AcademicCalendar @relation(fields: [academicCalendarId], references: [id], onDelete: Cascade)
+  events           CalendarEvent[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@map("academic_period")
+}
+
+model CalendarEvent {
+  id                 String                @id @default(cuid())
+  academicCalendarId String
+  academicPeriodId   String?               // Optional link to parent Semester/Term
+  title              String
+  category           CalendarEventCategory
+  type               CalendarEventType
+  startDate          DateTime
+  endDate            DateTime
+  isAllDay           Boolean               @default(true)
+  isSchoolClosed     Boolean               @default(false)
+  isExternal         Boolean               @default(false) // e.g. national exams
+  description        String?               @db.Text
+  source             CalendarEventSource   @default(SCHOOL)
+  isConfigurable     Boolean               @default(true)
+  status             String                @default("CONFIRMED") // CONFIRMED, TENTATIVE, CANCELLED
+  metadata           Json?                 // for external links, religious holiday details, etc.
+
+  createdById        String?
+  updatedById        String?
+
+  academicCalendar   AcademicCalendar      @relation(fields: [academicCalendarId], references: [id], onDelete: Cascade)
+  academicPeriod     AcademicPeriod?       @relation(fields: [academicPeriodId], references: [id], onDelete: SetNull)
+  createdBy          User?                 @relation("CreatedCalendarEvents", fields: [createdById], references: [id], onDelete: SetNull)
+  updatedBy          User?                 @relation("UpdatedCalendarEvents", fields: [updatedById], references: [id], onDelete: SetNull)
+
+  createdAt          DateTime              @default(now())
+  updatedAt          DateTime              @updatedAt
+
+  @@index([academicCalendarId])
+  @@index([startDate, endDate])
+  @@index([type])
+  @@index([category])
+  @@index([academicPeriodId])
+  @@map("calendar_event")
 }
 
 model Grade {
@@ -321,10 +419,12 @@ model SchoolGrade {
   id             String @id @default(cuid())
   academicYearId String
   gradeId        String
+  status         String @default("ACTIVE") // ACTIVE, SUSPENDED, ARCHIVED
 
   academicYear AcademicYear @relation(fields: [academicYearId], references: [id], onDelete: Cascade)
   grade        Grade        @relation(fields: [gradeId], references: [id], onDelete: Cascade)
   sections     Section[]
+  gradeSubjects SchoolGradeSubject[]
 
   classroomObservations ClassroomObservation[]
 
@@ -342,10 +442,14 @@ model Section {
   schoolGradeId String
   name          String
   capacity      Int?
+  status        String @default("ACTIVE") // ACTIVE, SUSPENDED, ARCHIVED
 
   schoolGrade SchoolGrade @relation(fields: [schoolGradeId], references: [id], onDelete: Cascade)
 
   classroomObservations ClassroomObservation[]
+
+  homeroomTeacherId   String?
+  homeroomTeacher     Teacher?             @relation("SectionHomeroomTeacher", fields: [homeroomTeacherId], references: [id], onDelete: SetNull)
 
   createdAt           DateTime             @default(now())
   updatedAt           DateTime             @updatedAt
@@ -353,6 +457,7 @@ model Section {
   teachingAssignments TeachingAssignment[]
 
   @@unique([schoolGradeId, name])
+  @@index([homeroomTeacherId])
   @@map("section")
 }
 
@@ -364,12 +469,14 @@ model Subject {
 
   organization   OrganizationUnit @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   schoolSubjects SchoolSubject[]
+  gradeSubjects  SchoolGradeSubject[]
 
   classroomObservations ClassroomObservation[]
 
-  createdAt           DateTime             @default(now())
-  updatedAt           DateTime             @updatedAt
-  teachingAssignments TeachingAssignment[]
+  createdAt             DateTime                @default(now())
+  updatedAt             DateTime                @updatedAt
+  teachingAssignments   TeachingAssignment[]
+  teacherSpecializations TeacherSpecialization[]
 
   @@unique([organizationId, name])
   @@map("subject")
@@ -388,6 +495,22 @@ model SchoolSubject {
 
   @@unique([academicYearId, subjectId])
   @@map("school_subject")
+}
+
+model SchoolGradeSubject {
+  id            String   @id @default(cuid())
+  schoolGradeId String
+  subjectId     String
+  weeklyPeriods Int?
+
+  schoolGrade   SchoolGrade @relation(fields: [schoolGradeId], references: [id], onDelete: Cascade)
+  subject       Subject     @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  @@unique([schoolGradeId, subjectId])
+  @@map("school_grade_subject")
 }
 
 // ============================================================
@@ -450,9 +573,10 @@ model Student {
   emergencyContactRelation String?
   emergencyContactPhone    String?
 
-  user        User?                @relation(fields: [userId], references: [id], onDelete: SetNull)
-  enrollments StudentEnrollment[]
-  parents     ParentStudent[]
+  user             User?                @relation(fields: [userId], references: [id], onDelete: SetNull)
+  enrollments      StudentEnrollment[]
+  parents          ParentStudent[]
+  studentDocuments StudentDocument[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -467,6 +591,7 @@ model StudentEnrollment {
   academicYearId String
   schoolGradeId  String
   sectionId      String?
+  enrollmentType EnrollmentType   @default(NEW)
   status         EnrollmentStatus @default(ENROLLED)
   enrollmentDate DateTime         @default(now())
 
@@ -476,10 +601,12 @@ model StudentEnrollment {
   schoolGrade   SchoolGrade            @relation(fields: [schoolGradeId], references: [id], onDelete: Cascade)
   section       Section?               @relation(fields: [sectionId], references: [id], onDelete: SetNull)
   statusHistory StudentStatusHistory[]
+  documents     StudentDocument[]
   attendances   StudentAttendance[]
   results       StudentResult[]
   submissions   Submission[]
   supportFlags  SupportFlag[]
+  attendanceCorrections AttendanceCorrection[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -488,6 +615,46 @@ model StudentEnrollment {
   @@index([organizationId])
   @@index([schoolGradeId])
   @@map("student_enrollment")
+}
+
+model StudentDocument {
+  id                 String                     @id @default(cuid())
+  studentId          String
+  enrollmentId       String?
+  documentType       String                     // BIRTH_CERTIFICATE, PREVIOUS_TRANSCRIPT, PARENT_ID, TRANSFER_CLEARANCE, OTHER
+  title              String
+  fileUrl            String
+  fileSize           Int?
+  mimeType           String?
+  verificationStatus DocumentVerificationStatus @default(PENDING)
+  verificationNotes  String?
+  verifiedAt         DateTime?
+  verifiedById       String?
+
+  student            Student                    @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  enrollment         StudentEnrollment?         @relation(fields: [enrollmentId], references: [id], onDelete: SetNull)
+  verifiedBy         User?                      @relation("VerifiedStudentDocuments", fields: [verifiedById], references: [id], onDelete: SetNull)
+
+  createdAt          DateTime                   @default(now())
+  updatedAt          DateTime                   @updatedAt
+
+  @@index([studentId])
+  @@index([enrollmentId])
+  @@map("student_document")
+}
+
+enum DocumentVerificationStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+  EXEMPT
+}
+
+enum EnrollmentType {
+  NEW
+  RETURNING
+  TRANSFER_IN
+  RE_ENTRY
 }
 
 model StudentStatusHistory {
@@ -515,70 +682,235 @@ enum EnrollmentStatus {
 }
 
 // ============================================================
+// STEP 3: STAFFING & INSTRUCTIONAL ALLOCATION ENUMS
+// ============================================================
+
+enum AssignmentStatus {
+  DRAFT
+  PROPOSED
+  APPROVED
+  ACTIVE
+  ENDED
+  REJECTED
+}
+
+enum TeacherEmploymentType {
+  PERMANENT
+  CONTRACT
+  TRANSFER_IN
+  PART_TIME
+  OTHER
+}
+
+enum TeacherEmploymentStatus {
+  ACTIVE
+  ON_LEAVE
+  TRANSFERRED
+  RESIGNED
+  RETIRED
+  INACTIVE
+}
+
+enum EducationCycle {
+  PRIMARY_FIRST_CYCLE
+  PRIMARY_SECOND_CYCLE
+  SECONDARY_FIRST_CYCLE
+  SECONDARY_SECOND_CYCLE
+}
+
+enum QualificationLevel {
+  CERTIFICATE
+  DIPLOMA
+  BACHELORS
+  MASTERS
+  DOCTORATE
+  OTHER
+}
+
+enum CredentialVerificationStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+  NOT_REVIEWED
+}
+
+enum EquivalencyStatus {
+  NOT_REQUIRED
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
+// ============================================================
 // TEACHER DOMAIN
 // ============================================================
 
 model Teacher {
-  id             String  @id @default(cuid())
-  organizationId String
-  firstName      String
-  lastName       String
-  fatherName     String?
+  id              String   @id @default(cuid())
+  organizationId  String
+  firstName       String
+  lastName        String
+  fatherName      String?
   grandfatherName String?
-  employeeId     String? @unique
-  userId         String? @unique
+  gender          String?
+  dateOfBirth     DateTime?
+  nationality     String?  @default("Ethiopian")
+  nationalIdNumber String?
+
+  employeeId      String?  @unique
+  staffIdCode     String?
+  userId          String?  @unique
   
-  gender         String?
-  dateOfBirth    DateTime?
-  qualification  String?
-  fieldOfStudy   String?
+  qualification   String?  // Legacy / summary field
+  fieldOfStudy    String?
   yearsOfExperience Int?
   
-  phoneNumber    String?
-  email          String?
+  phoneNumber     String?
+  email           String?
   
-  // Address
-  region         String?
-  zone           String?
-  woreda         String?
-  city           String?
-  kebele         String?
-  houseNumber    String?
-  
-  // Media & Documents
-  photoUrl       String?
-  documents      Json?
-  
-  status         String  @default("ACTIVE")
-  availability   Json?
+  // Employment Lifecycle (Step 3 & 3A)
+  employmentType   TeacherEmploymentType   @default(PERMANENT)
+  employmentStatus TeacherEmploymentStatus @default(ACTIVE)
+  joiningDate      DateTime?               @default(now())
+  jobTitle         String?                 @default("Teacher")
+  targetWorkload   Int                     @default(22)
+  minWorkload      Int                     @default(18)
+  maxWorkload      Int                     @default(28)
 
-  organization OrganizationUnit     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  user         User?                @relation(fields: [userId], references: [id], onDelete: SetNull)
-  assignments  TeachingAssignment[]
-  attendances  TeacherAttendance[]
+  // Address
+  region          String?
+  zone            String?
+  woreda          String?
+  city            String?
+  kebele          String?
+  houseNumber     String?
+  
+  // Media & Legacy Documents
+  photoUrl        String?
+  documents       Json?
+  
+  status          String   @default("ACTIVE")
+  availability    Json?
+
+  organization     OrganizationUnit        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user             User?                   @relation(fields: [userId], references: [id], onDelete: SetNull)
+  assignments      TeachingAssignment[]
+  specializations  TeacherSpecialization[]
+  qualifications   TeacherQualification[]
+  teacherDocuments TeacherDocument[]
+  homeroomSections Section[]               @relation("SectionHomeroomTeacher")
+  attendances      TeacherAttendance[]
 
   classroomObservations ClassroomObservation[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@index([organizationId])
+  @@index([employmentStatus])
   @@map("teacher")
 }
 
+model TeacherQualification {
+  id                 String                       @id @default(cuid())
+  teacherId          String
+  qualificationLevel QualificationLevel
+  qualificationTitle String
+  fieldOfStudy       String
+  institution        String
+  graduationYear     Int
+  credentialNumber   String?
+  country            String                       @default("Ethiopia")
+  documentUrl        String?
+  verificationStatus CredentialVerificationStatus @default(PENDING)
+  equivalencyStatus  EquivalencyStatus            @default(NOT_REQUIRED)
+  verifiedById       String?
+  verifiedAt         DateTime?
+  verificationNotes  String?
+  isHighest          Boolean                      @default(false)
+
+  teacher    Teacher @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  verifiedBy User?   @relation("VerifiedTeacherQualifications", fields: [verifiedById], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([teacherId])
+  @@index([verificationStatus])
+  @@map("teacher_qualification")
+}
+
+model TeacherDocument {
+  id                 String                       @id @default(cuid())
+  teacherId          String
+  documentType       String                       // QUALIFICATION_CERTIFICATE, TRANSCRIPT, NATIONAL_ID, APPOINTMENT_LETTER, CV, OTHER
+  title              String
+  fileUrl            String
+  uploadedById       String?
+  uploadedAt         DateTime                     @default(now())
+  verificationStatus CredentialVerificationStatus @default(PENDING)
+  verifiedById       String?
+  verifiedAt         DateTime?
+  verificationNotes  String?
+
+  teacher    Teacher @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  uploadedBy User?   @relation("UploadedTeacherDocuments", fields: [uploadedById], references: [id], onDelete: SetNull)
+  verifiedBy User?   @relation("VerifiedTeacherDocuments", fields: [verifiedById], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([teacherId])
+  @@index([documentType])
+  @@map("teacher_document")
+}
+
+model TeacherSpecialization {
+  id          String          @id @default(cuid())
+  teacherId   String
+  subjectId   String
+  cycle       EducationCycle?
+  isPrimary   Boolean         @default(true)
+  verified    Boolean         @default(false)
+  notes       String?
+
+  teacher     Teacher         @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  subject     Subject         @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  @@unique([teacherId, subjectId])
+  @@index([teacherId])
+  @@index([subjectId])
+  @@map("teacher_specialization")
+}
+
 model TeachingAssignment {
-  id             String  @id @default(cuid())
+  id             String           @id @default(cuid())
   teacherId      String
   academicYearId String
   subjectId      String
   schoolGradeId  String
   sectionId      String?
-  periodsPerWeek Int     @default(0)
+  periodsPerWeek Int              @default(0)
+
+  // Assignment Lifecycle & Audit (Step 3)
+  status              AssignmentStatus @default(PROPOSED)
+  proposedById        String?
+  approvedById        String?
+  approvedAt          DateTime?
+  rejectionReason     String?
+  effectiveStartDate  DateTime?
+  effectiveEndDate    DateTime?
 
   teacher            Teacher            @relation(fields: [teacherId], references: [id], onDelete: Cascade)
   academicYear       AcademicYear       @relation(fields: [academicYearId], references: [id], onDelete: Cascade)
   subject            Subject            @relation(fields: [subjectId], references: [id], onDelete: Cascade)
   schoolGrade        SchoolGrade        @relation(fields: [schoolGradeId], references: [id], onDelete: Cascade)
   section            Section?           @relation(fields: [sectionId], references: [id], onDelete: SetNull)
+  
+  // CRITICAL DATA PRESERVATION: Restrict deletion so removing an assignment never cascades and destroys student assessments, marks, or timetables
   timetables         Timetable[]
   assessments        Assessment[]
   learningActivities LearningActivity[]
@@ -586,8 +918,10 @@ model TeachingAssignment {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  // A teacher should not be assigned the same exact class/subject twice in a year
-  @@unique([teacherId, academicYearId, subjectId, sectionId])
+  // Indexed for fast lookups and historical filtering
+  @@index([academicYearId, status])
+  @@index([teacherId, academicYearId])
+  @@index([schoolGradeId, sectionId, subjectId])
   @@map("teaching_assignment")
 }
 
@@ -645,6 +979,7 @@ model ClassPeriod {
   organization       OrganizationUnit    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   timetables         Timetable[]
   studentAttendances StudentAttendance[]
+  attendanceCorrections AttendanceCorrection[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -664,7 +999,7 @@ model Timetable {
 
   organization       OrganizationUnit   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   academicYear       AcademicYear       @relation(fields: [academicYearId], references: [id], onDelete: Cascade)
-  teachingAssignment TeachingAssignment @relation(fields: [teachingAssignmentId], references: [id], onDelete: Cascade)
+  teachingAssignment TeachingAssignment @relation(fields: [teachingAssignmentId], references: [id], onDelete: Restrict)
   classPeriod        ClassPeriod        @relation(fields: [classPeriodId], references: [id], onDelete: Cascade)
   room               SchoolResource?    @relation(fields: [roomId], references: [id], onDelete: SetNull)
 
@@ -735,6 +1070,46 @@ model TeacherAttendance {
   @@map("teacher_attendance")
 }
 
+enum AttendanceCorrectionStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model AttendanceCorrection {
+  id                  String                     @id @default(cuid())
+  organizationId      String
+  academicYearId      String
+  attendanceId        String?
+  enrollmentId        String
+  date                DateTime                   @db.Date
+  classPeriodId       String?
+  originalStatus      AttendanceStatus
+  requestedStatus     AttendanceStatus
+  reasonCategory      String
+  justification       String
+  evidenceDocumentUrl String?
+  status              AttendanceCorrectionStatus @default(PENDING)
+  requestedById       String
+  reviewedById        String?
+  reviewedAt          DateTime?
+  rejectionReason     String?
+  createdAt           DateTime                   @default(now())
+  updatedAt           DateTime                   @updatedAt
+
+  organization OrganizationUnit  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  academicYear AcademicYear      @relation(fields: [academicYearId], references: [id], onDelete: Cascade)
+  enrollment   StudentEnrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+  classPeriod  ClassPeriod?      @relation(fields: [classPeriodId], references: [id], onDelete: SetNull)
+  requestedBy  User              @relation("RequestedCorrections", fields: [requestedById], references: [id], onDelete: Cascade)
+  reviewedBy   User?             @relation("ReviewedCorrections", fields: [reviewedById], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, status])
+  @@index([enrollmentId])
+  @@index([academicYearId])
+  @@map("attendance_correction")
+}
+
 // ============================================================
 // ASSESSMENT DOMAIN
 // ============================================================
@@ -761,7 +1136,7 @@ model Assessment {
 
   organization       OrganizationUnit   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   academicYear       AcademicYear       @relation(fields: [academicYearId], references: [id], onDelete: Cascade)
-  teachingAssignment TeachingAssignment @relation(fields: [teachingAssignmentId], references: [id], onDelete: Cascade)
+  teachingAssignment TeachingAssignment @relation(fields: [teachingAssignmentId], references: [id], onDelete: Restrict)
   results            StudentResult[]
 
   createdAt DateTime @default(now())
@@ -814,7 +1189,7 @@ model LearningActivity {
 
   organization       OrganizationUnit   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   academicYear       AcademicYear       @relation(fields: [academicYearId], references: [id], onDelete: Cascade)
-  teachingAssignment TeachingAssignment @relation(fields: [teachingAssignmentId], references: [id], onDelete: Cascade)
+  teachingAssignment TeachingAssignment @relation(fields: [teachingAssignmentId], references: [id], onDelete: Restrict)
   submissions        Submission[]
 
   createdAt DateTime @default(now())

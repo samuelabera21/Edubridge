@@ -88,21 +88,43 @@ export async function getDashboardOverview(organizationId: string) {
     const atRiskStudents = await prisma.interventionPlan.count({ where: { organizationId } });
     const activeSIP = await prisma.improvementPlan.count({ where: { organizationId } });
 
-    const attendanceRate = attendanceTotal > 0 ? Math.round((attendancePresent / attendanceTotal) * 100) : 94.5;
-    const teacherAvgWorkload = totalTeachers > 0 ? (totalAssignments / totalTeachers).toFixed(1) : "4.0";
+    const activeYear = await prisma.academicYear.findFirst({
+        where: { organizationId, status: "ACTIVE" },
+        include: {
+            academicCalendar: {
+                include: {
+                    periods: {
+                        orderBy: { startDate: "asc" }
+                    }
+                }
+            }
+        }
+    });
+
+    const activeYearName = activeYear ? activeYear.name : "Not Configured";
+    const activePeriodName = activeYear?.academicCalendar?.periods?.[0]?.name || "Not Configured";
+
+    const attendanceRate = attendanceTotal > 0 ? `${Math.round((attendancePresent / attendanceTotal) * 100)}%` : "0%";
+    const teacherAvgWorkload = totalTeachers > 0 ? (totalAssignments / totalTeachers).toFixed(1) : "0.0";
+    const genderRatio = totalStudents > 0 
+        ? `${Math.round((femaleStudents / totalStudents) * 100)}% Female / ${Math.round((maleStudents / totalStudents) * 100)}% Male` 
+        : "0% Female / 0% Male";
+    const assessmentCompletion = totalAssessments > 0 
+        ? `${Math.round((publishedAssessments / totalAssessments) * 100)}%` 
+        : "0%";
 
     return {
         schoolOverview: {
             organizationId,
-            status: "OPTIMAL ACADEMIC STABILITY",
-            academicYear: "2018 E.C.",
-            activeTerm: "Semester 1"
+            status: activeYear ? "ACTIVE ACADEMIC OPERATIONS" : "SETUP REQUIRED",
+            academicYear: activeYearName,
+            activeTerm: activePeriodName
         },
         studentStats: {
             totalStudents,
             maleStudents,
             femaleStudents,
-            genderRatio: totalStudents > 0 ? `${Math.round((femaleStudents / totalStudents) * 100)}% Female / ${Math.round((maleStudents / totalStudents) * 100)}% Male` : "52% Female / 48% Male"
+            genderRatio
         },
         teacherStats: {
             totalTeachers,
@@ -110,43 +132,40 @@ export async function getDashboardOverview(organizationId: string) {
             averageWorkload: `${teacherAvgWorkload} Subjects/Teacher`
         },
         attendanceOverview: {
-            overallAttendanceRate: `${attendanceRate}%`,
+            overallAttendanceRate: attendanceRate,
             presentRecords: attendancePresent,
             totalRecords: attendanceTotal
         },
         assessmentOverview: {
             totalAssessments,
             publishedAssessments,
-            completionRate: totalAssessments > 0 ? `${Math.round((publishedAssessments / totalAssessments) * 100)}%` : "96.2%"
+            completionRate: assessmentCompletion
         },
         academicPerformance: {
-            averageScore: "78.4%",
-            topPerformersCount: Math.round(totalStudents * 0.25),
-            passRatio: "91.4%"
+            averageScore: totalAssessments > 0 ? "0%" : "N/A",
+            topPerformersCount: 0,
+            passRatio: totalAssessments > 0 ? "0%" : "N/A"
         },
         curriculumProgress: {
-            completionRate: "88.0%",
-            approvedLessonsCount: 42,
-            pendingReviewCount: 5
+            completionRate: "0%",
+            approvedLessonsCount: 0,
+            pendingReviewCount: 0
         },
         studentSupportOverview: {
             atRiskCount: atRiskStudents,
             activeInterventions: atRiskStudents,
-            recoveryRate: "89.0%"
+            recoveryRate: "0%"
         },
         schoolImprovementProgress: {
             activePlansCount: activeSIP,
-            completedTargets: 8,
-            resolutionRate: "92.5%"
+            completedTargets: 0,
+            resolutionRate: "0%"
         },
-        importantAlerts: [
-            { id: "1", type: "ATTENDANCE_ALERT", text: "Grade 9 morning arrival delay risk detected for upcoming rain forecast", severity: "HIGH" },
-            { id: "2", type: "APPROVAL_PENDING", text: "3 Mid-Term Physics assessment plans awaiting Principal approval", severity: "MEDIUM" }
-        ],
+        importantAlerts: [],
         aiSchoolInsights: {
-            overallStatus: "HIGH INSTITUTIONAL PERFORMANCE",
-            aiSummary: `AI engine evaluated ${totalStudents} active students across ${totalTeachers} faculty members. Current academic trajectory demonstrates high syllabus compliance and strong grade stability.`,
-            confidenceScore: 0.96
+            overallStatus: activeYear ? "OPERATIONAL" : "CONFIGURATION PENDING",
+            aiSummary: `System evaluated ${totalStudents} enrolled students across ${totalTeachers} active staff members for ${activeYearName}.`,
+            confidenceScore: 1.0
         }
     };
 }

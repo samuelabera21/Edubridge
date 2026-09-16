@@ -23,6 +23,8 @@ import improvementRoutes from "./modules/improvement/improvement.routes.js";
 import reportsRoutes from "./modules/reports/reports.routes.js";
 import aiLeadershipRoutes from "./modules/ai-leadership/ai-leadership.routes.js";
 import schoolSettingsRoutes from "./modules/school-settings/school-settings.routes.js";
+import storageRoutes from "./modules/storage/storage.routes.js";
+import { StorageService } from "./modules/storage/storage.service.js";
 import swaggerUi from "swagger-ui-express";
 import { swaggerSpec } from "./swagger.js";
 
@@ -72,6 +74,7 @@ app.use("/api/improvement", improvementRoutes);
 app.use("/api/reports", reportsRoutes);
 app.use("/api/ai-leadership", aiLeadershipRoutes);
 app.use("/api/school-settings", schoolSettingsRoutes);
+app.use("/api/storage", storageRoutes);
 
 app.get("/", (_req, res) => {
     res.json({
@@ -88,4 +91,8 @@ app.use(errorHandler);
 
 app.listen(PORT, () => {
     console.log(`Server running on http://localhost:${PORT}`);
+    // Verify MinIO bucket exists on startup (non-blocking)
+    StorageService.ensureBucketExists().catch(err =>
+        console.warn("[Storage] Bucket check failed:", err?.message)
+    );
 });

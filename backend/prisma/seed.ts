@@ -71,7 +71,7 @@ async function main() {
     }
 
     const teacherPermissions = [
-        "ACADEMIC:VIEW", "ACADEMIC:CREATE", "ACADEMIC:UPDATE",
+        "ACADEMIC:VIEW",
         "TEACHER:VIEW", "STUDENT:VIEW", "STUDENT:CREATE", "STUDENT:ENROLL",
         "ATTENDANCE:VIEW", "ATTENDANCE:RECORD",
         "ASSESSMENT:VIEW", "ASSESSMENT:CREATE", "ASSESSMENT:GRADE",
@@ -85,7 +85,37 @@ async function main() {
         }
     }
 
-    console.log(`✅ System permissions attached to ADMIN, SCHOOL_ADMIN, and TEACHER roles.`);
+    const vicePrincipalPermissions = [
+        "ACADEMIC:VIEW", "ACADEMIC:CREATE", "ACADEMIC:UPDATE", "ACADEMIC:MANAGE",
+        "TEACHER:VIEW", "STUDENT:VIEW",
+        "ATTENDANCE:VIEW", "ASSESSMENT:VIEW",
+        "SCHOOL:VIEW", "OPERATIONAL:VIEW",
+        "ISSUE:VIEW"
+    ];
+    for (const permName of vicePrincipalPermissions) {
+        const found = permissions.find(p => p.name === permName);
+        if (found) {
+            await assignPermissionToRole("VICE_PRINCIPAL", found.name, found.desc);
+        }
+    }
+
+    // Explicitly clean up any historical ACADEMIC:CREATE / ACADEMIC:UPDATE permissions attached to TEACHER
+    const teacherRole = await prisma.role.findUnique({ where: { name: "TEACHER" } });
+    if (teacherRole) {
+        const writePerms = await prisma.permission.findMany({
+            where: { name: { in: ["ACADEMIC:CREATE", "ACADEMIC:UPDATE", "ACADEMIC:MANAGE"] } }
+        });
+        if (writePerms.length > 0) {
+            await prisma.rolePermission.deleteMany({
+                where: {
+                    roleId: teacherRole.id,
+                    permissionId: { in: writePerms.map(p => p.id) }
+                }
+            });
+        }
+    }
+
+    console.log(`✅ System permissions attached to ADMIN, SCHOOL_ADMIN, VICE_PRINCIPAL, and TEACHER roles (Academic write restricted from TEACHER).`);
 
     // 4. Seed Default Organization Units & School Profile
     let federalUnit = await prisma.organizationUnit.findFirst({ where: { type: "FEDERAL" } });

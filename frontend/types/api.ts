@@ -26,7 +26,7 @@ export interface AcademicYear {
     name: string;
     startDate: string;
     endDate: string;
-    status: "DRAFT" | "ACTIVE" | "COMPLETED";
+    status: "PLANNED" | "ACTIVE" | "COMPLETED" | "ARCHIVED";
     stats?: {
         students: number;
         teachers: number;

@@ -554,49 +554,50 @@ export async function getAcademicAnomaliesStaffing(organizationId: string) {
     });
     if (!activeYear) return { unstaffedSubjects: [] };
 
-    // Fetch all sections in this academic year
+    // Fetch all sections with their configured curriculum subjects
     const sections = await prisma.section.findMany({
         where: { schoolGrade: { academicYearId: activeYear.id } },
         include: {
-            schoolGrade: { include: { grade: true } },
-            studentEnrollments: true
+            schoolGrade: {
+                include: {
+                    grade: true,
+                    gradeSubjects: {
+                        include: { subject: true }
+                    }
+                }
+            }
         }
     });
 
     const allAssignments = await prisma.teachingAssignment.findMany({
-        where: { academicYearId: activeYear.id, teacher: { organizationId } },
+        where: {
+            academicYearId: activeYear.id,
+            teacher: { organizationId },
+            status: { in: ["ACTIVE", "APPROVED", "PROPOSED"] }
+        },
         include: { subject: true }
     });
 
     const unstaffedSubjects = [];
     
     for (const section of sections) {
-        const sectionAssignments = allAssignments.filter(a => a.sectionId === section.id);
-        
-        // Hardcoded check for "Grade 10B Physics" example
-        if (section.schoolGrade.grade.name === "Grade 10" && section.name === "B") {
-            const hasPhysics = sectionAssignments.some(a => a.subject.name.toLowerCase().includes("physics"));
-            if (!hasPhysics) {
+        const configuredSubjects = section.schoolGrade.gradeSubjects;
+
+        for (const gs of configuredSubjects) {
+            const isAssigned = allAssignments.some(
+                (a) => a.schoolGradeId === section.schoolGradeId && a.sectionId === section.id && a.subjectId === gs.subjectId
+            );
+
+            if (!isAssigned) {
                 unstaffedSubjects.push({
-                    grade: "Grade 10",
-                    section: "B",
-                    subject: "Physics",
+                    grade: section.schoolGrade.grade.name,
+                    section: section.name,
+                    subject: gs.subject.name,
                     teacher: "NONE",
                     status: "⚠ Requires attention",
-                    reason: "Subject without teacher"
+                    reason: `Unassigned curriculum subject (${gs.weeklyPeriods || 0} periods/wk required)`
                 });
             }
-        }
-        
-        if (sectionAssignments.length === 0) {
-            unstaffedSubjects.push({
-                grade: section.schoolGrade.grade.name,
-                section: section.name,
-                subject: "Multiple Core Subjects",
-                teacher: "NONE",
-                status: "⚠ Requires attention",
-                reason: "Class without teacher (0 assigned)"
-            });
         }
     }
 
@@ -613,31 +614,38 @@ export async function getAcademicAnomaliesWorkload(organizationId: string) {
         where: { organizationId },
         include: {
             assignments: {
-                where: { academicYearId: activeYear.id }
+                where: {
+                    academicYearId: activeYear.id,
+                    status: { in: ["ACTIVE", "APPROVED", "PROPOSED"] }
+                }
             }
         }
     });
 
     const workloadAnomalies = [];
     for (const teacher of teachers) {
-        const load = teacher.assignments.length;
-        if (load === 0) continue; 
+        // Calculate true weekly periods rather than counting assignment rows
+        const totalPeriods = teacher.assignments.reduce((acc, curr) => acc + (curr.periodsPerWeek || 0), 0);
+        if (totalPeriods === 0) continue; 
+
+        const minW = teacher.minWorkload ?? 18;
+        const maxW = teacher.maxWorkload ?? 28;
         
-        if (load > 6) {
+        if (totalPeriods > maxW) {
             workloadAnomalies.push({
                 teacherId: teacher.id,
-                teacherName: `${teacher.firstName} ${teacher.lastName}`,
-                load,
+                teacherName: `${teacher.firstName} ${teacher.lastName}`.trim(),
+                load: totalPeriods,
                 status: "⚠ Overloaded",
-                reason: "Teacher overload (assigned to >6 classes)"
+                reason: `Teacher overload (${totalPeriods} periods/wk exceeds max limit of ${maxW})`
             });
-        } else if (load < 2) {
+        } else if (totalPeriods < minW) {
             workloadAnomalies.push({
                 teacherId: teacher.id,
-                teacherName: `${teacher.firstName} ${teacher.lastName}`,
-                load,
+                teacherName: `${teacher.firstName} ${teacher.lastName}`.trim(),
+                load: totalPeriods,
                 status: "⚠ Under-allocated",
-                reason: "Teacher under-allocation (assigned to <2 classes)"
+                reason: `Teacher under-allocation (${totalPeriods} periods/wk below min target of ${minW})`
             });
         }
     }

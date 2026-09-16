@@ -1,5 +1,7 @@
 import { Router } from "express";
 import { 
+    registerStudentIntake,
+    searchStudents,
     createStudent, 
     getStudents,
     getStudentById,
@@ -7,6 +9,7 @@ import {
     getEnrollments, 
     transferStudent,
     updateStudentStatus,
+    verifyDocumentHandler,
     getStudentProfile,
     getStudentDashboard,
     getTransfersHandler,
@@ -14,9 +17,53 @@ import {
     getApprovalsHandler,
     createApprovalHandler
 } from "./student.controller.js";
+import {
+    getPlacementWorkspaceHandler,
+    assignStudentHandler,
+    bulkAssignStudentsHandler,
+    reassignStudentSectionHandler,
+    getSectionRosterHandler,
+    getEnrollmentPlacementHistoryHandler
+} from "./student.placement.controller.js";
 import { requirePermission, requireScope } from "../authentication/authorization.middleware.js";
 
 const router = Router();
+
+/**
+ * @openapi
+ * /api/student/register:
+ *   post:
+ *     tags: [Students]
+ *     summary: Step 4 Atomic Student Intake & Academic-Year Enrollment
+ *     security:
+ *       - bearerAuth: []
+ *       - cookieAuth: []
+ */
+router.post("/register", requireScope("SCHOOL"), requirePermission("ACADEMIC:CREATE"), registerStudentIntake);
+
+/**
+ * @openapi
+ * /api/student/search:
+ *   get:
+ *     tags: [Students]
+ *     summary: Search existing students for duplicate check & returning enrollment
+ *     security:
+ *       - bearerAuth: []
+ *       - cookieAuth: []
+ */
+router.get("/search", requireScope("SCHOOL"), requirePermission("ACADEMIC:VIEW"), searchStudents);
+
+/**
+ * @openapi
+ * /api/student/documents/{id}/verify:
+ *   put:
+ *     tags: [Students]
+ *     summary: Verify or reject supporting evidence document
+ *     security:
+ *       - bearerAuth: []
+ *       - cookieAuth: []
+ */
+router.put("/documents/:id/verify", requireScope("SCHOOL"), requirePermission("ACADEMIC:UPDATE"), verifyDocumentHandler);
 
 /**
  * @openapi
@@ -35,14 +82,12 @@ router.post("/", requirePermission("ACADEMIC:CREATE"), createStudent);
  * /api/student:
  *   get:
  *     tags: [Students]
- *     summary: Get all student identities (Platform level)
+ *     summary: Get all students (scoped to school when school context is present)
  *     security:
  *       - bearerAuth: []
  *       - cookieAuth: []
  */
-router.get("/", requirePermission("ACADEMIC:VIEW"), getStudents);
-
-
+router.get("/", requireScope("SCHOOL"), requirePermission("ACADEMIC:VIEW"), getStudents);
 
 // Enrollment Management - explicitly scoped to SCHOOL context
 /**
@@ -112,7 +157,7 @@ router.get("/dashboard", requireScope("SCHOOL"), getStudentDashboard);
  * /api/student/{id}:
  *   get:
  *     tags: [Students]
- *     summary: Get a single student's profile (including enrollments and documents)
+ *     summary: Get a single student's profile (including enrollments, guardians, and documents)
  *     security:
  *       - bearerAuth: []
  *       - cookieAuth: []
@@ -121,6 +166,16 @@ router.get("/transfers/history", requireScope("SCHOOL"), requirePermission("ACAD
 router.post("/progression/execute", requireScope("SCHOOL"), requirePermission("ACADEMIC:UPDATE"), executeProgressionHandler);
 router.get("/approvals/queue", requireScope("SCHOOL"), requirePermission("ACADEMIC:VIEW"), getApprovalsHandler);
 router.post("/approvals/request", requireScope("SCHOOL"), requirePermission("ACADEMIC:CREATE"), createApprovalHandler);
+
+// ============================================================
+// STEP 5: STUDENT PLACEMENT & CLASSROOM ROSTER ROUTES
+// ============================================================
+router.get("/placement/workspace", requireScope("SCHOOL"), requirePermission("ACADEMIC:VIEW"), getPlacementWorkspaceHandler);
+router.post("/placement/assign", requireScope("SCHOOL"), requirePermission("ACADEMIC:UPDATE"), assignStudentHandler);
+router.post("/placement/bulk-assign", requireScope("SCHOOL"), requirePermission("ACADEMIC:UPDATE"), bulkAssignStudentsHandler);
+router.post("/placement/reassign", requireScope("SCHOOL"), requirePermission("ACADEMIC:UPDATE"), reassignStudentSectionHandler);
+router.get("/placement/sections/:sectionId/roster", requireScope("SCHOOL"), requirePermission("ACADEMIC:VIEW"), getSectionRosterHandler);
+router.get("/placement/enrollments/:enrollmentId/history", requireScope("SCHOOL"), requirePermission("ACADEMIC:VIEW"), getEnrollmentPlacementHistoryHandler);
 
 router.get("/:id", requireScope("SCHOOL"), requirePermission("ACADEMIC:VIEW"), getStudentById);
 

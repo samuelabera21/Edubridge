@@ -135,12 +135,15 @@ export const getStudentReportCard = async (req: Request, res: Response) => {
     }
 };
 
+import { AssessmentAdminService } from "./assessment.admin.service.js";
+
 export const getSubjectAnalytics = async (req: Request, res: Response) => {
     try {
         const organizationId = (req as any).accessScope?.id;
         if (!organizationId) return res.status(403).json({ error: "Missing school scope" });
 
-        const analytics = await AssessmentService.getSubjectAnalytics(organizationId);
+        const { academicYearId } = req.query;
+        const analytics = await AssessmentService.getSubjectAnalytics(organizationId, academicYearId as string);
         return res.json(analytics);
     } catch (error: any) {
         return res.status(500).json({ error: error.message || "Failed to fetch subject analytics" });
@@ -170,3 +173,112 @@ export const getGradebookApprovals = async (req: Request, res: Response) => {
         return res.status(500).json({ error: error.message || "Failed to fetch gradebook approvals" });
     }
 };
+
+// ============================================================
+// SCHOOL ADMINISTRATOR / PRINCIPAL OVERSIGHT CONTROLLERS
+// ============================================================
+
+export const getAdminOverview = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        if (!organizationId) return res.status(403).json({ error: "Missing school scope" });
+
+        const { academicYearId, schoolGradeId, sectionId, subjectId, assessmentId } = req.query;
+
+        const overview = await AssessmentAdminService.getOverview(organizationId, {
+            academicYearId: academicYearId as string,
+            schoolGradeId: schoolGradeId as string,
+            sectionId: sectionId as string,
+            subjectId: subjectId as string,
+            assessmentId: assessmentId as string
+        });
+
+        return res.json(overview);
+    } catch (error: any) {
+        return res.status(500).json({ error: error.message || "Failed to fetch assessment overview" });
+    }
+};
+
+export const getAdminResults = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        if (!organizationId) return res.status(403).json({ error: "Missing school scope" });
+
+        const { academicYearId, schoolGradeId, sectionId, subjectId, assessmentId, search, page, limit } = req.query;
+
+        const data = await AssessmentAdminService.getSchoolResults(organizationId, {
+            academicYearId: academicYearId as string,
+            schoolGradeId: schoolGradeId as string,
+            sectionId: sectionId as string,
+            subjectId: subjectId as string,
+            assessmentId: assessmentId as string,
+            search: search as string,
+            page: page ? Number(page) : 1,
+            limit: limit ? Number(limit) : 20
+        });
+
+        return res.json(data);
+    } catch (error: any) {
+        return res.status(500).json({ error: error.message || "Failed to fetch school results" });
+    }
+};
+
+export const getAdminStudentResultDetail = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        if (!organizationId) return res.status(403).json({ error: "Missing school scope" });
+
+        const { enrollmentId } = req.params;
+        const { academicYearId } = req.query;
+
+        const detail = await AssessmentAdminService.getStudentResultDetail(
+            organizationId,
+            enrollmentId as string,
+            academicYearId as string
+        );
+
+        return res.json(detail);
+    } catch (error: any) {
+        return res.status(404).json({ error: error.message || "Failed to fetch student result detail" });
+    }
+};
+
+export const getAdminFilterOptions = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        if (!organizationId) return res.status(403).json({ error: "Missing school scope" });
+
+        const { academicYearId } = req.query;
+
+        const options = await AssessmentAdminService.getFilterOptions(
+            organizationId,
+            academicYearId as string
+        );
+
+        return res.json(options);
+    } catch (error: any) {
+        return res.status(500).json({ error: error.message || "Failed to fetch filter options" });
+    }
+};
+
+export const getAdminStudentsRoster = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        if (!organizationId) return res.status(403).json({ error: "Missing school scope" });
+
+        const { academicYearId, schoolGradeId, sectionId, search } = req.query;
+
+        const roster = await AssessmentAdminService.getStudentsRoster(organizationId, {
+            academicYearId: academicYearId as string,
+            schoolGradeId: schoolGradeId as string,
+            sectionId: sectionId as string,
+            search: search as string
+        });
+
+        return res.json(roster);
+    } catch (error: any) {
+        return res.status(500).json({ error: error.message || "Failed to fetch student roster" });
+    }
+};
+
+

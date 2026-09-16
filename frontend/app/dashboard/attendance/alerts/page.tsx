@@ -1,336 +1,415 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { fetchApi } from "@/lib/api";
 import { useAuth } from "@/hooks/useAuth";
 import { 
     AlertTriangle, 
-    Phone, 
-    Mail, 
     ShieldAlert, 
-    CheckCircle2, 
     Search, 
     X, 
     UserCheck, 
-    FileText,
     Calendar,
-    Clock
+    Clock,
+    ArrowRight,
+    CheckCircle2,
+    Building2,
+    User,
+    RefreshCw,
+    ExternalLink
 } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { LoadingState } from "@/components/ui/LoadingState";
+import { ErrorState } from "@/components/ui/ErrorState";
+import { AcademicYear } from "@/types/api";
 
-interface RepeatedAbsenceAlert {
+interface RiskAlert {
     id: string;
-    studentName: string;
-    studentIdCode: string;
-    gradeName: string;
-    sectionName: string;
-    consecutiveAbsentDays: number;
-    lastAbsentDate: string;
-    parentPhone?: string;
-    parentName?: string;
-    riskLevel: "HIGH" | "MODERATE";
-    status: "OPEN" | "CONTACTED" | "RESOLVED";
+    type: "STUDENT_CONSECUTIVE_ABSENCE" | "STUDENT_CHRONIC_ABSENCE" | "SECTION_ANOMALY" | "TEACHER_ABSENCE";
+    severity: "CRITICAL" | "WARNING" | "INFO";
+    targetId: string;
+    enrollmentId?: string;
+    teacherId?: string;
+    sectionId?: string;
+    title: string;
+    description: string;
+    metric: string;
+    date?: string;
+    suggestedAction: string;
 }
 
 export default function AttendanceAlertsPage() {
+    const router = useRouter();
     const { authData } = useAuth();
+
+    const [years, setYears] = useState<AcademicYear[]>([]);
+    const [selectedYearId, setSelectedYearId] = useState<string>("");
+    
+    const [alerts, setAlerts] = useState<RiskAlert[]>([]);
     const [loading, setLoading] = useState(true);
-    const [alerts, setAlerts] = useState<RepeatedAbsenceAlert[]>([]);
-    const [searchQuery, setSearchQuery] = useState("");
-    const [selectedRisk, setSelectedRisk] = useState("ALL");
-    const [successMsg, setSuccessMsg] = useState<string | null>(null);
+    const [refreshing, setRefreshing] = useState(false);
+    const [error, setError] = useState<string | null>(null);
 
-    // Modal state for parent contact log
-    const [isContactModalOpen, setIsContactModalOpen] = useState(false);
-    const [activeAlert, setActiveAlert] = useState<RepeatedAbsenceAlert | null>(null);
-    const [contactNotes, setContactNotes] = useState("");
+    const [selectedSeverity, setSelectedSeverity] = useState<string>("ALL");
+    const [searchQuery, setSearchQuery] = useState<string>("");
 
-    const loadAlerts = async () => {
-        try {
-            setLoading(true);
-            
-            // Dummy / Mock initial alerts for demonstration
-            const sampleAlerts: RepeatedAbsenceAlert[] = [
-                {
-                    id: "alt-01",
-                    studentName: "Abebe Kebede Tadesse",
-                    studentIdCode: "STU-9012",
-                    gradeName: "Grade 9",
-                    sectionName: "Section A",
-                    consecutiveAbsentDays: 5,
-                    lastAbsentDate: new Date().toISOString().split("T")[0],
-                    parentPhone: "+251 91 123 4567",
-                    parentName: "Kebede Tadesse",
-                    riskLevel: "HIGH",
-                    status: "OPEN"
-                },
-                {
-                    id: "alt-02",
-                    studentName: "Marta Haile Sellassie",
-                    studentIdCode: "STU-9045",
-                    gradeName: "Grade 10",
-                    sectionName: "Section B",
-                    consecutiveAbsentDays: 3,
-                    lastAbsentDate: new Date().toISOString().split("T")[0],
-                    parentPhone: "+251 92 888 7766",
-                    parentName: "Haile Sellassie",
-                    riskLevel: "MODERATE",
-                    status: "OPEN"
+    // Action Modal
+    const [activeAlert, setActiveAlert] = useState<RiskAlert | null>(null);
+    const [actionNotes, setActionNotes] = useState("");
+    const [actionSuccessMsg, setActionSuccessMsg] = useState<string | null>(null);
+
+    // Initial Year Load
+    useEffect(() => {
+        const init = async () => {
+            try {
+                const res = await fetchApi("/academic/years");
+                if (res.ok) {
+                    const data: AcademicYear[] = await res.json();
+                    setYears(data);
+                    const active = data.find(y => y.status === "ACTIVE");
+                    if (active) setSelectedYearId(active.id);
                 }
-            ];
+            } catch (e) {
+                console.error(e);
+            }
+        };
+        init();
+    }, []);
 
-            setAlerts(sampleAlerts);
+    const loadAlerts = async (isManual = false) => {
+        try {
+            if (isManual) setRefreshing(true);
+            else setLoading(true);
+            setError(null);
+
+            const q = new URLSearchParams();
+            if (selectedYearId) q.set("academicYearId", selectedYearId);
+
+            const res = await fetchApi(`/attendance/admin/alerts?${q.toString()}`);
+            if (!res.ok) {
+                const err = await res.json().catch(() => ({}));
+                throw new Error(err.error || "Failed to load risk alerts");
+            }
+
+            const data: RiskAlert[] = await res.json();
+            setAlerts(data);
         } catch (err: any) {
-            console.error(err);
+            setError(err.message || "Failed to load absence alerts");
         } finally {
             setLoading(false);
+            setRefreshing(false);
         }
     };
 
     useEffect(() => {
         loadAlerts();
-    }, []);
+    }, [selectedYearId]);
 
-    const handleOpenContactModal = (alert: RepeatedAbsenceAlert) => {
-        setActiveAlert(alert);
-        setContactNotes("");
-        setIsContactModalOpen(true);
-    };
-
-    const handleLogContactSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!activeAlert) return;
-
-        setAlerts(prev => prev.map(a => a.id === activeAlert.id ? { ...a, status: "CONTACTED" } : a));
-        setSuccessMsg(`Parent contact logged for ${activeAlert.studentName}. Status updated to CONTACTED.`);
-        setIsContactModalOpen(false);
-    };
-
+    // Filter alerts
     const filteredAlerts = alerts.filter(a => {
-        const matchesRisk = selectedRisk === "ALL" || a.riskLevel === selectedRisk;
-        const matchesSearch = !searchQuery.trim() ||
-            a.studentName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            a.studentIdCode.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            a.gradeName.toLowerCase().includes(searchQuery.toLowerCase());
-        return matchesRisk && matchesSearch;
+        if (selectedSeverity !== "ALL" && a.severity !== selectedSeverity) return false;
+        if (searchQuery.trim()) {
+            const query = searchQuery.toLowerCase();
+            return (
+                a.title.toLowerCase().includes(query) ||
+                a.description.toLowerCase().includes(query) ||
+                a.metric.toLowerCase().includes(query)
+            );
+        }
+        return true;
     });
 
-    const highRiskCount = alerts.filter(a => a.riskLevel === "HIGH").length;
-    const moderateRiskCount = alerts.filter(a => a.riskLevel === "MODERATE").length;
+    const criticalCount = alerts.filter(a => a.severity === "CRITICAL").length;
+    const warningCount = alerts.filter(a => a.severity === "WARNING").length;
 
-    if (loading) return <LoadingState message="Scanning repeated unexcused absence alerts..." />;
+    const handleLogIntervention = (e: React.FormEvent) => {
+        e.preventDefault();
+        setActionSuccessMsg(`Intervention action recorded for ${activeAlert?.title}.`);
+        setTimeout(() => {
+            setActiveAlert(null);
+            setActionSuccessMsg(null);
+            setActionNotes("");
+        }, 1500);
+    };
 
     return (
         <div className="space-y-6 text-black">
             {/* Header */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-900 flex items-center space-x-2">
-                        <ShieldAlert className="w-7 h-7 text-red-600" />
-                        <span>Repeated Absence Alert Hub</span>
+                    <h1 className="text-xl font-bold text-gray-900 flex items-center space-x-2">
+                        <span>Absence Risk Alerts</span>
                     </h1>
-                    <p className="text-sm text-gray-500 mt-1">Automatic detection of students with 3+ consecutive unexcused absences for early intervention.</p>
+                    <p className="text-xs text-gray-500 mt-0.5">
+                        Consecutive absences, chronic absenteeism, and section deficits
+                    </p>
+                </div>
+
+                <div className="flex items-center space-x-3">
+                    {years.length > 0 && (
+                        <select
+                            value={selectedYearId}
+                            onChange={(e) => setSelectedYearId(e.target.value)}
+                            className="border border-gray-300 rounded-lg px-2.5 py-1.5 text-xs bg-white font-medium shadow-sm focus:ring-2 focus:ring-[#006b3f]"
+                        >
+                            {years.map(y => (
+                                <option key={y.id} value={y.id}>
+                                    {y.name} {y.status === "ACTIVE" ? "(Active)" : ""}
+                                </option>
+                            ))}
+                        </select>
+                    )}
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => loadAlerts(true)}
+                        disabled={refreshing}
+                        className="h-8 px-2.5 text-xs flex items-center space-x-1"
+                    >
+                        <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? "animate-spin" : ""}`} />
+                        <span>Refresh</span>
+                    </Button>
                 </div>
             </div>
 
-            {/* Metrics */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                <Card className="bg-red-50/60 border-red-100">
-                    <CardContent className="p-4 flex items-center space-x-3">
-                        <div className="p-2.5 bg-red-100 text-red-600 rounded-lg">
-                            <AlertTriangle className="w-5 h-5" />
-                        </div>
-                        <div>
-                            <p className="text-xs font-semibold text-gray-500 uppercase">High Risk (&ge;5 Days)</p>
-                            <p className="text-xl font-bold text-red-800">{highRiskCount}</p>
+            {/* Severity Counters */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <Card className="border-gray-200 shadow-sm">
+                    <CardContent className="p-4">
+                        <span className="text-xs font-medium text-gray-500 uppercase tracking-wider">Critical Alerts</span>
+                        <div className="mt-1">
+                            <span className="text-2xl font-bold text-red-600">{criticalCount}</span>
                         </div>
                     </CardContent>
                 </Card>
 
-                <Card className="bg-amber-50/60 border-amber-100">
-                    <CardContent className="p-4 flex items-center space-x-3">
-                        <div className="p-2.5 bg-amber-100 text-amber-700 rounded-lg">
-                            <Clock className="w-5 h-5" />
-                        </div>
-                        <div>
-                            <p className="text-xs font-semibold text-gray-500 uppercase">Moderate Risk (3-4 Days)</p>
-                            <p className="text-xl font-bold text-amber-800">{moderateRiskCount}</p>
+                <Card className="border-gray-200 shadow-sm">
+                    <CardContent className="p-4">
+                        <span className="text-xs font-medium text-gray-500 uppercase tracking-wider">Warnings</span>
+                        <div className="mt-1">
+                            <span className="text-2xl font-bold text-amber-600">{warningCount}</span>
                         </div>
                     </CardContent>
                 </Card>
 
-                <Card className="bg-emerald-50/60 border-emerald-100">
-                    <CardContent className="p-4 flex items-center space-x-3">
-                        <div className="p-2.5 bg-emerald-100 text-[#006b3f] rounded-lg">
-                            <CheckCircle2 className="w-5 h-5" />
-                        </div>
-                        <div>
-                            <p className="text-xs font-semibold text-gray-500 uppercase">Resolved Alerts</p>
-                            <p className="text-xl font-bold text-gray-900">{alerts.filter(a => a.status === "RESOLVED").length}</p>
-                        </div>
-                    </CardContent>
-                </Card>
-
-                <Card className="bg-blue-50/60 border-blue-100">
-                    <CardContent className="p-4 flex items-center space-x-3">
-                        <div className="p-2.5 bg-blue-100 text-blue-600 rounded-lg">
-                            <Phone className="w-5 h-5" />
-                        </div>
-                        <div>
-                            <p className="text-xs font-semibold text-gray-500 uppercase">Parent Contacted</p>
-                            <p className="text-xl font-bold text-gray-900">{alerts.filter(a => a.status === "CONTACTED").length}</p>
+                <Card className="border-gray-200 shadow-sm">
+                    <CardContent className="p-4">
+                        <span className="text-xs font-medium text-gray-500 uppercase tracking-wider">Total Active</span>
+                        <div className="mt-1">
+                            <span className="text-2xl font-bold text-gray-900">{alerts.length}</span>
                         </div>
                     </CardContent>
                 </Card>
             </div>
 
-            {/* Notification messages */}
-            {successMsg && (
-                <div className="p-4 bg-green-50 text-green-800 rounded-lg border border-green-200 flex justify-between items-center text-sm shadow-sm">
-                    <span className="flex items-center space-x-2"><CheckCircle2 className="w-4 h-4 text-green-600" /><span>{successMsg}</span></span>
-                    <button onClick={() => setSuccessMsg(null)}><X className="w-4 h-4" /></button>
-                </div>
-            )}
+            {/* Filter Toolbar */}
+            <Card className="border-gray-200 shadow-sm">
+                <CardContent className="p-4 flex flex-col sm:flex-row items-center justify-between gap-3">
+                    <div className="relative w-full sm:w-80">
+                        <Search className="w-4 h-4 text-gray-400 absolute left-3 top-2.5" />
+                        <input
+                            type="text"
+                            placeholder="Filter alerts by name, metric, or type..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className="w-full pl-9 pr-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#006b3f]"
+                        />
+                    </div>
 
-            {/* Filter Tabs & Search */}
-            <Card className="shadow-sm">
-                <CardHeader className="py-4 border-b border-gray-100 flex flex-col md:flex-row md:items-center justify-between gap-4">
-                    <div className="flex items-center space-x-1 overflow-x-auto pb-1 md:pb-0">
-                        {["ALL", "HIGH", "MODERATE"].map(r => (
+                    <div className="flex items-center space-x-2 w-full sm:w-auto">
+                        {["ALL", "CRITICAL", "WARNING"].map((sev) => (
                             <button
-                                key={r}
-                                onClick={() => setSelectedRisk(r)}
-                                className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-colors ${
-                                    selectedRisk === r
-                                        ? "bg-red-600 text-white shadow-sm"
+                                key={sev}
+                                onClick={() => setSelectedSeverity(sev)}
+                                className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${
+                                    selectedSeverity === sev
+                                        ? "bg-gray-900 text-white"
                                         : "bg-gray-100 text-gray-600 hover:bg-gray-200"
                                 }`}
                             >
-                                {r === "ALL" ? "All Risk Levels" : `${r} RISK`}
+                                {sev === "ALL" ? "All Alerts" : sev}
                             </button>
                         ))}
                     </div>
-                    <div className="relative w-full md:w-64">
-                        <Search className="w-4 h-4 absolute left-3 top-3 text-gray-400" />
-                        <input
-                            type="text"
-                            placeholder="Search student or grade..."
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            className="w-full pl-9 pr-3 py-2 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-600"
-                        />
-                    </div>
-                </CardHeader>
-
-                <CardContent className="p-0">
-                    {filteredAlerts.length === 0 ? (
-                        <div className="p-8 text-center text-gray-500">
-                            <CheckCircle2 className="w-12 h-12 mx-auto text-emerald-300 mb-2" />
-                            <p className="font-semibold text-gray-700">No repeated absence alerts</p>
-                            <p className="text-xs text-gray-400 mt-1">Students with 3+ consecutive unexcused absences will automatically trigger an alert here.</p>
-                        </div>
-                    ) : (
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-sm text-left">
-                                <thead className="text-xs text-gray-500 uppercase bg-gray-50 border-b border-gray-200">
-                                    <tr>
-                                        <th className="px-6 py-3.5 font-semibold">Student & ID</th>
-                                        <th className="px-6 py-3.5 font-semibold">Grade / Section</th>
-                                        <th className="px-6 py-3.5 font-semibold">Consecutive Days</th>
-                                        <th className="px-6 py-3.5 font-semibold">Parent Contact</th>
-                                        <th className="px-6 py-3.5 font-semibold">Risk Status</th>
-                                        <th className="px-6 py-3.5 font-semibold text-right">Intervention</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-gray-100">
-                                    {filteredAlerts.map((item) => (
-                                        <tr key={item.id} className="hover:bg-gray-50/60 transition-colors">
-                                            <td className="px-6 py-4 font-bold text-gray-900">
-                                                <p>{item.studentName}</p>
-                                                <p className="text-xs font-mono font-normal text-gray-500">{item.studentIdCode}</p>
-                                            </td>
-                                            <td className="px-6 py-4 text-gray-700">
-                                                <span className="font-semibold">{item.gradeName}</span> — <span className="text-[#006b3f]">{item.sectionName}</span>
-                                            </td>
-                                            <td className="px-6 py-4">
-                                                <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-bold bg-red-100 text-red-800">
-                                                    {item.consecutiveAbsentDays} Days Absent
-                                                </span>
-                                            </td>
-                                            <td className="px-6 py-4 text-xs text-gray-700">
-                                                <p className="font-medium text-gray-900">{item.parentName || "Guardian"}</p>
-                                                <p className="text-gray-500 flex items-center mt-0.5"><Phone className="w-3 h-3 mr-1" />{item.parentPhone || "N/A"}</p>
-                                            </td>
-                                            <td className="px-6 py-4">
-                                                {item.riskLevel === "HIGH" ? (
-                                                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-red-600 text-white">
-                                                        HIGH RISK
-                                                    </span>
-                                                ) : (
-                                                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-500 text-white">
-                                                        MODERATE RISK
-                                                    </span>
-                                                )}
-                                            </td>
-                                            <td className="px-6 py-4 text-right space-x-2">
-                                                <Button
-                                                    size="sm"
-                                                    variant="outline"
-                                                    leftIcon={<Phone className="w-3.5 h-3.5" />}
-                                                    onClick={() => handleOpenContactModal(item)}
-                                                >
-                                                    {item.status === "CONTACTED" ? "Logged" : "Log Contact"}
-                                                </Button>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    )}
                 </CardContent>
             </Card>
 
-            {/* Log Parent Contact Modal */}
-            {isContactModalOpen && activeAlert && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 animate-in fade-in duration-200">
-                    <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6 space-y-4">
-                        <div className="flex justify-between items-center border-b pb-3">
-                            <h3 className="text-lg font-bold text-gray-900">Log Parent Call / Intervention</h3>
-                            <button onClick={() => setIsContactModalOpen(false)} className="text-gray-400 hover:text-gray-600">
+            {/* Alerts List */}
+            {loading ? (
+                <div className="p-12">
+                    <LoadingState message="Scanning school attendance records for risks..." />
+                </div>
+            ) : error ? (
+                <ErrorState message={error} onRetry={() => loadAlerts()} />
+            ) : filteredAlerts.length === 0 ? (
+                <Card className="border-gray-200 p-12 text-center text-gray-400">
+                    <CheckCircle2 className="w-12 h-12 mx-auto mb-3 text-emerald-500" />
+                    <h3 className="font-bold text-gray-900 text-base">No active absence risks found</h3>
+                    <p className="text-xs text-gray-500 mt-1">
+                        All enrolled students, sections, and faculty members are maintaining healthy presence rates.
+                    </p>
+                </Card>
+            ) : (
+                <div className="space-y-3">
+                    {filteredAlerts.map((alert) => (
+                        <div
+                            key={alert.id}
+                            className={`p-5 rounded-xl border transition-all ${
+                                alert.severity === "CRITICAL"
+                                    ? "bg-red-50/40 border-red-200 hover:border-red-300"
+                                    : "bg-amber-50/40 border-amber-200 hover:border-amber-300"
+                            }`}
+                        >
+                            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                                <div className="space-y-1.5">
+                                    <div className="flex items-center space-x-2">
+                                        <span className={`px-2 py-0.5 rounded text-[10px] font-extrabold uppercase ${
+                                            alert.severity === "CRITICAL"
+                                                ? "bg-red-600 text-white"
+                                                : "bg-amber-600 text-white"
+                                        }`}>
+                                            {alert.severity}
+                                        </span>
+                                        <span className="text-xs font-bold text-gray-700 bg-white/80 px-2 py-0.5 rounded border border-gray-200">
+                                            {alert.type.replace(/_/g, " ")}
+                                        </span>
+                                        {alert.date && (
+                                            <span className="text-xs text-gray-500">
+                                                Triggered on {alert.date}
+                                            </span>
+                                        )}
+                                    </div>
+                                    <h3 className="text-base font-bold text-gray-900">
+                                        {alert.title}
+                                    </h3>
+                                    <p className="text-xs text-gray-700 max-w-3xl">
+                                        {alert.description}
+                                    </p>
+                                    <div className="flex items-center space-x-2 pt-1">
+                                        <span className="text-xs font-bold text-gray-900 bg-white px-2.5 py-1 rounded border border-gray-200 shadow-2xs">
+                                            Metric: <strong className="text-red-700">{alert.metric}</strong>
+                                        </span>
+                                        <span className="text-xs text-gray-500">
+                                            Recommended: <em className="text-gray-700 font-medium">{alert.suggestedAction}</em>
+                                        </span>
+                                    </div>
+                                </div>
+
+                                <div className="flex items-center space-x-2 shrink-0">
+                                    {alert.enrollmentId && (
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() => router.push(`/dashboard/attendance/student?gradeId=&search=`)}
+                                            className="text-xs bg-white flex items-center space-x-1"
+                                        >
+                                            <ExternalLink className="w-3.5 h-3.5" />
+                                            <span>Inspect Student</span>
+                                        </Button>
+                                    )}
+                                    {alert.sectionId && (
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() => router.push(`/dashboard/attendance/student?sectionId=${alert.sectionId}`)}
+                                            className="text-xs bg-white flex items-center space-x-1"
+                                        >
+                                            <ExternalLink className="w-3.5 h-3.5" />
+                                            <span>Inspect Section</span>
+                                        </Button>
+                                    )}
+                                    {alert.teacherId && (
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={() => router.push("/dashboard/attendance/teacher")}
+                                            className="text-xs bg-white flex items-center space-x-1"
+                                        >
+                                            <ExternalLink className="w-3.5 h-3.5" />
+                                            <span>Inspect Faculty</span>
+                                        </Button>
+                                    )}
+                                    <Button
+                                        size="sm"
+                                        onClick={() => {
+                                            setActiveAlert(alert);
+                                            setActionNotes("");
+                                            setActionSuccessMsg(null);
+                                        }}
+                                        className="bg-[#006b3f] hover:bg-[#005a34] text-white text-xs"
+                                    >
+                                        Log Intervention
+                                    </Button>
+                                </div>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            )}
+
+            {/* Intervention Log Modal */}
+            {activeAlert && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
+                    <div className="bg-white w-full max-w-lg rounded-xl shadow-2xl overflow-hidden border border-gray-200 animate-in fade-in zoom-in duration-150">
+                        <div className="p-5 border-b border-gray-100 flex items-center justify-between bg-gradient-to-r from-gray-50 to-white">
+                            <h3 className="text-base font-bold text-gray-900 flex items-center space-x-2">
+                                <ShieldAlert className="w-5 h-5 text-red-600" />
+                                <span>Administrative Follow-Up Log</span>
+                            </h3>
+                            <button
+                                onClick={() => setActiveAlert(null)}
+                                className="p-1.5 text-gray-400 hover:text-gray-700 rounded-full"
+                            >
                                 <X className="w-5 h-5" />
                             </button>
                         </div>
 
-                        <div className="bg-red-50 p-3 rounded-lg border border-red-100 text-xs text-red-800 space-y-1">
-                            <p className="font-bold">{activeAlert.studentName} ({activeAlert.studentIdCode})</p>
-                            <p>Absent for <strong>{activeAlert.consecutiveAbsentDays} consecutive days</strong> in {activeAlert.gradeName} - {activeAlert.sectionName}.</p>
-                            <p>Parent Phone: <strong>{activeAlert.parentPhone}</strong></p>
-                        </div>
+                        <form onSubmit={handleLogIntervention} className="p-6 space-y-4">
+                            {actionSuccessMsg ? (
+                                <div className="p-4 bg-emerald-50 text-emerald-800 rounded-lg text-sm font-semibold flex items-center">
+                                    <CheckCircle2 className="w-5 h-5 mr-2 text-emerald-600" />
+                                    {actionSuccessMsg}
+                                </div>
+                            ) : (
+                                <>
+                                    <div className="p-3 bg-gray-50 rounded-lg text-xs space-y-1">
+                                        <p className="font-bold text-gray-900">{activeAlert.title}</p>
+                                        <p className="text-gray-600">{activeAlert.description}</p>
+                                    </div>
 
-                        <form onSubmit={handleLogContactSubmit} className="space-y-4">
-                            <div>
-                                <label className="block text-xs font-semibold text-gray-700 uppercase mb-1">Intervention / Call Notes *</label>
-                                <textarea
-                                    required
-                                    value={contactNotes}
-                                    onChange={(e) => setContactNotes(e.target.value)}
-                                    placeholder="Spoke with parent regarding student absence. Parent confirmed illness / family emergency..."
-                                    rows={3}
-                                    className="w-full border border-gray-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-red-600"
-                                />
-                            </div>
+                                    <div>
+                                        <label className="block text-xs font-bold text-gray-700 mb-1">
+                                            Intervention & Counseling Notes
+                                        </label>
+                                        <textarea
+                                            rows={4}
+                                            required
+                                            value={actionNotes}
+                                            onChange={(e) => setActionNotes(e.target.value)}
+                                            placeholder="Detail parent contact, medical verification, home visit notes, or agreed action plan..."
+                                            className="w-full p-3 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#006b3f]"
+                                        />
+                                    </div>
 
-                            <div className="flex justify-end space-x-3 pt-3 border-t">
-                                <Button type="button" variant="outline" onClick={() => setIsContactModalOpen(false)}>
-                                    Cancel
-                                </Button>
-                                <Button type="submit" className="bg-red-600 hover:bg-red-700 text-white">
-                                    Save Contact Log
-                                </Button>
-                            </div>
+                                    <div className="flex justify-end space-x-2 pt-2">
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            onClick={() => setActiveAlert(null)}
+                                        >
+                                            Cancel
+                                        </Button>
+                                        <Button
+                                            type="submit"
+                                            className="bg-[#006b3f] hover:bg-[#005a34] text-white"
+                                        >
+                                            Save Follow-Up
+                                        </Button>
+                                    </div>
+                                </>
+                            )}
                         </form>
                     </div>
                 </div>

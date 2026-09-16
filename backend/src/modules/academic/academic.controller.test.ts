@@ -90,7 +90,7 @@ describe("Academic Controller", () => {
 
             await createSchoolGrade(mockReq as Request, mockRes as Response);
 
-            expect(AcademicService.createSchoolGrade).toHaveBeenCalledWith("year1", "grade1");
+            expect(AcademicService.createSchoolGrade).toHaveBeenCalledWith("school1", "year1", "grade1");
             expect(mockRes.status).toHaveBeenCalledWith(201);
             expect(mockRes.json).toHaveBeenCalledWith(mockSchoolGrade);
         });
@@ -107,7 +107,7 @@ describe("Academic Controller", () => {
 
             await createSection(mockReq as Request, mockRes as Response);
 
-            expect(AcademicService.createSection).toHaveBeenCalledWith("sg1", "9A", 50);
+            expect(AcademicService.createSection).toHaveBeenCalledWith("school1", "sg1", "9A", 50);
             expect(mockRes.status).toHaveBeenCalledWith(201);
             expect(mockRes.json).toHaveBeenCalledWith(mockSection);
         });

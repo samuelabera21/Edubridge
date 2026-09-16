@@ -58,7 +58,7 @@ export default function SectionDetailsPage() {
 
             <div className="bg-white rounded-2xl p-8 shadow-sm border border-gray-100">
                 <h1 className="text-3xl font-bold text-gray-900 flex items-center">
-                    <Users className="w-8 h-8 mr-3 text-[#006b3f]" />
+                    <Users className="w-8 h-8 mr-3 text-[#4085b3]" />
                     {gradeData.grade?.name} - Section {activeSection.name}
                 </h1>
                 <div className="flex flex-wrap gap-4 mt-3 text-sm text-gray-600">

@@ -1,21 +1,60 @@
 import { Request, Response } from "express";
 import { TimetableService } from "./timetable.service.js";
 import { TimetableConfigService } from "./timetable.config.service.js";
+import { TimetableAutoSchedulerService } from "./timetable-auto-scheduler.service.js";
+
+export const getSectionWorkspace = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        if (!organizationId) return res.status(403).json({ error: "Missing school scope" });
+
+        const { academicYearId, schoolGradeId, sectionId } = req.query;
+        const workspace = await TimetableService.getSectionWorkspace(organizationId, {
+            academicYearId: typeof academicYearId === "string" ? academicYearId : undefined,
+            schoolGradeId: typeof schoolGradeId === "string" ? schoolGradeId : undefined,
+            sectionId: typeof sectionId === "string" ? sectionId : undefined
+        });
+        return res.json(workspace);
+    } catch (error: any) {
+        const status = error.statusCode || 500;
+        return res.status(status).json({ error: error.message || "Failed to load timetable workspace" });
+    }
+};
 
 export const createClassPeriod = async (req: Request, res: Response) => {
     try {
         const organizationId = (req as any).accessScope?.id;
         if (!organizationId) return res.status(403).json({ error: "Missing school scope" });
 
-        const { name, startTime, endTime } = req.body;
-        if (!name || !startTime || !endTime) {
-            return res.status(400).json({ error: "name, startTime, and endTime are required" });
+        const { name, startTime, endTime, isBreak } = req.body;
+        if (!name || !name.trim()) {
+            return res.status(400).json({ error: "Period name is required" });
         }
 
-        const period = await TimetableService.createClassPeriod(organizationId, { name, startTime, endTime });
+        const period = await TimetableService.createClassPeriod(organizationId, { 
+            name: name.trim(), 
+            startTime, 
+            endTime, 
+            isBreak: Boolean(isBreak) 
+        });
         return res.status(201).json(period);
     } catch (error: any) {
         return res.status(400).json({ error: error.message || "Failed to create class period" });
+    }
+};
+
+export const deleteClassPeriod = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        if (!organizationId) return res.status(403).json({ error: "Missing school scope" });
+
+        const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+        if (!id) return res.status(400).json({ error: "Period ID is required" });
+
+        await TimetableService.deleteClassPeriod(organizationId, id);
+        return res.json({ success: true, message: "Class period deleted successfully" });
+    } catch (error: any) {
+        return res.status(400).json({ error: error.message || "Failed to delete class period" });
     }
 };
 
@@ -26,8 +65,20 @@ export const getClassPeriods = async (req: Request, res: Response) => {
 
         const periods = await TimetableService.getClassPeriods(organizationId);
         return res.json(periods);
-    } catch (error) {
-        return res.status(500).json({ error: "Internal server error" });
+    } catch (error: any) {
+        return res.status(500).json({ error: error.message || "Internal server error" });
+    }
+};
+
+export const generateDefaultPeriods = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        if (!organizationId) return res.status(403).json({ error: "Missing school scope" });
+
+        const periods = await TimetableService.generateDefaultPeriods(organizationId);
+        return res.status(201).json(periods);
+    } catch (error: any) {
+        return res.status(500).json({ error: error.message || "Failed to generate default periods" });
     }
 };
 
@@ -35,6 +86,7 @@ export const assignTimetable = async (req: Request, res: Response) => {
     try {
         const organizationId = (req as any).accessScope?.id;
         if (!organizationId) return res.status(403).json({ error: "Missing school scope" });
+        const userId = (req as any).user?.id || null;
 
         const { academicYearId, teachingAssignmentId, classPeriodId, dayOfWeek, roomId } = req.body;
 
@@ -42,7 +94,7 @@ export const assignTimetable = async (req: Request, res: Response) => {
             return res.status(400).json({ error: "academicYearId, teachingAssignmentId, classPeriodId, and dayOfWeek are required" });
         }
 
-        const timetable = await TimetableService.assignTimetable(organizationId, {
+        const timetable = await TimetableService.assignTimetable(organizationId, userId, {
             academicYearId,
             teachingAssignmentId,
             classPeriodId,
@@ -52,7 +104,94 @@ export const assignTimetable = async (req: Request, res: Response) => {
 
         return res.status(201).json(timetable);
     } catch (error: any) {
-        return res.status(400).json({ error: error.message || "Failed to assign timetable" });
+        const status = error.statusCode || 400;
+        return res.status(status).json({ error: error.message || "Failed to assign timetable" });
+    }
+};
+
+export const deleteTimetable = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        if (!organizationId) return res.status(403).json({ error: "Missing school scope" });
+        const userId = (req as any).user?.id || null;
+
+        const { id } = req.params;
+        const result = await TimetableService.deleteTimetable(organizationId, userId, id as string);
+        return res.json(result);
+    } catch (error: any) {
+        const status = error.statusCode || 400;
+        return res.status(status).json({ error: error.message || "Failed to delete timetable entry" });
+    }
+};
+
+export const reassignSlot = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        if (!organizationId) return res.status(403).json({ error: "Missing school scope" });
+        const userId = (req as any).user?.id || null;
+
+        const { timetableId, newTeachingAssignmentId, reason } = req.body;
+        if (!timetableId || !newTeachingAssignmentId) {
+            return res.status(400).json({ error: "timetableId and newTeachingAssignmentId are required" });
+        }
+
+        const result = await TimetableService.reassignSlot(organizationId, userId, {
+            timetableId,
+            newTeachingAssignmentId,
+            reason
+        });
+        return res.json(result);
+    } catch (error: any) {
+        const status = error.statusCode || 400;
+        return res.status(status).json({ error: error.message || "Failed to reassign slot" });
+    }
+};
+
+export const publishTimetable = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        if (!organizationId) return res.status(403).json({ error: "Missing school scope" });
+        const userId = (req as any).user?.id || null;
+
+        const { academicYearId } = req.body;
+        if (!academicYearId) return res.status(400).json({ error: "academicYearId is required" });
+
+        const result = await TimetableService.publishTimetable(organizationId, userId, academicYearId);
+        return res.json(result);
+    } catch (error: any) {
+        const status = error.statusCode || 400;
+        return res.status(status).json({ error: error.message || "Failed to publish timetable" });
+    }
+};
+
+export const unpublishTimetable = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        if (!organizationId) return res.status(403).json({ error: "Missing school scope" });
+        const userId = (req as any).user?.id || null;
+
+        const { academicYearId } = req.body;
+        if (!academicYearId) return res.status(400).json({ error: "academicYearId is required" });
+
+        const result = await TimetableService.unpublishTimetable(organizationId, userId, academicYearId);
+        return res.json(result);
+    } catch (error: any) {
+        const status = error.statusCode || 400;
+        return res.status(status).json({ error: error.message || "Failed to unpublish timetable" });
+    }
+};
+
+export const getMyTimetable = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        if (!organizationId) return res.status(403).json({ error: "Missing school scope" });
+        const userId = (req as any).user?.id;
+        if (!userId) return res.status(401).json({ error: "Unauthorized" });
+
+        const result = await TimetableService.getMyTimetable(organizationId, userId);
+        return res.json(result);
+    } catch (error: any) {
+        return res.status(500).json({ error: error.message || "Failed to load personal timetable" });
     }
 };
 
@@ -65,8 +204,8 @@ export const getTimetableForSection = async (req: Request, res: Response) => {
         const academicYearId = typeof req.query.academicYearId === "string" ? req.query.academicYearId : undefined;
         const timetable = await TimetableService.getTimetableForSection(organizationId, sectionId as string, academicYearId);
         return res.json(timetable);
-    } catch (error) {
-        return res.status(500).json({ error: "Internal server error" });
+    } catch (error: any) {
+        return res.status(500).json({ error: error.message || "Internal server error" });
     }
 };
 
@@ -78,8 +217,8 @@ export const getTimetableForTeacher = async (req: Request, res: Response) => {
         const { teacherId } = req.params;
         const timetable = await TimetableService.getTimetableForTeacher(organizationId, teacherId as string);
         return res.json(timetable);
-    } catch (error) {
-        return res.status(500).json({ error: "Internal server error" });
+    } catch (error: any) {
+        return res.status(500).json({ error: error.message || "Internal server error" });
     }
 };
 
@@ -91,8 +230,8 @@ export const getTimetableForRoom = async (req: Request, res: Response) => {
         const { roomId } = req.params;
         const timetable = await TimetableService.getTimetableForRoom(organizationId, roomId as string);
         return res.json(timetable);
-    } catch (error) {
-        return res.status(500).json({ error: "Internal server error" });
+    } catch (error: any) {
+        return res.status(500).json({ error: error.message || "Internal server error" });
     }
 };
 
@@ -115,19 +254,6 @@ export const updateTeacherAvailability = async (req: Request, res: Response) => 
     }
 };
 
-export const deleteTimetable = async (req: Request, res: Response) => {
-    try {
-        const organizationId = (req as any).accessScope?.id;
-        if (!organizationId) return res.status(403).json({ error: "Missing school scope" });
-
-        const { id } = req.params;
-        const result = await TimetableService.deleteTimetable(organizationId, id as string);
-        return res.json(result);
-    } catch (error: any) {
-        return res.status(400).json({ error: error.message || "Failed to delete timetable entry" });
-    }
-};
-
 export const getTimetableConfig = async (req: Request, res: Response) => {
     try {
         const organizationId = (req as any).accessScope?.id;
@@ -136,8 +262,8 @@ export const getTimetableConfig = async (req: Request, res: Response) => {
         const { academicYearId } = req.params;
         const config = await TimetableConfigService.getTimetableConfig(organizationId, academicYearId as string);
         return res.json(config);
-    } catch (error) {
-        return res.status(500).json({ error: "Internal server error" });
+    } catch (error: any) {
+        return res.status(500).json({ error: error.message || "Internal server error" });
     }
 };
 
@@ -189,8 +315,6 @@ export const updateRoomAvailability = async (req: Request, res: Response) => {
         return res.status(400).json({ error: error.message || "Failed to update room availability" });
     }
 };
-
-import { TimetableAutoSchedulerService } from "./timetable-auto-scheduler.service.js";
 
 export const autoGenerateTimetable = async (req: Request, res: Response) => {
     try {
