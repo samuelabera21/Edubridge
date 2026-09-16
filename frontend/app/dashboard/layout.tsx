@@ -705,7 +705,23 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                                         </div>
                                     )}
                                 </div>
-                                {/* Section 12: SETTINGS */}
+                                {/* Section 12: AI TEACHER ASSISTANT (Inactive / Coming Soon) */}
+                                <div className="pt-2">
+                                    <div 
+                                        className="w-full flex items-center justify-between px-3 py-2 text-xs font-normal text-gray-400 bg-gray-50/60 rounded-lg cursor-not-allowed select-none"
+                                        title="AI Teacher Assistant feature is under development"
+                                    >
+                                        <div className="flex items-center space-x-2.5">
+                                            <Sparkles className="w-4 h-4 text-purple-400" />
+                                            <span className="font-medium text-gray-500">AI Teacher Assistant</span>
+                                        </div>
+                                        <span className="text-[9px] font-bold px-1.5 py-0.5 bg-purple-100 text-purple-700 rounded-md uppercase tracking-wider">
+                                            Soon
+                                        </span>
+                                    </div>
+                                </div>
+
+                                {/* Section 13: SETTINGS */}
                                 <div className="pt-4 border-t border-gray-100 mt-4 mb-4">
                                     <Link href="/dashboard/teacher/settings" className="flex items-center space-x-2.5 px-3 py-2 text-xs font-normal text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
                                         <Settings className="w-4 h-4 text-gray-500" />
