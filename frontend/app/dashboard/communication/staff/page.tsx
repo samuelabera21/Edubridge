@@ -33,7 +33,7 @@ export default function StaffCommunicationPage() {
     const loadAnnouncements = async () => {
         try {
             setLoading(true);
-            const res = await fetchApi("/communication/announcements");
+            const res = await fetchApi("/communication/announcements?target=STAFF");
             if (res.ok) {
                 const data = await res.json();
                 setAnnouncements(Array.isArray(data) ? data : []);
