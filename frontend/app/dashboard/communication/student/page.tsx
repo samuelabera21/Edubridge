@@ -75,68 +75,51 @@ export default function StudentCommunicationPage() {
         }
     };
 
-    if (loading) return <LoadingState message="Loading student body notices & announcements..." />;
+    if (loading) return <LoadingState message="Loading broadcasts..." />;
 
     return (
         <div className="space-y-6 text-black">
-            {/* SRS Context Banner */}
-            <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 text-xs text-blue-900 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-3">
-                <div className="space-y-1">
-                    <span className="font-bold text-sm text-blue-900 flex items-center">
-                        <Sparkles className="w-4 h-4 mr-1.5 text-blue-700" />
-                        SRS Domain 11.3: Student Body Announcements & Notices
-                    </span>
-                    <p className="text-blue-800">
-                        <strong>Who Uses This:</strong> School Principal, Vice-Principal & Student Council Advisors.
-                        <br />
-                        <strong>Data Source:</strong> Database table `announcement` filtered by `target=STUDENTS` via REST API.
-                        <br />
-                        <strong>SRS Purpose:</strong> Exam venue rules, student council announcements, sports club trials, and library policy updates.
-                    </p>
-                </div>
-            </div>
-
             {/* Header */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-900 flex items-center space-x-2">
-                        <GraduationCap className="w-7 h-7 text-blue-600" />
-                        <span>3. Student Communication & Bulletins</span>
+                    <h1 className="text-xl font-bold text-gray-900 flex items-center space-x-2">
+                        <GraduationCap className="w-5 h-5 text-blue-600" />
+                        <span>Student Broadcasts</span>
                     </h1>
-                    <p className="text-sm text-gray-500 mt-1">Student newsfeed, exam schedules, and extracurricular announcements.</p>
+                    <p className="text-xs text-gray-500 mt-0.5">Announcements and notices for enrolled students.</p>
                 </div>
-                <Button onClick={() => setIsModalOpen(true)} leftIcon={<Plus className="w-4 h-4" />} className="bg-[#006b3f] hover:bg-[#005432]">
-                    Post Student Notice
+                <Button onClick={() => setIsModalOpen(true)} leftIcon={<Plus className="w-4 h-4" />} className="bg-[#006b3f] hover:bg-[#005432] text-xs h-9">
+                    New Broadcast
                 </Button>
             </div>
 
             {/* Announcements List */}
-            <div className="space-y-4">
+            <div className="space-y-3">
                 {announcements.length === 0 ? (
                     <Card className="shadow-sm">
-                        <CardContent className="p-12 text-center text-gray-500">
-                            <GraduationCap className="w-12 h-12 mx-auto text-blue-300 mb-2" />
-                            <p className="font-semibold text-gray-800">No student notices posted yet</p>
-                            <p className="text-xs text-gray-400 mt-1">Click "Post Student Notice" above to publish announcements to students.</p>
+                        <CardContent className="p-8 text-center text-gray-500">
+                            <GraduationCap className="w-8 h-8 mx-auto text-gray-300 mb-2" />
+                            <p className="text-sm font-medium text-gray-700">No student broadcasts</p>
+                            <p className="text-xs text-gray-400 mt-1">Announcements targeted to students will appear here.</p>
                         </CardContent>
                     </Card>
                 ) : (
                     announcements.map((item) => (
                         <Card key={item.id} className="shadow-sm hover:shadow-md transition-shadow">
-                            <CardHeader className="py-4 border-b border-gray-100 flex flex-row items-center justify-between">
+                            <CardHeader className="py-3.5 border-b border-gray-100 flex flex-row items-center justify-between">
                                 <div className="space-y-1">
                                     <div className="flex items-center space-x-2">
-                                        <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-100 text-blue-800">
-                                            STUDENTS ONLY
+                                        <span className="px-2 py-0.5 rounded text-[11px] font-semibold bg-blue-100 text-blue-800">
+                                            STUDENTS
                                         </span>
                                         <span className="text-xs text-gray-400">
                                             {new Date(item.createdAt).toLocaleDateString()}
                                         </span>
                                     </div>
-                                    <CardTitle className="text-lg font-bold text-gray-900">{item.title}</CardTitle>
+                                    <CardTitle className="text-base font-bold text-gray-900">{item.title}</CardTitle>
                                 </div>
                             </CardHeader>
-                            <CardContent className="py-4 text-sm text-gray-700">
+                            <CardContent className="py-3.5 text-xs text-gray-700">
                                 <p className="whitespace-pre-line leading-relaxed">{item.content}</p>
                             </CardContent>
                         </Card>

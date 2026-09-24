@@ -75,68 +75,51 @@ export default function StaffCommunicationPage() {
         }
     };
 
-    if (loading) return <LoadingState message="Loading administrative & support staff memos..." />;
+    if (loading) return <LoadingState message="Loading circulars..." />;
 
     return (
         <div className="space-y-6 text-black">
-            {/* SRS Context Banner */}
-            <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-xs text-amber-900 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-3">
-                <div className="space-y-1">
-                    <span className="font-bold text-sm text-amber-900 flex items-center">
-                        <Sparkles className="w-4 h-4 mr-1.5 text-amber-700" />
-                        SRS Domain 11.5: Administrative & Support Staff Memos
-                    </span>
-                    <p className="text-amber-800">
-                        <strong>Who Uses This:</strong> School Principal, Administrative Vice-Principal & Support Staff Supervisors.
-                        <br />
-                        <strong>Data Source:</strong> Database table `announcement` via REST API.
-                        <br />
-                        <strong>SRS Purpose:</strong> Campus facility maintenance schedules, security updates, ICT infrastructure notices, and HR administrative memos.
-                    </p>
-                </div>
-            </div>
-
             {/* Header */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-900 flex items-center space-x-2">
-                        <Briefcase className="w-7 h-7 text-amber-600" />
-                        <span>5. Administrative & Support Staff Memos</span>
+                    <h1 className="text-xl font-bold text-gray-900 flex items-center space-x-2">
+                        <Briefcase className="w-5 h-5 text-amber-600" />
+                        <span>Staff Circulars</span>
                     </h1>
-                    <p className="text-sm text-gray-500 mt-1">Non-academic staff broadcasts, facility updates, and administrative notices.</p>
+                    <p className="text-xs text-gray-500 mt-0.5">Administrative and facility notices for support staff.</p>
                 </div>
-                <Button onClick={() => setIsModalOpen(true)} leftIcon={<Plus className="w-4 h-4" />} className="bg-[#006b3f] hover:bg-[#005432]">
-                    Post Staff Memo
+                <Button onClick={() => setIsModalOpen(true)} leftIcon={<Plus className="w-4 h-4" />} className="bg-[#006b3f] hover:bg-[#005432] text-xs h-9">
+                    New Circular
                 </Button>
             </div>
 
             {/* Announcements List */}
-            <div className="space-y-4">
+            <div className="space-y-3">
                 {announcements.length === 0 ? (
                     <Card className="shadow-sm">
-                        <CardContent className="p-12 text-center text-gray-500">
-                            <Briefcase className="w-12 h-12 mx-auto text-amber-300 mb-2" />
-                            <p className="font-semibold text-gray-800">No staff administrative memos posted yet</p>
-                            <p className="text-xs text-gray-400 mt-1">Click "Post Staff Memo" above to broadcast administrative notices to staff.</p>
+                        <CardContent className="p-8 text-center text-gray-500">
+                            <Briefcase className="w-8 h-8 mx-auto text-gray-300 mb-2" />
+                            <p className="text-sm font-medium text-gray-700">No staff circulars</p>
+                            <p className="text-xs text-gray-400 mt-1">Announcements targeted to support staff will appear here.</p>
                         </CardContent>
                     </Card>
                 ) : (
                     announcements.map((item) => (
                         <Card key={item.id} className="shadow-sm hover:shadow-md transition-shadow">
-                            <CardHeader className="py-4 border-b border-gray-100 flex flex-row items-center justify-between">
+                            <CardHeader className="py-3.5 border-b border-gray-100 flex flex-row items-center justify-between">
                                 <div className="space-y-1">
                                     <div className="flex items-center space-x-2">
-                                        <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-800">
-                                            STAFF MEMO
+                                        <span className="px-2 py-0.5 rounded text-[11px] font-semibold bg-amber-100 text-amber-800">
+                                            STAFF
                                         </span>
                                         <span className="text-xs text-gray-400">
                                             {new Date(item.createdAt).toLocaleDateString()}
                                         </span>
                                     </div>
-                                    <CardTitle className="text-lg font-bold text-gray-900">{item.title}</CardTitle>
+                                    <CardTitle className="text-base font-bold text-gray-900">{item.title}</CardTitle>
                                 </div>
                             </CardHeader>
-                            <CardContent className="py-4 text-sm text-gray-700">
+                            <CardContent className="py-3.5 text-xs text-gray-700">
                                 <p className="whitespace-pre-line leading-relaxed">{item.content}</p>
                             </CardContent>
                         </Card>

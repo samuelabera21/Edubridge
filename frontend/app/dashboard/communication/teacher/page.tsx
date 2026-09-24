@@ -75,68 +75,51 @@ export default function TeacherCommunicationPage() {
         }
     };
 
-    if (loading) return <LoadingState message="Loading teaching staff announcements & faculty notes..." />;
+    if (loading) return <LoadingState message="Loading circulars..." />;
 
     return (
         <div className="space-y-6 text-black">
-            {/* SRS Context Banner */}
-            <div className="bg-purple-50 border border-purple-200 rounded-xl p-4 text-xs text-purple-900 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-3">
-                <div className="space-y-1">
-                    <span className="font-bold text-sm text-purple-900 flex items-center">
-                        <Sparkles className="w-4 h-4 mr-1.5 text-purple-700" />
-                        SRS Domain 11.2: Faculty Bulletin & Teacher Communication
-                    </span>
-                    <p className="text-purple-800">
-                        <strong>Who Uses This:</strong> School Principal, Academic Vice-Principal & Department Heads.
-                        <br />
-                        <strong>Data Source:</strong> Database table `announcement` filtered by `target=TEACHERS` via REST API.
-                        <br />
-                        <strong>SRS Purpose:</strong> Faculty circulars, gradebook submission deadlines, department meetings, and pedagogical guidelines.
-                    </p>
-                </div>
-            </div>
-
             {/* Header */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-900 flex items-center space-x-2">
-                        <BookOpen className="w-7 h-7 text-purple-600" />
-                        <span>2. Teacher & Faculty Communication</span>
+                    <h1 className="text-xl font-bold text-gray-900 flex items-center space-x-2">
+                        <BookOpen className="w-5 h-5 text-purple-600" />
+                        <span>Faculty Circulars</span>
                     </h1>
-                    <p className="text-sm text-gray-500 mt-1">Dedicated faculty bulletin board, staff meeting agendas, and academic circulars.</p>
+                    <p className="text-xs text-gray-500 mt-0.5">Academic notices and faculty meeting circulars.</p>
                 </div>
-                <Button onClick={() => setIsModalOpen(true)} leftIcon={<Plus className="w-4 h-4" />} className="bg-[#006b3f] hover:bg-[#005432]">
-                    Post Teacher Circular
+                <Button onClick={() => setIsModalOpen(true)} leftIcon={<Plus className="w-4 h-4" />} className="bg-[#006b3f] hover:bg-[#005432] text-xs h-9">
+                    New Circular
                 </Button>
             </div>
 
             {/* Circulars List */}
-            <div className="space-y-4">
+            <div className="space-y-3">
                 {announcements.length === 0 ? (
                     <Card className="shadow-sm">
-                        <CardContent className="p-12 text-center text-gray-500">
-                            <BookOpen className="w-12 h-12 mx-auto text-purple-300 mb-2" />
-                            <p className="font-semibold text-gray-800">No faculty circulars posted yet</p>
-                            <p className="text-xs text-gray-400 mt-1">Click "Post Teacher Circular" above to dispatch notices to teaching staff.</p>
+                        <CardContent className="p-8 text-center text-gray-500">
+                            <BookOpen className="w-8 h-8 mx-auto text-gray-300 mb-2" />
+                            <p className="text-sm font-medium text-gray-700">No faculty circulars</p>
+                            <p className="text-xs text-gray-400 mt-1">Announcements targeted to teaching staff will appear here.</p>
                         </CardContent>
                     </Card>
                 ) : (
                     announcements.map((item) => (
                         <Card key={item.id} className="shadow-sm hover:shadow-md transition-shadow">
-                            <CardHeader className="py-4 border-b border-gray-100 flex flex-row items-center justify-between">
+                            <CardHeader className="py-3.5 border-b border-gray-100 flex flex-row items-center justify-between">
                                 <div className="space-y-1">
                                     <div className="flex items-center space-x-2">
-                                        <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-purple-100 text-purple-800">
-                                            FACULTY ONLY
+                                        <span className="px-2 py-0.5 rounded text-[11px] font-semibold bg-purple-100 text-purple-800">
+                                            FACULTY
                                         </span>
                                         <span className="text-xs text-gray-400">
                                             {new Date(item.createdAt).toLocaleDateString()}
                                         </span>
                                     </div>
-                                    <CardTitle className="text-lg font-bold text-gray-900">{item.title}</CardTitle>
+                                    <CardTitle className="text-base font-bold text-gray-900">{item.title}</CardTitle>
                                 </div>
                             </CardHeader>
-                            <CardContent className="py-4 text-sm text-gray-700">
+                            <CardContent className="py-3.5 text-xs text-gray-700">
                                 <p className="whitespace-pre-line leading-relaxed">{item.content}</p>
                             </CardContent>
                         </Card>

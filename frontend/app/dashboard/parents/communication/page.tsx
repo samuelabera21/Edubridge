@@ -97,30 +97,17 @@ export default function ParentCommunicationPage() {
         }
     };
 
-    if (loading) return <LoadingState message="Loading parent communication channels..." />;
+    if (loading) return <LoadingState message="Loading parent directory..." />;
 
     return (
         <div className="space-y-6 text-black">
-            {/* Context Banner */}
-            <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 text-xs text-blue-900 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-3">
-                <div className="space-y-1">
-                    <span className="font-bold text-sm text-blue-900 flex items-center">
-                        <Sparkles className="w-4 h-4 mr-1.5 text-blue-700" />
-                        Parent Communication & Direct Channel
-                    </span>
-                    <p className="text-blue-800">
-                        Direct messaging with registered parents regarding student progress, behavior updates, and school inquiries.
-                    </p>
-                </div>
-            </div>
-
             {/* Header */}
             <div>
-                <h1 className="text-2xl font-bold text-gray-900 flex items-center space-x-2">
-                    <MessageSquare className="w-7 h-7 text-blue-600" />
-                    <span>Parent Communication Channel</span>
+                <h1 className="text-xl font-bold text-gray-900 flex items-center space-x-2">
+                    <MessageSquare className="w-5 h-5 text-blue-600" />
+                    <span>Parent Communication</span>
                 </h1>
-                <p className="text-sm text-gray-500 mt-1">Direct messaging channel between school staff and registered parents.</p>
+                <p className="text-xs text-gray-500 mt-0.5">Direct messaging channel for registered parents and guardians.</p>
             </div>
 
             {/* Communication Layout */}

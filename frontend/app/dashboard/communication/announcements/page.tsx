@@ -91,49 +91,32 @@ export default function SchoolAnnouncementsPage() {
         }
     };
 
-    if (loading) return <LoadingState message="Loading school announcements from database..." />;
+    if (loading) return <LoadingState message="Loading announcements..." />;
 
     return (
         <div className="space-y-6 text-black">
-            {/* SRS Context Banner */}
-            <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 text-xs text-emerald-900 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-3">
-                <div className="space-y-1">
-                    <span className="font-bold text-sm text-[#006b3f] flex items-center">
-                        <Sparkles className="w-4 h-4 mr-1.5 text-[#006b3f]" />
-                        SRS Domain 11.1: School Announcements & Newsfeed
-                    </span>
-                    <p className="text-emerald-800">
-                        <strong>Who Uses This:</strong> School Principal, Vice-Principal & Communication Officers.
-                        <br />
-                        <strong>Data Source:</strong> Database table `announcement` queried via REST API (`/api/communication/announcements`).
-                        <br />
-                        <strong>SRS Purpose:</strong> School-wide news broadcast, holiday notices, and official administrative announcements.
-                    </p>
-                </div>
-            </div>
-
             {/* Header */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-900 flex items-center space-x-2">
-                        <Megaphone className="w-7 h-7 text-[#006b3f]" />
-                        <span>1. School Announcements & General News</span>
+                    <h1 className="text-xl font-bold text-gray-900 flex items-center space-x-2">
+                        <Megaphone className="w-5 h-5 text-[#006b3f]" />
+                        <span>School Announcements</span>
                     </h1>
-                    <p className="text-sm text-gray-500 mt-1">Official school broadcasts for teachers, students, parents, and administrative staff.</p>
+                    <p className="text-xs text-gray-500 mt-0.5">Official school broadcasts and bulletins.</p>
                 </div>
-                <Button onClick={() => setIsModalOpen(true)} leftIcon={<Plus className="w-4 h-4" />} className="bg-[#006b3f] hover:bg-[#005432]">
-                    Post Announcement
+                <Button onClick={() => setIsModalOpen(true)} leftIcon={<Plus className="w-4 h-4" />} className="bg-[#006b3f] hover:bg-[#005432] text-xs h-9">
+                    New Announcement
                 </Button>
             </div>
 
             {/* Announcements List */}
-            <div className="space-y-4">
+            <div className="space-y-3">
                 {announcements.length === 0 ? (
                     <Card className="shadow-sm">
-                        <CardContent className="p-12 text-center text-gray-500">
-                            <Megaphone className="w-12 h-12 mx-auto text-emerald-300 mb-2" />
-                            <p className="font-semibold text-gray-800">No school announcements posted yet</p>
-                            <p className="text-xs text-gray-400 mt-1">Click "Post Announcement" above to broadcast a new announcement to the school.</p>
+                        <CardContent className="p-8 text-center text-gray-500">
+                            <Megaphone className="w-8 h-8 mx-auto text-gray-300 mb-2" />
+                            <p className="text-sm font-medium text-gray-700">No announcements yet</p>
+                            <p className="text-xs text-gray-400 mt-1">Create a new announcement to publish it to your school.</p>
                         </CardContent>
                     </Card>
                 ) : (

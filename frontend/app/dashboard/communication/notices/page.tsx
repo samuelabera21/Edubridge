@@ -75,71 +75,54 @@ export default function ImportantNoticesPage() {
         }
     };
 
-    if (loading) return <LoadingState message="Loading high-priority notices & emergency directives from database..." />;
+    if (loading) return <LoadingState message="Loading notices..." />;
 
     return (
         <div className="space-y-6 text-black">
-            {/* SRS Context Banner */}
-            <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-xs text-red-900 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-3">
-                <div className="space-y-1">
-                    <span className="font-bold text-sm text-red-900 flex items-center">
-                        <Sparkles className="w-4 h-4 mr-1.5 text-red-700" />
-                        SRS Domain 11.6: Pinned High-Priority Notices & Compliance Directives
-                    </span>
-                    <p className="text-red-800">
-                        <strong>Who Uses This:</strong> School Principal & Regional Education Compliance Officers.
-                        <br />
-                        <strong>Data Source:</strong> Database table `important_notice` queried via REST API (`/api/communication/notices`).
-                        <br />
-                        <strong>SRS Purpose:</strong> Emergency weather/health closures, Ministry of Education policy compliance directives, and mandatory safety announcements.
-                    </p>
-                </div>
-            </div>
-
             {/* Header */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-900 flex items-center space-x-2">
-                        <AlertTriangle className="w-7 h-7 text-red-600" />
-                        <span>6. Important Notices & Directives</span>
+                    <h1 className="text-xl font-bold text-gray-900 flex items-center space-x-2">
+                        <AlertTriangle className="w-5 h-5 text-red-600" />
+                        <span>Important Notices</span>
                     </h1>
-                    <p className="text-sm text-gray-500 mt-1">Pinned emergency warnings, safety alerts, and Ministry directives.</p>
+                    <p className="text-xs text-gray-500 mt-0.5">Urgent directives, emergency warnings, and official safety alerts.</p>
                 </div>
-                <Button onClick={() => setIsModalOpen(true)} leftIcon={<Plus className="w-4 h-4" />} className="bg-red-700 hover:bg-red-800 text-white">
-                    Publish Pinned Notice
+                <Button onClick={() => setIsModalOpen(true)} leftIcon={<Plus className="w-4 h-4" />} className="bg-red-700 hover:bg-red-800 text-white text-xs h-9">
+                    New Notice
                 </Button>
             </div>
 
             {/* Notices List */}
-            <div className="space-y-4">
+            <div className="space-y-3">
                 {notices.length === 0 ? (
-                    <Card className="shadow-sm border-red-100 bg-red-50/20">
-                        <CardContent className="p-12 text-center text-gray-500">
-                            <ShieldAlert className="w-12 h-12 mx-auto text-red-300 mb-2" />
-                            <p className="font-semibold text-gray-800">No active high-priority notices in database</p>
-                            <p className="text-xs text-gray-400 mt-1">Click "Publish Pinned Notice" above to issue an urgent emergency announcement.</p>
+                    <Card className="shadow-sm">
+                        <CardContent className="p-8 text-center text-gray-500">
+                            <ShieldAlert className="w-8 h-8 mx-auto text-gray-300 mb-2" />
+                            <p className="text-sm font-medium text-gray-700">No active notices</p>
+                            <p className="text-xs text-gray-400 mt-1">High-priority and emergency announcements will appear here.</p>
                         </CardContent>
                     </Card>
                 ) : (
                     notices.map((item) => (
                         <Card key={item.id} className="shadow-sm border-l-4 border-l-red-600 hover:shadow-md transition-shadow">
-                            <CardHeader className="py-4 border-b border-gray-100 flex flex-row items-center justify-between">
+                            <CardHeader className="py-3.5 border-b border-gray-100 flex flex-row items-center justify-between">
                                 <div className="space-y-1">
                                     <div className="flex items-center space-x-2">
-                                        <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-red-100 text-red-800 flex items-center">
-                                            <Pin className="w-3 h-3 mr-1" /> PINNED DIRECTIVE ({item.noticeType})
+                                        <span className="px-2 py-0.5 rounded text-[11px] font-semibold bg-red-100 text-red-800 flex items-center">
+                                            <Pin className="w-3 h-3 mr-1" /> {item.noticeType}
                                         </span>
                                         <span className="text-xs text-gray-400">
                                             {new Date(item.createdAt).toLocaleDateString()}
                                         </span>
                                     </div>
-                                    <CardTitle className="text-lg font-bold text-gray-900">{item.title}</CardTitle>
+                                    <CardTitle className="text-base font-bold text-gray-900">{item.title}</CardTitle>
                                 </div>
                             </CardHeader>
-                        <CardContent className="py-4 text-sm text-gray-700">
+                            <CardContent className="py-3.5 text-xs text-gray-700">
                                 <p className="whitespace-pre-line leading-relaxed">{item.content}</p>
-                                <p className="text-xs text-gray-400 mt-2">
-                                    Published by {item.author?.name || "School Administration"} &middot; {new Date(item.createdAt).toLocaleDateString()}
+                                <p className="text-[11px] text-gray-400 mt-2">
+                                    Published by {item.author?.name || "Administration"} &middot; {new Date(item.createdAt).toLocaleDateString()}
                                 </p>
                             </CardContent>
                         </Card>

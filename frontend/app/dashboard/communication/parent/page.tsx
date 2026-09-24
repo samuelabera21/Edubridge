@@ -75,68 +75,51 @@ export default function ParentBroadcastCommunicationPage() {
         }
     };
 
-    if (loading) return <LoadingState message="Loading parent broadcast announcements from database..." />;
+    if (loading) return <LoadingState message="Loading broadcasts..." />;
 
     return (
         <div className="space-y-6 text-black">
-            {/* SRS Context Banner */}
-            <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 text-xs text-emerald-900 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-3">
-                <div className="space-y-1">
-                    <span className="font-bold text-sm text-[#006b3f] flex items-center">
-                        <Sparkles className="w-4 h-4 mr-1.5 text-[#006b3f]" />
-                        SRS Domain 11.4: Parent & Guardian Circulars
-                    </span>
-                    <p className="text-emerald-800">
-                        <strong>Who Uses This:</strong> School Principal, Vice-Principal & PTA Liaisons.
-                        <br />
-                        <strong>Data Source:</strong> Database table `announcement` filtered by `target=PARENTS` via REST API.
-                        <br />
-                        <strong>SRS Purpose:</strong> General PTA assembly circulars, report card distribution schedules, and school fee deadline broadcasts.
-                    </p>
-                </div>
-            </div>
-
             {/* Header */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-900 flex items-center space-x-2">
-                        <Users className="w-7 h-7 text-[#006b3f]" />
-                        <span>4. Parent Broadcast Circulars</span>
+                    <h1 className="text-xl font-bold text-gray-900 flex items-center space-x-2">
+                        <Users className="w-5 h-5 text-[#006b3f]" />
+                        <span>Parent Broadcasts</span>
                     </h1>
-                    <p className="text-sm text-gray-500 mt-1">Official announcements and administrative notices broadcast to parents and guardians.</p>
+                    <p className="text-xs text-gray-500 mt-0.5">Notices and communications for parents and guardians.</p>
                 </div>
-                <Button onClick={() => setIsModalOpen(true)} leftIcon={<Plus className="w-4 h-4" />} className="bg-[#006b3f] hover:bg-[#005432]">
-                    Post Parent Circular
+                <Button onClick={() => setIsModalOpen(true)} leftIcon={<Plus className="w-4 h-4" />} className="bg-[#006b3f] hover:bg-[#005432] text-xs h-9">
+                    New Broadcast
                 </Button>
             </div>
 
             {/* Announcements List */}
-            <div className="space-y-4">
+            <div className="space-y-3">
                 {announcements.length === 0 ? (
                     <Card className="shadow-sm">
-                        <CardContent className="p-12 text-center text-gray-500">
-                            <Users className="w-12 h-12 mx-auto text-emerald-300 mb-2" />
-                            <p className="font-semibold text-gray-800">No parent circulars posted yet</p>
-                            <p className="text-xs text-gray-400 mt-1">Click "Post Parent Circular" above to broadcast notices to parents.</p>
+                        <CardContent className="p-8 text-center text-gray-500">
+                            <Users className="w-8 h-8 mx-auto text-gray-300 mb-2" />
+                            <p className="text-sm font-medium text-gray-700">No parent broadcasts</p>
+                            <p className="text-xs text-gray-400 mt-1">Announcements targeted to parents will appear here.</p>
                         </CardContent>
                     </Card>
                 ) : (
                     announcements.map((item) => (
                         <Card key={item.id} className="shadow-sm hover:shadow-md transition-shadow">
-                            <CardHeader className="py-4 border-b border-gray-100 flex flex-row items-center justify-between">
+                            <CardHeader className="py-3.5 border-b border-gray-100 flex flex-row items-center justify-between">
                                 <div className="space-y-1">
                                     <div className="flex items-center space-x-2">
-                                        <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800">
-                                            PARENTS ONLY
+                                        <span className="px-2 py-0.5 rounded text-[11px] font-semibold bg-emerald-100 text-emerald-800">
+                                            PARENTS
                                         </span>
                                         <span className="text-xs text-gray-400">
                                             {new Date(item.createdAt).toLocaleDateString()}
                                         </span>
                                     </div>
-                                    <CardTitle className="text-lg font-bold text-gray-900">{item.title}</CardTitle>
+                                    <CardTitle className="text-base font-bold text-gray-900">{item.title}</CardTitle>
                                 </div>
                             </CardHeader>
-                            <CardContent className="py-4 text-sm text-gray-700">
+                            <CardContent className="py-3.5 text-xs text-gray-700">
                                 <p className="whitespace-pre-line leading-relaxed">{item.content}</p>
                             </CardContent>
                         </Card>
