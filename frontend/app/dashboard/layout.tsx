@@ -27,6 +27,7 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
         learning: pathname.startsWith("/dashboard/learning"),
         parents: pathname.startsWith("/dashboard/parents"),
         communication: pathname.startsWith("/dashboard/communication"),
+        usersPermissions: pathname.startsWith("/dashboard/users-permissions"),
         operations: pathname.startsWith("/dashboard/operations"),
     });
     const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -763,17 +764,6 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
                                             </div>
                                         </Link>
 
-                                        {/* User Management */}
-                                        <Link 
-                                            href="/dashboard/admin/users"
-                                            title="User Management"
-                                            className={`flex items-center ${sidebarCollapsed ? "justify-center px-2" : "justify-between px-3.5"} py-2.5 rounded-xl text-xs font-medium transition-all ${pathname.startsWith("/dashboard/admin/users") ? "bg-[#0c2454] text-[#f59e0b] border-l-4 border-[#f59e0b]" : "text-slate-300 hover:bg-[#081e48] hover:text-white"}`}
-                                        >
-                                            <div className={`flex items-center ${sidebarCollapsed ? "" : "space-x-3"}`}>
-                                                <Users className="w-4 h-4 text-amber-400 shrink-0" />
-                                                {!sidebarCollapsed && <span>User Management</span>}
-                                            </div>
-                                        </Link>
 
                                         {/* Academics Group */}
                                         <div className="pt-1">
@@ -1091,13 +1081,13 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
                                             </button>
                                             {openMenus.usersPermissions && !sidebarCollapsed && (
                                                 <div className="pl-8 pr-2 py-1.5 space-y-1 bg-[#020e24]/60 rounded-xl my-1 border-l border-slate-700/50">
-                                                    <Link href="/dashboard/users-permissions/school-users" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/users-permissions/school-users" ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>1. School Users</Link>
-                                                    <Link href="/dashboard/users-permissions/roles" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/users-permissions/roles" ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>2. Roles</Link>
-                                                    <Link href="/dashboard/users-permissions/permissions" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/users-permissions/permissions" ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>3. Permissions</Link>
-                                                    <Link href="/dashboard/users-permissions/teacher-accounts" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/users-permissions/teacher-accounts" ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>4. Teacher Accounts</Link>
-                                                    <Link href="/dashboard/users-permissions/student-accounts" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/users-permissions/student-accounts" ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>5. Student Accounts</Link>
-                                                    <Link href="/dashboard/users-permissions/parent-accounts" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/users-permissions/parent-accounts" ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>6. Parent Accounts</Link>
-                                                    <Link href="/dashboard/users-permissions/staff-accounts" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/users-permissions/staff-accounts" ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>7. Staff Accounts</Link>
+                                                    <Link href="/dashboard/users-permissions" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/users-permissions" ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>All Accounts</Link>
+                                                    <Link href="/dashboard/users-permissions/administrators" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/users-permissions/administrators" ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>Administrators & Leadership</Link>
+                                                    <Link href="/dashboard/users-permissions/teachers" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/users-permissions/teachers" ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>Teachers</Link>
+                                                    <Link href="/dashboard/users-permissions/students" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/users-permissions/students" ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>Students</Link>
+                                                    <Link href="/dashboard/users-permissions/parents" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/users-permissions/parents" ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>Parents & Guardians</Link>
+                                                    <Link href="/dashboard/users-permissions/staff" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/users-permissions/staff" ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>Support Staff</Link>
+                                                    <Link href="/dashboard/users-permissions/roles" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/users-permissions/roles" ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>Roles & Permissions</Link>
                                                 </div>
                                             )}
                                         </div>
