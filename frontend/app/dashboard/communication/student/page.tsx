@@ -11,7 +11,8 @@ import {
     User, 
     Calendar, 
     X,
-    FileText
+    FileText,
+    Trash2
 } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -75,6 +76,21 @@ export default function StudentCommunicationPage() {
         }
     };
 
+    const handleDeleteAnnouncement = async (id: string) => {
+        if (!confirm("Are you sure you want to delete this broadcast?")) return;
+        try {
+            const res = await fetchApi(`/communication/announcements/${id}`, { method: "DELETE" });
+            if (res.ok) {
+                setAnnouncements(prev => prev.filter(a => a.id !== id));
+            } else {
+                const data = await res.json();
+                alert(data.error || "Failed to delete broadcast");
+            }
+        } catch (_) {
+            alert("Failed to delete broadcast");
+        }
+    };
+
     if (loading) return <LoadingState message="Loading broadcasts..." />;
 
     return (
@@ -118,6 +134,13 @@ export default function StudentCommunicationPage() {
                                     </div>
                                     <CardTitle className="text-base font-bold text-gray-900">{item.title}</CardTitle>
                                 </div>
+                                <button
+                                    onClick={() => handleDeleteAnnouncement(item.id)}
+                                    className="p-1.5 text-gray-400 hover:text-red-600 transition-colors rounded ml-2 flex-shrink-0"
+                                    title="Delete broadcast"
+                                >
+                                    <Trash2 className="w-4 h-4" />
+                                </button>
                             </CardHeader>
                             <CardContent className="py-3.5 text-xs text-gray-700">
                                 <p className="whitespace-pre-line leading-relaxed">{item.content}</p>

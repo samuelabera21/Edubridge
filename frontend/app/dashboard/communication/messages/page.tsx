@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { fetchApi } from "@/lib/api";
-import { MessageSquare, Send, X, ChevronLeft } from "lucide-react";
-import { Card, CardContent } from "@/components/ui/Card";
+import { useAuth } from "@/hooks/useAuth";
+import { MessageSquare, Send, X, ChevronLeft, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { LoadingState } from "@/components/ui/LoadingState";
 
@@ -23,16 +23,19 @@ interface Message {
 }
 
 export default function MessagesPage() {
+    const { authData } = useAuth();
+    const currentUserId = authData?.user?.id;
+
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [messages, setMessages] = useState<Message[]>([]);
     const [users, setUsers] = useState<User[]>([]);
-    const [currentUser, setCurrentUser] = useState<User | null>(null);
     const [selectedUser, setSelectedUser] = useState<User | null>(null);
     const [conversation, setConversation] = useState<Message[]>([]);
     const [newMessage, setNewMessage] = useState("");
     const [sending, setSending] = useState(false);
     const [showCompose, setShowCompose] = useState(false);
+    const [deletingId, setDeletingId] = useState<string | null>(null);
 
     useEffect(() => {
         loadInitial();
@@ -101,11 +104,30 @@ export default function MessagesPage() {
         }
     };
 
+    const handleDeleteMessage = async (msgId: string) => {
+        if (!confirm("Are you sure you want to delete this message?")) return;
+        setDeletingId(msgId);
+        try {
+            const res = await fetchApi(`/communication/messages/${msgId}`, { method: "DELETE" });
+            if (res.ok) {
+                setConversation(prev => prev.filter(m => m.id !== msgId));
+                setMessages(prev => prev.filter(m => m.id !== msgId));
+            } else {
+                const data = await res.json();
+                alert(data.error || "Failed to delete message");
+            }
+        } catch (_) {
+            alert("Failed to delete message");
+        } finally {
+            setDeletingId(null);
+        }
+    };
+
     // Build list of conversation partners from message history
     const conversationPartners = (() => {
         const map = new Map<string, { user: User; lastMessage: Message }>();
         for (const msg of messages) {
-            const partner = currentUser?.id === msg.sender.id ? msg.receiver : msg.sender;
+            const partner = (currentUserId ? msg.sender.id === currentUserId : false) ? msg.receiver : msg.sender;
             const existing = map.get(partner.id);
             if (!existing || new Date(msg.createdAt) > new Date(existing.lastMessage.createdAt)) {
                 map.set(partner.id, { user: partner, lastMessage: msg });
@@ -130,10 +152,13 @@ export default function MessagesPage() {
     return (
         <div className="space-y-4 text-black">
             <div className="flex items-center justify-between">
-                <h1 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-                    <MessageSquare className="w-5 h-5 text-[#006b3f]" />
-                    Messages
-                </h1>
+                <div>
+                    <h1 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+                        <MessageSquare className="w-5 h-5 text-[#006b3f]" />
+                        Direct Messages
+                    </h1>
+                    <p className="text-xs text-gray-500 mt-0.5">Secure, internal communications with faculty, staff, and guardians.</p>
+                </div>
                 <Button
                     onClick={() => { setShowCompose(true); setSelectedUser(null); }}
                     className="bg-[#006b3f] hover:bg-[#005432] text-sm"
@@ -193,7 +218,7 @@ export default function MessagesPage() {
                                 >
                                     <option value="" disabled>Select a recipient</option>
                                     {users.map(u => (
-                                        <option key={u.id} value={u.id}>{u.name}</option>
+                                        <option key={u.id} value={u.id}>{u.name} ({u.email})</option>
                                     ))}
                                 </select>
                             </div>
@@ -218,14 +243,19 @@ export default function MessagesPage() {
                         </div>
                     ) : selectedUser ? (
                         <>
-                            <div className="px-4 py-3 border-b border-gray-100 bg-gray-50 flex items-center gap-2">
-                                <button
-                                    onClick={() => setSelectedUser(null)}
-                                    className="md:hidden text-gray-400 hover:text-gray-600 mr-1"
-                                >
-                                    <ChevronLeft className="w-4 h-4" />
-                                </button>
-                                <p className="text-sm font-semibold text-gray-900">{selectedUser.name}</p>
+                            <div className="px-4 py-3 border-b border-gray-100 bg-gray-50 flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                    <button
+                                        onClick={() => setSelectedUser(null)}
+                                        className="md:hidden text-gray-400 hover:text-gray-600 mr-1"
+                                    >
+                                        <ChevronLeft className="w-4 h-4" />
+                                    </button>
+                                    <div>
+                                        <p className="text-sm font-semibold text-gray-900">{selectedUser.name}</p>
+                                        <p className="text-xs text-gray-500">{selectedUser.email}</p>
+                                    </div>
+                                </div>
                             </div>
 
                             <div className="flex-1 overflow-y-auto p-4 space-y-3" style={{ maxHeight: "50vh" }}>
@@ -233,15 +263,35 @@ export default function MessagesPage() {
                                     <p className="text-center text-sm text-gray-400 py-8">No messages in this conversation yet.</p>
                                 ) : (
                                     conversation.map(msg => {
-                                        const isMe = msg.sender.id !== selectedUser.id;
+                                        const isMe = currentUserId ? msg.sender.id === currentUserId : msg.sender.id !== selectedUser.id;
                                         return (
-                                            <div key={msg.id} className={`flex ${isMe ? "justify-end" : "justify-start"}`}>
-                                                <div className={`max-w-xs rounded-lg px-3 py-2 text-sm ${isMe ? "bg-[#006b3f] text-white" : "bg-gray-100 text-gray-900"}`}>
-                                                    <p>{msg.content}</p>
-                                                    <p className={`text-xs mt-1 ${isMe ? "text-emerald-200" : "text-gray-400"}`}>
+                                            <div key={msg.id} className={`flex items-end gap-1.5 ${isMe ? "justify-end" : "justify-start"} group`}>
+                                                {isMe && (
+                                                    <button
+                                                        onClick={() => handleDeleteMessage(msg.id)}
+                                                        disabled={deletingId === msg.id}
+                                                        className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-red-600 transition-opacity"
+                                                        title="Delete message"
+                                                    >
+                                                        <Trash2 className="w-3.5 h-3.5" />
+                                                    </button>
+                                                )}
+                                                <div className={`max-w-xs rounded-lg px-3 py-2 text-sm shadow-sm ${isMe ? "bg-[#006b3f] text-white" : "bg-gray-100 text-gray-900"}`}>
+                                                    <p className="whitespace-pre-wrap break-words">{msg.content}</p>
+                                                    <p className={`text-[10px] mt-1 text-right ${isMe ? "text-emerald-100" : "text-gray-400"}`}>
                                                         {new Date(msg.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                                                     </p>
                                                 </div>
+                                                {!isMe && (
+                                                    <button
+                                                        onClick={() => handleDeleteMessage(msg.id)}
+                                                        disabled={deletingId === msg.id}
+                                                        className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-red-600 transition-opacity"
+                                                        title="Delete message"
+                                                    >
+                                                        <Trash2 className="w-3.5 h-3.5" />
+                                                    </button>
+                                                )}
                                             </div>
                                         );
                                     })

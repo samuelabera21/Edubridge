@@ -94,6 +94,29 @@ export class CommunicationService {
         return prisma.announcement.delete({ where: { id } });
     }
 
+    static async updateAnnouncement(organizationId: string, id: string, data: {
+        title?: string;
+        content?: string;
+        target?: AnnouncementTarget;
+        targetId?: string;
+    }) {
+        const item = await prisma.announcement.findFirst({ where: { id, organizationId } });
+        if (!item) throw new Error("Announcement not found");
+
+        return prisma.announcement.update({
+            where: { id },
+            data: {
+                ...(data.title ? { title: data.title } : {}),
+                ...(data.content ? { content: data.content } : {}),
+                ...(data.target ? { target: data.target } : {}),
+                ...(data.targetId !== undefined ? { targetId: data.targetId } : {})
+            },
+            include: {
+                author: { select: { id: true, name: true, email: true } }
+            }
+        });
+    }
+
     // =========================================================
     // IMPORTANT NOTICES
     // =========================================================
@@ -106,6 +129,23 @@ export class CommunicationService {
             },
             orderBy: [{ isPinned: "desc" }, { createdAt: "desc" }]
         });
+    }
+
+    static async deleteImportantNotice(organizationId: string, id: string) {
+        const item = await prisma.importantNotice.findFirst({ where: { id, organizationId } });
+        if (!item) throw new Error("Important notice not found");
+
+        await prisma.auditLog.create({
+            data: {
+                organizationId,
+                action: "IMPORTANT_NOTICE_DELETED",
+                resource: "ImportantNotice",
+                resourceId: id,
+                oldValue: { title: item.title }
+            }
+        });
+
+        return prisma.importantNotice.delete({ where: { id } });
     }
 
     static async createImportantNotice(organizationId: string, data: {
@@ -260,6 +300,19 @@ export class CommunicationService {
             },
             orderBy: { createdAt: "asc" }
         });
+    }
+
+    static async deleteMessage(organizationId: string, userId: string, messageId: string) {
+        const message = await prisma.message.findFirst({
+            where: {
+                id: messageId,
+                organizationId,
+                OR: [{ senderId: userId }, { receiverId: userId }]
+            }
+        });
+        if (!message) throw new Error("Message not found or unauthorized");
+
+        return prisma.message.delete({ where: { id: messageId } });
     }
 
     /**

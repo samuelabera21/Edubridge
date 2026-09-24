@@ -3,14 +3,17 @@ import {
     createAnnouncement,
     getAnnouncements,
     deleteAnnouncement,
+    updateAnnouncement,
     getMyNotifications,
     markNotificationRead,
     getUnreadNotificationCount,
     sendMessage,
     getMyMessages,
     getMessagingUsers,
+    deleteMessage,
     getImportantNotices,
     createImportantNotice,
+    deleteImportantNotice,
     sendTeacherParentMessage,
     getTeacherParentContacts
 } from "./communication.controller.js";
@@ -24,12 +27,15 @@ router.use(requireScope("SCHOOL"));
 // ── Announcements ──────────────────────────────────────
 router.get("/announcements", requirePermission("COMMUNICATION:VIEW"), getAnnouncements);
 router.post("/announcements", requirePermission("COMMUNICATION:CREATE"), createAnnouncement);
+router.put("/announcements/:id", requirePermission("COMMUNICATION:CREATE"), updateAnnouncement);
 router.delete("/announcement/:id", requirePermission("COMMUNICATION:MANAGE"), deleteAnnouncement);
 router.delete("/announcements/:id", requirePermission("COMMUNICATION:MANAGE"), deleteAnnouncement);
 
 // ── Important Notices ──────────────────────────────────
 router.get("/notices", requirePermission("COMMUNICATION:VIEW"), getImportantNotices);
 router.post("/notices", requirePermission("COMMUNICATION:CREATE"), createImportantNotice);
+router.delete("/notices/:id", requirePermission("COMMUNICATION:MANAGE"), deleteImportantNotice);
+router.delete("/notice/:id", requirePermission("COMMUNICATION:MANAGE"), deleteImportantNotice);
 
 // ── Notifications (per-user, org-scoped) ──────────────
 // NOTE: No additional permission required — every authenticated school member
@@ -46,6 +52,8 @@ router.patch("/notification/:id/read", markNotificationRead);
 router.get("/messages", requirePermission("COMMUNICATION:VIEW"), getMyMessages);
 router.post("/messages", requirePermission("COMMUNICATION:CREATE"), sendMessage);
 router.get("/users", requirePermission("COMMUNICATION:VIEW"), getMessagingUsers);
+router.delete("/messages/:id", requirePermission("COMMUNICATION:VIEW"), deleteMessage);
+router.delete("/message/:id", requirePermission("COMMUNICATION:VIEW"), deleteMessage);
 
 // Legacy path aliases
 router.get("/message", requirePermission("COMMUNICATION:VIEW"), getMyMessages);

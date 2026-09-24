@@ -61,6 +61,27 @@ export const deleteAnnouncement = async (req: Request, res: Response) => {
     }
 };
 
+export const updateAnnouncement = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        if (!organizationId) return res.status(403).json({ error: "Missing school scope" });
+
+        const { id } = req.params;
+        if (!id) return res.status(400).json({ error: "Announcement id is required" });
+
+        const { title, content, target, targetId } = req.body;
+        const updated = await CommunicationService.updateAnnouncement(organizationId, id as string, {
+            title,
+            content,
+            target,
+            targetId
+        });
+        return res.json(updated);
+    } catch (error: any) {
+        return res.status(400).json({ error: error.message || "Failed to update announcement" });
+    }
+};
+
 // =========================================================
 // IMPORTANT NOTICES
 // =========================================================
@@ -95,6 +116,21 @@ export const createImportantNotice = async (req: Request, res: Response) => {
         return res.status(201).json(notice);
     } catch (error: any) {
         return res.status(400).json({ error: error.message || "Failed to publish notice" });
+    }
+};
+
+export const deleteImportantNotice = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        if (!organizationId) return res.status(403).json({ error: "Missing school scope" });
+
+        const { id } = req.params;
+        if (!id) return res.status(400).json({ error: "Notice id is required" });
+
+        await CommunicationService.deleteImportantNotice(organizationId, id as string);
+        return res.json({ success: true });
+    } catch (error: any) {
+        return res.status(400).json({ error: error.message || "Failed to delete notice" });
     }
 };
 
@@ -188,6 +224,22 @@ export const getMessagingUsers = async (req: Request, res: Response) => {
         return res.json(users);
     } catch (error: any) {
         return res.status(500).json({ error: "Failed to fetch users" });
+    }
+};
+
+export const deleteMessage = async (req: Request, res: Response) => {
+    try {
+        const userId = req.user?.id;
+        const organizationId = (req as any).accessScope?.id;
+        if (!userId || !organizationId) return res.status(401).json({ error: "Unauthorized" });
+
+        const { id } = req.params;
+        if (!id) return res.status(400).json({ error: "Message id is required" });
+
+        await CommunicationService.deleteMessage(organizationId, userId, id as string);
+        return res.json({ success: true });
+    } catch (error: any) {
+        return res.status(400).json({ error: error.message || "Failed to delete message" });
     }
 };
 

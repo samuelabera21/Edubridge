@@ -6,13 +6,11 @@ import { useAuth } from "@/hooks/useAuth";
 import { 
     Megaphone, 
     Plus, 
-    Search, 
-    Sparkles, 
     Calendar, 
     User, 
     X,
-    FileText,
-    Trash2
+    Trash2,
+    Edit2
 } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -23,23 +21,42 @@ export default function SchoolAnnouncementsPage() {
     const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
     const [announcements, setAnnouncements] = useState<any[]>([]);
+    const [schoolGrades, setSchoolGrades] = useState<any[]>([]);
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [editingId, setEditingId] = useState<string | null>(null);
 
     const [form, setForm] = useState({
         title: "",
         content: "",
-        target: "ALL"
+        target: "ALL",
+        targetId: ""
     });
 
-    const loadAnnouncements = async () => {
+    const loadData = async () => {
         try {
             setLoading(true);
-            const res = await fetchApi("/communication/announcements");
-            if (res.ok) {
-                const data = await res.json();
+            const [annRes, yearsRes] = await Promise.all([
+                fetchApi("/communication/announcements"),
+                fetchApi("/academic/years")
+            ]);
+
+            if (annRes.ok) {
+                const data = await annRes.json();
                 setAnnouncements(Array.isArray(data) ? data : []);
             } else {
                 setAnnouncements([]);
+            }
+
+            if (yearsRes.ok) {
+                const years = await yearsRes.json();
+                const activeYear = Array.isArray(years) ? years.find((y: any) => y.status === "ACTIVE") || years[0] : null;
+                if (activeYear) {
+                    const gradesRes = await fetchApi(`/academic/years/${activeYear.id}/grades`);
+                    if (gradesRes.ok) {
+                        const gradesData = await gradesRes.json();
+                        setSchoolGrades(Array.isArray(gradesData) ? gradesData : []);
+                    }
+                }
             }
         } catch (err: any) {
             console.error(err);
@@ -50,36 +67,75 @@ export default function SchoolAnnouncementsPage() {
     };
 
     useEffect(() => {
-        loadAnnouncements();
+        loadData();
     }, []);
 
-    const handleCreateAnnouncement = async (e: React.FormEvent) => {
+    const allSections = schoolGrades.flatMap(g => 
+        (g.sections || []).map((s: any) => ({
+            id: s.id,
+            name: `${g.grade?.name || "Grade"} - ${s.name}`
+        }))
+    );
+
+    const handleOpenCreate = () => {
+        setEditingId(null);
+        setForm({ title: "", content: "", target: "ALL", targetId: "" });
+        setIsModalOpen(true);
+    };
+
+    const handleOpenEdit = (item: any) => {
+        setEditingId(item.id);
+        setForm({
+            title: item.title,
+            content: item.content,
+            target: item.target || "ALL",
+            targetId: item.targetId || ""
+        });
+        setIsModalOpen(true);
+    };
+
+    const handleSubmitAnnouncement = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!form.title.trim() || !form.content.trim()) return;
 
         try {
             setSubmitting(true);
-            const res = await fetchApi("/communication/announcements", {
-                method: "POST",
-                body: JSON.stringify(form)
+            const payload = {
+                title: form.title,
+                content: form.content,
+                target: form.target,
+                targetId: (form.target === "SPECIFIC_GRADE" || form.target === "SPECIFIC_SECTION") ? form.targetId : undefined
+            };
+
+            const url = editingId ? `/communication/announcements/${editingId}` : "/communication/announcements";
+            const method = editingId ? "PUT" : "POST";
+
+            const res = await fetchApi(url, {
+                method,
+                body: JSON.stringify(payload)
             });
 
             if (res.ok) {
                 setIsModalOpen(false);
-                setForm({ title: "", content: "", target: "ALL" });
-                loadAnnouncements();
+                setEditingId(null);
+                setForm({ title: "", content: "", target: "ALL", targetId: "" });
+                loadData();
+            } else {
+                const err = await res.json();
+                alert(err.error || "Failed to save announcement");
             }
         } catch (err: any) {
             console.error(err);
+            alert("Failed to save announcement");
         } finally {
             setSubmitting(false);
         }
     };
 
     const handleDeleteAnnouncement = async (id: string) => {
-        if (!confirm("Delete this announcement?")) return;
+        if (!confirm("Are you sure you want to delete this announcement?")) return;
         try {
-            const res = await fetchApi(`/communication/announcement/${id}`, { method: "DELETE" });
+            const res = await fetchApi(`/communication/announcements/${id}`, { method: "DELETE" });
             if (res.ok) {
                 setAnnouncements(prev => prev.filter(a => a.id !== id));
             } else {
@@ -102,9 +158,9 @@ export default function SchoolAnnouncementsPage() {
                         <Megaphone className="w-5 h-5 text-[#006b3f]" />
                         <span>School Announcements</span>
                     </h1>
-                    <p className="text-xs text-gray-500 mt-0.5">Official school broadcasts and bulletins.</p>
+                    <p className="text-xs text-gray-500 mt-0.5">Official school broadcasts, circulars, and grade-targeted bulletins.</p>
                 </div>
-                <Button onClick={() => setIsModalOpen(true)} leftIcon={<Plus className="w-4 h-4" />} className="bg-[#006b3f] hover:bg-[#005432] text-xs h-9">
+                <Button onClick={handleOpenCreate} leftIcon={<Plus className="w-4 h-4" />} className="bg-[#006b3f] hover:bg-[#005432] text-xs h-9">
                     New Announcement
                 </Button>
             </div>
@@ -122,31 +178,40 @@ export default function SchoolAnnouncementsPage() {
                 ) : (
                     announcements.map((item) => (
                         <Card key={item.id} className="shadow-sm hover:shadow-md transition-shadow">
-                            <CardHeader className="py-4 border-b border-gray-100 flex flex-row items-center justify-between">
+                            <CardHeader className="py-3.5 border-b border-gray-100 flex flex-row items-center justify-between">
                                 <div className="space-y-1">
                                     <div className="flex items-center space-x-2">
-                                        <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800">
-                                            {item.target || "ALL SCHOOL"}
+                                        <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-emerald-100 text-emerald-800">
+                                            {item.target || "ALL"}
                                         </span>
                                         <span className="text-xs text-gray-400">
                                             {new Date(item.createdAt).toLocaleDateString()}
                                         </span>
                                     </div>
-                                    <CardTitle className="text-lg font-bold text-gray-900">{item.title}</CardTitle>
+                                    <CardTitle className="text-base font-bold text-gray-900">{item.title}</CardTitle>
                                 </div>
-                                <button
-                                    onClick={() => handleDeleteAnnouncement(item.id)}
-                                    className="text-gray-300 hover:text-red-500 transition-colors ml-2 flex-shrink-0"
-                                    title="Delete announcement"
-                                >
-                                    <Trash2 className="w-4 h-4" />
-                                </button>
+                                <div className="flex items-center space-x-1">
+                                    <button
+                                        onClick={() => handleOpenEdit(item)}
+                                        className="p-1.5 text-gray-400 hover:text-blue-600 transition-colors rounded"
+                                        title="Edit announcement"
+                                    >
+                                        <Edit2 className="w-4 h-4" />
+                                    </button>
+                                    <button
+                                        onClick={() => handleDeleteAnnouncement(item.id)}
+                                        className="p-1.5 text-gray-400 hover:text-red-600 transition-colors rounded"
+                                        title="Delete announcement"
+                                    >
+                                        <Trash2 className="w-4 h-4" />
+                                    </button>
+                                </div>
                             </CardHeader>
-                            <CardContent className="py-4 text-sm text-gray-700 space-y-3">
+                            <CardContent className="py-3.5 text-xs text-gray-700 space-y-2">
                                 <p className="whitespace-pre-line leading-relaxed">{item.content}</p>
-                                <div className="text-xs text-gray-500 flex items-center pt-2 border-t border-gray-50">
-                                    <User className="w-3.5 h-3.5 mr-1 text-gray-400" />
-                                    Posted by: <span className="font-semibold ml-1 text-gray-700">{item.author?.name || "School Principal"}</span>
+                                <div className="text-[11px] text-gray-400 flex items-center pt-2 border-t border-gray-50">
+                                    <User className="w-3 h-3 mr-1 text-gray-400" />
+                                    Posted by: <span className="font-medium ml-1 text-gray-600">{item.author?.name || "Administration"}</span>
                                 </div>
                             </CardContent>
                         </Card>
@@ -159,19 +224,21 @@ export default function SchoolAnnouncementsPage() {
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 animate-in fade-in duration-200">
                     <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6 space-y-4">
                         <div className="flex justify-between items-center border-b pb-3">
-                            <h3 className="text-lg font-bold text-gray-900">Post School Announcement</h3>
+                            <h3 className="text-base font-bold text-gray-900">
+                                {editingId ? "Edit Announcement" : "New School Announcement"}
+                            </h3>
                             <button onClick={() => setIsModalOpen(false)} className="text-gray-400 hover:text-gray-600"><X className="w-5 h-5" /></button>
                         </div>
 
-                        <form onSubmit={handleCreateAnnouncement} className="space-y-4">
+                        <form onSubmit={handleSubmitAnnouncement} className="space-y-4">
                             <div>
-                                <label className="block text-xs font-semibold text-gray-700 uppercase mb-1">Announcement Title *</label>
+                                <label className="block text-xs font-semibold text-gray-700 uppercase mb-1">Title *</label>
                                 <input
                                     type="text"
                                     required
                                     value={form.title}
                                     onChange={(e) => setForm({ ...form, title: e.target.value })}
-                                    placeholder="e.g. End of Semester Examination Schedule & Holidays"
+                                    placeholder="e.g. End of Semester Schedule"
                                     className="w-full border border-gray-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-[#006b3f]"
                                 />
                             </div>
@@ -180,23 +247,66 @@ export default function SchoolAnnouncementsPage() {
                                 <label className="block text-xs font-semibold text-gray-700 uppercase mb-1">Target Audience</label>
                                 <select
                                     value={form.target}
-                                    onChange={(e) => setForm({ ...form, target: e.target.value })}
+                                    onChange={(e) => setForm({ ...form, target: e.target.value, targetId: "" })}
                                     className="w-full border border-gray-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-[#006b3f] bg-white"
                                 >
                                     <option value="ALL">Entire School Community (All)</option>
-                                    <option value="TEACHERS">Teaching Staff Only</option>
-                                    <option value="STUDENTS">Students Only</option>
-                                    <option value="PARENTS">Parents & Guardians Only</option>
+                                    <option value="TEACHERS">Teaching Faculty</option>
+                                    <option value="STUDENTS">Students</option>
+                                    <option value="PARENTS">Parents & Guardians</option>
+                                    <option value="STAFF">Support & Administrative Staff</option>
+                                    <option value="SPECIFIC_GRADE">Specific Grade Level</option>
+                                    <option value="SPECIFIC_SECTION">Specific Section / Classroom</option>
                                 </select>
                             </div>
 
+                            {/* Grade Selector */}
+                            {form.target === "SPECIFIC_GRADE" && (
+                                <div>
+                                    <label className="block text-xs font-semibold text-gray-700 uppercase mb-1">Select Grade *</label>
+                                    <select
+                                        required
+                                        value={form.targetId}
+                                        onChange={(e) => setForm({ ...form, targetId: e.target.value })}
+                                        className="w-full border border-gray-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-[#006b3f] bg-white"
+                                    >
+                                        <option value="">-- Choose Grade --</option>
+                                        {schoolGrades.map((sg) => (
+                                            <option key={sg.id} value={sg.id}>
+                                                {sg.grade?.name || `Grade ${sg.id}`}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+                            )}
+
+                            {/* Section Selector */}
+                            {form.target === "SPECIFIC_SECTION" && (
+                                <div>
+                                    <label className="block text-xs font-semibold text-gray-700 uppercase mb-1">Select Section *</label>
+                                    <select
+                                        required
+                                        value={form.targetId}
+                                        onChange={(e) => setForm({ ...form, targetId: e.target.value })}
+                                        className="w-full border border-gray-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-[#006b3f] bg-white"
+                                    >
+                                        <option value="">-- Choose Section --</option>
+                                        {allSections.map((sec) => (
+                                            <option key={sec.id} value={sec.id}>
+                                                {sec.name}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+                            )}
+
                             <div>
-                                <label className="block text-xs font-semibold text-gray-700 uppercase mb-1">Announcement Message *</label>
+                                <label className="block text-xs font-semibold text-gray-700 uppercase mb-1">Message Content *</label>
                                 <textarea
                                     required
                                     value={form.content}
                                     onChange={(e) => setForm({ ...form, content: e.target.value })}
-                                    placeholder="Write your announcement details here..."
+                                    placeholder="Write announcement details here..."
                                     rows={4}
                                     className="w-full border border-gray-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-[#006b3f]"
                                 />
@@ -204,7 +314,9 @@ export default function SchoolAnnouncementsPage() {
 
                             <div className="flex justify-end space-x-3 pt-3 border-t">
                                 <Button type="button" variant="outline" onClick={() => setIsModalOpen(false)}>Cancel</Button>
-                                <Button type="submit" isLoading={submitting} className="bg-[#006b3f] hover:bg-[#005432]">Publish Announcement</Button>
+                                <Button type="submit" isLoading={submitting} className="bg-[#006b3f] hover:bg-[#005432]">
+                                    {editingId ? "Save Changes" : "Publish Announcement"}
+                                </Button>
                             </div>
                         </form>
                     </div>

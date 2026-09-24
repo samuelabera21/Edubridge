@@ -75,6 +75,21 @@ export default function ImportantNoticesPage() {
         }
     };
 
+    const handleDeleteNotice = async (id: string) => {
+        if (!confirm("Are you sure you want to delete this notice?")) return;
+        try {
+            const res = await fetchApi(`/communication/notices/${id}`, { method: "DELETE" });
+            if (res.ok) {
+                setNotices(prev => prev.filter(n => n.id !== id));
+            } else {
+                const data = await res.json();
+                alert(data.error || "Failed to delete notice");
+            }
+        } catch (_) {
+            alert("Failed to delete notice");
+        }
+    };
+
     if (loading) return <LoadingState message="Loading notices..." />;
 
     return (
@@ -118,6 +133,13 @@ export default function ImportantNoticesPage() {
                                     </div>
                                     <CardTitle className="text-base font-bold text-gray-900">{item.title}</CardTitle>
                                 </div>
+                                <button
+                                    onClick={() => handleDeleteNotice(item.id)}
+                                    className="p-1.5 text-gray-400 hover:text-red-600 transition-colors rounded ml-2 flex-shrink-0"
+                                    title="Delete notice"
+                                >
+                                    <Trash2 className="w-4 h-4" />
+                                </button>
                             </CardHeader>
                             <CardContent className="py-3.5 text-xs text-gray-700">
                                 <p className="whitespace-pre-line leading-relaxed">{item.content}</p>
