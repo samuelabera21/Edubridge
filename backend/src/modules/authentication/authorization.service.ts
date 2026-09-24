@@ -39,6 +39,50 @@ export async function getUserAccess(userId: string) {
     return assignments;
 }
 
+export async function getCallerSchoolScope(userId: string) {
+    const assignments = await prisma.roleAssignment.findMany({
+        where: { userId },
+        include: {
+            role: true,
+            scope: true,
+        },
+    });
+
+    const isPlatformAdmin = assignments.some(a => a.role?.name === "ADMIN" && (a.scope?.type === "FEDERAL" || !a.scope));
+    
+    // Find school assignment
+    const schoolAssignment = assignments.find(a => a.scope?.type === "SCHOOL");
+    
+    if (schoolAssignment) {
+        return {
+            organizationId: schoolAssignment.scopeId,
+            scopeName: schoolAssignment.scope?.name || "School",
+            isPlatformAdmin: false,
+            isSchoolAdmin: ["ADMIN", "SCHOOL_ADMIN", "ADMINISTRATOR"].includes(schoolAssignment.role?.name || "")
+        };
+    }
+
+    if (isPlatformAdmin) {
+        // Find default/first school for platform admin if not directly assigned
+        const defaultSchool = await prisma.organizationUnit.findFirst({ where: { type: "SCHOOL" } });
+        return {
+            organizationId: defaultSchool?.id || "",
+            scopeName: defaultSchool?.name || "EduBridge Demo School",
+            isPlatformAdmin: true,
+            isSchoolAdmin: true
+        };
+    }
+
+    // Fallback to any assignment scope if available
+    const anyAssignment = assignments[0];
+    return {
+        organizationId: anyAssignment?.scopeId || "",
+        scopeName: anyAssignment?.scope?.name || "EduBridge Demo School",
+        isPlatformAdmin: false,
+        isSchoolAdmin: anyAssignment ? ["ADMIN", "SCHOOL_ADMIN", "ADMINISTRATOR"].includes(anyAssignment.role.name) : false
+    };
+}
+
 export async function assignRoleToUser(
     userId: string,
     roleName: string,
@@ -84,6 +128,42 @@ export async function assignRoleToUser(
             userId,
             roleId: role.id,
             scopeId: scope.id,
+        },
+        include: {
+            role: true,
+            scope: true,
+        },
+    });
+}
+
+export async function assignRoleToUserByScopeId(
+    userId: string,
+    roleName: string,
+    scopeId: string
+) {
+    const role = await prisma.role.upsert({
+        where: {
+            name: roleName,
+        },
+        update: {},
+        create: {
+            name: roleName,
+        },
+    });
+
+    return prisma.roleAssignment.upsert({
+        where: {
+            userId_roleId_scopeId: {
+                userId,
+                roleId: role.id,
+                scopeId,
+            },
+        },
+        update: {},
+        create: {
+            userId,
+            roleId: role.id,
+            scopeId,
         },
         include: {
             role: true,
