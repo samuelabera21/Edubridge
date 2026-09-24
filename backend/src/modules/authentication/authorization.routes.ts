@@ -229,90 +229,92 @@ router.get("/users", async (req, res) => {
         const limitNum = Math.max(1, Math.min(100, parseInt(pageSize as string, 10) || 20));
         const skip = (pageNum - 1) * limitNum;
 
-        // Base where condition enforcing tenant scope
-        const baseWhere: any = {};
-        if (!callerScope.isPlatformAdmin || organizationId) {
-            baseWhere.roleAssignments = {
-                some: {
-                    scopeId: organizationId
-                }
-            };
+        const andConditions: any[] = [];
+
+        // Tenant scope condition
+        if (!callerScope.isPlatformAdmin && organizationId) {
+            andConditions.push({
+                OR: [
+                    { roleAssignments: { some: { scopeId: organizationId } } },
+                    { teacher: { organizationId } },
+                    { student: { enrollments: { some: { organizationId } } } },
+                    { parent: { children: { some: { student: { enrollments: { some: { organizationId } } } } } } }
+                ]
+            });
         }
 
         // Account status filter
         if (status === "ACTIVE") {
-            baseWhere.isActive = true;
+            andConditions.push({ isActive: true });
         } else if (status === "DEACTIVATED") {
-            baseWhere.isActive = false;
+            andConditions.push({ isActive: false });
         }
 
         // Search filter
         if (search && typeof search === "string" && search.trim() !== "") {
             const q = search.trim();
-            baseWhere.OR = [
-                { name: { contains: q, mode: "insensitive" } },
-                { email: { contains: q, mode: "insensitive" } },
-                { teacher: { employeeId: { contains: q, mode: "insensitive" } } },
-                { student: { studentId: { contains: q, mode: "insensitive" } } }
-            ];
+            andConditions.push({
+                OR: [
+                    { name: { contains: q, mode: "insensitive" } },
+                    { email: { contains: q, mode: "insensitive" } },
+                    { teacher: { employeeId: { contains: q, mode: "insensitive" } } },
+                    { student: { studentId: { contains: q, mode: "insensitive" } } }
+                ]
+            });
         }
 
         // Role filter
         if (role && typeof role === "string" && role.trim() !== "" && role.trim().toUpperCase() !== "ALL") {
             const r = role.trim().toUpperCase();
             if (r === "ADMINISTRATORS" || r === "ADMIN_LEADERSHIP" || r === "LEADERSHIP") {
-                baseWhere.roleAssignments = {
-                    some: {
-                        ...(organizationId ? { scopeId: organizationId } : {}),
-                        role: { name: { in: ["ADMIN", "SCHOOL_ADMIN", "ADMINISTRATOR", "VICE_PRINCIPAL"] } }
+                andConditions.push({
+                    roleAssignments: {
+                        some: {
+                            role: { name: { in: ["ADMIN", "SCHOOL_ADMIN", "ADMINISTRATOR", "VICE_PRINCIPAL"] } }
+                        }
                     }
-                };
+                });
             } else if (r === "TEACHER") {
-                baseWhere.AND = [
-                    ...(baseWhere.AND || []),
-                    {
-                        OR: [
-                            { roleAssignments: { some: { ...(organizationId ? { scopeId: organizationId } : {}), role: { name: { equals: "TEACHER", mode: "insensitive" } } } } },
-                            { teacher: { organizationId } }
-                        ]
-                    }
-                ];
+                andConditions.push({
+                    OR: [
+                        { roleAssignments: { some: { role: { name: { equals: "TEACHER", mode: "insensitive" } } } } },
+                        { teacher: { isNot: null } }
+                    ]
+                });
             } else if (r === "STUDENT") {
-                baseWhere.AND = [
-                    ...(baseWhere.AND || []),
-                    {
-                        OR: [
-                            { roleAssignments: { some: { ...(organizationId ? { scopeId: organizationId } : {}), role: { name: { equals: "STUDENT", mode: "insensitive" } } } } },
-                            { student: { enrollments: { some: { organizationId } } } }
-                        ]
-                    }
-                ];
+                andConditions.push({
+                    OR: [
+                        { roleAssignments: { some: { role: { name: { equals: "STUDENT", mode: "insensitive" } } } } },
+                        { student: { isNot: null } }
+                    ]
+                });
             } else if (r === "PARENT") {
-                baseWhere.AND = [
-                    ...(baseWhere.AND || []),
-                    {
-                        OR: [
-                            { roleAssignments: { some: { ...(organizationId ? { scopeId: organizationId } : {}), role: { name: { equals: "PARENT", mode: "insensitive" } } } } },
-                            { parent: { children: { some: { student: { enrollments: { some: { organizationId } } } } } } }
-                        ]
-                    }
-                ];
+                andConditions.push({
+                    OR: [
+                        { roleAssignments: { some: { role: { name: { equals: "PARENT", mode: "insensitive" } } } } },
+                        { parent: { isNot: null } }
+                    ]
+                });
             } else if (r === "SUPPORT_STAFF" || r === "STAFF" || r === "SCHOOL_SUPPORT_STAFF") {
-                baseWhere.roleAssignments = {
-                    some: {
-                        ...(organizationId ? { scopeId: organizationId } : {}),
-                        role: { name: { in: ["SCHOOL_SUPPORT_STAFF", "SUPPORT_STAFF", "STAFF"] } }
+                andConditions.push({
+                    roleAssignments: {
+                        some: {
+                            role: { name: { in: ["SCHOOL_SUPPORT_STAFF", "SUPPORT_STAFF", "STAFF"] } }
+                        }
                     }
-                };
+                });
             } else {
-                baseWhere.roleAssignments = {
-                    some: {
-                        ...(organizationId ? { scopeId: organizationId } : {}),
-                        role: { name: { equals: r, mode: "insensitive" } }
+                andConditions.push({
+                    roleAssignments: {
+                        some: {
+                            role: { name: { equals: r, mode: "insensitive" } }
+                        }
                     }
-                };
+                });
             }
         }
+
+        const baseWhere = andConditions.length > 0 ? { AND: andConditions } : {};
 
         // Execute total count & paginated query
         const [total, users] = await Promise.all([
@@ -321,7 +323,6 @@ router.get("/users", async (req, res) => {
                 where: baseWhere,
                 include: {
                     roleAssignments: {
-                        where: organizationId ? { scopeId: organizationId } : undefined,
                         include: {
                             role: true,
                             scope: true
@@ -422,7 +423,9 @@ router.get("/users", async (req, res) => {
                 requiresPasswordChange: u.requiresPasswordChange ?? false,
                 createdAt: u.createdAt,
                 roles,
-                scopeName: u.roleAssignments[0]?.scope?.name || callerScope.scopeName || "EduBridge Demo School",
+                primaryRole: roles[0] || "USER",
+                accountType: u.teacher ? "TEACHER" : u.student ? "STUDENT" : u.parent ? "PARENT" : "USER",
+                scopeName: u.roleAssignments[0]?.scope?.name || callerScope.scopeName || "School",
                 entityInfo
             };
         });
@@ -431,13 +434,13 @@ router.get("/users", async (req, res) => {
         const [activeCount, deactivatedCount] = await Promise.all([
             prisma.user.count({
                 where: {
-                    ...(organizationId ? { roleAssignments: { some: { scopeId: organizationId } } } : {}),
+                    ...baseWhere,
                     isActive: true
                 }
             }),
             prisma.user.count({
                 where: {
-                    ...(organizationId ? { roleAssignments: { some: { scopeId: organizationId } } } : {}),
+                    ...baseWhere,
                     isActive: false
                 }
             })
@@ -445,12 +448,19 @@ router.get("/users", async (req, res) => {
 
         return res.json({
             users: formatted,
+            items: formatted,
             page: pageNum,
             pageSize: limitNum,
             total,
             totalPages,
+            pagination: {
+                page: pageNum,
+                pageSize: limitNum,
+                total,
+                totalPages
+            },
             summary: {
-                total: activeCount + deactivatedCount,
+                total,
                 active: activeCount,
                 deactivated: deactivatedCount
             }
