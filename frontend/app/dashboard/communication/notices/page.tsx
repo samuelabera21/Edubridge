@@ -12,6 +12,7 @@ import {
     Calendar,
     User,
     Trash2,
+    Edit2,
     ChevronLeft,
     ChevronRight
 } from "lucide-react";
@@ -24,6 +25,7 @@ export default function ImportantNoticesPage() {
     const [submitting, setSubmitting] = useState(false);
     const [notices, setNotices] = useState<any[]>([]);
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [editingId, setEditingId] = useState<string | null>(null);
     const [searchQuery, setSearchQuery] = useState("");
     const [typeFilter, setTypeFilter] = useState("ALL");
 
@@ -81,24 +83,48 @@ export default function ImportantNoticesPage() {
         return filteredNotices.slice(start, start + pageSize);
     }, [filteredNotices, currentPage, pageSize]);
 
-    const handleCreateNotice = async (e: React.FormEvent) => {
+    const handleOpenCreate = () => {
+        setEditingId(null);
+        setForm({ title: "", content: "", noticeType: "EMERGENCY" });
+        setIsModalOpen(true);
+    };
+
+    const handleOpenEdit = (item: any) => {
+        setEditingId(item.id);
+        setForm({
+            title: item.title,
+            content: item.content,
+            noticeType: item.noticeType || "EMERGENCY"
+        });
+        setIsModalOpen(true);
+    };
+
+    const handleSubmitNotice = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!form.title.trim() || !form.content.trim()) return;
 
         try {
             setSubmitting(true);
-            const res = await fetchApi("/communication/notices", {
-                method: "POST",
+            const url = editingId ? `/communication/notices/${editingId}` : "/communication/notices";
+            const method = editingId ? "PUT" : "POST";
+
+            const res = await fetchApi(url, {
+                method,
                 body: JSON.stringify(form)
             });
 
             if (res.ok) {
                 setIsModalOpen(false);
+                setEditingId(null);
                 setForm({ title: "", content: "", noticeType: "EMERGENCY" });
                 loadNotices();
+            } else {
+                const data = await res.json();
+                alert(data.error || "Failed to save notice");
             }
         } catch (err: any) {
             console.error(err);
+            alert("Failed to save notice");
         } finally {
             setSubmitting(false);
         }
@@ -144,7 +170,7 @@ export default function ImportantNoticesPage() {
                     <p className="text-xs text-gray-500 mt-0.5">High-priority compliance notices, emergency warnings, and institutional directives.</p>
                 </div>
                 <Button 
-                    onClick={() => setIsModalOpen(true)} 
+                    onClick={handleOpenCreate} 
                     leftIcon={<Plus className="w-4 h-4" />} 
                     className="bg-red-700 hover:bg-red-800 text-white text-xs h-9 px-4 font-semibold shadow-xs"
                 >
@@ -182,7 +208,7 @@ export default function ImportantNoticesPage() {
                                     typeFilter === tab.id
                                         ? "bg-red-700 text-white shadow-2xs"
                                         : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                                }`}
+                                    }`}
                             >
                                 {tab.label}
                             </button>
@@ -221,14 +247,25 @@ export default function ImportantNoticesPage() {
                                         </span>
                                     </div>
 
-                                    <button
-                                        onClick={() => handleDeleteNotice(item.id)}
-                                        className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-red-600 bg-white border border-red-200 rounded hover:bg-red-50 hover:border-red-300 transition-colors shadow-2xs self-end sm:self-auto"
-                                        title="Delete notice"
-                                    >
-                                        <Trash2 className="w-3 h-3 text-red-500" />
-                                        <span>Delete</span>
-                                    </button>
+                                    {/* Action buttons */}
+                                    <div className="flex items-center gap-1.5 self-end sm:self-auto">
+                                        <button
+                                            onClick={() => handleOpenEdit(item)}
+                                            className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded hover:bg-gray-100 hover:text-blue-600 transition-colors shadow-2xs"
+                                            title="Edit notice"
+                                        >
+                                            <Edit2 className="w-3 h-3 text-gray-500" />
+                                            <span>Edit</span>
+                                        </button>
+                                        <button
+                                            onClick={() => handleDeleteNotice(item.id)}
+                                            className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-red-600 bg-white border border-red-200 rounded hover:bg-red-50 hover:border-red-300 transition-colors shadow-2xs"
+                                            title="Delete notice"
+                                        >
+                                            <Trash2 className="w-3 h-3 text-red-500" />
+                                            <span>Delete</span>
+                                        </button>
+                                    </div>
                                 </div>
 
                                 {/* Title */}
@@ -303,21 +340,21 @@ export default function ImportantNoticesPage() {
                 )}
             </div>
 
-            {/* Create Modal */}
+            {/* Create/Edit Modal */}
             {isModalOpen && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 animate-in fade-in duration-150">
                     <div className="bg-white rounded-xl shadow-xl max-w-lg w-full p-5 space-y-4 border border-gray-100">
                         <div className="flex justify-between items-center border-b border-gray-100 pb-3">
                             <h3 className="text-base font-bold text-gray-900 flex items-center gap-2">
                                 <AlertTriangle className="w-4 h-4 text-red-600" />
-                                Publish Pinned Notice / Directive
+                                {editingId ? "Edit Notice / Directive" : "Publish Pinned Notice / Directive"}
                             </h3>
                             <button onClick={() => setIsModalOpen(false)} className="text-gray-400 hover:text-gray-600">
                                 <X className="w-4 h-4" />
                             </button>
                         </div>
 
-                        <form onSubmit={handleCreateNotice} className="space-y-3.5">
+                        <form onSubmit={handleSubmitNotice} className="space-y-3.5">
                             <div>
                                 <label className="block text-xs font-semibold text-gray-700 mb-1">Notice Title *</label>
                                 <input
@@ -360,7 +397,7 @@ export default function ImportantNoticesPage() {
                                     Cancel
                                 </Button>
                                 <Button type="submit" isLoading={submitting} className="bg-red-700 hover:bg-red-800 text-white text-xs h-8 px-4 font-semibold">
-                                    Publish Directive
+                                    {editingId ? "Save Changes" : "Publish Directive"}
                                 </Button>
                             </div>
                         </form>
@@ -370,5 +407,3 @@ export default function ImportantNoticesPage() {
         </div>
     );
 }
-
-

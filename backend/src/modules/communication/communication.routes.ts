@@ -13,6 +13,7 @@ import {
     deleteMessage,
     getImportantNotices,
     createImportantNotice,
+    updateImportantNotice,
     deleteImportantNotice,
     sendTeacherParentMessage,
     getTeacherParentContacts
@@ -34,6 +35,7 @@ router.delete("/announcements/:id", requirePermission("COMMUNICATION:MANAGE"), d
 // ── Important Notices ──────────────────────────────────
 router.get("/notices", requirePermission("COMMUNICATION:VIEW"), getImportantNotices);
 router.post("/notices", requirePermission("COMMUNICATION:CREATE"), createImportantNotice);
+router.put("/notices/:id", requirePermission("COMMUNICATION:CREATE"), updateImportantNotice);
 router.delete("/notices/:id", requirePermission("COMMUNICATION:MANAGE"), deleteImportantNotice);
 router.delete("/notice/:id", requirePermission("COMMUNICATION:MANAGE"), deleteImportantNotice);
 

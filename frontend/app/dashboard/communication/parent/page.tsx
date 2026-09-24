@@ -11,6 +11,7 @@ import {
     User,
     X,
     Trash2,
+    Edit2,
     ChevronLeft,
     ChevronRight
 } from "lucide-react";
@@ -23,6 +24,7 @@ export default function ParentBroadcastCommunicationPage() {
     const [submitting, setSubmitting] = useState(false);
     const [announcements, setAnnouncements] = useState<any[]>([]);
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [editingId, setEditingId] = useState<string | null>(null);
     const [searchQuery, setSearchQuery] = useState("");
 
     // Pagination
@@ -77,24 +79,48 @@ export default function ParentBroadcastCommunicationPage() {
         return filteredAnnouncements.slice(start, start + pageSize);
     }, [filteredAnnouncements, currentPage, pageSize]);
 
-    const handleCreateAnnouncement = async (e: React.FormEvent) => {
+    const handleOpenCreate = () => {
+        setEditingId(null);
+        setForm({ title: "", content: "", target: "PARENTS" });
+        setIsModalOpen(true);
+    };
+
+    const handleOpenEdit = (item: any) => {
+        setEditingId(item.id);
+        setForm({
+            title: item.title,
+            content: item.content,
+            target: "PARENTS"
+        });
+        setIsModalOpen(true);
+    };
+
+    const handleSubmitAnnouncement = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!form.title.trim() || !form.content.trim()) return;
 
         try {
             setSubmitting(true);
-            const res = await fetchApi("/communication/announcements", {
-                method: "POST",
+            const url = editingId ? `/communication/announcements/${editingId}` : "/communication/announcements";
+            const method = editingId ? "PUT" : "POST";
+
+            const res = await fetchApi(url, {
+                method,
                 body: JSON.stringify(form)
             });
 
             if (res.ok) {
                 setIsModalOpen(false);
+                setEditingId(null);
                 setForm({ title: "", content: "", target: "PARENTS" });
                 loadAnnouncements();
+            } else {
+                const data = await res.json();
+                alert(data.error || "Failed to save circular");
             }
         } catch (err: any) {
             console.error(err);
+            alert("Failed to save circular");
         } finally {
             setSubmitting(false);
         }
@@ -129,7 +155,7 @@ export default function ParentBroadcastCommunicationPage() {
                     <p className="text-xs text-gray-500 mt-0.5">School-to-home notices, PTA announcements, and guardian circulars.</p>
                 </div>
                 <Button 
-                    onClick={() => setIsModalOpen(true)} 
+                    onClick={handleOpenCreate} 
                     leftIcon={<Plus className="w-4 h-4" />} 
                     className="bg-blue-600 hover:bg-blue-700 text-white text-xs h-9 px-4 font-semibold shadow-xs"
                 >
@@ -183,14 +209,25 @@ export default function ParentBroadcastCommunicationPage() {
                                         </span>
                                     </div>
 
-                                    <button
-                                        onClick={() => handleDeleteAnnouncement(item.id)}
-                                        className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-red-600 bg-white border border-red-200 rounded hover:bg-red-50 hover:border-red-300 transition-colors shadow-2xs self-end sm:self-auto"
-                                        title="Delete broadcast"
-                                    >
-                                        <Trash2 className="w-3 h-3 text-red-500" />
-                                        <span>Delete</span>
-                                    </button>
+                                    {/* Action buttons */}
+                                    <div className="flex items-center gap-1.5 self-end sm:self-auto">
+                                        <button
+                                            onClick={() => handleOpenEdit(item)}
+                                            className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded hover:bg-gray-100 hover:text-blue-600 transition-colors shadow-2xs"
+                                            title="Edit circular"
+                                        >
+                                            <Edit2 className="w-3 h-3 text-gray-500" />
+                                            <span>Edit</span>
+                                        </button>
+                                        <button
+                                            onClick={() => handleDeleteAnnouncement(item.id)}
+                                            className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-red-600 bg-white border border-red-200 rounded hover:bg-red-50 hover:border-red-300 transition-colors shadow-2xs"
+                                            title="Delete broadcast"
+                                        >
+                                            <Trash2 className="w-3 h-3 text-red-500" />
+                                            <span>Delete</span>
+                                        </button>
+                                    </div>
                                 </div>
 
                                 {/* Title */}
@@ -272,14 +309,14 @@ export default function ParentBroadcastCommunicationPage() {
                         <div className="flex justify-between items-center border-b border-gray-100 pb-3">
                             <h3 className="text-base font-bold text-gray-900 flex items-center gap-2">
                                 <Users className="w-4 h-4 text-amber-600" />
-                                Post Parent Circular
+                                {editingId ? "Edit Parent Circular" : "Post Parent Circular"}
                             </h3>
                             <button onClick={() => setIsModalOpen(false)} className="text-gray-400 hover:text-gray-600">
                                 <X className="w-4 h-4" />
                             </button>
                         </div>
 
-                        <form onSubmit={handleCreateAnnouncement} className="space-y-3.5">
+                        <form onSubmit={handleSubmitAnnouncement} className="space-y-3.5">
                             <div>
                                 <label className="block text-xs font-semibold text-gray-700 mb-1">Circular Title *</label>
                                 <input
@@ -309,7 +346,7 @@ export default function ParentBroadcastCommunicationPage() {
                                     Cancel
                                 </Button>
                                 <Button type="submit" isLoading={submitting} className="bg-blue-600 hover:bg-blue-700 text-white text-xs h-8 px-4 font-semibold">
-                                    Publish Circular
+                                    {editingId ? "Save Changes" : "Publish Circular"}
                                 </Button>
                             </div>
                         </form>

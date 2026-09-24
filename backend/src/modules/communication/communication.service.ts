@@ -131,6 +131,27 @@ export class CommunicationService {
         });
     }
 
+    static async updateImportantNotice(organizationId: string, id: string, data: {
+        title?: string;
+        content?: string;
+        noticeType?: string;
+    }) {
+        const item = await prisma.importantNotice.findFirst({ where: { id, organizationId } });
+        if (!item) throw new Error("Important notice not found");
+
+        return prisma.importantNotice.update({
+            where: { id },
+            data: {
+                ...(data.title ? { title: data.title } : {}),
+                ...(data.content ? { content: data.content } : {}),
+                ...(data.noticeType ? { noticeType: data.noticeType } : {})
+            },
+            include: {
+                author: { select: { id: true, name: true, email: true } }
+            }
+        });
+    }
+
     static async deleteImportantNotice(organizationId: string, id: string) {
         const item = await prisma.importantNotice.findFirst({ where: { id, organizationId } });
         if (!item) throw new Error("Important notice not found");

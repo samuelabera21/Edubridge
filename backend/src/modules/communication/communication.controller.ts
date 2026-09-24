@@ -119,6 +119,26 @@ export const createImportantNotice = async (req: Request, res: Response) => {
     }
 };
 
+export const updateImportantNotice = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        if (!organizationId) return res.status(403).json({ error: "Missing school scope" });
+
+        const { id } = req.params;
+        if (!id) return res.status(400).json({ error: "Notice id is required" });
+
+        const { title, content, noticeType } = req.body;
+        const notice = await CommunicationService.updateImportantNotice(organizationId, id as string, {
+            title,
+            content,
+            noticeType
+        });
+        return res.json(notice);
+    } catch (error: any) {
+        return res.status(400).json({ error: error.message || "Failed to update notice" });
+    }
+};
+
 export const deleteImportantNotice = async (req: Request, res: Response) => {
     try {
         const organizationId = (req as any).accessScope?.id;
