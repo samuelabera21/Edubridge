@@ -60,7 +60,10 @@ async function main() {
         { name: "OPERATIONAL:DELETE", desc: "Delete School Resources" },
         { name: "ISSUE:VIEW", desc: "View School Infrastructure Issues" },
         { name: "ISSUE:CREATE", desc: "Report Infrastructure Issues" },
-        { name: "ISSUE:UPDATE", desc: "Update Infrastructure Issue Status" }
+        { name: "ISSUE:UPDATE", desc: "Update Infrastructure Issue Status" },
+        { name: "COMMUNICATION:VIEW", desc: "View Announcements, Notices, Messages, and Notifications" },
+        { name: "COMMUNICATION:CREATE", desc: "Create Announcements, Notices, and send Messages" },
+        { name: "COMMUNICATION:MANAGE", desc: "Manage and delete Communication records" }
     ];
 
     const adminRoles = ["SCHOOL_ADMIN", "ADMIN"];
@@ -76,7 +79,8 @@ async function main() {
         "ATTENDANCE:VIEW", "ATTENDANCE:RECORD",
         "ASSESSMENT:VIEW", "ASSESSMENT:CREATE", "ASSESSMENT:GRADE",
         "OPERATIONAL:VIEW", "OPERATIONAL:CREATE",
-        "ISSUE:VIEW", "ISSUE:CREATE"
+        "ISSUE:VIEW", "ISSUE:CREATE",
+        "COMMUNICATION:VIEW", "COMMUNICATION:CREATE"
     ];
     for (const permName of teacherPermissions) {
         const found = permissions.find(p => p.name === permName);
@@ -90,12 +94,24 @@ async function main() {
         "TEACHER:VIEW", "STUDENT:VIEW",
         "ATTENDANCE:VIEW", "ASSESSMENT:VIEW",
         "SCHOOL:VIEW", "OPERATIONAL:VIEW",
-        "ISSUE:VIEW"
+        "ISSUE:VIEW",
+        "COMMUNICATION:VIEW", "COMMUNICATION:CREATE", "COMMUNICATION:MANAGE"
     ];
     for (const permName of vicePrincipalPermissions) {
         const found = permissions.find(p => p.name === permName);
         if (found) {
             await assignPermissionToRole("VICE_PRINCIPAL", found.name, found.desc);
+        }
+    }
+
+    const studentParentPermissions = [
+        "COMMUNICATION:VIEW", "COMMUNICATION:CREATE"
+    ];
+    for (const permName of studentParentPermissions) {
+        const found = permissions.find(p => p.name === permName);
+        if (found) {
+            await assignPermissionToRole("STUDENT", found.name, found.desc);
+            await assignPermissionToRole("PARENT", found.name, found.desc);
         }
     }
 

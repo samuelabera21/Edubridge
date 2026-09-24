@@ -136,8 +136,11 @@ export default function ImportantNoticesPage() {
                                     <CardTitle className="text-lg font-bold text-gray-900">{item.title}</CardTitle>
                                 </div>
                             </CardHeader>
-                            <CardContent className="py-4 text-sm text-gray-700">
+                        <CardContent className="py-4 text-sm text-gray-700">
                                 <p className="whitespace-pre-line leading-relaxed">{item.content}</p>
+                                <p className="text-xs text-gray-400 mt-2">
+                                    Published by {item.author?.name || "School Administration"} &middot; {new Date(item.createdAt).toLocaleDateString()}
+                                </p>
                             </CardContent>
                         </Card>
                     ))

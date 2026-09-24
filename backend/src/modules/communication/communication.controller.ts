@@ -2,23 +2,25 @@ import { Request, Response } from "express";
 import { CommunicationService } from "./communication.service.js";
 import { AnnouncementTarget } from "../../generated/prisma/enums.js";
 
+// =========================================================
+// ANNOUNCEMENTS
+// =========================================================
+
 export const createAnnouncement = async (req: Request, res: Response) => {
     try {
         const organizationId = (req as any).accessScope?.id;
-        if (!organizationId) return res.status(403).json({ error: "Missing school scope" });
+        const userId = req.user?.id;
+        if (!organizationId || !userId) return res.status(403).json({ error: "Missing school scope or authentication" });
 
         const { title, content, target, targetId, expiresAt } = req.body;
-        
-        if (!title || !content) {
-            return res.status(400).json({ error: "title and content are required" });
-        }
+        if (!title || !content) return res.status(400).json({ error: "title and content are required" });
 
         const announcement = await CommunicationService.createAnnouncement(organizationId, {
             title,
             content,
             target: target as AnnouncementTarget || AnnouncementTarget.ALL,
             targetId,
-            authorId: req.user?.id!,
+            authorId: userId,
             expiresAt
         });
 
@@ -34,14 +36,13 @@ export const getAnnouncements = async (req: Request, res: Response) => {
         if (!organizationId) return res.status(403).json({ error: "Missing school scope" });
 
         const { target } = req.query;
-
         const announcements = await CommunicationService.getAnnouncements(
-            organizationId, 
-            target as AnnouncementTarget
+            organizationId,
+            target ? (target as string) as AnnouncementTarget : undefined
         );
         return res.json(announcements);
     } catch (error: any) {
-        return res.status(500).json({ error: "Internal server error" });
+        return res.status(500).json({ error: "Failed to fetch announcements" });
     }
 };
 
@@ -51,63 +52,112 @@ export const deleteAnnouncement = async (req: Request, res: Response) => {
         if (!organizationId) return res.status(403).json({ error: "Missing school scope" });
 
         const { id } = req.params;
+        if (!id) return res.status(400).json({ error: "Announcement id is required" });
+
         await CommunicationService.deleteAnnouncement(organizationId, id as string);
-        return res.json({ success: true, message: "Announcement deleted" });
+        return res.json({ success: true });
     } catch (error: any) {
         return res.status(400).json({ error: error.message || "Failed to delete announcement" });
     }
 };
 
-export const createNotification = async (req: Request, res: Response) => {
-    try {
-        const { userId, title, content, link } = req.body;
-        if (!userId || !title || !content) {
-            return res.status(400).json({ error: "userId, title, and content are required" });
-        }
+// =========================================================
+// IMPORTANT NOTICES
+// =========================================================
 
-        const notification = await CommunicationService.createNotification({ userId, title, content, link });
-        return res.status(201).json(notification);
+export const getImportantNotices = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        if (!organizationId) return res.status(403).json({ error: "Missing school scope" });
+
+        const notices = await CommunicationService.getImportantNotices(organizationId);
+        return res.json(notices);
     } catch (error: any) {
-        return res.status(400).json({ error: error.message || "Failed to create notification" });
+        return res.status(500).json({ error: "Failed to fetch notices" });
     }
 };
+
+export const createImportantNotice = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        const userId = req.user?.id;
+        if (!organizationId || !userId) return res.status(403).json({ error: "Missing school scope or authentication" });
+
+        const { title, content, noticeType } = req.body;
+        if (!title || !content) return res.status(400).json({ error: "title and content are required" });
+
+        const notice = await CommunicationService.createImportantNotice(organizationId, {
+            title,
+            content,
+            noticeType,
+            authorId: userId
+        });
+        return res.status(201).json(notice);
+    } catch (error: any) {
+        return res.status(400).json({ error: error.message || "Failed to publish notice" });
+    }
+};
+
+// =========================================================
+// NOTIFICATIONS
+// =========================================================
 
 export const getMyNotifications = async (req: Request, res: Response) => {
     try {
         const userId = req.user?.id;
-        if (!userId) return res.status(401).json({ error: "Unauthorized" });
+        const organizationId = (req as any).accessScope?.id;
+        if (!userId || !organizationId) return res.status(401).json({ error: "Unauthorized" });
 
-        const notifications = await CommunicationService.getUserNotifications(userId);
+        const notifications = await CommunicationService.getUserNotifications(userId, organizationId);
         return res.json(notifications);
     } catch (error: any) {
-        return res.status(500).json({ error: "Internal server error" });
+        return res.status(500).json({ error: "Failed to fetch notifications" });
     }
 };
 
 export const markNotificationRead = async (req: Request, res: Response) => {
     try {
         const userId = req.user?.id;
-        if (!userId) return res.status(401).json({ error: "Unauthorized" });
+        const organizationId = (req as any).accessScope?.id;
+        if (!userId || !organizationId) return res.status(401).json({ error: "Unauthorized" });
 
         const { id } = req.params;
-        const notification = await CommunicationService.markNotificationRead(id as string, userId);
+        if (!id) return res.status(400).json({ error: "Notification id is required" });
+
+        const notification = await CommunicationService.markNotificationRead(id as string, userId, organizationId);
         return res.json(notification);
     } catch (error: any) {
         return res.status(400).json({ error: error.message || "Failed to mark notification read" });
     }
 };
 
+export const getUnreadNotificationCount = async (req: Request, res: Response) => {
+    try {
+        const userId = req.user?.id;
+        const organizationId = (req as any).accessScope?.id;
+        if (!userId || !organizationId) return res.status(401).json({ error: "Unauthorized" });
+
+        const count = await CommunicationService.getUnreadNotificationCount(userId, organizationId);
+        return res.json({ count });
+    } catch (error: any) {
+        return res.status(500).json({ error: "Failed to fetch notification count" });
+    }
+};
+
+// =========================================================
+// DIRECT MESSAGES
+// =========================================================
+
 export const sendMessage = async (req: Request, res: Response) => {
     try {
         const senderId = req.user?.id;
-        if (!senderId) return res.status(401).json({ error: "Unauthorized" });
+        const organizationId = (req as any).accessScope?.id;
+        if (!senderId || !organizationId) return res.status(401).json({ error: "Unauthorized" });
 
         const { receiverId, content } = req.body;
-        if (!receiverId || !content) {
-            return res.status(400).json({ error: "receiverId and content are required" });
-        }
+        if (!receiverId || !content) return res.status(400).json({ error: "receiverId and content are required" });
 
-        const message = await CommunicationService.sendMessage({ senderId, receiverId, content });
+        const message = await CommunicationService.sendMessage({ organizationId, senderId, receiverId, content });
         return res.status(201).json(message);
     } catch (error: any) {
         return res.status(400).json({ error: error.message || "Failed to send message" });
@@ -117,60 +167,64 @@ export const sendMessage = async (req: Request, res: Response) => {
 export const getMyMessages = async (req: Request, res: Response) => {
     try {
         const userId = req.user?.id;
-        if (!userId) return res.status(401).json({ error: "Unauthorized" });
+        const organizationId = (req as any).accessScope?.id;
+        if (!userId || !organizationId) return res.status(401).json({ error: "Unauthorized" });
 
         const { otherUserId } = req.query;
-
-        const messages = await CommunicationService.getMessages(userId, otherUserId as string);
+        const messages = await CommunicationService.getMessages(userId, organizationId, otherUserId as string | undefined);
         return res.json(messages);
     } catch (error: any) {
-        return res.status(500).json({ error: "Internal server error" });
+        return res.status(500).json({ error: "Failed to fetch messages" });
     }
 };
 
 export const getMessagingUsers = async (req: Request, res: Response) => {
     try {
         const userId = req.user?.id;
-        if (!userId) return res.status(401).json({ error: "Unauthorized" });
-
         const organizationId = (req as any).accessScope?.id;
-        const users = await CommunicationService.getUsersForMessaging(userId);
+        if (!userId || !organizationId) return res.status(401).json({ error: "Unauthorized" });
+
+        const users = await CommunicationService.getUsersForMessaging(userId, organizationId);
         return res.json(users);
     } catch (error: any) {
-        return res.status(500).json({ error: "Internal server error" });
+        return res.status(500).json({ error: "Failed to fetch users" });
     }
 };
 
-// Domain 11.6: Important Notices & Directives
-export const getImportantNotices = async (req: Request, res: Response) => {
+// =========================================================
+// TEACHER → PARENT MESSAGING
+// =========================================================
+
+export const sendTeacherParentMessage = async (req: Request, res: Response) => {
     try {
+        const teacherUserId = req.user?.id;
         const organizationId = (req as any).accessScope?.id;
-        if (!organizationId) return res.status(403).json({ error: "Missing school scope" });
+        if (!teacherUserId || !organizationId) return res.status(401).json({ error: "Unauthorized" });
 
-        const notices = await CommunicationService.getImportantNotices(organizationId);
-        return res.json(notices);
-    } catch (error: any) {
-        return res.status(500).json({ error: "Failed to fetch important notices" });
-    }
-};
+        const { enrollmentId, content } = req.body;
+        if (!enrollmentId || !content) return res.status(400).json({ error: "enrollmentId and content are required" });
 
-export const createImportantNotice = async (req: Request, res: Response) => {
-    try {
-        const organizationId = (req as any).accessScope?.id;
-        if (!organizationId) return res.status(403).json({ error: "Missing school scope" });
-
-        const { title, content, noticeType } = req.body;
-        if (!title || !content) {
-            return res.status(400).json({ error: "title and content are required" });
-        }
-
-        const notice = await CommunicationService.createImportantNotice(organizationId, {
-            title,
-            content,
-            noticeType
+        const message = await CommunicationService.sendTeacherParentMessage({
+            teacherUserId,
+            organizationId,
+            enrollmentId,
+            content
         });
-        return res.status(201).json(notice);
+        return res.status(201).json(message);
     } catch (error: any) {
-        return res.status(400).json({ error: error.message || "Failed to publish notice" });
+        return res.status(400).json({ error: error.message || "Failed to send message" });
+    }
+};
+
+export const getTeacherParentContacts = async (req: Request, res: Response) => {
+    try {
+        const teacherUserId = req.user?.id;
+        const organizationId = (req as any).accessScope?.id;
+        if (!teacherUserId || !organizationId) return res.status(401).json({ error: "Unauthorized" });
+
+        const contacts = await CommunicationService.getTeacherParentContacts(teacherUserId, organizationId);
+        return res.json(contacts);
+    } catch (error: any) {
+        return res.status(500).json({ error: "Failed to fetch contacts" });
     }
 };

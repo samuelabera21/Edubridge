@@ -1701,9 +1701,12 @@ export class TeacherService {
     }
 
     // Subdomain 9: Send Parent Message
+    // NOTE: The controller now delegates to CommunicationService.sendTeacherParentMessage for validated messaging.
+    // This legacy method is preserved for type-safety but should not be called from controllers.
     static async sendParentMessage(userId: string, organizationId: string, data: { parentUserId: string; content: string }) {
         const message = await prisma.message.create({
             data: {
+                organizationId,
                 senderId: userId,
                 receiverId: data.parentUserId,
                 content: data.content,

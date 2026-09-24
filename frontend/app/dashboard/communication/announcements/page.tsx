@@ -76,6 +76,21 @@ export default function SchoolAnnouncementsPage() {
         }
     };
 
+    const handleDeleteAnnouncement = async (id: string) => {
+        if (!confirm("Delete this announcement?")) return;
+        try {
+            const res = await fetchApi(`/communication/announcement/${id}`, { method: "DELETE" });
+            if (res.ok) {
+                setAnnouncements(prev => prev.filter(a => a.id !== id));
+            } else {
+                const data = await res.json();
+                alert(data.error || "Delete failed");
+            }
+        } catch (_) {
+            alert("Delete failed");
+        }
+    };
+
     if (loading) return <LoadingState message="Loading school announcements from database..." />;
 
     return (
@@ -136,6 +151,13 @@ export default function SchoolAnnouncementsPage() {
                                     </div>
                                     <CardTitle className="text-lg font-bold text-gray-900">{item.title}</CardTitle>
                                 </div>
+                                <button
+                                    onClick={() => handleDeleteAnnouncement(item.id)}
+                                    className="text-gray-300 hover:text-red-500 transition-colors ml-2 flex-shrink-0"
+                                    title="Delete announcement"
+                                >
+                                    <Trash2 className="w-4 h-4" />
+                                </button>
                             </CardHeader>
                             <CardContent className="py-4 text-sm text-gray-700 space-y-3">
                                 <p className="whitespace-pre-line leading-relaxed">{item.content}</p>
