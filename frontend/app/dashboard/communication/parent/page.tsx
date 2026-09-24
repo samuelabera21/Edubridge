@@ -10,7 +10,9 @@ import {
     Calendar, 
     User,
     X,
-    Trash2
+    Trash2,
+    ChevronLeft,
+    ChevronRight
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { LoadingState } from "@/components/ui/LoadingState";
@@ -22,6 +24,10 @@ export default function ParentBroadcastCommunicationPage() {
     const [announcements, setAnnouncements] = useState<any[]>([]);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState("");
+
+    // Pagination
+    const [currentPage, setCurrentPage] = useState(1);
+    const [pageSize, setPageSize] = useState(10);
 
     const [form, setForm] = useState({
         title: "",
@@ -58,6 +64,18 @@ export default function ParentBroadcastCommunicationPage() {
                 item.content?.toLowerCase().includes(searchQuery.toLowerCase());
         });
     }, [announcements, searchQuery]);
+
+    // Reset pagination to page 1 on search change
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [searchQuery, pageSize]);
+
+    const totalCount = filteredAnnouncements.length;
+    const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
+    const paginatedAnnouncements = useMemo(() => {
+        const start = (currentPage - 1) * pageSize;
+        return filteredAnnouncements.slice(start, start + pageSize);
+    }, [filteredAnnouncements, currentPage, pageSize]);
 
     const handleCreateAnnouncement = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -97,15 +115,15 @@ export default function ParentBroadcastCommunicationPage() {
         }
     };
 
-    if (loading) return <LoadingState message="Loading broadcasts..." />;
+    if (loading) return <LoadingState message="Loading parent broadcasts..." />;
 
     return (
-        <div className="space-y-5 text-gray-900">
-            {/* Header */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-1 border-b border-gray-200">
+        <div className="space-y-4 text-gray-900">
+            {/* Header Toolbar */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-3 border-b border-gray-200">
                 <div>
                     <h1 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-                        <Users className="w-5 h-5 text-amber-700" />
+                        <Users className="w-5 h-5 text-amber-600" />
                         <span>Parent & Guardian Broadcasts</span>
                     </h1>
                     <p className="text-xs text-gray-500 mt-0.5">School-to-home notices, PTA announcements, and guardian circulars.</p>
@@ -113,78 +131,137 @@ export default function ParentBroadcastCommunicationPage() {
                 <Button 
                     onClick={() => setIsModalOpen(true)} 
                     leftIcon={<Plus className="w-4 h-4" />} 
-                    className="bg-amber-700 hover:bg-amber-800 text-white text-xs h-9 px-4 font-medium shadow-sm"
+                    className="bg-blue-600 hover:bg-blue-700 text-white text-xs h-9 px-4 font-semibold shadow-xs"
                 >
                     New Circular
                 </Button>
             </div>
 
             {/* Search Bar */}
-            <div className="relative">
-                <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                <input
-                    type="text"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Search parent broadcasts..."
-                    className="w-full pl-9 pr-3 py-2 text-xs bg-white border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-amber-700"
-                />
+            <div className="bg-white p-3 rounded-lg border border-gray-200 shadow-xs">
+                <div className="relative">
+                    <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                    <input
+                        type="text"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        placeholder="Search parent broadcasts..."
+                        className="w-full pl-9 pr-3 py-1.5 text-xs bg-gray-50/50 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-600 focus:bg-white"
+                    />
+                </div>
             </div>
 
-            {/* Broadcasts List */}
-            <div className="space-y-3">
-                {filteredAnnouncements.length === 0 ? (
-                    <div className="bg-white border border-dashed border-gray-300 rounded-xl p-10 text-center text-gray-500">
-                        <Users className="w-8 h-8 mx-auto text-gray-300 mb-2" />
-                        <p className="text-sm font-semibold text-gray-800">No parent broadcasts found</p>
-                        <p className="text-xs text-gray-400 mt-1">Announcements targeted to parents will appear here.</p>
+            {/* Broadcasts Ledger View (Institutional) */}
+            <div className="bg-white border border-gray-200 rounded-lg shadow-xs overflow-hidden">
+                {paginatedAnnouncements.length === 0 ? (
+                    <div className="p-12 text-center text-gray-500 space-y-2">
+                        <Users className="w-8 h-8 mx-auto text-gray-300" />
+                        <p className="font-semibold text-gray-800 text-sm">No parent broadcasts found</p>
+                        <p className="text-xs text-gray-400">Announcements targeted to parents will appear here.</p>
                     </div>
                 ) : (
-                    filteredAnnouncements.map((item) => (
-                        <div 
-                            key={item.id} 
-                            className="bg-white border border-gray-200 rounded-xl p-4 shadow-xs hover:border-gray-300 transition-all space-y-3"
-                        >
-                            {/* Card Top */}
-                            <div className="flex items-start justify-between gap-3">
-                                <div className="space-y-1">
-                                    <div className="flex items-center gap-2">
-                                        <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-amber-50 text-amber-700 border border-amber-200">
+                    <div className="divide-y divide-gray-200">
+                        {paginatedAnnouncements.map((item) => (
+                            <div 
+                                key={item.id} 
+                                className="p-4 hover:bg-gray-50/70 transition-colors space-y-2"
+                            >
+                                {/* Top metadata */}
+                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200">
                                             PARENTS
                                         </span>
-                                        <span className="text-[11px] text-gray-400 flex items-center gap-1">
-                                            <Calendar className="w-3 h-3" />
+                                        <span className="text-xs text-gray-400 flex items-center gap-1">
+                                            <Calendar className="w-3.5 h-3.5 text-gray-400" />
                                             {new Date(item.createdAt).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" })}
                                         </span>
+                                        <span className="text-xs text-gray-400">•</span>
+                                        <span className="text-xs text-gray-500 flex items-center gap-1">
+                                            <User className="w-3.5 h-3.5 text-gray-400" />
+                                            {item.author?.name || "School Administration"}
+                                        </span>
                                     </div>
-                                    <h2 className="text-base font-bold text-gray-900 leading-snug">{item.title}</h2>
+
+                                    <button
+                                        onClick={() => handleDeleteAnnouncement(item.id)}
+                                        className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-red-600 bg-white border border-red-200 rounded hover:bg-red-50 hover:border-red-300 transition-colors shadow-2xs self-end sm:self-auto"
+                                        title="Delete broadcast"
+                                    >
+                                        <Trash2 className="w-3 h-3 text-red-500" />
+                                        <span>Delete</span>
+                                    </button>
                                 </div>
 
-                                <button
-                                    onClick={() => handleDeleteAnnouncement(item.id)}
-                                    className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-red-600 bg-white border border-red-200 rounded-md hover:bg-red-50 hover:border-red-300 transition-all shadow-2xs flex-shrink-0"
-                                    title="Delete broadcast"
+                                {/* Title */}
+                                <h3 className="text-sm md:text-base font-semibold text-gray-900">
+                                    {item.title}
+                                </h3>
+
+                                {/* Content */}
+                                <p className="text-xs text-gray-600 whitespace-pre-line leading-relaxed">
+                                    {item.content}
+                                </p>
+                            </div>
+                        ))}
+                    </div>
+                )}
+
+                {/* Modern Pagination Footer */}
+                {totalCount > 0 && (
+                    <div className="px-4 py-3 bg-gray-50 border-t border-gray-200 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-gray-600">
+                        <div className="flex items-center gap-3">
+                            <span>
+                                Showing <strong className="text-gray-900">{(currentPage - 1) * pageSize + 1}</strong> to <strong className="text-gray-900">{Math.min(currentPage * pageSize, totalCount)}</strong> of <strong className="text-gray-900">{totalCount}</strong> broadcasts
+                            </span>
+                            <div className="flex items-center gap-1 text-gray-500">
+                                <span>Per page:</span>
+                                <select
+                                    value={pageSize}
+                                    onChange={(e) => setPageSize(Number(e.target.value))}
+                                    className="border border-gray-300 rounded px-1.5 py-0.5 bg-white text-xs text-gray-700 focus:outline-none"
                                 >
-                                    <Trash2 className="w-3.5 h-3.5" />
-                                    <span>Delete</span>
-                                </button>
-                            </div>
-
-                            {/* Content */}
-                            <div className="text-xs text-gray-700 leading-relaxed bg-amber-50/20 p-3 rounded-lg border border-amber-100">
-                                <p className="whitespace-pre-line">{item.content}</p>
-                            </div>
-
-                            {/* Footer */}
-                            <div className="flex items-center text-[11px] text-gray-400 pt-1">
-                                <div className="flex items-center gap-1">
-                                    <User className="w-3 h-3 text-gray-400" />
-                                    <span>Issued by:</span>
-                                    <span className="font-semibold text-gray-700">{item.author?.name || "School Administration"}</span>
-                                </div>
+                                    <option value={5}>5</option>
+                                    <option value={10}>10</option>
+                                    <option value={25}>25</option>
+                                </select>
                             </div>
                         </div>
-                    ))
+
+                        <div className="flex items-center gap-1">
+                            <button
+                                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                                disabled={currentPage === 1}
+                                className="px-2.5 py-1 border border-gray-300 rounded bg-white text-gray-700 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1"
+                            >
+                                <ChevronLeft className="w-3.5 h-3.5" />
+                                Previous
+                            </button>
+
+                            {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => (
+                                <button
+                                    key={pageNum}
+                                    onClick={() => setCurrentPage(pageNum)}
+                                    className={`w-7 h-7 rounded border font-medium text-xs ${
+                                        currentPage === pageNum
+                                            ? "bg-blue-600 text-white border-blue-600 font-bold"
+                                            : "bg-white text-gray-700 border-gray-300 hover:bg-gray-100"
+                                    }`}
+                                >
+                                    {pageNum}
+                                </button>
+                            ))}
+
+                            <button
+                                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                                disabled={currentPage === totalPages}
+                                className="px-2.5 py-1 border border-gray-300 rounded bg-white text-gray-700 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1"
+                            >
+                                Next
+                                <ChevronRight className="w-3.5 h-3.5" />
+                            </button>
+                        </div>
+                    </div>
                 )}
             </div>
 
@@ -194,7 +271,7 @@ export default function ParentBroadcastCommunicationPage() {
                     <div className="bg-white rounded-xl shadow-xl max-w-lg w-full p-5 space-y-4 border border-gray-100">
                         <div className="flex justify-between items-center border-b border-gray-100 pb-3">
                             <h3 className="text-base font-bold text-gray-900 flex items-center gap-2">
-                                <Users className="w-4 h-4 text-amber-700" />
+                                <Users className="w-4 h-4 text-amber-600" />
                                 Post Parent Circular
                             </h3>
                             <button onClick={() => setIsModalOpen(false)} className="text-gray-400 hover:text-gray-600">
@@ -211,7 +288,7 @@ export default function ParentBroadcastCommunicationPage() {
                                     value={form.title}
                                     onChange={(e) => setForm({ ...form, title: e.target.value })}
                                     placeholder="e.g. Q1 Report Card Pick-up & PTA Meeting Schedule"
-                                    className="w-full border border-gray-300 rounded-lg p-2 text-xs focus:ring-1 focus:ring-amber-700 focus:outline-none"
+                                    className="w-full border border-gray-300 rounded-lg p-2 text-xs focus:ring-1 focus:ring-blue-600 focus:outline-none"
                                 />
                             </div>
 
@@ -223,7 +300,7 @@ export default function ParentBroadcastCommunicationPage() {
                                     onChange={(e) => setForm({ ...form, content: e.target.value })}
                                     placeholder="Write instructions for parents..."
                                     rows={4}
-                                    className="w-full border border-gray-300 rounded-lg p-2 text-xs focus:ring-1 focus:ring-amber-700 focus:outline-none"
+                                    className="w-full border border-gray-300 rounded-lg p-2 text-xs focus:ring-1 focus:ring-blue-600 focus:outline-none"
                                 />
                             </div>
 
@@ -231,7 +308,7 @@ export default function ParentBroadcastCommunicationPage() {
                                 <Button type="button" variant="outline" className="text-xs h-8" onClick={() => setIsModalOpen(false)}>
                                     Cancel
                                 </Button>
-                                <Button type="submit" isLoading={submitting} className="bg-amber-700 hover:bg-amber-800 text-white text-xs h-8 px-4">
+                                <Button type="submit" isLoading={submitting} className="bg-blue-600 hover:bg-blue-700 text-white text-xs h-8 px-4 font-semibold">
                                     Publish Circular
                                 </Button>
                             </div>
@@ -242,4 +319,3 @@ export default function ParentBroadcastCommunicationPage() {
         </div>
     );
 }
-

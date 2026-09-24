@@ -7,12 +7,13 @@ import {
     AlertTriangle, 
     Plus, 
     Search, 
-    Pin, 
     ShieldAlert, 
     X,
     Calendar,
     User,
-    Trash2
+    Trash2,
+    ChevronLeft,
+    ChevronRight
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { LoadingState } from "@/components/ui/LoadingState";
@@ -25,6 +26,10 @@ export default function ImportantNoticesPage() {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState("");
     const [typeFilter, setTypeFilter] = useState("ALL");
+
+    // Pagination
+    const [currentPage, setCurrentPage] = useState(1);
+    const [pageSize, setPageSize] = useState(10);
 
     const [form, setForm] = useState({
         title: "",
@@ -63,6 +68,18 @@ export default function ImportantNoticesPage() {
             return matchesType && matchesSearch;
         });
     }, [notices, typeFilter, searchQuery]);
+
+    // Reset pagination to page 1 on filter changes
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [searchQuery, typeFilter, pageSize]);
+
+    const totalCount = filteredNotices.length;
+    const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
+    const paginatedNotices = useMemo(() => {
+        const start = (currentPage - 1) * pageSize;
+        return filteredNotices.slice(start, start + pageSize);
+    }, [filteredNotices, currentPage, pageSize]);
 
     const handleCreateNotice = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -105,20 +122,20 @@ export default function ImportantNoticesPage() {
     const getTypeBadge = (noticeType: string) => {
         switch (noticeType) {
             case "EMERGENCY":
-                return <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-red-50 text-red-700 border border-red-200">🚨 Emergency Alert</span>;
+                return <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-red-50 text-red-700 border border-red-200">🚨 Emergency Alert</span>;
             case "SAFETY":
-                return <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-amber-50 text-amber-700 border border-amber-200">⚠️ Safety Warning</span>;
+                return <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200">⚠️ Safety Warning</span>;
             default:
-                return <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-blue-50 text-blue-700 border border-blue-200">📋 Ministry Directive</span>;
+                return <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200">📋 Ministry Directive</span>;
         }
     };
 
     if (loading) return <LoadingState message="Loading notices..." />;
 
     return (
-        <div className="space-y-5 text-gray-900">
+        <div className="space-y-4 text-gray-900">
             {/* Header */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-1 border-b border-gray-200">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-3 border-b border-gray-200">
                 <div>
                     <h1 className="text-xl font-bold text-gray-900 flex items-center gap-2">
                         <AlertTriangle className="w-5 h-5 text-red-600" />
@@ -129,101 +146,160 @@ export default function ImportantNoticesPage() {
                 <Button 
                     onClick={() => setIsModalOpen(true)} 
                     leftIcon={<Plus className="w-4 h-4" />} 
-                    className="bg-red-700 hover:bg-red-800 text-white text-xs h-9 px-4 font-medium shadow-sm"
+                    className="bg-red-700 hover:bg-red-800 text-white text-xs h-9 px-4 font-semibold shadow-xs"
                 >
                     New Notice
                 </Button>
             </div>
 
             {/* Filter & Search Bar */}
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-gray-50 p-3 rounded-lg border border-gray-200">
-                {/* Search */}
-                <div className="relative flex-1">
-                    <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                    <input
-                        type="text"
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        placeholder="Search notices..."
-                        className="w-full pl-9 pr-3 py-1.5 text-xs bg-white border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-red-600"
-                    />
-                </div>
+            <div className="bg-white p-3.5 rounded-lg border border-gray-200 shadow-xs space-y-3">
+                <div className="grid grid-cols-1 md:grid-cols-12 gap-2.5">
+                    {/* Search Input */}
+                    <div className="relative md:col-span-6">
+                        <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                        <input
+                            type="text"
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            placeholder="Search notices by title or content..."
+                            className="w-full pl-9 pr-3 py-1.5 text-xs bg-gray-50/50 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-red-600 focus:bg-white"
+                        />
+                    </div>
 
-                {/* Filter Tabs */}
-                <div className="flex items-center gap-1.5 overflow-x-auto text-xs">
-                    {[
-                        { id: "ALL", label: "All Notices" },
-                        { id: "EMERGENCY", label: "Emergency" },
-                        { id: "SAFETY", label: "Safety" },
-                        { id: "COMPLIANCE", label: "Compliance" }
-                    ].map((tab) => (
-                        <button
-                            key={tab.id}
-                            onClick={() => setTypeFilter(tab.id)}
-                            className={`px-3 py-1.5 rounded-md font-medium transition-colors whitespace-nowrap ${
-                                typeFilter === tab.id
-                                    ? "bg-red-700 text-white shadow-xs"
-                                    : "bg-white text-gray-600 border border-gray-200 hover:bg-gray-100"
-                            }`}
-                        >
-                            {tab.label}
-                        </button>
-                    ))}
+                    {/* Scope Selector */}
+                    <div className="md:col-span-6 flex items-center gap-1.5 overflow-x-auto text-xs justify-start md:justify-end">
+                        {[
+                            { id: "ALL", label: "All Notices" },
+                            { id: "EMERGENCY", label: "Emergency" },
+                            { id: "SAFETY", label: "Safety" },
+                            { id: "COMPLIANCE", label: "Compliance" }
+                        ].map((tab) => (
+                            <button
+                                key={tab.id}
+                                onClick={() => setTypeFilter(tab.id)}
+                                className={`px-3 py-1 rounded-md font-medium transition-colors whitespace-nowrap text-xs ${
+                                    typeFilter === tab.id
+                                        ? "bg-red-700 text-white shadow-2xs"
+                                        : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                                }`}
+                            >
+                                {tab.label}
+                            </button>
+                        ))}
+                    </div>
                 </div>
             </div>
 
-            {/* Notices List */}
-            <div className="space-y-3">
-                {filteredNotices.length === 0 ? (
-                    <div className="bg-white border border-dashed border-gray-300 rounded-xl p-10 text-center text-gray-500">
-                        <ShieldAlert className="w-8 h-8 mx-auto text-gray-300 mb-2" />
-                        <p className="text-sm font-semibold text-gray-800">No active notices found</p>
-                        <p className="text-xs text-gray-400 mt-1">High-priority directives and safety alerts will be highlighted here.</p>
+            {/* Notices Ledger View (Institutional) */}
+            <div className="bg-white border border-gray-200 rounded-lg shadow-xs overflow-hidden">
+                {paginatedNotices.length === 0 ? (
+                    <div className="p-12 text-center text-gray-500 space-y-2">
+                        <ShieldAlert className="w-8 h-8 mx-auto text-gray-300" />
+                        <p className="font-semibold text-gray-800 text-sm">No active notices found</p>
+                        <p className="text-xs text-gray-400">High-priority directives and safety alerts will be highlighted here.</p>
                     </div>
                 ) : (
-                    filteredNotices.map((item) => (
-                        <div 
-                            key={item.id} 
-                            className="bg-white border-l-4 border-l-red-600 border-y border-r border-gray-200 rounded-xl p-4 shadow-xs hover:border-gray-300 transition-all space-y-3"
-                        >
-                            {/* Card Top */}
-                            <div className="flex items-start justify-between gap-3">
-                                <div className="space-y-1">
-                                    <div className="flex items-center gap-2">
+                    <div className="divide-y divide-gray-200">
+                        {paginatedNotices.map((item) => (
+                            <div 
+                                key={item.id} 
+                                className="p-4 border-l-4 border-l-red-600 hover:bg-gray-50/70 transition-colors space-y-2"
+                            >
+                                {/* Top metadata */}
+                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                                    <div className="flex items-center gap-2 flex-wrap">
                                         {getTypeBadge(item.noticeType)}
-                                        <span className="text-[11px] text-gray-400 flex items-center gap-1">
-                                            <Calendar className="w-3 h-3" />
+                                        <span className="text-xs text-gray-400 flex items-center gap-1">
+                                            <Calendar className="w-3.5 h-3.5 text-gray-400" />
                                             {new Date(item.createdAt).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" })}
                                         </span>
+                                        <span className="text-xs text-gray-400">•</span>
+                                        <span className="text-xs text-gray-500 flex items-center gap-1">
+                                            <User className="w-3.5 h-3.5 text-gray-400" />
+                                            {item.author?.name || "Administration"}
+                                        </span>
                                     </div>
-                                    <h2 className="text-base font-bold text-gray-900 leading-snug">{item.title}</h2>
+
+                                    <button
+                                        onClick={() => handleDeleteNotice(item.id)}
+                                        className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-red-600 bg-white border border-red-200 rounded hover:bg-red-50 hover:border-red-300 transition-colors shadow-2xs self-end sm:self-auto"
+                                        title="Delete notice"
+                                    >
+                                        <Trash2 className="w-3 h-3 text-red-500" />
+                                        <span>Delete</span>
+                                    </button>
                                 </div>
 
-                                <button
-                                    onClick={() => handleDeleteNotice(item.id)}
-                                    className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-red-600 bg-white border border-red-200 rounded-md hover:bg-red-50 hover:border-red-300 transition-all shadow-2xs flex-shrink-0"
-                                    title="Delete notice"
+                                {/* Title */}
+                                <h3 className="text-sm md:text-base font-semibold text-gray-900">
+                                    {item.title}
+                                </h3>
+
+                                {/* Content */}
+                                <p className="text-xs text-gray-600 whitespace-pre-line leading-relaxed">
+                                    {item.content}
+                                </p>
+                            </div>
+                        ))}
+                    </div>
+                )}
+
+                {/* Modern Pagination Footer */}
+                {totalCount > 0 && (
+                    <div className="px-4 py-3 bg-gray-50 border-t border-gray-200 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-gray-600">
+                        <div className="flex items-center gap-3">
+                            <span>
+                                Showing <strong className="text-gray-900">{(currentPage - 1) * pageSize + 1}</strong> to <strong className="text-gray-900">{Math.min(currentPage * pageSize, totalCount)}</strong> of <strong className="text-gray-900">{totalCount}</strong> notices
+                            </span>
+                            <div className="flex items-center gap-1 text-gray-500">
+                                <span>Per page:</span>
+                                <select
+                                    value={pageSize}
+                                    onChange={(e) => setPageSize(Number(e.target.value))}
+                                    className="border border-gray-300 rounded px-1.5 py-0.5 bg-white text-xs text-gray-700 focus:outline-none"
                                 >
-                                    <Trash2 className="w-3.5 h-3.5" />
-                                    <span>Delete</span>
-                                </button>
-                            </div>
-
-                            {/* Content */}
-                            <div className="text-xs text-gray-700 leading-relaxed bg-red-50/30 p-3 rounded-lg border border-red-100">
-                                <p className="whitespace-pre-line">{item.content}</p>
-                            </div>
-
-                            {/* Footer */}
-                            <div className="flex items-center text-[11px] text-gray-400 pt-1">
-                                <div className="flex items-center gap-1">
-                                    <User className="w-3 h-3 text-gray-400" />
-                                    <span>Published by:</span>
-                                    <span className="font-semibold text-gray-700">{item.author?.name || "Administration"}</span>
-                                </div>
+                                    <option value={5}>5</option>
+                                    <option value={10}>10</option>
+                                    <option value={25}>25</option>
+                                </select>
                             </div>
                         </div>
-                    ))
+
+                        <div className="flex items-center gap-1">
+                            <button
+                                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                                disabled={currentPage === 1}
+                                className="px-2.5 py-1 border border-gray-300 rounded bg-white text-gray-700 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1"
+                            >
+                                <ChevronLeft className="w-3.5 h-3.5" />
+                                Previous
+                            </button>
+
+                            {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => (
+                                <button
+                                    key={pageNum}
+                                    onClick={() => setCurrentPage(pageNum)}
+                                    className={`w-7 h-7 rounded border font-medium text-xs ${
+                                        currentPage === pageNum
+                                            ? "bg-red-700 text-white border-red-700 font-bold"
+                                            : "bg-white text-gray-700 border-gray-300 hover:bg-gray-100"
+                                    }`}
+                                >
+                                    {pageNum}
+                                </button>
+                            ))}
+
+                            <button
+                                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                                disabled={currentPage === totalPages}
+                                className="px-2.5 py-1 border border-gray-300 rounded bg-white text-gray-700 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1"
+                            >
+                                Next
+                                <ChevronRight className="w-3.5 h-3.5" />
+                            </button>
+                        </div>
+                    </div>
                 )}
             </div>
 
@@ -283,7 +359,7 @@ export default function ImportantNoticesPage() {
                                 <Button type="button" variant="outline" className="text-xs h-8" onClick={() => setIsModalOpen(false)}>
                                     Cancel
                                 </Button>
-                                <Button type="submit" isLoading={submitting} className="bg-red-700 hover:bg-red-800 text-white text-xs h-8 px-4">
+                                <Button type="submit" isLoading={submitting} className="bg-red-700 hover:bg-red-800 text-white text-xs h-8 px-4 font-semibold">
                                     Publish Directive
                                 </Button>
                             </div>
@@ -294,4 +370,5 @@ export default function ImportantNoticesPage() {
         </div>
     );
 }
+
 
