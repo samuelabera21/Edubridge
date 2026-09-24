@@ -51,6 +51,7 @@ model User {
   verifiedStudentDocuments      StudentDocument[]      @relation("VerifiedStudentDocuments")
   requestedCorrections          AttendanceCorrection[] @relation("RequestedCorrections")
   reviewedCorrections           AttendanceCorrection[] @relation("ReviewedCorrections")
+  importantNotices              ImportantNotice[]      @relation("AuthoredImportantNotices")
 
   @@unique([email])
   @@map("user")
@@ -198,6 +199,9 @@ model OrganizationUnit {
   improvementPlans   ImprovementPlan[]
   timetableConfigs   TimetableConfig[]
   attendanceCorrections AttendanceCorrection[]
+  notifications         Notification[]
+  messages              Message[]
+  importantNotices      ImportantNotice[]
 
   @@index([parentId])
   @@index([type])
@@ -1293,35 +1297,41 @@ model Announcement {
 }
 
 model Notification {
-  id      String  @id @default(cuid())
-  userId  String
-  title   String
-  content String
-  isRead  Boolean @default(false)
-  link    String?
+  id             String  @id @default(cuid())
+  userId         String
+  organizationId String
+  title          String
+  content        String
+  isRead         Boolean @default(false)
+  link           String?
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user         User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization OrganizationUnit @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([userId])
+  @@index([organizationId])
   @@map("notification")
 }
 
 model Message {
-  id         String  @id @default(cuid())
-  senderId   String
-  receiverId String
-  content    String
-  isRead     Boolean @default(false)
+  id             String  @id @default(cuid())
+  organizationId String
+  senderId       String
+  receiverId     String
+  content        String
+  isRead         Boolean @default(false)
 
-  sender   User @relation("SentMessages", fields: [senderId], references: [id], onDelete: Cascade)
-  receiver User @relation("ReceivedMessages", fields: [receiverId], references: [id], onDelete: Cascade)
+  organization OrganizationUnit @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  sender       User             @relation("SentMessages", fields: [senderId], references: [id], onDelete: Cascade)
+  receiver     User             @relation("ReceivedMessages", fields: [receiverId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@index([organizationId])
   @@index([senderId])
   @@index([receiverId])
   @@map("message")
@@ -1633,15 +1643,19 @@ model ParentParticipation {
 model ImportantNotice {
   id             String   @id @default(cuid())
   organizationId String
+  authorId       String
   title          String
   content        String
   noticeType     String   @default("EMERGENCY") // EMERGENCY, COMPLIANCE, SAFETY, DIRECTIVE
   isPinned       Boolean  @default(true)
-  authorName     String   @default("School Principal")
+
+  organization OrganizationUnit @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  author       User             @relation("AuthoredImportantNotices", fields: [authorId], references: [id], onDelete: Cascade)
 
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
+  @@index([organizationId])
   @@map("important_notice")
 }
 

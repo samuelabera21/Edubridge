@@ -697,7 +697,16 @@ export const sendParentMessage = async (req: Request, res: Response) => {
         const userId = req.user?.id;
         if (!organizationId || !userId) return res.status(403).json({ error: "Missing school scope or authentication" });
 
-        const message = await TeacherService.sendParentMessage(userId, organizationId, req.body);
+        const { enrollmentId, content } = req.body;
+        if (!enrollmentId || !content) return res.status(400).json({ error: "enrollmentId and content are required" });
+
+        const { CommunicationService } = await import("../communication/communication.service.js");
+        const message = await CommunicationService.sendTeacherParentMessage({
+            teacherUserId: userId,
+            organizationId,
+            enrollmentId,
+            content
+        });
         return res.status(201).json(message);
     } catch (error: any) {
         return res.status(400).json({ error: error.message || "Failed to send parent message" });

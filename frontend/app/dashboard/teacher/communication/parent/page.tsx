@@ -17,17 +17,18 @@ export default function ParentCommunicationPage() {
     useEffect(() => {
         async function loadStudents() {
             try {
-                const res = await fetchApi("/teacher/my-students");
+                // Use the new communication endpoint which validates the teacher relationship
+                const res = await fetchApi("/communication/teacher/parent-contacts");
                 if (res.ok) {
                     const data = await res.json();
                     const list = Array.isArray(data) ? data : [];
                     setStudents(list);
                     if (list.length > 0) {
-                        setSelectedEnrollmentId(list[0].id);
+                        setSelectedEnrollmentId(list[0].enrollmentId);
                     }
                 }
             } catch (err) {
-                console.error("Failed to load students:", err);
+                console.error("Failed to load parent contacts:", err);
             } finally {
                 setLoading(false);
             }
@@ -41,22 +42,25 @@ export default function ParentCommunicationPage() {
         setSending(true);
 
         try {
-            const res = await fetchApi("/teacher/parent-message", {
+            const res = await fetchApi("/communication/teacher/parent-message", {
                 method: "POST",
                 body: JSON.stringify({
                     enrollmentId: selectedEnrollmentId,
-                    message
+                    content: message
                 })
             });
 
             if (res.ok) {
-                const selectedSt = students.find((s) => s.id === selectedEnrollmentId);
-                const stName = selectedSt ? `${selectedSt.student?.firstName} ${selectedSt.student?.lastName}` : "Parent";
+                const contact = students.find((s: any) => s.enrollmentId === selectedEnrollmentId);
+                const stName = contact?.studentName || "Student";
                 setSentMessages([
                     { id: Date.now(), recipient: stName, message, sentAt: new Date().toLocaleTimeString() },
                     ...sentMessages
                 ]);
                 setMessage("");
+            } else {
+                const data = await res.json();
+                alert(data.error || "Failed to send message");
             }
         } catch (err: any) {
             alert(err.message || "Failed to send message");
@@ -107,14 +111,11 @@ export default function ParentCommunicationPage() {
                                     onChange={(e) => setSelectedEnrollmentId(e.target.value)}
                                     className="w-full p-2.5 rounded-lg border border-gray-200"
                                 >
-                                    {students.map((s, i) => {
-                                        const st = s.student || s;
-                                        return (
-                                            <option key={s.id || i} value={s.id}>
-                                                {st.firstName} {st.lastName} (Grade {s.schoolGrade?.grade?.level}{s.section?.name})
+                                {students.map((s: any, i: number) => (
+                                            <option key={s.enrollmentId || i} value={s.enrollmentId}>
+                                                {s.studentName} &mdash; {s.gradeName}{s.sectionName ? ` (${s.sectionName})` : ""} — Parent: {s.parentName}
                                             </option>
-                                        );
-                                    })}
+                                        ))}
                                 </select>
                             </div>
                             <div>
