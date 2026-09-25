@@ -26,7 +26,7 @@ const internalS3 = new S3Client({
     region: "us-east-1",
     credentials: {
         accessKeyId: process.env.MINIO_ROOT_USER || "edubridge_minio",
-        secretAccessKey: process.env.MINIO_ROOT_PASSWORD || "EduBridge@MinIO2024!",
+        secretAccessKey: process.env.MINIO_ROOT_PASSWORD || "",
     },
     forcePathStyle: true,
 });
@@ -42,7 +42,7 @@ const presignS3 = new S3Client({
     region: "us-east-1",
     credentials: {
         accessKeyId: process.env.MINIO_ROOT_USER || "edubridge_minio",
-        secretAccessKey: process.env.MINIO_ROOT_PASSWORD || "EduBridge@MinIO2024!",
+        secretAccessKey: process.env.MINIO_ROOT_PASSWORD || "",
     },
     forcePathStyle: true,
 });

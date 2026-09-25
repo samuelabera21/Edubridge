@@ -129,7 +129,7 @@ describe("Step 3A: Production Teacher Registration & Credential Workflow", () =>
                     fieldOfStudy: "Physics",
                     institution: "Addis Ababa University",
                     graduationYear: 2014,
-                    credentialNumber: "AAU-BSC-2014-9912",
+                    credentialNumber: "CRED-AAU-2014",
                     country: "Ethiopia",
                     isHighest: true
                 }
@@ -223,7 +223,7 @@ describe("Step 3A: Production Teacher Registration & Credential Workflow", () =>
                 fieldOfStudy: "Educational Pedagogy",
                 institution: "Kotebe University of Education",
                 graduationYear: 2020,
-                credentialNumber: "KUE-MED-2020-041",
+                credentialNumber: "CRED-KUE-2020",
                 country: "Ethiopia",
                 isHighest: true
             },

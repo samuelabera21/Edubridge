@@ -144,16 +144,11 @@ export default function TeacherSettingsPage() {
     return (
         <div className="w-full max-w-5xl mx-auto space-y-6 text-gray-800">
             {/* Header */}
-            <div className="flex items-center space-x-3">
-                <Link href="/dashboard/teacher" className="p-2 rounded-xl bg-white border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors shadow-2xs">
-                    <ArrowLeft className="w-5 h-5" />
-                </Link>
-                <div>
-                    <h1 className="text-2xl font-extrabold tracking-tight text-gray-900">Profile & Account Settings</h1>
-                    <p className="text-xs font-medium text-gray-500 mt-0.5">
-                        Manage your teacher credentials, personal details, contact details, and account security.
-                    </p>
-                </div>
+            <div>
+                <h1 className="text-2xl font-extrabold tracking-tight text-gray-900">Profile & Account Settings</h1>
+                <p className="text-xs font-medium text-gray-500 mt-0.5">
+                    Manage your teacher credentials, personal details, contact details, and account security.
+                </p>
             </div>
 
             {/* Navigation Tabs */}
