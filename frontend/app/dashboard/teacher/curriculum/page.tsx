@@ -10,7 +10,6 @@ import {
     CheckCircle2, 
     Clock, 
     Plus, 
-    ArrowLeft, 
     FileText, 
     TrendingUp, 
     AlertCircle, 
@@ -23,7 +22,17 @@ import {
     Calendar,
     X,
     MessageSquare,
-    Award
+    Award,
+    Search,
+    Filter,
+    ChevronDown,
+    ChevronUp,
+    Target,
+    Compass,
+    ExternalLink,
+    Layers,
+    BookMarked,
+    Eye
 } from "lucide-react";
 
 function CurriculumContent() {
@@ -39,6 +48,14 @@ function CurriculumContent() {
     const [lessonLogs, setLessonLogs] = useState<any[]>([]);
     const [difficulties, setDifficulties] = useState<any[]>([]);
     const [notes, setNotes] = useState<any[]>([]);
+
+    // View Curriculum Tab state
+    const [searchQuery, setSearchQuery] = useState("");
+    const [statusFilter, setStatusFilter] = useState<"ALL" | "IN_PROGRESS" | "COMPLETED" | "UPCOMING">("ALL");
+    const [expandedUnits, setExpandedUnits] = useState<Record<string, boolean>>({});
+    const [selectedTopicModal, setSelectedTopicModal] = useState<any | null>(null);
+    const [loadingCurriculum, setLoadingCurriculum] = useState(false);
+    const [showCompetencies, setShowCompetencies] = useState(true);
 
     // Form modal state
     const [showLogModal, setShowLogModal] = useState(false);
@@ -86,56 +103,25 @@ function CurriculumContent() {
                 const list = Array.isArray(cData) ? cData : [];
                 setClasses(list);
                 if (list.length > 0) {
-                    setSelectedAssignmentId(list[0].assignment?.id || list[0].id);
+                    const firstId = list[0].assignment?.id || list[0].id;
+                    setSelectedAssignmentId(firstId);
                 }
             }
 
             if (currRes.ok) {
                 const cData = await currRes.json();
                 setCurriculumData(cData);
+                // Expand all units initially
+                if (cData?.units && Array.isArray(cData.units)) {
+                    const expanded: Record<string, boolean> = {};
+                    cData.units.forEach((u: any) => { expanded[u.id] = true; });
+                    setExpandedUnits(expanded);
+                }
             }
 
-            // Mock initial lesson logs for demonstrate
-            setLessonLogs([
-                {
-                    id: "log-1",
-                    date: new Date().toISOString().split('T')[0],
-                    unit: "Unit 2: Geometry & Analytical Trigonometry",
-                    topic: "Trigonometric Ratios & Right Triangles",
-                    section: "Grade 9 - A",
-                    duration: 45,
-                    note: "Completed initial right triangle ratio exercises."
-                },
-                {
-                    id: "log-2",
-                    date: new Date(Date.now() - 86400000).toISOString().split('T')[0],
-                    unit: "Unit 1: Fundamentals of Functions & Algebra",
-                    topic: "Functions & Domain/Range Mapping",
-                    section: "Grade 9 - A",
-                    duration: 45,
-                    note: "Reviewed vertical line test and piecewise functions."
-                }
-            ]);
-
-            setDifficulties([
-                {
-                    id: "diff-1",
-                    date: new Date().toISOString().split('T')[0],
-                    topic: "Matrix Inverses & Cramer's Rule",
-                    unit: "Unit 3",
-                    description: "Students found 3x3 determinant calculations confusing during timed practice.",
-                    remedial: "Schedule extra tutorial session on Tuesday and provide step-by-step worksheet."
-                }
-            ]);
-
-            setNotes([
-                {
-                    id: "note-1",
-                    date: new Date().toISOString().split('T')[0],
-                    title: "Classroom Visual Aids Reflection",
-                    content: "Using color-coded graphs for quadratic functions significantly improved student engagement."
-                }
-            ]);
+            setLessonLogs([]);
+            setDifficulties([]);
+            setNotes([]);
 
         } catch (err) {
             console.error("Failed to load curriculum workspace:", err);
@@ -144,16 +130,72 @@ function CurriculumContent() {
         }
     }
 
+    async function handleSwitchAssignment(assignmentId: string) {
+        setSelectedAssignmentId(assignmentId);
+        try {
+            setLoadingCurriculum(true);
+            const res = await fetchApi(`/teacher/curriculum?assignmentId=${encodeURIComponent(assignmentId)}`);
+            if (res.ok) {
+                const data = await res.json();
+                setCurriculumData(data);
+                if (data?.units && Array.isArray(data.units)) {
+                    const expanded: Record<string, boolean> = {};
+                    data.units.forEach((u: any) => { expanded[u.id] = true; });
+                    setExpandedUnits(expanded);
+                }
+            }
+        } catch (err) {
+            console.error("Failed to switch assignment curriculum:", err);
+        } finally {
+            setLoadingCurriculum(false);
+        }
+    }
+
+    function toggleUnit(unitId: string) {
+        setExpandedUnits(prev => ({
+            ...prev,
+            [unitId]: !prev[unitId]
+        }));
+    }
+
+    function toggleAllUnits(expand: boolean) {
+        if (!curriculumData?.units) return;
+        const updated: Record<string, boolean> = {};
+        curriculumData.units.forEach((u: any) => {
+            updated[u.id] = expand;
+        });
+        setExpandedUnits(updated);
+    }
+
+    function handleOpenQuickLog(unit: any, topic: any) {
+        setUnitName(unit.title);
+        setTopicName(typeof topic === "string" ? topic : topic.title);
+        setShowLogModal(true);
+    }
+
+    function handleOpenDifficulty(topic: any) {
+        setDiffTopic(typeof topic === "string" ? topic : topic.title);
+        setActiveTab("difficulties");
+        setShowDiffModal(true);
+    }
+
     function handleSaveLessonLog(e: React.FormEvent) {
         e.preventDefault();
         if (!topicName) return;
         setSubmitting(true);
+
+        const selClass = classes.find(c => (c.assignment?.id || c.id) === selectedAssignmentId);
+        const a = selClass?.assignment || selClass;
+        const sectionLabel = a 
+            ? `Grade ${a.schoolGrade?.grade?.level || a.schoolGrade?.grade?.name || ""}${a.section?.name ? `-${a.section.name}` : ""} • ${a.subject?.name || ""}`.trim()
+            : (subjectInfo ? `${subjectInfo.gradeLevel || ""} - Section ${subjectInfo.section || ""}`.trim() : "Current Class");
+
         const newLog = {
             id: `log-${Date.now()}`,
             date: new Date().toISOString().split('T')[0],
-            unit: unitName || "Unit 2: Geometry & Analytical Trigonometry",
+            unit: unitName || (curriculumData?.units?.[0]?.title || "Current Unit"),
             topic: topicName,
-            section: "Assigned Section",
+            section: sectionLabel,
             duration: durationMinutes,
             note: logNote
         };
@@ -173,7 +215,7 @@ function CurriculumContent() {
             id: `diff-${Date.now()}`,
             date: new Date().toISOString().split('T')[0],
             topic: diffTopic,
-            unit: "Current Unit",
+            unit: unitName || (curriculumData?.units?.[0]?.title || "Current Unit"),
             description: diffDesc,
             remedial: remedialPlan || "No remedial plan logged"
         };
@@ -211,23 +253,33 @@ function CurriculumContent() {
     }
 
     const units = curriculumData?.units || [];
-    const overallProgress = curriculumData?.overallProgressPercent || 62;
+    const overallProgress = curriculumData?.overallProgressPercent ?? 0;
+    const subjectInfo = curriculumData?.subject;
+
+    // Filter units and topics based on Search & Status Filter
+    const filteredUnits = units.filter((u: any) => {
+        if (statusFilter !== "ALL" && u.status !== statusFilter) return false;
+        if (!searchQuery.trim()) return true;
+        const q = searchQuery.toLowerCase();
+        const matchesUnit = u.title.toLowerCase().includes(q) || u.unitNumber.toLowerCase().includes(q);
+        const matchesTopics = (u.topics || []).some((t: any) => {
+            const title = typeof t === "string" ? t : t.title;
+            const concepts = typeof t === "object" && t.keyConcepts ? t.keyConcepts : "";
+            return title.toLowerCase().includes(q) || concepts.toLowerCase().includes(q);
+        });
+        return matchesUnit || matchesTopics;
+    });
 
     return (
         <div className="w-full max-w-7xl mx-auto space-y-6 text-gray-900 pb-16">
             
             {/* Header */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div className="flex items-center space-x-3">
-                    <Link href="/dashboard/teacher" className="p-2 rounded-xl bg-white border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors shadow-2xs">
-                        <ArrowLeft className="w-5 h-5" />
-                    </Link>
-                    <div>
-                        <h1 className="text-2xl font-extrabold tracking-tight text-gray-900">Lesson & Curriculum Management</h1>
-                        <p className="text-xs font-medium text-gray-500 mt-0.5">
-                            View official curriculum, record lesson progress, track syllabus completion, and log learning difficulties.
-                        </p>
-                    </div>
+                <div>
+                    <h1 className="text-2xl font-extrabold tracking-tight text-gray-900">Lesson & Curriculum Management</h1>
+                    <p className="text-xs font-medium text-gray-500 mt-0.5">
+                        View official curriculum, record lesson progress, track syllabus completion, and log learning difficulties.
+                    </p>
                 </div>
 
                 <div className="flex items-center space-x-2">
@@ -308,46 +360,457 @@ function CurriculumContent() {
             {/* TAB 1: VIEW CURRICULUM SYLLABUS & UNITS */}
             {activeTab === "view" && (
                 <div className="space-y-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {units.map((unit: any) => (
-                            <Card key={unit.id} className="hover:border-[#4085b3] transition-colors">
-                                <CardHeader className="flex flex-row items-center justify-between pb-2">
-                                    <div className="space-y-1">
-                                        <span className={`px-2.5 py-0.5 rounded-full font-bold text-[10px] ${
-                                            unit.status === "COMPLETED" ? "bg-emerald-100 text-emerald-800" :
-                                            unit.status === "IN_PROGRESS" ? "bg-blue-100 text-[#4085b3]" : "bg-gray-100 text-gray-600"
-                                        }`}>
-                                            {unit.status.replace("_", " ")}
+                    {/* 1. Class & Subject Switcher & Metadata Card */}
+                    <Card className="bg-white border border-gray-200 shadow-2xs rounded-2xl overflow-hidden">
+                        <div className="bg-white text-gray-900 p-6">
+                            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+                                <div className="space-y-3">
+                                    <div className="flex flex-wrap items-center gap-2">
+                                        <span className="px-3 py-1 bg-blue-50 rounded-full text-[11px] font-bold tracking-wide uppercase text-[#4085b3] border border-blue-200/60">
+                                            National Curriculum Syllabus
                                         </span>
-                                        <CardTitle className="text-base font-bold text-gray-900">{unit.unitNumber}: {unit.title}</CardTitle>
+                                        {subjectInfo?.academicYear && (
+                                            <span className="px-2.5 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full text-[11px] font-bold">
+                                                Academic Year {subjectInfo.academicYear}
+                                            </span>
+                                        )}
+                                        {subjectInfo?.weeklyPeriods != null && (
+                                            <span className="px-2.5 py-1 bg-purple-50 text-purple-700 border border-purple-200 rounded-full text-[11px] font-bold">
+                                                {subjectInfo.weeklyPeriods} Periods / Week
+                                            </span>
+                                        )}
                                     </div>
-                                    <span className="text-sm font-black text-[#4085b3]">{unit.progressPercent}%</span>
-                                </CardHeader>
-                                <CardContent className="space-y-3 text-xs">
-                                    <div className="w-full bg-gray-100 h-2 rounded-full overflow-hidden">
-                                        <div className="bg-[#4085b3] h-full rounded-full transition-all duration-500" style={{ width: `${unit.progressPercent}%` }} />
-                                    </div>
+                                    <h2 className="text-2xl lg:text-3xl font-black tracking-tight text-gray-900 flex items-center gap-3">
+                                        <span>{subjectInfo?.name || (classes.length > 0 ? "Select an assigned class" : "No Class Assigned")}</span>
+                                        {subjectInfo?.gradeLevel && (
+                                            <span className="text-gray-500 text-lg font-medium">
+                                                ({subjectInfo.gradeLevel}{subjectInfo.section ? ` - Section ${subjectInfo.section}` : ""})
+                                            </span>
+                                        )}
+                                    </h2>
+                                    <p className="text-xs text-gray-500 max-w-2xl leading-relaxed">
+                                        Official Ministry of Education curriculum outline, competency standards, unit breakdowns, and recommended teaching resources.
+                                    </p>
+                                </div>
 
-                                    <div className="flex justify-between text-[11px] text-gray-500 font-medium">
-                                        <span>Topics Completed: <strong className="text-gray-900">{unit.completedTopicsCount} / {unit.topicsCount}</strong></span>
-                                        <span>Planned Hours: <strong className="text-gray-900">{unit.plannedHours} hrs</strong></span>
+                                {/* Class Assignment Switcher */}
+                                {classes.length > 0 && (
+                                    <div className="bg-gray-50/80 p-4 rounded-2xl border border-gray-200 space-y-2 lg:min-w-[290px] shadow-2xs">
+                                        <label className="text-[11px] font-bold text-gray-700 uppercase tracking-wider block">
+                                            Select Teaching Assignment:
+                                        </label>
+                                        <select
+                                            value={selectedAssignmentId}
+                                            onChange={(e) => handleSwitchAssignment(e.target.value)}
+                                            className="w-full bg-white text-gray-900 border border-gray-300 rounded-xl px-3 py-2 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#4085b3] transition-all cursor-pointer shadow-2xs"
+                                        >
+                                            {classes.map((c, i) => {
+                                                const a = c.assignment || c;
+                                                return (
+                                                    <option key={a.id || i} value={a.id} className="bg-white text-gray-900">
+                                                        Grade {a.schoolGrade?.grade?.level || a.schoolGrade?.grade?.name || ""}{a.section?.name ? `-${a.section.name}` : ""} • {a.subject?.name || "Subject"}
+                                                    </option>
+                                                );
+                                            })}
+                                        </select>
+                                        <p className="text-[10px] text-gray-400 font-medium">
+                                            Switch between your assigned classes to view their respective syllabus.
+                                        </p>
                                     </div>
+                                )}
+                            </div>
 
-                                    <div className="pt-2 border-t border-gray-100">
-                                        <p className="font-bold text-gray-700 mb-1.5 uppercase text-[10px] tracking-wider">Syllabus Topics Covered:</p>
-                                        <ul className="space-y-1 text-gray-600">
-                                            {unit.topics.map((t: string, idx: number) => (
-                                                <li key={idx} className="flex items-center space-x-2">
-                                                    <CheckCircle2 className={`w-3.5 h-3.5 ${idx < unit.completedTopicsCount ? "text-emerald-600" : "text-gray-300"}`} />
-                                                    <span className={idx < unit.completedTopicsCount ? "line-through text-gray-400" : "font-medium"}>{t}</span>
-                                                </li>
-                                            ))}
-                                        </ul>
+                            {/* Curriculum Key Metrics Bar */}
+                            <div className="mt-6 pt-6 border-t border-gray-100 grid grid-cols-2 sm:grid-cols-4 gap-4">
+                                <div className="bg-gray-50 rounded-xl p-3.5 border border-gray-100 shadow-2xs space-y-1">
+                                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Total Units</span>
+                                    <span className="text-lg font-black text-gray-900">{curriculumData?.totalUnitsCount ?? units.length} Units</span>
+                                </div>
+                                <div className="bg-gray-50 rounded-xl p-3.5 border border-gray-100 shadow-2xs space-y-1">
+                                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Topics Syllabus</span>
+                                    <span className="text-lg font-black text-gray-900">
+                                        {curriculumData?.topicsCompletedCount ?? 0} / {curriculumData?.totalTopicsCount ?? 0} Covered
+                                    </span>
+                                </div>
+                                <div className="bg-gray-50 rounded-xl p-3.5 border border-gray-100 shadow-2xs space-y-1">
+                                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Planned Hours</span>
+                                    <span className="text-lg font-black text-gray-900">{curriculumData?.totalPlannedHours ?? 0} Periods</span>
+                                </div>
+                                <div className="bg-gray-50 rounded-xl p-3.5 border border-gray-100 shadow-2xs space-y-1">
+                                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Overall Progress</span>
+                                    <span className="text-lg font-black text-[#4085b3]">{overallProgress}% Completed</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Subject General Competencies (Collapsible) */}
+                        {subjectInfo?.generalCompetencies && subjectInfo.generalCompetencies.length > 0 && (
+                            <div className="bg-blue-50/60 border-t border-blue-100 p-4">
+                                <div className="flex items-center justify-between">
+                                    <button
+                                        onClick={() => setShowCompetencies(!showCompetencies)}
+                                        className="flex items-center space-x-2 text-xs font-bold text-blue-900 hover:text-blue-700 transition-colors"
+                                    >
+                                        <Compass className="w-4 h-4 text-[#4085b3]" />
+                                        <span>Subject National Competency Standards & Expected Outcomes</span>
+                                        {showCompetencies ? <ChevronUp className="w-4 h-4 text-blue-600" /> : <ChevronDown className="w-4 h-4 text-blue-600" />}
+                                    </button>
+                                    <span className="text-[10px] font-bold text-blue-600 uppercase bg-blue-100/70 px-2.5 py-0.5 rounded-full">
+                                        MoE Secondary Education Framework
+                                    </span>
+                                </div>
+
+                                {showCompetencies && (
+                                    <div className="mt-3 grid grid-cols-1 md:grid-cols-3 gap-3 pt-2">
+                                        {subjectInfo.generalCompetencies.map((comp: string, i: number) => (
+                                            <div key={i} className="p-3 bg-white rounded-xl border border-blue-100 shadow-2xs flex items-start space-x-2">
+                                                <Target className="w-4 h-4 text-[#4085b3] shrink-0 mt-0.5" />
+                                                <p className="text-[11px] text-gray-700 leading-snug">{comp}</p>
+                                            </div>
+                                        ))}
                                     </div>
-                                </CardContent>
-                            </Card>
-                        ))}
+                                )}
+                            </div>
+                        )}
+                    </Card>
+
+                    {/* 2. Search, Status Filter & Controls Bar */}
+                    <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-xs flex flex-col md:flex-row items-center justify-between gap-4">
+                        {/* Search Input */}
+                        <div className="relative w-full md:w-80">
+                            <Search className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                            <input
+                                type="text"
+                                placeholder="Search units, topics, or concepts..."
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                className="w-full pl-9 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#4085b3] transition-all"
+                            />
+                            {searchQuery && (
+                                <button
+                                    onClick={() => setSearchQuery("")}
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                                >
+                                    <X className="w-3.5 h-3.5" />
+                                </button>
+                            )}
+                        </div>
+
+                        {/* Status Filter Tabs */}
+                        <div className="flex items-center space-x-1.5 overflow-x-auto w-full md:w-auto">
+                            {(["ALL", "IN_PROGRESS", "COMPLETED", "UPCOMING"] as const).map((status) => (
+                                <button
+                                    key={status}
+                                    onClick={() => setStatusFilter(status)}
+                                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${
+                                        statusFilter === status
+                                            ? "bg-[#4085b3] text-white shadow-2xs"
+                                            : "text-gray-600 hover:bg-gray-100 bg-gray-50 border border-gray-100"
+                                    }`}
+                                >
+                                    {status === "ALL" && "All Statuses"}
+                                    {status === "IN_PROGRESS" && "In Progress"}
+                                    {status === "COMPLETED" && "Completed"}
+                                    {status === "UPCOMING" && "Upcoming"}
+                                </button>
+                            ))}
+                        </div>
+
+                        {/* Expand / Collapse All */}
+                        <div className="flex items-center space-x-2 shrink-0">
+                            <button
+                                onClick={() => toggleAllUnits(true)}
+                                className="px-2.5 py-1.5 bg-gray-50 hover:bg-gray-100 text-gray-600 rounded-lg text-[11px] font-bold border border-gray-200 transition-colors"
+                            >
+                                Expand All
+                            </button>
+                            <button
+                                onClick={() => toggleAllUnits(false)}
+                                className="px-2.5 py-1.5 bg-gray-50 hover:bg-gray-100 text-gray-600 rounded-lg text-[11px] font-bold border border-gray-200 transition-colors"
+                            >
+                                Collapse All
+                            </button>
+                        </div>
                     </div>
+
+                    {/* 3. Detailed Curriculum Units & Topics Accordion List */}
+                    {loadingCurriculum ? (
+                        <div className="p-12 text-center text-gray-400 bg-white rounded-2xl border border-gray-100 space-y-3">
+                            <Loader2 className="w-8 h-8 mx-auto animate-spin text-[#4085b3]" />
+                            <p className="text-xs font-semibold text-gray-600">Loading syllabus for selected class...</p>
+                        </div>
+                    ) : filteredUnits.length === 0 ? (
+                        <div className="p-12 text-center text-gray-400 bg-white rounded-2xl border border-gray-100 space-y-3">
+                            <BookOpen className="w-10 h-10 mx-auto text-gray-300" />
+                            <p className="text-sm font-bold text-gray-700">
+                                {units.length === 0 ? "No curriculum units uploaded yet" : "No curriculum units match your criteria"}
+                            </p>
+                            <p className="text-xs text-gray-500">
+                                {units.length === 0
+                                    ? "No syllabus breakdown or units have been configured for this subject yet."
+                                    : "Try adjusting your search terms or filter selection."}
+                            </p>
+                        </div>
+                    ) : (
+                        <div className="space-y-4">
+                            {filteredUnits.map((unit: any) => {
+                                const isExpanded = !!expandedUnits[unit.id];
+                                const topicsList = unit.topics || [];
+                                const resourcesList = unit.resources || [];
+                                const objectivesList = unit.objectives || [];
+
+                                return (
+                                    <div
+                                        key={unit.id}
+                                        className="bg-white rounded-2xl border border-gray-200 shadow-2xs overflow-hidden transition-all duration-200 hover:border-gray-300"
+                                    >
+                                        {/* Unit Header Bar (Clickable) */}
+                                        <div
+                                            onClick={() => toggleUnit(unit.id)}
+                                            className="p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 cursor-pointer hover:bg-gray-50/60 transition-colors select-none"
+                                        >
+                                            <div className="flex items-start space-x-3.5">
+                                                <div className="p-2.5 rounded-xl bg-blue-50 text-[#4085b3] mt-0.5">
+                                                    <BookOpen className="w-5 h-5" />
+                                                </div>
+                                                <div className="space-y-1">
+                                                    <div className="flex flex-wrap items-center gap-2">
+                                                        <span className="font-extrabold text-xs text-[#4085b3] uppercase tracking-wide">
+                                                            {unit.unitNumber}
+                                                        </span>
+                                                        <span className={`px-2.5 py-0.5 rounded-full font-bold text-[10px] uppercase tracking-wider ${
+                                                            unit.status === "COMPLETED"
+                                                                ? "bg-emerald-100 text-emerald-800 border border-emerald-200"
+                                                                : unit.status === "IN_PROGRESS"
+                                                                ? "bg-blue-100 text-[#4085b3] border border-blue-200"
+                                                                : "bg-gray-100 text-gray-600 border border-gray-200"
+                                                        }`}>
+                                                            {unit.status.replace("_", " ")}
+                                                        </span>
+                                                    </div>
+                                                    <h3 className="text-base font-extrabold text-gray-900 leading-snug">
+                                                        {unit.title}
+                                                    </h3>
+                                                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-gray-500 font-medium">
+                                                        <span>
+                                                            Topics: <strong className="text-gray-900">{unit.completedTopicsCount || 0} / {unit.topicsCount || topicsList.length}</strong>
+                                                        </span>
+                                                        <span>•</span>
+                                                        <span>
+                                                            Planned: <strong className="text-gray-900">{unit.plannedHours || 0} hrs</strong>
+                                                        </span>
+                                                        <span>•</span>
+                                                        <span>
+                                                            Delivered: <strong className="text-gray-900">{unit.actualHours || 0} hrs</strong>
+                                                        </span>
+                                                        {resourcesList.length > 0 && (
+                                                            <>
+                                                                <span>•</span>
+                                                                <span className="text-[#4085b3] font-semibold flex items-center gap-1">
+                                                                    <BookMarked className="w-3 h-3" /> {resourcesList.length} Resources
+                                                                </span>
+                                                            </>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            {/* Progress bar & Toggle */}
+                                            <div className="flex items-center space-x-6 md:self-center">
+                                                <div className="w-36 text-right space-y-1.5 hidden sm:block">
+                                                    <div className="flex justify-between text-xs font-bold">
+                                                        <span className="text-gray-500 text-[10px] uppercase">Unit Progress</span>
+                                                        <span className="text-[#4085b3]">{unit.progressPercent}%</span>
+                                                    </div>
+                                                    <div className="w-full bg-gray-100 h-2 rounded-full overflow-hidden">
+                                                        <div
+                                                            className={`h-full rounded-full transition-all duration-500 ${
+                                                                unit.progressPercent === 100 ? "bg-emerald-500" : "bg-[#4085b3]"
+                                                            }`}
+                                                            style={{ width: `${unit.progressPercent}%` }}
+                                                        />
+                                                    </div>
+                                                </div>
+
+                                                <div className="p-2 rounded-xl bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors">
+                                                    {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Expanded Unit Content */}
+                                        {isExpanded && (
+                                            <div className="border-t border-gray-100 p-5 bg-gray-50/40 space-y-6">
+                                                
+                                                {/* Unit Learning Objectives */}
+                                                {objectivesList.length > 0 && (
+                                                    <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-2xs space-y-2.5">
+                                                        <h4 className="text-xs font-extrabold text-gray-900 uppercase tracking-wider flex items-center space-x-2">
+                                                            <Target className="w-4 h-4 text-[#4085b3]" />
+                                                            <span>Unit Learning Objectives & Target Competencies</span>
+                                                        </h4>
+                                                        <ul className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs text-gray-700">
+                                                            {objectivesList.map((obj: string, oIdx: number) => (
+                                                                <li key={oIdx} className="flex items-start space-x-2 bg-gray-50/70 p-2.5 rounded-lg border border-gray-100">
+                                                                    <span className="w-1.5 h-1.5 rounded-full bg-[#4085b3] mt-1.5 shrink-0" />
+                                                                    <span className="text-[11px] leading-relaxed">{obj}</span>
+                                                                </li>
+                                                            ))}
+                                                        </ul>
+                                                    </div>
+                                                )}
+
+                                                {/* Detailed Topics List */}
+                                                <div className="space-y-3">
+                                                    <div className="flex items-center justify-between">
+                                                        <h4 className="text-xs font-extrabold text-gray-900 uppercase tracking-wider flex items-center space-x-2">
+                                                            <Layers className="w-4 h-4 text-[#4085b3]" />
+                                                            <span>Curriculum Topics & Sequence Breakdown ({topicsList.length})</span>
+                                                        </h4>
+                                                        <span className="text-[11px] text-gray-400 font-medium">
+                                                            Click a topic to view details or log progress
+                                                        </span>
+                                                    </div>
+
+                                                    <div className="space-y-2">
+                                                        {topicsList.map((topicItem: any, tIdx: number) => {
+                                                            const isObj = typeof topicItem === "object" && topicItem !== null;
+                                                            const topicTitle = isObj ? (topicItem.title || "") : topicItem;
+                                                            const topicNum = isObj && topicItem.topicNumber ? topicItem.topicNumber : `${tIdx + 1}`;
+                                                            const topicStatus = isObj && topicItem.status ? topicItem.status : (tIdx < (unit.completedTopicsCount || 0) ? "COMPLETED" : "PENDING");
+                                                            const plannedHrs = isObj && topicItem.plannedHours != null ? topicItem.plannedHours : 0;
+                                                            const keyConcepts = isObj ? (topicItem.keyConcepts || "") : "";
+
+                                                            return (
+                                                                <div
+                                                                    key={tIdx}
+                                                                    className="bg-white p-3.5 rounded-xl border border-gray-100 shadow-2xs flex flex-col lg:flex-row lg:items-center justify-between gap-3 hover:border-blue-200 transition-all"
+                                                                >
+                                                                    <div className="flex items-start space-x-3">
+                                                                        <div className="mt-0.5">
+                                                                            {topicStatus === "COMPLETED" ? (
+                                                                                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                                                                            ) : topicStatus === "IN_PROGRESS" ? (
+                                                                                <Clock className="w-4 h-4 text-amber-500 animate-pulse" />
+                                                                            ) : (
+                                                                                <div className="w-4 h-4 rounded-full border-2 border-gray-300" />
+                                                                            )}
+                                                                        </div>
+                                                                        <div className="space-y-0.5">
+                                                                            <div className="flex items-center space-x-2">
+                                                                                <span className="text-[11px] font-bold text-gray-500">
+                                                                                    {topicNum}
+                                                                                </span>
+                                                                                <span className={`text-xs font-bold ${
+                                                                                    topicStatus === "COMPLETED" ? "text-gray-900" : "text-gray-800"
+                                                                                }`}>
+                                                                                    {topicTitle}
+                                                                                </span>
+                                                                                <span className={`px-2 py-0.5 rounded text-[10px] font-extrabold uppercase ${
+                                                                                    topicStatus === "COMPLETED"
+                                                                                        ? "bg-emerald-50 text-emerald-700"
+                                                                                        : topicStatus === "IN_PROGRESS"
+                                                                                        ? "bg-blue-50 text-blue-700"
+                                                                                        : "bg-gray-100 text-gray-500"
+                                                                                }`}>
+                                                                                    {topicStatus}
+                                                                                </span>
+                                                                            </div>
+                                                                            {keyConcepts && (
+                                                                                <p className="text-[11px] text-gray-500 line-clamp-1">
+                                                                                    <strong>Core:</strong> {keyConcepts}
+                                                                                </p>
+                                                                            )}
+                                                                        </div>
+                                                                    </div>
+
+                                                                    {/* Topic Actions & Hours */}
+                                                                    <div className="flex items-center space-x-3 self-end lg:self-center shrink-0">
+                                                                        <span className="text-[11px] font-bold text-gray-400 bg-gray-50 px-2 py-1 rounded-md border border-gray-100">
+                                                                            {plannedHrs} hrs
+                                                                        </span>
+
+                                                                        <button
+                                                                            onClick={() => setSelectedTopicModal({ ...topicItem, unitTitle: unit.title, unitNumber: unit.unitNumber })}
+                                                                            className="px-2.5 py-1 bg-gray-50 hover:bg-gray-100 text-gray-700 rounded-lg text-[11px] font-bold border border-gray-200 flex items-center space-x-1 transition-colors"
+                                                                            title="View full topic breakdown"
+                                                                        >
+                                                                            <Eye className="w-3 h-3 text-[#4085b3]" />
+                                                                            <span>Details</span>
+                                                                        </button>
+
+                                                                        <button
+                                                                            onClick={() => handleOpenQuickLog(unit, topicItem)}
+                                                                            className="px-2.5 py-1 bg-blue-50 hover:bg-blue-100 text-[#4085b3] rounded-lg text-[11px] font-bold border border-blue-200 flex items-center space-x-1 transition-colors"
+                                                                            title="Log lesson progress for this topic"
+                                                                        >
+                                                                            <Plus className="w-3 h-3" />
+                                                                            <span>Log Lesson</span>
+                                                                        </button>
+
+                                                                        <button
+                                                                            onClick={() => handleOpenDifficulty(topicItem)}
+                                                                            className="px-2 py-1 text-amber-700 hover:bg-amber-50 rounded-lg text-[11px] font-bold transition-colors"
+                                                                            title="Log student difficulty on this topic"
+                                                                        >
+                                                                            <AlertCircle className="w-3.5 h-3.5" />
+                                                                        </button>
+                                                                    </div>
+                                                                </div>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                </div>
+
+                                                {/* Attached Curriculum Resources (FR-RESOURCE-001 - 007) */}
+                                                {resourcesList.length > 0 && (
+                                                    <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-2xs space-y-2.5">
+                                                        <h4 className="text-xs font-extrabold text-gray-900 uppercase tracking-wider flex items-center space-x-2">
+                                                            <BookMarked className="w-4 h-4 text-emerald-600" />
+                                                            <span>Official Curriculum Resources & Reference Materials</span>
+                                                        </h4>
+                                                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                                                            {resourcesList.map((res: any, rIdx: number) => (
+                                                                <div
+                                                                    key={res.id || rIdx}
+                                                                    className="p-3 bg-gray-50/70 hover:bg-blue-50/40 rounded-xl border border-gray-200 transition-colors flex flex-col justify-between space-y-2"
+                                                                >
+                                                                    <div className="space-y-1">
+                                                                        <span className="text-[10px] font-bold uppercase tracking-wider text-[#4085b3]">
+                                                                            {res.type?.replace("_", " ") || "REFERENCE"}
+                                                                        </span>
+                                                                        <h5 className="font-extrabold text-gray-900 text-xs leading-snug">
+                                                                            {res.title}
+                                                                        </h5>
+                                                                        <p className="text-[11px] text-gray-600">
+                                                                            {res.reference}
+                                                                        </p>
+                                                                    </div>
+                                                                    <div className="pt-2 border-t border-gray-200/60 flex justify-between items-center text-[10px] font-bold text-gray-500">
+                                                                        <span>MoE Approved</span>
+                                                                        <a
+                                                                            href={res.url || "#"}
+                                                                            target="_blank"
+                                                                            rel="noreferrer"
+                                                                            className="text-[#4085b3] hover:underline flex items-center gap-1 font-bold"
+                                                                        >
+                                                                            <span>Open</span>
+                                                                            <ExternalLink className="w-2.5 h-2.5" />
+                                                                        </a>
+                                                                    </div>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                )}
+
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
                 </div>
             )}
 
@@ -364,10 +827,12 @@ function CurriculumContent() {
                         <CardContent className="space-y-6 text-xs">
                             <div className="p-6 bg-blue-50/50 rounded-2xl border border-blue-100 flex flex-col md:flex-row items-center justify-between gap-6">
                                 <div className="space-y-2 text-center md:text-left">
-                                    <span className="px-3 py-1 bg-blue-100 text-[#4085b3] rounded-full font-bold text-xs">ON SCHEDULE</span>
+                                    <span className="px-3 py-1 bg-blue-100 text-[#4085b3] rounded-full font-bold text-xs">
+                                        {overallProgress >= 70 ? "AHEAD OF SCHEDULE" : overallProgress >= 40 ? "ON SCHEDULE" : "PACING IN PROGRESS"}
+                                    </span>
                                     <h2 className="text-3xl font-black text-blue-950">{overallProgress}% Term Syllabus Completed</h2>
                                     <p className="text-xs text-blue-800">
-                                        10 out of 20 core curriculum topics delivered across assigned sections.
+                                        {curriculumData?.topicsCompletedCount ?? 0} out of {curriculumData?.totalTopicsCount ?? 0} core curriculum topics delivered across assigned sections.
                                     </p>
                                 </div>
                                 <div className="w-24 h-24 rounded-full border-8 border-[#4085b3] flex items-center justify-center font-black text-xl text-[#4085b3] bg-white shadow-2xs">
@@ -378,15 +843,21 @@ function CurriculumContent() {
                             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                                 <div className="p-4 bg-gray-50 rounded-xl border border-gray-100 space-y-1">
                                     <p className="text-gray-400 font-bold uppercase text-[10px]">Units Completed</p>
-                                    <p className="text-xl font-bold text-gray-900">1 / 4 Units</p>
+                                    <p className="text-xl font-bold text-gray-900">
+                                        {curriculumData?.unitsCompletedCount ?? 0} / {curriculumData?.totalUnitsCount ?? units.length} Units
+                                    </p>
                                 </div>
                                 <div className="p-4 bg-gray-50 rounded-xl border border-gray-100 space-y-1">
                                     <p className="text-gray-400 font-bold uppercase text-[10px]">Teaching Hours Delivered</p>
-                                    <p className="text-xl font-bold text-gray-900">28 / 60 Hours</p>
+                                    <p className="text-xl font-bold text-gray-900">
+                                        {curriculumData?.totalDeliveredHours ?? 0} / {curriculumData?.totalPlannedHours ?? 0} Hours
+                                    </p>
                                 </div>
                                 <div className="p-4 bg-gray-50 rounded-xl border border-gray-100 space-y-1">
                                     <p className="text-gray-400 font-bold uppercase text-[10px]">Pace Indicator</p>
-                                    <p className="text-xl font-bold text-emerald-700">+2 Days Ahead of Target</p>
+                                    <p className="text-xl font-bold text-emerald-700">
+                                        {overallProgress >= 70 ? "Ahead of Planned Pace" : overallProgress >= 40 ? "On Target Pace" : "Pacing in Progress"}
+                                    </p>
                                 </div>
                             </div>
                         </CardContent>
@@ -733,6 +1204,124 @@ function CurriculumContent() {
                                 </button>
                             </div>
                         </form>
+                    </div>
+                </div>
+            )}
+
+            {/* MODAL 4: TOPIC DETAILS BREAKDOWN */}
+            {selectedTopicModal && (
+                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
+                    <div className="bg-white rounded-2xl max-w-lg w-full p-6 space-y-5 shadow-2xl border border-gray-100">
+                        <div className="flex justify-between items-start border-b border-gray-100 pb-3">
+                            <div className="space-y-1">
+                                <div className="flex items-center space-x-2">
+                                    <span className="text-[11px] font-extrabold text-[#4085b3] bg-blue-50 px-2 py-0.5 rounded uppercase">
+                                        Topic {selectedTopicModal.topicNumber || "Syllabus"}
+                                    </span>
+                                    <span className={`px-2 py-0.5 rounded text-[10px] font-extrabold uppercase ${
+                                        selectedTopicModal.status === "COMPLETED"
+                                            ? "bg-emerald-100 text-emerald-800"
+                                            : selectedTopicModal.status === "IN_PROGRESS"
+                                            ? "bg-blue-100 text-[#4085b3]"
+                                            : "bg-gray-100 text-gray-600"
+                                    }`}>
+                                        {selectedTopicModal.status || "PENDING"}
+                                    </span>
+                                </div>
+                                <h3 className="font-extrabold text-gray-900 text-base leading-snug">
+                                    {selectedTopicModal.title}
+                                </h3>
+                                <p className="text-[11px] text-gray-500 font-medium">
+                                    {selectedTopicModal.unitNumber ? `${selectedTopicModal.unitNumber}: ` : ""}{selectedTopicModal.unitTitle || ""}
+                                </p>
+                            </div>
+                            <button
+                                onClick={() => setSelectedTopicModal(null)}
+                                className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                            >
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+
+                        <div className="space-y-3.5 text-xs">
+                            {/* Key Concepts */}
+                            <div className="p-3.5 bg-gray-50 rounded-xl border border-gray-100 space-y-1.5">
+                                <h4 className="font-extrabold text-gray-700 uppercase text-[10px] tracking-wider flex items-center gap-1.5">
+                                    <BookOpen className="w-3.5 h-3.5 text-[#4085b3]" />
+                                    <span>Core Pedagogical Concepts to Cover:</span>
+                                </h4>
+                                <p className="text-gray-700 leading-relaxed text-[11px]">
+                                    {selectedTopicModal.keyConcepts || "No pedagogical concept notes provided."}
+                                </p>
+                            </div>
+
+                            {/* Competencies */}
+                            {selectedTopicModal.competencies && (
+                                <div className="p-3.5 bg-blue-50/50 rounded-xl border border-blue-100 space-y-1.5">
+                                    <h4 className="font-extrabold text-blue-900 uppercase text-[10px] tracking-wider flex items-center gap-1.5">
+                                        <Target className="w-3.5 h-3.5 text-[#4085b3]" />
+                                        <span>Target Student Learning Competency:</span>
+                                    </h4>
+                                    <p className="text-blue-950 leading-relaxed text-[11px]">
+                                        {selectedTopicModal.competencies}
+                                    </p>
+                                </div>
+                            )}
+
+                            {/* Pacing Info */}
+                            <div className="grid grid-cols-2 gap-3 text-center">
+                                <div className="p-2.5 bg-gray-50 rounded-lg border border-gray-100">
+                                    <span className="text-[10px] font-bold text-gray-400 uppercase block">Planned Time</span>
+                                    <span className="text-xs font-black text-gray-900">{selectedTopicModal.plannedHours ?? 0} Periods</span>
+                                </div>
+                                <div className="p-2.5 bg-gray-50 rounded-lg border border-gray-100">
+                                    <span className="text-[10px] font-bold text-gray-400 uppercase block">Delivery Status</span>
+                                    <span className="text-xs font-black text-gray-900">
+                                        {selectedTopicModal.completedDate ? `Delivered on ${selectedTopicModal.completedDate}` : "Not yet delivered"}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Actions */}
+                        <div className="flex flex-col sm:flex-row justify-between items-center gap-2 pt-3 border-t border-gray-100">
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    const t = selectedTopicModal;
+                                    setSelectedTopicModal(null);
+                                    handleOpenDifficulty(t);
+                                }}
+                                className="w-full sm:w-auto px-3.5 py-2 bg-amber-50 hover:bg-amber-100 text-amber-800 font-bold rounded-xl text-xs border border-amber-200 flex items-center justify-center space-x-1 transition-colors"
+                            >
+                                <AlertCircle className="w-3.5 h-3.5" />
+                                <span>Report Difficulty</span>
+                            </button>
+
+                            <div className="flex items-center space-x-2 w-full sm:w-auto justify-end">
+                                <button
+                                    type="button"
+                                    onClick={() => setSelectedTopicModal(null)}
+                                    className="px-4 py-2 bg-gray-100 text-gray-700 font-bold rounded-xl text-xs hover:bg-gray-200 transition-colors"
+                                >
+                                    Close
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        const t = selectedTopicModal;
+                                        setSelectedTopicModal(null);
+                                        setUnitName(t.unitTitle || "");
+                                        setTopicName(t.title);
+                                        setShowLogModal(true);
+                                    }}
+                                    className="px-4 py-2 bg-[#4085b3] hover:bg-[#356e94] text-white font-bold rounded-xl text-xs flex items-center space-x-1.5 transition-colors"
+                                >
+                                    <Plus className="w-3.5 h-3.5" />
+                                    <span>Log Lesson for this Topic</span>
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             )}
