@@ -10,7 +10,7 @@ import {
     Search, 
     User, 
     CheckCheck,
-    FileText
+    AlertCircle
 } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -19,19 +19,21 @@ import { LoadingState } from "@/components/ui/LoadingState";
 export default function ParentCommunicationPage() {
     const { authData } = useAuth();
     const [loading, setLoading] = useState(true);
+    const [sending, setSending] = useState(false);
     const [messages, setMessages] = useState<any[]>([]);
     const [parents, setParents] = useState<any[]>([]);
     const [selectedParentId, setSelectedParentId] = useState("");
     const [messageText, setMessageText] = useState("");
 
-    const loadData = async () => {
+    const loadParents = async () => {
         try {
             setLoading(true);
             const pRes = await fetchApi("/parent");
             if (pRes.ok) {
                 const pData = await pRes.json();
-                setParents(Array.isArray(pData) ? pData : []);
-                if (pData.length > 0) setSelectedParentId(pData[0].id);
+                const list = Array.isArray(pData) ? pData : [];
+                setParents(list);
+                if (list.length > 0) setSelectedParentId(list[0].id);
             }
         } catch (err: any) {
             console.error(err);
@@ -41,55 +43,71 @@ export default function ParentCommunicationPage() {
     };
 
     useEffect(() => {
-        loadData();
+        loadParents();
     }, []);
-
-    const handleSendMessage = (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!messageText.trim()) return;
-
-        const newMsg = {
-            id: Date.now().toString(),
-            sender: "School Administration",
-            text: messageText,
-            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-            isOutgoing: true
-        };
-
-        setMessages(prev => [...prev, newMsg]);
-        setMessageText("");
-    };
 
     const selectedParent = parents.find(p => p.id === selectedParentId);
 
-    if (loading) return <LoadingState message="Loading parent communication channels..." />;
+    const loadMessages = async () => {
+        if (!selectedParent?.userId) {
+            setMessages([]);
+            return;
+        }
+        try {
+            const res = await fetchApi(`/communication/messages?otherUserId=${selectedParent.userId}`);
+            if (res.ok) {
+                const data = await res.json();
+                setMessages(Array.isArray(data) ? data : []);
+            }
+        } catch (err) {
+            console.error(err);
+        }
+    };
+
+    useEffect(() => {
+        loadMessages();
+    }, [selectedParentId]);
+
+    const handleSendMessage = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!messageText.trim() || !selectedParent?.userId) return;
+
+        try {
+            setSending(true);
+            const res = await fetchApi("/communication/messages", {
+                method: "POST",
+                body: JSON.stringify({
+                    receiverId: selectedParent.userId,
+                    content: messageText
+                })
+            });
+
+            if (res.ok) {
+                setMessageText("");
+                loadMessages();
+            } else {
+                const err = await res.json();
+                alert(err.error || "Failed to send message");
+            }
+        } catch (err: any) {
+            console.error(err);
+            alert("Failed to send message");
+        } finally {
+            setSending(false);
+        }
+    };
+
+    if (loading) return <LoadingState message="Loading parent directory..." />;
 
     return (
         <div className="space-y-6 text-black">
-            {/* SRS Context Banner */}
-            <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 text-xs text-blue-900 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-3">
-                <div className="space-y-1">
-                    <span className="font-bold text-sm text-blue-900 flex items-center">
-                        <Sparkles className="w-4 h-4 mr-1.5 text-blue-700" />
-                        SRS Domain 10.3: Direct Parent Communication & Chat Channel
-                    </span>
-                    <p className="text-blue-800">
-                        <strong>Who Uses This:</strong> School Principal, Vice-Principal & Subject Teachers.
-                        <br />
-                        <strong>Data Source:</strong> Real-time parent messaging channel database endpoints (`/api/parent`).
-                        <br />
-                        <strong>SRS Purpose:</strong> Direct two-way messaging with parents regarding student progress, behavior updates, and urgent inquiries.
-                    </p>
-                </div>
-            </div>
-
             {/* Header */}
             <div>
-                <h1 className="text-2xl font-bold text-gray-900 flex items-center space-x-2">
-                    <MessageSquare className="w-7 h-7 text-blue-600" />
-                    <span>3. Parent Communication Channel</span>
+                <h1 className="text-xl font-bold text-gray-900 flex items-center space-x-2">
+                    <MessageSquare className="w-5 h-5 text-blue-600" />
+                    <span>Parent Communication</span>
                 </h1>
-                <p className="text-sm text-gray-500 mt-1">Direct messaging channel between school staff and registered parents.</p>
+                <p className="text-xs text-gray-500 mt-0.5">Direct messaging channel for registered parents and guardians.</p>
             </div>
 
             {/* Communication Layout */}
@@ -138,23 +156,34 @@ export default function ParentCommunicationPage() {
                     </CardHeader>
 
                     <CardContent className="flex-1 p-4 overflow-y-auto space-y-3 bg-gray-50/30">
-                        {messages.length === 0 ? (
+                        {!selectedParent?.userId ? (
+                            <div className="h-full flex flex-col items-center justify-center text-gray-400 text-xs">
+                                <AlertCircle className="w-8 h-8 text-amber-500 mb-2" />
+                                <p className="font-semibold text-gray-700">No User Account Linked</p>
+                                <p className="text-gray-400 mt-1">This parent has not been linked to a login account yet.</p>
+                            </div>
+                        ) : messages.length === 0 ? (
                             <div className="h-full flex flex-col items-center justify-center text-gray-400 text-xs">
                                 <MessageSquare className="w-10 h-10 text-blue-200 mb-2" />
                                 <p>No message history with this parent yet.</p>
                                 <p className="text-gray-400">Type a message below to initiate contact.</p>
                             </div>
                         ) : (
-                            messages.map((m) => (
-                                <div key={m.id} className="flex flex-col items-end">
-                                    <div className="bg-[#006b3f] text-white text-xs rounded-xl rounded-tr-none px-4 py-2.5 max-w-xs shadow-sm">
-                                        {m.text}
+                            messages.map((m) => {
+                                const isMine = m.senderId === authData?.user?.id;
+                                return (
+                                    <div key={m.id} className={`flex flex-col ${isMine ? "items-end" : "items-start"}`}>
+                                        <div className={`text-xs rounded-xl px-4 py-2.5 max-w-xs shadow-sm ${
+                                            isMine ? "bg-[#006b3f] text-white rounded-tr-none" : "bg-white text-gray-800 border border-gray-200 rounded-tl-none"
+                                        }`}>
+                                            {m.content}
+                                        </div>
+                                        <span className="text-[10px] text-gray-400 mt-1 flex items-center">
+                                            {new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                        </span>
                                     </div>
-                                    <span className="text-[10px] text-gray-400 mt-1 flex items-center">
-                                        {m.timestamp} <CheckCheck className="w-3 h-3 ml-1 text-emerald-600" />
-                                    </span>
-                                </div>
-                            ))
+                                );
+                            })
                         )}
                     </CardContent>
 
@@ -164,9 +193,10 @@ export default function ParentCommunicationPage() {
                             placeholder="Type direct message to parent..."
                             value={messageText}
                             onChange={(e) => setMessageText(e.target.value)}
-                            className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#006b3f]"
+                            disabled={!selectedParent?.userId || sending}
+                            className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#006b3f] disabled:bg-gray-100"
                         />
-                        <Button type="submit" leftIcon={<Send className="w-4 h-4" />} className="bg-[#006b3f] hover:bg-[#005432]">
+                        <Button type="submit" isLoading={sending} disabled={!selectedParent?.userId} leftIcon={<Send className="w-4 h-4" />} className="bg-[#006b3f] hover:bg-[#005432]">
                             Send
                         </Button>
                     </form>
