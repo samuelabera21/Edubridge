@@ -640,6 +640,32 @@ export const getCurriculumData = async (req: Request, res: Response) => {
     }
 };
 
+export const recordTopicCoverage = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        const userId = req.user?.id;
+        if (!organizationId || !userId) return res.status(403).json({ error: "Missing school scope or authentication" });
+
+        const data = await TeacherService.recordTopicCoverage(userId, organizationId, req.body);
+        return res.json({ success: true, data });
+    } catch (error: any) {
+        return res.status(400).json({ error: error.message || "Failed to record topic coverage" });
+    }
+};
+
+export const recordLessonLog = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        const userId = req.user?.id;
+        if (!organizationId || !userId) return res.status(403).json({ error: "Missing school scope or authentication" });
+
+        const data = await TeacherService.recordLessonLog(userId, organizationId, req.body);
+        return res.status(201).json({ success: true, data });
+    } catch (error: any) {
+        return res.status(400).json({ error: error.message || "Failed to record lesson log" });
+    }
+};
+
 export const createAssessmentWithResults = async (req: Request, res: Response) => {
     try {
         const organizationId = (req as any).accessScope?.id;

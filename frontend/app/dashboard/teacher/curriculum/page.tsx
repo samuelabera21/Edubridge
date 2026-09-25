@@ -57,11 +57,28 @@ function CurriculumContent() {
     const [loadingCurriculum, setLoadingCurriculum] = useState(false);
     const [showCompetencies, setShowCompetencies] = useState(true);
 
-    // Form modal state
+    // Topic Coverage Modal State (SRS 4.4.8)
+    const [showCoverTopicModal, setShowCoverTopicModal] = useState(false);
+    const [coverUnitNumber, setCoverUnitNumber] = useState<number>(1);
+    const [coverUnitTitle, setCoverUnitTitle] = useState("");
+    const [coverTopicNumber, setCoverTopicNumber] = useState("");
+    const [coverTopicTitle, setCoverTopicTitle] = useState("");
+    const [coverStatus, setCoverStatus] = useState<"COMPLETED" | "IN_PROGRESS" | "PENDING">("COMPLETED");
+    const [coverDate, setCoverDate] = useState(new Date().toISOString().split("T")[0]);
+    const [coverDelayReason, setCoverDelayReason] = useState("");
+    const [coverNotes, setCoverNotes] = useState("");
+    const [progressStatusFilter, setProgressStatusFilter] = useState<"ALL" | "COMPLETED" | "IN_PROGRESS" | "PENDING">("ALL");
+
+    // Form modal state (SRS 4.4.7)
     const [showLogModal, setShowLogModal] = useState(false);
     const [selectedAssignmentId, setSelectedAssignmentId] = useState("");
     const [unitName, setUnitName] = useState("");
     const [topicName, setTopicName] = useState("");
+    const [lessonDate, setLessonDate] = useState(new Date().toISOString().split("T")[0]);
+    const [periodNumber, setPeriodNumber] = useState(1);
+    const [studentsAttending, setStudentsAttending] = useState(40);
+    const [lessonDeliveryStatus, setLessonDeliveryStatus] = useState<"COMPLETED" | "PARTIALLY_COMPLETED" | "INTERRUPTED" | "CANCELLED">("COMPLETED");
+    const [interruptionReason, setInterruptionReason] = useState("");
     const [durationMinutes, setDurationMinutes] = useState(45);
     const [logNote, setLogNote] = useState("");
 
@@ -111,15 +128,19 @@ function CurriculumContent() {
             if (currRes.ok) {
                 const cData = await currRes.json();
                 setCurriculumData(cData);
+                if (cData?.lessonLogs && Array.isArray(cData.lessonLogs)) {
+                    setLessonLogs(cData.lessonLogs);
+                }
                 // Expand all units initially
                 if (cData?.units && Array.isArray(cData.units)) {
                     const expanded: Record<string, boolean> = {};
-                    cData.units.forEach((u: any) => { expanded[u.id] = true; });
+                    cData.units.forEach((u: any, idx: number) => { 
+                        expanded[u.id || u.unitNumber || idx] = true; 
+                    });
                     setExpandedUnits(expanded);
                 }
             }
 
-            setLessonLogs([]);
             setDifficulties([]);
             setNotes([]);
 
@@ -138,9 +159,14 @@ function CurriculumContent() {
             if (res.ok) {
                 const data = await res.json();
                 setCurriculumData(data);
+                if (data?.lessonLogs && Array.isArray(data.lessonLogs)) {
+                    setLessonLogs(data.lessonLogs);
+                }
                 if (data?.units && Array.isArray(data.units)) {
                     const expanded: Record<string, boolean> = {};
-                    data.units.forEach((u: any) => { expanded[u.id] = true; });
+                    data.units.forEach((u: any, idx: number) => { 
+                        expanded[u.id || u.unitNumber || idx] = true; 
+                    });
                     setExpandedUnits(expanded);
                 }
             }
@@ -179,33 +205,94 @@ function CurriculumContent() {
         setShowDiffModal(true);
     }
 
-    function handleSaveLessonLog(e: React.FormEvent) {
+    function handleOpenCoverModal(unit: any, topic: any) {
+        const isObj = typeof topic === "object" && topic !== null;
+        setCoverUnitNumber(unit?.unitNumber || 1);
+        setCoverUnitTitle(unit?.title || `Unit ${unit?.unitNumber || 1}`);
+        setCoverTopicNumber(isObj ? (topic.topicNumber || "") : "");
+        setCoverTopicTitle(isObj ? (topic.title || "") : topic);
+        setCoverStatus(isObj && topic.status ? topic.status : "COMPLETED");
+        setCoverDate(isObj && topic.completedAt ? topic.completedAt.split("T")[0] : new Date().toISOString().split("T")[0]);
+        setCoverDelayReason(isObj && topic.delayReason ? topic.delayReason : "");
+        setCoverNotes(isObj && topic.notes ? topic.notes : "");
+        setShowCoverTopicModal(true);
+    }
+
+    async function handleSaveTopicCoverage(e: React.FormEvent) {
         e.preventDefault();
-        if (!topicName) return;
-        setSubmitting(true);
+        if (!coverTopicTitle || !selectedAssignmentId) {
+            setMsg({ type: "error", text: "Please select an assigned class and enter the topic title." });
+            return;
+        }
 
-        const selClass = classes.find(c => (c.assignment?.id || c.id) === selectedAssignmentId);
-        const a = selClass?.assignment || selClass;
-        const sectionLabel = a 
-            ? `Grade ${a.schoolGrade?.grade?.level || a.schoolGrade?.grade?.name || ""}${a.section?.name ? `-${a.section.name}` : ""} • ${a.subject?.name || ""}`.trim()
-            : (subjectInfo ? `${subjectInfo.gradeLevel || ""} - Section ${subjectInfo.section || ""}`.trim() : "Current Class");
+        try {
+            setSubmitting(true);
+            const res = await fetchApi("/teacher/curriculum/topic-coverage", {
+                method: "POST",
+                body: JSON.stringify({
+                    assignmentId: selectedAssignmentId,
+                    unitNumber: Number(coverUnitNumber) || 1,
+                    unitTitle: coverUnitTitle,
+                    topicNumber: coverTopicNumber,
+                    topicTitle: coverTopicTitle,
+                    status: coverStatus,
+                    completionDate: coverStatus === "COMPLETED" ? coverDate : undefined,
+                    delayReason: coverDelayReason || undefined,
+                    notes: coverNotes || undefined
+                })
+            });
 
-        const newLog = {
-            id: `log-${Date.now()}`,
-            date: new Date().toISOString().split('T')[0],
-            unit: unitName || (curriculumData?.units?.[0]?.title || "Current Unit"),
-            topic: topicName,
-            section: sectionLabel,
-            duration: durationMinutes,
-            note: logNote
-        };
-        setLessonLogs([newLog, ...lessonLogs]);
-        setUnitName("");
-        setTopicName("");
-        setLogNote("");
-        setShowLogModal(false);
-        setSubmitting(false);
-        setMsg({ type: "success", text: "Lesson progress and topics covered recorded successfully!" });
+            if (res.ok) {
+                setShowCoverTopicModal(false);
+                setMsg({ type: "success", text: `Topic "${coverTopicTitle}" marked as ${coverStatus} successfully!` });
+                await handleSwitchAssignment(selectedAssignmentId);
+            } else {
+                const errData = await res.json();
+                setMsg({ type: "error", text: errData.error || "Failed to record topic coverage." });
+            }
+        } catch (err: any) {
+            setMsg({ type: "error", text: err.message || "Failed to record topic coverage." });
+        } finally {
+            setSubmitting(false);
+        }
+    }
+
+    async function handleSaveLessonLog(e: React.FormEvent) {
+        e.preventDefault();
+        if (!topicName || !selectedAssignmentId) return;
+
+        try {
+            setSubmitting(true);
+            const res = await fetchApi("/teacher/curriculum/lesson-log", {
+                method: "POST",
+                body: JSON.stringify({
+                    assignmentId: selectedAssignmentId,
+                    topicTitle: topicName,
+                    lessonDate: lessonDate,
+                    periodNumber: Number(periodNumber) || 1,
+                    studentsAttending: Number(studentsAttending) || 0,
+                    status: lessonDeliveryStatus,
+                    interruptionReason: lessonDeliveryStatus === "INTERRUPTED" ? interruptionReason : undefined,
+                    teachingNotes: logNote || undefined
+                })
+            });
+
+            if (res.ok) {
+                setShowLogModal(false);
+                setTopicName("");
+                setLogNote("");
+                setInterruptionReason("");
+                setMsg({ type: "success", text: "Lesson progress and topic coverage saved successfully!" });
+                await handleSwitchAssignment(selectedAssignmentId);
+            } else {
+                const errData = await res.json();
+                setMsg({ type: "error", text: errData.error || "Failed to record lesson log." });
+            }
+        } catch (err: any) {
+            setMsg({ type: "error", text: err.message || "Failed to record lesson log." });
+        } finally {
+            setSubmitting(false);
+        }
     }
 
     function handleSaveDifficulty(e: React.FormEvent) {
@@ -740,6 +827,19 @@ function CurriculumContent() {
                                                                         </button>
 
                                                                         <button
+                                                                            onClick={() => handleOpenCoverModal(unit, topicItem)}
+                                                                            className={`px-2.5 py-1 rounded-lg text-[11px] font-bold border flex items-center space-x-1 transition-colors ${
+                                                                                topicStatus === "COMPLETED"
+                                                                                    ? "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100"
+                                                                                    : "bg-amber-50 text-amber-800 border-amber-200 hover:bg-amber-100"
+                                                                            }`}
+                                                                            title="Mark topic as covered (SRS 4.4.8)"
+                                                                        >
+                                                                            <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                                                                            <span>{topicStatus === "COMPLETED" ? "Covered ✓" : "Mark Covered"}</span>
+                                                                        </button>
+
+                                                                        <button
                                                                             onClick={() => handleOpenQuickLog(unit, topicItem)}
                                                                             className="px-2.5 py-1 bg-blue-50 hover:bg-blue-100 text-[#4085b3] rounded-lg text-[11px] font-bold border border-blue-200 flex items-center space-x-1 transition-colors"
                                                                             title="Log lesson progress for this topic"
@@ -862,6 +962,192 @@ function CurriculumContent() {
                             </div>
                         </CardContent>
                     </Card>
+
+                    {/* Topics Coverage Management List (SRS 4.4.8) */}
+                    <Card>
+                        <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                            <div>
+                                <CardTitle className="text-base font-bold text-gray-900 flex items-center space-x-2">
+                                    <Layers className="w-5 h-5 text-[#4085b3]" />
+                                    <span>Curriculum Topics Coverage Status</span>
+                                </CardTitle>
+                                <p className="text-xs text-gray-500 mt-1">
+                                    Mark topics as covered, record teaching progress, and log reasons for any schedule delays (SRS 4.4.8).
+                                </p>
+                            </div>
+                            <button
+                                onClick={() => {
+                                    setCoverUnitNumber(1);
+                                    setCoverUnitTitle("");
+                                    setCoverTopicNumber("");
+                                    setCoverTopicTitle("");
+                                    setCoverStatus("COMPLETED");
+                                    setCoverDelayReason("");
+                                    setCoverNotes("");
+                                    setShowCoverTopicModal(true);
+                                }}
+                                className="px-3.5 py-2 bg-[#4085b3] hover:bg-[#356e94] text-white rounded-xl font-bold text-xs flex items-center space-x-1.5 transition-colors self-start sm:self-auto shrink-0 shadow-2xs"
+                            >
+                                <Plus className="w-4 h-4" />
+                                <span>Record Covered Topic</span>
+                            </button>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                            {/* Filter Tabs: ALL | COMPLETED | IN_PROGRESS | PENDING */}
+                            <div className="flex items-center space-x-2 border-b border-gray-100 pb-3 overflow-x-auto text-xs">
+                                {(["ALL", "COMPLETED", "IN_PROGRESS", "PENDING"] as const).map((st) => (
+                                    <button
+                                        key={st}
+                                        onClick={() => setProgressStatusFilter(st)}
+                                        className={`px-3 py-1.5 rounded-lg font-bold transition-colors whitespace-nowrap ${
+                                            progressStatusFilter === st
+                                                ? "bg-[#4085b3] text-white"
+                                                : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                                        }`}
+                                    >
+                                        {st === "ALL" ? "All Topics" : st.replace("_", " ")}
+                                    </button>
+                                ))}
+                            </div>
+
+                            {/* Flat or grouped topic coverage list */}
+                            {(() => {
+                                const allTopics: any[] = [];
+                                (curriculumData?.units || []).forEach((u: any) => {
+                                    (u.topics || []).forEach((t: any, idx: number) => {
+                                        const isObj = typeof t === "object" && t !== null;
+                                        allTopics.push({
+                                            unitNumber: u.unitNumber || 1,
+                                            unitTitle: u.title || `Unit ${u.unitNumber || 1}`,
+                                            topicNumber: isObj ? (t.topicNumber || `${u.unitNumber}.${idx + 1}`) : `${u.unitNumber}.${idx + 1}`,
+                                            title: isObj ? (t.title || "") : t,
+                                            status: isObj && t.status ? t.status : "PENDING",
+                                            completedAt: isObj ? t.completedAt : null,
+                                            delayReason: isObj ? t.delayReason : null,
+                                            notes: isObj ? t.notes : null,
+                                            rawTopic: t,
+                                            unit: u
+                                        });
+                                    });
+                                });
+
+                                const filteredTopics = allTopics.filter(t => {
+                                    if (progressStatusFilter === "ALL") return true;
+                                    return t.status === progressStatusFilter;
+                                });
+
+                                if (filteredTopics.length === 0) {
+                                    return (
+                                        <div className="py-12 text-center text-gray-400 space-y-3">
+                                            <Inbox className="w-10 h-10 mx-auto text-gray-300" />
+                                            <p className="text-sm font-semibold text-gray-700">No topics match this status filter</p>
+                                            <p className="text-xs text-gray-400 max-w-md mx-auto">
+                                                Click "Record Covered Topic" above to manually log completed syllabus topics for this class.
+                                            </p>
+                                            <button
+                                                onClick={() => {
+                                                    setCoverUnitNumber(1);
+                                                    setCoverUnitTitle("");
+                                                    setCoverTopicNumber("");
+                                                    setCoverTopicTitle("");
+                                                    setCoverStatus("COMPLETED");
+                                                    setShowCoverTopicModal(true);
+                                                }}
+                                                className="px-4 py-2 bg-blue-50 text-[#4085b3] border border-blue-200 rounded-xl text-xs font-bold hover:bg-blue-100 transition-colors inline-flex items-center space-x-1"
+                                            >
+                                                <Plus className="w-4 h-4" />
+                                                <span>Record Covered Topic</span>
+                                            </button>
+                                        </div>
+                                    );
+                                }
+
+                                return (
+                                    <div className="space-y-2.5">
+                                        {filteredTopics.map((topicItem, idx) => (
+                                            <div
+                                                key={idx}
+                                                className="p-3.5 bg-white rounded-xl border border-gray-100 shadow-2xs hover:border-blue-200 transition-all flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs"
+                                            >
+                                                <div className="flex items-start space-x-3">
+                                                    <div className="mt-0.5 shrink-0">
+                                                        {topicItem.status === "COMPLETED" ? (
+                                                            <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                                                        ) : topicItem.status === "IN_PROGRESS" ? (
+                                                            <Clock className="w-4 h-4 text-amber-500 animate-pulse" />
+                                                        ) : (
+                                                            <div className="w-4 h-4 rounded-full border-2 border-gray-300" />
+                                                        )}
+                                                    </div>
+                                                    <div className="space-y-1">
+                                                        <div className="flex flex-wrap items-center gap-2">
+                                                            <span className="text-[10px] font-bold text-gray-400 bg-gray-50 px-2 py-0.5 rounded border border-gray-100">
+                                                                Unit {topicItem.unitNumber} • {topicItem.topicNumber}
+                                                            </span>
+                                                            <h4 className="font-extrabold text-gray-900 text-xs">{topicItem.title}</h4>
+                                                            <span className={`px-2 py-0.5 rounded text-[10px] font-extrabold uppercase ${
+                                                                topicItem.status === "COMPLETED"
+                                                                    ? "bg-emerald-50 text-emerald-700"
+                                                                    : topicItem.status === "IN_PROGRESS"
+                                                                    ? "bg-blue-50 text-blue-700"
+                                                                    : "bg-gray-100 text-gray-500"
+                                                            }`}>
+                                                                {topicItem.status}
+                                                            </span>
+                                                        </div>
+
+                                                        {topicItem.completedAt && (
+                                                            <p className="text-[11px] text-emerald-700 font-semibold flex items-center space-x-1">
+                                                                <span>Completed on:</span>
+                                                                <span>{new Date(topicItem.completedAt).toLocaleDateString()}</span>
+                                                            </p>
+                                                        )}
+
+                                                        {topicItem.delayReason && (
+                                                            <p className="text-[11px] text-amber-800 bg-amber-50/80 px-2.5 py-1 rounded-md border border-amber-200/60 inline-flex items-center gap-1.5 mt-0.5">
+                                                                <AlertCircle className="w-3 h-3 text-amber-600 shrink-0" />
+                                                                <span><strong>Delay Reason (SRS 4.4.8):</strong> {topicItem.delayReason}</span>
+                                                            </p>
+                                                        )}
+
+                                                        {topicItem.notes && (
+                                                            <p className="text-[11px] text-gray-600 italic">
+                                                                "{topicItem.notes}"
+                                                            </p>
+                                                        )}
+                                                    </div>
+                                                </div>
+
+                                                <div className="flex items-center space-x-2 self-end md:self-center shrink-0">
+                                                    <button
+                                                        onClick={() => handleOpenCoverModal(topicItem.unit, topicItem.rawTopic)}
+                                                        className={`px-3 py-1.5 rounded-lg text-xs font-bold border flex items-center space-x-1 transition-colors ${
+                                                            topicItem.status === "COMPLETED"
+                                                                ? "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100"
+                                                                : "bg-amber-50 text-amber-800 border-amber-200 hover:bg-amber-100"
+                                                        }`}
+                                                        title="Update Topic Coverage status (SRS 4.4.8)"
+                                                    >
+                                                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                                                        <span>{topicItem.status === "COMPLETED" ? "Update Coverage" : "Mark as Covered"}</span>
+                                                    </button>
+
+                                                    <button
+                                                        onClick={() => handleOpenQuickLog(topicItem.unit, topicItem.rawTopic)}
+                                                        className="px-2.5 py-1.5 bg-blue-50 hover:bg-blue-100 text-[#4085b3] rounded-lg text-xs font-bold border border-blue-200 flex items-center space-x-1 transition-colors"
+                                                        title="Log conducted lesson for this topic"
+                                                    >
+                                                        <Plus className="w-3.5 h-3.5" />
+                                                        <span>Log Lesson</span>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                );
+                            })()}
+                        </CardContent>
+                    </Card>
                 </div>
             )}
 
@@ -869,13 +1155,18 @@ function CurriculumContent() {
             {activeTab === "log" && (
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between">
-                        <CardTitle className="text-base font-bold text-gray-900 flex items-center space-x-2">
-                            <FileText className="w-5 h-5 text-[#4085b3]" />
-                            <span>Delivered Lesson Logs & Topics Covered</span>
-                        </CardTitle>
+                        <div>
+                            <CardTitle className="text-base font-bold text-gray-900 flex items-center space-x-2">
+                                <FileText className="w-5 h-5 text-[#4085b3]" />
+                                <span>Delivered Lesson Logs & Teaching Records</span>
+                            </CardTitle>
+                            <p className="text-xs text-gray-500 mt-1">
+                                Record conducted classroom lessons, student attendance count, delivery status, and notes (SRS 4.4.7).
+                            </p>
+                        </div>
                         <button
                             onClick={() => setShowLogModal(true)}
-                            className="px-3.5 py-1.5 bg-[#4085b3] text-white rounded-lg font-bold text-xs hover:bg-[#356e94] transition-colors flex items-center space-x-1"
+                            className="px-3.5 py-1.5 bg-[#4085b3] text-white rounded-lg font-bold text-xs hover:bg-[#356e94] transition-colors flex items-center space-x-1 shadow-2xs"
                         >
                             <Plus className="w-4 h-4" />
                             <span>Log New Lesson</span>
@@ -890,21 +1181,52 @@ function CurriculumContent() {
                             </div>
                         ) : (
                             <div className="space-y-3 text-xs">
-                                {lessonLogs.map((log: any) => (
-                                    <div key={log.id} className="p-4 bg-gray-50 rounded-xl border border-gray-100 flex items-center justify-between">
-                                        <div className="space-y-1">
-                                            <span className="px-2 py-0.5 bg-blue-100 text-[#4085b3] rounded font-bold text-[10px] uppercase">{log.unit}</span>
-                                            <h4 className="font-extrabold text-gray-900 text-sm">{log.topic}</h4>
-                                            <p className="text-[10px] text-gray-500">
-                                                Logged Date: <strong>{log.date}</strong> • Duration: <strong>{log.duration} mins</strong> • Section: <strong>{log.section}</strong>
-                                            </p>
-                                            {log.note && <p className="text-[11px] text-gray-600 italic mt-1">"{log.note}"</p>}
+                                {lessonLogs.map((log: any) => {
+                                    const logTopic = log.topicTitle || log.topic;
+                                    const logDate = log.lessonDate ? new Date(log.lessonDate).toLocaleDateString() : (log.date || "");
+                                    const logUnit = log.unitNumber ? `Unit ${log.unitNumber}` : (log.unit || "Lesson");
+                                    const logStatus = log.status || "COMPLETED";
+
+                                    return (
+                                        <div key={log.id} className="p-4 bg-gray-50 rounded-xl border border-gray-100 flex flex-col md:flex-row md:items-center justify-between gap-3">
+                                            <div className="space-y-1">
+                                                <div className="flex items-center gap-2">
+                                                    <span className="px-2 py-0.5 bg-blue-100 text-[#4085b3] rounded font-bold text-[10px] uppercase">
+                                                        {logUnit}
+                                                    </span>
+                                                    {log.periodNumber && (
+                                                        <span className="text-[10px] font-bold text-gray-400 bg-white px-2 py-0.5 rounded border border-gray-200">
+                                                            Period {log.periodNumber}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                <h4 className="font-extrabold text-gray-900 text-sm">{logTopic}</h4>
+                                                <p className="text-[10px] text-gray-500">
+                                                    Date: <strong>{logDate}</strong>
+                                                    {log.studentsAttending ? <> • Attending: <strong>{log.studentsAttending} Students</strong></> : null}
+                                                </p>
+                                                {(log.teachingNotes || log.note) && (
+                                                    <p className="text-[11px] text-gray-600 italic mt-1">"{log.teachingNotes || log.note}"</p>
+                                                )}
+                                                {log.interruptionReason && (
+                                                    <p className="text-[11px] text-rose-700 bg-rose-50 px-2 py-0.5 rounded border border-rose-200 font-semibold inline-block">
+                                                        Interruption: {log.interruptionReason}
+                                                    </p>
+                                                )}
+                                            </div>
+                                            <span className={`px-3 py-1 rounded-full font-bold text-[11px] flex items-center space-x-1 shrink-0 ${
+                                                logStatus === "COMPLETED"
+                                                    ? "bg-emerald-100 text-emerald-800"
+                                                    : logStatus === "INTERRUPTED"
+                                                    ? "bg-rose-100 text-rose-800"
+                                                    : "bg-amber-100 text-amber-800"
+                                            }`}>
+                                                <CheckCircle2 className="w-3.5 h-3.5 mr-1 text-emerald-600" />
+                                                <span>{logStatus.replace("_", " ")}</span>
+                                            </span>
                                         </div>
-                                        <span className="px-3 py-1 bg-emerald-100 text-emerald-800 rounded-full font-bold text-[11px] flex items-center space-x-1 shrink-0">
-                                            <CheckCircle2 className="w-3.5 h-3.5 mr-1 text-emerald-600" /> Completed
-                                        </span>
-                                    </div>
-                                ))}
+                                    );
+                                })}
                             </div>
                         )}
                     </CardContent>
@@ -987,7 +1309,163 @@ function CurriculumContent() {
                 </Card>
             )}
 
-            {/* MODAL 1: LOG LESSON PROGRESS */}
+            {/* MODAL 0: RECORD TOPIC COVERAGE (SRS 4.4.8) */}
+            {showCoverTopicModal && (
+                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+                    <div className="bg-white rounded-2xl max-w-lg w-full p-6 space-y-4 shadow-xl border border-gray-100">
+                        <div className="flex justify-between items-center border-b border-gray-100 pb-3">
+                            <h3 className="font-extrabold text-gray-900 text-base flex items-center space-x-2">
+                                <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+                                <span>Record Topic Coverage</span>
+                            </h3>
+                            <button onClick={() => setShowCoverTopicModal(false)} className="p-1 text-gray-400 hover:text-gray-600 rounded-lg">
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+
+                        <form onSubmit={handleSaveTopicCoverage} className="space-y-4 text-xs">
+                            <div>
+                                <label className="block font-bold text-gray-700 mb-1">Assigned Class / Section</label>
+                                <select
+                                    value={selectedAssignmentId}
+                                    onChange={(e) => {
+                                        setSelectedAssignmentId(e.target.value);
+                                        handleSwitchAssignment(e.target.value);
+                                    }}
+                                    className="w-full bg-white border border-gray-200 rounded-xl p-2.5 text-xs outline-none focus:ring-2 focus:ring-[#4085b3]"
+                                >
+                                    {classes.map((c, i) => {
+                                        const a = c.assignment || c;
+                                        return (
+                                            <option key={a.id || i} value={a.id}>
+                                                Grade {a.schoolGrade?.grade?.level}{a.section?.name ? `-${a.section.name}` : ""} • {a.subject?.name}
+                                            </option>
+                                        );
+                                    })}
+                                </select>
+                            </div>
+
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <div>
+                                    <label className="block font-bold text-gray-700 mb-1">Unit Number</label>
+                                    <input
+                                        type="number"
+                                        min={1}
+                                        value={coverUnitNumber}
+                                        onChange={(e) => setCoverUnitNumber(Number(e.target.value))}
+                                        required
+                                        className="w-full bg-white border border-gray-200 rounded-xl p-2.5 text-xs outline-none focus:ring-2 focus:ring-[#4085b3]"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block font-bold text-gray-700 mb-1">Unit Title</label>
+                                    <input
+                                        type="text"
+                                        placeholder="e.g. Unit 1: Functions"
+                                        value={coverUnitTitle}
+                                        onChange={(e) => setCoverUnitTitle(e.target.value)}
+                                        className="w-full bg-white border border-gray-200 rounded-xl p-2.5 text-xs outline-none focus:ring-2 focus:ring-[#4085b3]"
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                <div>
+                                    <label className="block font-bold text-gray-700 mb-1">Topic Number</label>
+                                    <input
+                                        type="text"
+                                        placeholder="e.g. 1.2"
+                                        value={coverTopicNumber}
+                                        onChange={(e) => setCoverTopicNumber(e.target.value)}
+                                        className="w-full bg-white border border-gray-200 rounded-xl p-2.5 text-xs outline-none focus:ring-2 focus:ring-[#4085b3]"
+                                    />
+                                </div>
+                                <div className="sm:col-span-2">
+                                    <label className="block font-bold text-gray-700 mb-1">Topic Title</label>
+                                    <input
+                                        type="text"
+                                        placeholder="e.g. Solving Quadratic Equations"
+                                        value={coverTopicTitle}
+                                        onChange={(e) => setCoverTopicTitle(e.target.value)}
+                                        required
+                                        className="w-full bg-white border border-gray-200 rounded-xl p-2.5 text-xs outline-none focus:ring-2 focus:ring-[#4085b3]"
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <div>
+                                    <label className="block font-bold text-gray-700 mb-1">Coverage Status</label>
+                                    <select
+                                        value={coverStatus}
+                                        onChange={(e) => setCoverStatus(e.target.value as any)}
+                                        className="w-full bg-white border border-gray-200 rounded-xl p-2.5 text-xs outline-none focus:ring-2 focus:ring-[#4085b3] font-bold"
+                                    >
+                                        <option value="COMPLETED">COMPLETED (Covered)</option>
+                                        <option value="IN_PROGRESS">IN_PROGRESS</option>
+                                        <option value="PENDING">PENDING (Upcoming)</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block font-bold text-gray-700 mb-1">Completion Date</label>
+                                    <input
+                                        type="date"
+                                        value={coverDate}
+                                        onChange={(e) => setCoverDate(e.target.value)}
+                                        disabled={coverStatus !== "COMPLETED"}
+                                        className="w-full bg-white border border-gray-200 rounded-xl p-2.5 text-xs outline-none focus:ring-2 focus:ring-[#4085b3] disabled:bg-gray-100 disabled:text-gray-400"
+                                    />
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className="block font-bold text-gray-700 mb-1 flex items-center justify-between">
+                                    <span>Reason for Delay (Optional - SRS 4.4.8)</span>
+                                    <span className="text-[10px] text-gray-400 font-normal">If topic fell behind schedule</span>
+                                </label>
+                                <input
+                                    type="text"
+                                    placeholder="e.g. Schedule delays due to national exams, holidays, or remedial review..."
+                                    value={coverDelayReason}
+                                    onChange={(e) => setCoverDelayReason(e.target.value)}
+                                    className="w-full bg-white border border-gray-200 rounded-xl p-2.5 text-xs outline-none focus:ring-2 focus:ring-[#4085b3]"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block font-bold text-gray-700 mb-1">Teaching Remarks & Coverage Notes</label>
+                                <textarea
+                                    rows={2}
+                                    placeholder="Key concepts mastered, student practice exercises, or follow-up notes..."
+                                    value={coverNotes}
+                                    onChange={(e) => setCoverNotes(e.target.value)}
+                                    className="w-full bg-white border border-gray-200 rounded-xl p-2.5 text-xs outline-none focus:ring-2 focus:ring-[#4085b3]"
+                                />
+                            </div>
+
+                            <div className="flex justify-end space-x-2 pt-2">
+                                <button
+                                    type="button"
+                                    onClick={() => setShowCoverTopicModal(false)}
+                                    className="px-4 py-2 bg-gray-100 text-gray-700 font-bold rounded-xl hover:bg-gray-200"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="submit"
+                                    disabled={submitting}
+                                    className="px-4 py-2 bg-[#4085b3] hover:bg-[#356e94] text-white font-bold rounded-xl flex items-center space-x-1"
+                                >
+                                    {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                                    <span>Save Topic Coverage</span>
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* MODAL 1: LOG LESSON PROGRESS (SRS 4.4.7) */}
             {showLogModal && (
                 <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
                     <div className="bg-white rounded-2xl max-w-md w-full p-6 space-y-4 shadow-xl border border-gray-100">
@@ -1006,30 +1484,21 @@ function CurriculumContent() {
                                 <label className="block font-bold text-gray-700 mb-1">Assigned Class / Section</label>
                                 <select
                                     value={selectedAssignmentId}
-                                    onChange={(e) => setSelectedAssignmentId(e.target.value)}
+                                    onChange={(e) => {
+                                        setSelectedAssignmentId(e.target.value);
+                                        handleSwitchAssignment(e.target.value);
+                                    }}
                                     className="w-full bg-white border border-gray-200 rounded-xl p-2.5 text-xs outline-none focus:ring-2 focus:ring-[#4085b3]"
                                 >
                                     {classes.map((c, i) => {
                                         const a = c.assignment || c;
                                         return (
                                             <option key={a.id || i} value={a.id}>
-                                                Grade {a.schoolGrade?.grade?.level}{a.section?.name} - {a.subject?.name}
+                                                Grade {a.schoolGrade?.grade?.level}{a.section?.name ? `-${a.section.name}` : ""} • {a.subject?.name}
                                             </option>
                                         );
                                     })}
                                 </select>
-                            </div>
-
-                            <div>
-                                <label className="block font-bold text-gray-700 mb-1">Syllabus Unit</label>
-                                <input
-                                    type="text"
-                                    placeholder="e.g. Unit 2: Geometry & Analytical Trigonometry"
-                                    value={unitName}
-                                    onChange={(e) => setUnitName(e.target.value)}
-                                    required
-                                    className="w-full bg-white border border-gray-200 rounded-xl p-2.5 text-xs outline-none focus:ring-2 focus:ring-[#4085b3]"
-                                />
                             </div>
 
                             <div>
@@ -1043,6 +1512,67 @@ function CurriculumContent() {
                                     className="w-full bg-white border border-gray-200 rounded-xl p-2.5 text-xs outline-none focus:ring-2 focus:ring-[#4085b3]"
                                 />
                             </div>
+
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                <div>
+                                    <label className="block font-bold text-gray-700 mb-1">Lesson Date</label>
+                                    <input
+                                        type="date"
+                                        value={lessonDate}
+                                        onChange={(e) => setLessonDate(e.target.value)}
+                                        required
+                                        className="w-full bg-white border border-gray-200 rounded-xl p-2.5 text-xs outline-none focus:ring-2 focus:ring-[#4085b3]"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block font-bold text-gray-700 mb-1">Period #</label>
+                                    <input
+                                        type="number"
+                                        min={1}
+                                        value={periodNumber}
+                                        onChange={(e) => setPeriodNumber(Number(e.target.value))}
+                                        className="w-full bg-white border border-gray-200 rounded-xl p-2.5 text-xs outline-none focus:ring-2 focus:ring-[#4085b3]"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block font-bold text-gray-700 mb-1">Attending #</label>
+                                    <input
+                                        type="number"
+                                        min={0}
+                                        value={studentsAttending}
+                                        onChange={(e) => setStudentsAttending(Number(e.target.value))}
+                                        className="w-full bg-white border border-gray-200 rounded-xl p-2.5 text-xs outline-none focus:ring-2 focus:ring-[#4085b3]"
+                                    />
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className="block font-bold text-gray-700 mb-1">Lesson Delivery Status</label>
+                                <select
+                                    value={lessonDeliveryStatus}
+                                    onChange={(e) => setLessonDeliveryStatus(e.target.value as any)}
+                                    className="w-full bg-white border border-gray-200 rounded-xl p-2.5 text-xs outline-none focus:ring-2 focus:ring-[#4085b3] font-bold"
+                                >
+                                    <option value="COMPLETED">COMPLETED (Delivered Fully)</option>
+                                    <option value="PARTIALLY_COMPLETED">PARTIALLY COMPLETED</option>
+                                    <option value="INTERRUPTED">INTERRUPTED</option>
+                                    <option value="CANCELLED">CANCELLED</option>
+                                </select>
+                            </div>
+
+                            {lessonDeliveryStatus === "INTERRUPTED" && (
+                                <div>
+                                    <label className="block font-bold text-rose-700 mb-1">Interruption Reason</label>
+                                    <input
+                                        type="text"
+                                        placeholder="e.g. School assembly, emergency drill, or power outage..."
+                                        value={interruptionReason}
+                                        onChange={(e) => setInterruptionReason(e.target.value)}
+                                        required
+                                        className="w-full bg-rose-50 border border-rose-200 rounded-xl p-2.5 text-xs outline-none focus:ring-2 focus:ring-rose-400"
+                                    />
+                                </div>
+                            )}
 
                             <div>
                                 <label className="block font-bold text-gray-700 mb-1">Teaching Notes / Reflection</label>
@@ -1068,7 +1598,7 @@ function CurriculumContent() {
                                     disabled={submitting}
                                     className="px-4 py-2 bg-[#4085b3] hover:bg-[#356e94] text-white font-bold rounded-xl flex items-center space-x-1"
                                 >
-                                    <Save className="w-4 h-4" />
+                                    {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
                                     <span>Save Lesson Log</span>
                                 </button>
                             </div>

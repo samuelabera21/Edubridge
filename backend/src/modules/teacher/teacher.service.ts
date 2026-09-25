@@ -1530,9 +1530,87 @@ export class TeacherService {
             }
         }
 
+        // Query real recorded topic coverage and lesson logs for this assignment
+        const recordedCoverages = await prisma.topicCoverage.findMany({
+            where: {
+                teachingAssignmentId: assignment.id,
+                organizationId
+            },
+            orderBy: [{ unitNumber: "asc" }, { createdAt: "asc" }]
+        });
+
+        const recordedLogs = await prisma.lessonProgressLog.findMany({
+            where: {
+                teachingAssignmentId: assignment.id,
+                organizationId
+            },
+            orderBy: { lessonDate: "desc" },
+            take: 50
+        });
+
         // Dynamic curriculum data: empty until uploaded or configured in the database
         const subjectCompetencies: string[] = [];
         const units: any[] = [];
+
+        // If units array is empty but the teacher has recorded topic coverages, group them into units
+        if (units.length === 0 && recordedCoverages.length > 0) {
+            const unitMap = new Map<number, any>();
+            for (const cov of recordedCoverages) {
+                if (!unitMap.has(cov.unitNumber)) {
+                    unitMap.set(cov.unitNumber, {
+                        unitNumber: cov.unitNumber,
+                        title: cov.unitTitle || `Unit ${cov.unitNumber}`,
+                        plannedHours: 0,
+                        actualHours: 0,
+                        status: "PENDING",
+                        topics: []
+                    });
+                }
+                const u = unitMap.get(cov.unitNumber)!;
+                u.topics.push({
+                    title: cov.topicTitle,
+                    topicNumber: cov.topicNumber || `${cov.unitNumber}.${u.topics.length + 1}`,
+                    status: cov.status,
+                    completedAt: cov.completedAt,
+                    delayReason: cov.delayReason,
+                    notes: cov.notes,
+                    plannedHours: 0
+                });
+            }
+            units.push(...Array.from(unitMap.values()));
+        } else if (units.length > 0) {
+            // Merge recorded coverage into syllabus units
+            for (const u of units) {
+                for (const t of u.topics || []) {
+                    const match = recordedCoverages.find(c => 
+                        c.unitNumber === u.unitNumber && 
+                        (c.topicTitle.toLowerCase() === (t.title || "").toLowerCase() || c.topicNumber === t.topicNumber)
+                    );
+                    if (match) {
+                        t.status = match.status;
+                        t.completedAt = match.completedAt;
+                        t.delayReason = match.delayReason;
+                        t.notes = match.notes;
+                    }
+                }
+            }
+        }
+
+        // Compute unit completion statuses
+        for (const u of units) {
+            const topics = u.topics || [];
+            const compCount = topics.filter((t: any) => t.status === "COMPLETED").length;
+            u.completedTopicsCount = compCount;
+            if (topics.length > 0) {
+                if (compCount === topics.length) {
+                    u.status = "COMPLETED";
+                } else if (compCount > 0 || topics.some((t: any) => t.status === "IN_PROGRESS")) {
+                    u.status = "IN_PROGRESS";
+                } else {
+                    u.status = "PENDING";
+                }
+            }
+        }
 
         // Aggregate statistics
         const totalUnitsCount = units.length;
@@ -1540,7 +1618,7 @@ export class TeacherService {
         const totalTopicsCount = units.reduce((acc, u) => acc + (u.topics?.length || 0), 0);
         const topicsCompletedCount = units.reduce((acc, u) => acc + (u.completedTopicsCount || 0), 0);
         const totalPlannedHours = units.reduce((acc, u) => acc + (u.plannedHours || 0), 0);
-        const totalDeliveredHours = units.reduce((acc, u) => acc + (u.actualHours || 0), 0);
+        const totalDeliveredHours = recordedLogs.length;
         const overallProgressPercent = totalTopicsCount > 0 ? Math.round((topicsCompletedCount / totalTopicsCount) * 100) : 0;
 
         return {
@@ -1568,8 +1646,141 @@ export class TeacherService {
             totalTopicsCount,
             totalPlannedHours,
             totalDeliveredHours,
-            units
+            units,
+            coverages: recordedCoverages,
+            lessonLogs: recordedLogs
         };
+    }
+
+    // Subdomain: Record Topic Coverage (SRS 4.4.8)
+    static async recordTopicCoverage(userId: string, organizationId: string, data: {
+        assignmentId: string;
+        unitNumber: number;
+        unitTitle?: string;
+        topicNumber?: string;
+        topicTitle: string;
+        status: "PENDING" | "IN_PROGRESS" | "COMPLETED";
+        completionDate?: string;
+        delayReason?: string;
+        notes?: string;
+    }) {
+        const teacher = await this.getTeacherByUserId(userId, organizationId);
+        if (!teacher) throw new Error("Teacher profile not found");
+
+        const assignment = await prisma.teachingAssignment.findFirst({
+            where: { id: data.assignmentId, teacherId: teacher.id }
+        });
+        if (!assignment) throw new Error("Teaching assignment not found or unassigned");
+
+        if (!data.topicTitle) throw new Error("Topic title is required");
+
+        const completedAt = data.status === "COMPLETED" 
+            ? (data.completionDate ? new Date(data.completionDate) : new Date())
+            : null;
+
+        const coverage = await prisma.topicCoverage.upsert({
+            where: {
+                teachingAssignmentId_unitNumber_topicTitle: {
+                    teachingAssignmentId: data.assignmentId,
+                    unitNumber: Number(data.unitNumber) || 1,
+                    topicTitle: data.topicTitle.trim()
+                }
+            },
+            update: {
+                status: data.status,
+                completedAt,
+                delayReason: data.delayReason || null,
+                notes: data.notes || null,
+                unitTitle: data.unitTitle,
+                topicNumber: data.topicNumber
+            },
+            create: {
+                organizationId,
+                teachingAssignmentId: data.assignmentId,
+                unitNumber: Number(data.unitNumber) || 1,
+                unitTitle: data.unitTitle,
+                topicNumber: data.topicNumber,
+                topicTitle: data.topicTitle.trim(),
+                status: data.status,
+                completedAt,
+                delayReason: data.delayReason || null,
+                notes: data.notes || null
+            }
+        });
+
+        return coverage;
+    }
+
+    // Subdomain: Record Lesson Progress Log (SRS 4.4.7)
+    static async recordLessonLog(userId: string, organizationId: string, data: {
+        assignmentId: string;
+        unitNumber?: number;
+        topicTitle: string;
+        lessonDate: string;
+        periodNumber?: number;
+        studentsAttending?: number;
+        status?: "COMPLETED" | "PARTIALLY_COMPLETED" | "INTERRUPTED" | "CANCELLED";
+        interruptionReason?: string;
+        teachingNotes?: string;
+        learningDifficulties?: string;
+        observations?: string;
+    }) {
+        const teacher = await this.getTeacherByUserId(userId, organizationId);
+        if (!teacher) throw new Error("Teacher profile not found");
+
+        const assignment = await prisma.teachingAssignment.findFirst({
+            where: { id: data.assignmentId, teacherId: teacher.id }
+        });
+        if (!assignment) throw new Error("Teaching assignment not found or unassigned");
+
+        if (!data.topicTitle) throw new Error("Topic title is required");
+        if (!data.lessonDate) throw new Error("Lesson date is required");
+
+        const log = await prisma.lessonProgressLog.create({
+            data: {
+                organizationId,
+                teachingAssignmentId: data.assignmentId,
+                unitNumber: data.unitNumber ? Number(data.unitNumber) : null,
+                topicTitle: data.topicTitle.trim(),
+                lessonDate: new Date(data.lessonDate),
+                periodNumber: data.periodNumber ? Number(data.periodNumber) : null,
+                studentsAttending: Number(data.studentsAttending) || 0,
+                status: data.status || "COMPLETED",
+                interruptionReason: data.interruptionReason || null,
+                teachingNotes: data.teachingNotes || null,
+                learningDifficulties: data.learningDifficulties || null,
+                observations: data.observations || null
+            }
+        });
+
+        // If completed, automatically reflect in topic coverage
+        if (data.status === "COMPLETED" || !data.status) {
+            await prisma.topicCoverage.upsert({
+                where: {
+                    teachingAssignmentId_unitNumber_topicTitle: {
+                        teachingAssignmentId: data.assignmentId,
+                        unitNumber: data.unitNumber ? Number(data.unitNumber) : 1,
+                        topicTitle: data.topicTitle.trim()
+                    }
+                },
+                update: {
+                    status: "COMPLETED",
+                    completedAt: new Date(data.lessonDate),
+                    notes: data.teachingNotes || undefined
+                },
+                create: {
+                    organizationId,
+                    teachingAssignmentId: data.assignmentId,
+                    unitNumber: data.unitNumber ? Number(data.unitNumber) : 1,
+                    topicTitle: data.topicTitle.trim(),
+                    status: "COMPLETED",
+                    completedAt: new Date(data.lessonDate),
+                    notes: data.teachingNotes || null
+                }
+            });
+        }
+
+        return log;
     }
 
     // Subdomain 6: Create Assessment & Batch Results

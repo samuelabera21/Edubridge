@@ -202,6 +202,8 @@ model OrganizationUnit {
   notifications         Notification[]
   messages              Message[]
   importantNotices      ImportantNotice[]
+  topicCoverages        TopicCoverage[]
+  lessonProgressLogs    LessonProgressLog[]
 
   @@index([parentId])
   @@index([type])
@@ -918,6 +920,8 @@ model TeachingAssignment {
   timetables         Timetable[]
   assessments        Assessment[]
   learningActivities LearningActivity[]
+  topicCoverages     TopicCoverage[]
+  lessonProgressLogs LessonProgressLog[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1776,4 +1780,72 @@ model SchoolSetting {
 
   @@unique([organizationId, key])
   @@map("school_setting")
+}
+
+// ============================================================
+// DOMAIN: CURRICULUM & TOPIC COVERAGE 
+// ============================================================
+
+enum TopicCoverageStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+}
+
+model TopicCoverage {
+  id                   String              @id @default(cuid())
+  organizationId       String
+  teachingAssignmentId String
+  unitNumber           Int                 @default(1)
+  unitTitle            String?
+  topicNumber          String?
+  topicTitle           String
+  status               TopicCoverageStatus @default(PENDING)
+  completedAt          DateTime?
+  delayReason          String?
+  notes                String?
+
+  organization         OrganizationUnit    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  teachingAssignment   TeachingAssignment  @relation(fields: [teachingAssignmentId], references: [id], onDelete: Cascade)
+
+  createdAt            DateTime            @default(now())
+  updatedAt            DateTime            @updatedAt
+
+  @@unique([teachingAssignmentId, unitNumber, topicTitle])
+  @@index([teachingAssignmentId])
+  @@index([organizationId])
+  @@map("topic_coverage")
+}
+
+enum LessonDeliveryStatus {
+  COMPLETED
+  PARTIALLY_COMPLETED
+  INTERRUPTED
+  CANCELLED
+}
+
+model LessonProgressLog {
+  id                   String               @id @default(cuid())
+  organizationId       String
+  teachingAssignmentId String
+  unitNumber           Int?
+  topicTitle           String
+  lessonDate           DateTime             @db.Date
+  periodNumber         Int?
+  studentsAttending    Int                  @default(0)
+  status               LessonDeliveryStatus @default(COMPLETED)
+  interruptionReason   String?
+  teachingNotes        String?
+  learningDifficulties String?
+  observations         String?
+
+  organization         OrganizationUnit     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  teachingAssignment   TeachingAssignment   @relation(fields: [teachingAssignmentId], references: [id], onDelete: Cascade)
+
+  createdAt            DateTime             @default(now())
+  updatedAt            DateTime             @updatedAt
+
+  @@index([teachingAssignmentId])
+  @@index([organizationId])
+  @@map("lesson_progress_log")
 }

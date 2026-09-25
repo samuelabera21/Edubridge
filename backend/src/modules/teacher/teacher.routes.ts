@@ -42,6 +42,8 @@ import {
     getRepeatedAbsences,
     getAttendanceHistory,
     getCurriculumData,
+    recordTopicCoverage,
+    recordLessonLog,
     addTeacherQualification,
     verifyTeacherQualification,
     addTeacherDocument,
@@ -144,6 +146,8 @@ router.get("/students/:studentId", getStudentDetail);
 
 router.get("/attendance/repeated-absences", getRepeatedAbsences);
 router.get("/curriculum", getCurriculumData);
+router.post("/curriculum/topic-coverage", recordTopicCoverage);
+router.post("/curriculum/lesson-log", recordLessonLog);
 
 /**
  * @openapi
