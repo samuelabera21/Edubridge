@@ -2,7 +2,7 @@
 
 import { useState, useEffect, Suspense } from "react";
 import { useAuth } from "../../hooks/useAuth";
-import { Loader2, BookOpen, LogOut, LayoutDashboard, Building, Search, Lock, ChevronDown, ChevronRight, Calendar, Users, GraduationCap, ClipboardCheck, FileText, Settings, User, Megaphone, Bell, MessageSquare, Package, AlertOctagon, TrendingUp, HeartHandshake, BarChart2, Sparkles, Menu, Brain } from "lucide-react";
+import { Loader2, BookOpen, LogOut, LayoutDashboard, Building, Search, Lock, ChevronDown, ChevronRight, Calendar, Users, GraduationCap, ClipboardCheck, FileText, Settings, User, Megaphone, Bell, MessageSquare, Package, AlertOctagon, TrendingUp, HeartHandshake, BarChart2, Sparkles, Menu, Brain, Landmark } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { fetchApi } from "../../lib/api";
@@ -944,9 +944,21 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
                                             </div>
                                         </Link>
 
+                                        {/* Governance Overview */}
+                                        <Link 
+                                            href="/dashboard/governance" 
+                                            title="Governance Overview"
+                                            className={`flex items-center ${sidebarCollapsed ? "justify-center px-2" : "justify-between px-3.5"} py-2 rounded-xl text-xs font-medium transition-all duration-150 cursor-pointer ${pathname === "/dashboard/governance" ? "bg-[#0f2f4c] text-amber-300 font-semibold border-l-2 border-amber-400 shadow-xs" : "text-blue-50/90 hover:bg-[#225785] hover:text-white hover:translate-x-0.5"}`}
+                                        >
+                                            <div className={`flex items-center ${sidebarCollapsed ? "" : "space-x-3"}`}>
+                                                <Landmark className={`w-4 h-4 shrink-0 transition-transform group-hover:scale-105 ${pathname === "/dashboard/governance" ? "text-amber-300" : "text-amber-300/90"}`} />
+                                                {!sidebarCollapsed && <span>Governance Overview</span>}
+                                            </div>
+                                        </Link>
+
                                         {/* School Profile */}
                                         <Link 
-                                            href="/dashboard/school/profile"
+                                            href="/dashboard/school/profile" 
                                             title="School Profile"
                                             className={`flex items-center ${sidebarCollapsed ? "justify-center px-2" : "justify-between px-3.5"} py-2 rounded-xl text-xs font-medium transition-all duration-150 cursor-pointer ${pathname === "/dashboard/school/profile" ? "bg-[#0f2f4c] text-amber-300 font-semibold border-l-2 border-amber-400 shadow-xs" : "text-blue-50/90 hover:bg-[#225785] hover:text-white hover:translate-x-0.5"}`}
                                         >
