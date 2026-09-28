@@ -8,19 +8,12 @@ import {
     Users,
     GraduationCap,
     TrendingUp,
-    BarChart3,
-    Calendar,
     ChevronRight,
     ArrowUpRight,
     Landmark,
-    MapPin,
-    Layers,
     School,
     ShieldAlert,
-    RefreshCw,
-    CheckCircle2,
-    Clock,
-    FileText
+    RefreshCw
 } from "lucide-react";
 import Link from "next/link";
 
@@ -51,17 +44,38 @@ interface GovernanceKPIs {
     totalAssessments: number;
 }
 
-interface StudentDemographics {
-    totalStudents: number;
-    maleCount: number;
-    femaleCount: number;
-    otherCount: number;
+interface GovernanceStudentsSummary {
+    total: number;
+    byGender: {
+        male: number;
+        female: number;
+        other: number;
+    };
     byGrade: Array<{
         gradeId: string;
         gradeName: string;
         level: number;
         studentCount: number;
     }>;
+}
+
+interface GovernanceTeachersSummary {
+    total: number;
+    active: number;
+}
+
+interface GovernanceAttendanceSummary {
+    present: number;
+    absent: number;
+    late: number;
+    excused: number;
+    totalRecords: number;
+    rate: number | null;
+}
+
+interface GovernanceAssessmentSummary {
+    totalResults: number;
+    averageScore: number | null;
 }
 
 interface GovernanceChildUnitBreakdown {
@@ -78,7 +92,10 @@ interface GovernanceChildUnitBreakdown {
 interface GovernanceData {
     context: GovernanceContext;
     kpis: GovernanceKPIs;
-    demographics: StudentDemographics;
+    students: GovernanceStudentsSummary;
+    teachers: GovernanceTeachersSummary;
+    attendance: GovernanceAttendanceSummary;
+    assessments: GovernanceAssessmentSummary;
     childUnitsBreakdown: GovernanceChildUnitBreakdown[];
 }
 
@@ -139,7 +156,7 @@ function ErrorState({ title, message, onRetry }: { title: string; message: strin
             {onRetry && (
                 <button
                     onClick={onRetry}
-                    className="px-4 py-2 bg-rose-600 text-white text-xs font-semibold rounded-xl hover:bg-rose-700 transition-colors shadow-xs"
+                    className="px-4 py-2 bg-rose-600 text-white text-xs font-semibold rounded-xl hover:bg-rose-700 transition-colors shadow-xs cursor-pointer"
                 >
                     Try Again
                 </button>
@@ -152,7 +169,6 @@ export function TierGovernanceDashboardContent({ tier, apiEndpoint }: { tier: Hi
     const searchParams = useSearchParams();
     const router = useRouter();
     const targetOrgId = searchParams?.get("targetOrgId") || "";
-    const activeTab = searchParams?.get("tab") || "";
 
     const [data, setData] = useState<GovernanceData | null>(null);
     const [loading, setLoading] = useState(true);
@@ -201,13 +217,18 @@ export function TierGovernanceDashboardContent({ tier, apiEndpoint }: { tier: Hi
         );
     }
 
-    const { context, kpis, demographics, childUnitsBreakdown } = data;
+    const { context, kpis, students, childUnitsBreakdown = [] } = data;
 
-    // Student gender calculation
-    const totalDemographicStudents = demographics.totalStudents || 1;
-    const malePct = Math.round((demographics.maleCount / totalDemographicStudents) * 100);
-    const femalePct = Math.round((demographics.femaleCount / totalDemographicStudents) * 100);
-    const otherPct = 100 - malePct - femalePct;
+    // Student gender calculation with safe defaults
+    const totalStudents = students?.total || kpis?.totalStudents || 0;
+    const maleCount = students?.byGender?.male || 0;
+    const femaleCount = students?.byGender?.female || 0;
+    const otherCount = students?.byGender?.other || 0;
+    const denominator = totalStudents > 0 ? totalStudents : 1;
+    const malePct = totalStudents > 0 ? Math.round((maleCount / denominator) * 100) : 0;
+    const femalePct = totalStudents > 0 ? Math.round((femaleCount / denominator) * 100) : 0;
+    const otherPct = totalStudents > 0 ? Math.max(0, 100 - malePct - femalePct) : 0;
+    const byGrade = students?.byGrade || [];
 
     // Handle drill-down target URL
     const getChildDrillDownUrl = (child: GovernanceChildUnitBreakdown) => {
@@ -231,7 +252,7 @@ export function TierGovernanceDashboardContent({ tier, apiEndpoint }: { tier: Hi
             {/* Header with Lineage & Context */}
             <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-xs space-y-3">
                 {/* Lineage Breadcrumb */}
-                {context.lineage && context.lineage.length > 0 && (
+                {context?.lineage && context.lineage.length > 0 && (
                     <nav aria-label="Lineage Breadcrumbs" className="flex items-center flex-wrap gap-2 text-xs text-gray-500 mb-1 select-none">
                         <Link
                             href={`/dashboard/${tier.toLowerCase()}`}
@@ -275,11 +296,11 @@ export function TierGovernanceDashboardContent({ tier, apiEndpoint }: { tier: Hi
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pt-1">
                     <div>
                         <div className="flex items-center gap-3">
-                            <h1 className="text-xl font-bold text-gray-900">{context.organizationName}</h1>
+                            <h1 className="text-xl font-bold text-gray-900">{context?.organizationName || "Administrative Scope"}</h1>
                             <span className={`px-2.5 py-0.5 text-[11px] font-bold rounded-full border ${config.badgeColor}`}>
-                                {context.organizationType}
+                                {context?.organizationType || tier}
                             </span>
-                            {context.isDrillDown && (
+                            {context?.isDrillDown && (
                                 <span className="px-2 py-0.5 text-[10px] font-medium bg-amber-50 text-amber-700 border border-amber-200 rounded-md">
                                     Filtered Sub-Scope
                                 </span>
@@ -289,10 +310,10 @@ export function TierGovernanceDashboardContent({ tier, apiEndpoint }: { tier: Hi
                     </div>
 
                     <div className="flex items-center gap-3">
-                        {context.isDrillDown && (
+                        {context?.isDrillDown && (
                             <button
                                 onClick={() => router.push(`/dashboard/${tier.toLowerCase()}`)}
-                                className="px-3 py-1.5 bg-gray-100 text-gray-700 text-xs font-semibold rounded-xl hover:bg-gray-200 transition-colors"
+                                className="px-3 py-1.5 bg-gray-100 text-gray-700 text-xs font-semibold rounded-xl hover:bg-gray-200 transition-colors cursor-pointer"
                             >
                                 Reset to My Scope
                             </button>
@@ -318,7 +339,7 @@ export function TierGovernanceDashboardContent({ tier, apiEndpoint }: { tier: Hi
                             <School className="w-4 h-4" />
                         </div>
                     </div>
-                    <div className="text-2xl font-bold text-gray-900">{kpis.totalSchools.toLocaleString()}</div>
+                    <div className="text-2xl font-bold text-gray-900">{(kpis?.totalSchools ?? 0).toLocaleString()}</div>
                     <p className="text-[11px] text-gray-500">Across authorized {tier.toLowerCase()} boundaries</p>
                 </div>
 
@@ -330,7 +351,7 @@ export function TierGovernanceDashboardContent({ tier, apiEndpoint }: { tier: Hi
                             <Users className="w-4 h-4" />
                         </div>
                     </div>
-                    <div className="text-2xl font-bold text-gray-900">{kpis.totalStudents.toLocaleString()}</div>
+                    <div className="text-2xl font-bold text-gray-900">{(kpis?.totalStudents ?? 0).toLocaleString()}</div>
                     <p className="text-[11px] text-gray-500">Active academic year registrations</p>
                 </div>
 
@@ -343,8 +364,8 @@ export function TierGovernanceDashboardContent({ tier, apiEndpoint }: { tier: Hi
                         </div>
                     </div>
                     <div className="flex items-baseline space-x-2">
-                        <span className="text-2xl font-bold text-gray-900">{kpis.totalTeachers.toLocaleString()}</span>
-                        <span className="text-xs text-gray-500 font-medium">({kpis.studentTeacherRatio}:1 Ratio)</span>
+                        <span className="text-2xl font-bold text-gray-900">{(kpis?.totalTeachers ?? 0).toLocaleString()}</span>
+                        <span className="text-xs text-gray-500 font-medium">({kpis?.studentTeacherRatio ?? 0}:1 Ratio)</span>
                     </div>
                     <p className="text-[11px] text-gray-500">Student-to-Teacher Ratio</p>
                 </div>
@@ -359,16 +380,16 @@ export function TierGovernanceDashboardContent({ tier, apiEndpoint }: { tier: Hi
                     </div>
                     <div className="flex items-baseline space-x-2">
                         <span className="text-2xl font-bold text-gray-900">
-                            {kpis.attendanceRate !== null ? `${kpis.attendanceRate}%` : "—"}
+                            {kpis?.attendanceRate !== null && kpis?.attendanceRate !== undefined ? `${kpis.attendanceRate}%` : "—"}
                         </span>
-                        {kpis.averageAssessmentScore !== null && (
+                        {kpis?.averageAssessmentScore !== null && kpis?.averageAssessmentScore !== undefined && (
                             <span className="text-xs text-gray-500 font-medium">
                                 ({kpis.averageAssessmentScore}% Avg Score)
                             </span>
                         )}
                     </div>
                     <p className="text-[11px] text-gray-500">
-                        {kpis.totalAssessments > 0 ? `${kpis.totalAssessments} records assessed` : "No active attendance logs"}
+                        {(kpis?.totalAssessments ?? 0) > 0 ? `${kpis.totalAssessments} records assessed` : "No active attendance logs"}
                     </p>
                 </div>
             </div>
@@ -392,17 +413,17 @@ export function TierGovernanceDashboardContent({ tier, apiEndpoint }: { tier: Hi
                         <div className="grid grid-cols-3 text-center gap-2 pt-2">
                             <div className="p-2.5 rounded-xl bg-blue-50/60 border border-blue-100">
                                 <p className="text-[10px] uppercase font-bold text-blue-600">Male</p>
-                                <p className="text-base font-bold text-gray-900">{demographics.maleCount}</p>
+                                <p className="text-base font-bold text-gray-900">{maleCount}</p>
                                 <p className="text-[10px] text-gray-500">{malePct}%</p>
                             </div>
                             <div className="p-2.5 rounded-xl bg-pink-50/60 border border-pink-100">
                                 <p className="text-[10px] uppercase font-bold text-pink-600">Female</p>
-                                <p className="text-base font-bold text-gray-900">{demographics.femaleCount}</p>
+                                <p className="text-base font-bold text-gray-900">{femaleCount}</p>
                                 <p className="text-[10px] text-gray-500">{femalePct}%</p>
                             </div>
                             <div className="p-2.5 rounded-xl bg-gray-50 border border-gray-200">
                                 <p className="text-[10px] uppercase font-bold text-gray-600">Other/Unset</p>
-                                <p className="text-base font-bold text-gray-900">{demographics.otherCount}</p>
+                                <p className="text-base font-bold text-gray-900">{otherCount}</p>
                                 <p className="text-[10px] text-gray-500">{otherPct}%</p>
                             </div>
                         </div>
@@ -413,16 +434,16 @@ export function TierGovernanceDashboardContent({ tier, apiEndpoint }: { tier: Hi
                 <div className="lg:col-span-2 bg-white p-6 rounded-2xl border border-gray-200 shadow-xs space-y-4">
                     <div className="flex items-center justify-between">
                         <h2 className="text-sm font-bold text-gray-900">Grade Level Distribution</h2>
-                        <span className="text-xs text-gray-500">{demographics.byGrade.length} Grade Levels</span>
+                        <span className="text-xs text-gray-500">{byGrade.length} Grade Levels</span>
                     </div>
 
-                    {demographics.byGrade.length === 0 ? (
+                    {byGrade.length === 0 ? (
                         <div className="py-8 text-center text-xs text-gray-500">
                             No enrolled student grade distribution found for active academic years.
                         </div>
                     ) : (
                         <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-2.5 max-h-48 overflow-y-auto pr-1">
-                            {demographics.byGrade.map((g) => (
+                            {byGrade.map((g) => (
                                 <div key={g.gradeId} className="p-2.5 rounded-xl bg-gray-50 border border-gray-100 text-center space-y-0.5">
                                     <p className="text-[11px] font-bold text-gray-700 truncate">{g.gradeName}</p>
                                     <p className="text-sm font-extrabold text-blue-700">{g.studentCount}</p>
