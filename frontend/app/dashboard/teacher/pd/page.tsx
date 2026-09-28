@@ -8,16 +8,11 @@ export default function ProfessionalDevelopmentPage() {
     return (
         <div className="w-full max-w-7xl mx-auto space-y-6 text-gray-800">
             {/* Header */}
-            <div className="flex items-center space-x-3">
-                <Link href="/dashboard/teacher" className="p-2 rounded-xl bg-white border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors shadow-2xs">
-                    <ArrowLeft className="w-5 h-5" />
-                </Link>
-                <div>
-                    <h1 className="text-2xl font-extrabold tracking-tight text-gray-900">Professional Development & Certifications</h1>
-                    <p className="text-xs font-medium text-gray-500 mt-0.5">
-                        Track teaching workshops, continuous learning credits, and professional certification records.
-                    </p>
-                </div>
+            <div>
+                <h1 className="text-2xl font-extrabold tracking-tight text-gray-900">Professional Development & Certifications</h1>
+                <p className="text-xs font-medium text-gray-500 mt-0.5">
+                    Track teaching workshops, continuous learning credits, and professional certification records.
+                </p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

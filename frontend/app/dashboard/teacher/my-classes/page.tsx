@@ -217,13 +217,8 @@ export default function MyClassesPage() {
         <div className="w-full max-w-7xl mx-auto space-y-6 text-gray-800">
             {/* Header */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div className="flex items-center space-x-3">
-                    <Link href="/dashboard/teacher" className="p-2.5 rounded-xl bg-white border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors shadow-2xs">
-                        <ArrowLeft className="w-5 h-5" />
-                    </Link>
-                    <div>
-                        <h1 className="text-2xl font-extrabold tracking-tight text-gray-900">My Teaching Assignments</h1>
-                    </div>
+                <div>
+                    <h1 className="text-2xl font-extrabold tracking-tight text-gray-900">My Teaching Assignments</h1>
                 </div>
             </div>
 

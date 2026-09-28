@@ -221,16 +221,11 @@ function AssessmentContent() {
             
             {/* Header */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div className="flex items-center space-x-3">
-                    <Link href="/dashboard/teacher" className="p-2 rounded-xl bg-white border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors shadow-2xs">
-                        <ArrowLeft className="w-5 h-5" />
-                    </Link>
-                    <div>
-                        <h1 className="text-2xl font-extrabold tracking-tight text-gray-900">Assessments & Grade Command Center</h1>
-                        <p className="text-xs font-medium text-gray-500 mt-0.5">
-                            Create quizzes, tests, exams, assignments, projects; conduct evaluations, grade students, and provide feedback.
-                        </p>
-                    </div>
+                <div>
+                    <h1 className="text-2xl font-extrabold tracking-tight text-gray-900">Assessments & Grade Command Center</h1>
+                    <p className="text-xs font-medium text-gray-500 mt-0.5">
+                        Create quizzes, tests, exams, assignments, projects; conduct evaluations, grade students, and provide feedback.
+                    </p>
                 </div>
 
                 <div className="flex items-center space-x-2">

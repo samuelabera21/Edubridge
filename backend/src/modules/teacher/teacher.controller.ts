@@ -632,7 +632,8 @@ export const getCurriculumData = async (req: Request, res: Response) => {
         const userId = req.user?.id;
         if (!organizationId || !userId) return res.status(403).json({ error: "Missing school scope or authentication" });
 
-        const data = await TeacherService.getCurriculumData(userId, organizationId);
+        const assignmentId = req.query.assignmentId as string | undefined;
+        const data = await TeacherService.getCurriculumData(userId, organizationId, assignmentId);
         return res.json(data);
     } catch (error: any) {
         return res.status(400).json({ error: error.message || "Failed to fetch curriculum data" });

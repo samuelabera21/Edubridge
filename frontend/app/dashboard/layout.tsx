@@ -8,12 +8,247 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { fetchApi } from "../../lib/api";
 import StudentNavigation from "./student/StudentNavigation";
 
+function TeacherBreadcrumbs({ pathname, currentTab, currentType }: { pathname: string; currentTab: string; currentType: string }) {
+    if (pathname === "/dashboard/teacher") {
+        return (
+            <div className="flex items-center space-x-2 text-xs text-gray-500 mb-4 pb-2 border-b border-gray-200/70 select-none">
+                <LayoutDashboard className="w-3.5 h-3.5 text-[#4085b3]" />
+                <span className="text-gray-900 font-bold">Teacher Dashboard</span>
+            </div>
+        );
+    }
+
+    // Determine Parent Module Title and Link based on route
+    let parentTitle = "";
+    let parentHref = "";
+    let subItemTitle = "";
+
+    if (pathname.startsWith("/dashboard/teacher/my-classes")) {
+        parentTitle = "My Teaching Assignments";
+        parentHref = "/dashboard/teacher/my-classes";
+        const tabMap: Record<string, string> = {
+            overview: "Class Overview",
+            details: "Class Details",
+            weekly: "Weekly Schedule",
+            workload: "Teaching Workload",
+            materials: "Course Materials"
+        };
+        if (currentTab && tabMap[currentTab]) {
+            subItemTitle = tabMap[currentTab];
+        }
+    } else if (pathname.startsWith("/dashboard/teacher/operations")) {
+        parentTitle = "Daily Operations";
+        parentHref = "/dashboard/teacher/operations";
+        const tabMap: Record<string, string> = {
+            "quick-actions": "Quick Actions",
+            "today-schedule": "Today's Schedule",
+            substitutions: "Substitutions",
+            reminders: "Reminders",
+            "room-utilization": "Room Utilization"
+        };
+        if (currentTab && tabMap[currentTab]) {
+            subItemTitle = tabMap[currentTab];
+        }
+    } else if (pathname.startsWith("/dashboard/teacher/attendance")) {
+        parentTitle = "Student Attendance";
+        parentHref = "/dashboard/teacher/attendance";
+        const tabMap: Record<string, string> = {
+            mark: "Mark Attendance",
+            period: "Period Attendance",
+            history: "Attendance History",
+            repeated: "Repeated Absences",
+            "daily-overview": "Daily Overview"
+        };
+        if (currentTab && tabMap[currentTab]) {
+            subItemTitle = tabMap[currentTab];
+        }
+    } else if (pathname.startsWith("/dashboard/teacher/curriculum")) {
+        parentTitle = "Lesson & Curriculum";
+        parentHref = "/dashboard/teacher/curriculum";
+        const tabMap: Record<string, string> = {
+            view: "View Curriculum",
+            progress: "Track Curriculum Progress",
+            log: "Record Lesson Progress",
+            topics: "Record Topics Covered",
+            difficulties: "Record Learning Difficulties",
+            notes: "Record Teaching Notes"
+        };
+        if (currentTab && tabMap[currentTab]) {
+            subItemTitle = tabMap[currentTab];
+        }
+    } else if (pathname.startsWith("/dashboard/teacher/assessment")) {
+        parentTitle = "Assessment & Grades";
+        parentHref = "/dashboard/teacher/assessment";
+        const typeMap: Record<string, string> = {
+            ALL: "Create Assessment",
+            QUIZ: "Create Quiz",
+            TEST: "Create Test",
+            ASSIGNMENT: "Create Assignment",
+            PROJECT: "Create Project"
+        };
+        const tabMap: Record<string, string> = {
+            conduct: "Conduct Assessment",
+            grade: "Record Results & Grade",
+            feedback: "Provide Feedback"
+        };
+        if (currentType && typeMap[currentType]) {
+            subItemTitle = typeMap[currentType];
+        } else if (currentTab && tabMap[currentTab]) {
+            subItemTitle = tabMap[currentTab];
+        }
+    } else if (pathname.startsWith("/dashboard/teacher/learning") || pathname.startsWith("/dashboard/teacher/activities")) {
+        parentTitle = "Learning Activities";
+        parentHref = "/dashboard/teacher/learning";
+        const typeMap: Record<string, string> = {
+            HOMEWORK: "Create Assignment",
+            QUIZ: "Create Quiz",
+            CLASS_WORK: "Create Class Activity"
+        };
+        const tabMap: Record<string, string> = {
+            create: "Set Deadline",
+            submissions: "Review Submissions",
+            completion: "Mark Completion",
+            feedback: "Give Feedback"
+        };
+        if (currentType && typeMap[currentType]) {
+            subItemTitle = typeMap[currentType];
+        } else if (currentTab && tabMap[currentTab]) {
+            subItemTitle = tabMap[currentTab];
+        }
+    } else if (pathname.startsWith("/dashboard/teacher/support")) {
+        parentTitle = "Student Support & Advisory";
+        parentHref = "/dashboard/teacher/support";
+        const tabMap: Record<string, string> = {
+            flag: "Flag At-Risk Student",
+            interventions: "Monitor Interventions",
+            referrals: "Counseling Referrals",
+            homeroom: "Homeroom Advisory",
+            "progress-reviews": "Periodic Reviews"
+        };
+        if (currentTab && tabMap[currentTab]) {
+            subItemTitle = tabMap[currentTab];
+        }
+    } else if (pathname.startsWith("/dashboard/teacher/communication/parent")) {
+        parentTitle = "Parent Communication";
+        parentHref = "/dashboard/teacher/communication/parent";
+        const tabMap: Record<string, string> = {
+            messages: "Direct Messages",
+            broadcasts: "Class Announcements",
+            conferences: "Parent Meetings",
+            logs: "Contact History"
+        };
+        if (currentTab && tabMap[currentTab]) {
+            subItemTitle = tabMap[currentTab];
+        }
+    } else if (pathname.startsWith("/dashboard/teacher/communication/staff")) {
+        parentTitle = "Staff Collaboration";
+        parentHref = "/dashboard/teacher/communication/staff";
+        const tabMap: Record<string, string> = {
+            departments: "Department Meetings",
+            "peer-sharing": "Lesson Sharing",
+            "internal-messages": "Internal Staff Messages",
+            committee: "Committee Work",
+            handover: "Shift & Coverage"
+        };
+        if (currentTab && tabMap[currentTab]) {
+            subItemTitle = tabMap[currentTab];
+        }
+    } else if (pathname.startsWith("/dashboard/teacher/pd")) {
+        parentTitle = "Professional Development";
+        parentHref = "/dashboard/teacher/pd";
+        const tabMap: Record<string, string> = {
+            trainings: "Training Modules",
+            observations: "Peer Observations",
+            goals: "Annual Goals",
+            portfolio: "Teaching Portfolio",
+            certifications: "Certificates & Badges"
+        };
+        if (currentTab && tabMap[currentTab]) {
+            subItemTitle = tabMap[currentTab];
+        }
+    } else if (pathname.startsWith("/dashboard/teacher/reports")) {
+        parentTitle = "Teacher Reports";
+        parentHref = "/dashboard/teacher/reports";
+        const tabMap: Record<string, string> = {
+            "attendance-report": "Attendance Summary",
+            "academic-report": "Academic Performance",
+            "curriculum-report": "Curriculum Progress",
+            "term-closing": "Term Closing Checklist",
+            "export-center": "Report Export Center"
+        };
+        if (currentTab && tabMap[currentTab]) {
+            subItemTitle = tabMap[currentTab];
+        }
+    } else if (pathname.startsWith("/dashboard/teacher/students")) {
+        parentTitle = "Student Directory";
+        parentHref = "/dashboard/teacher/students";
+        const tabMap: Record<string, string> = {
+            list: "Student List",
+            profiles: "Student Profiles",
+            groups: "Student Groups",
+            "health-needs": "Health & Special Needs",
+            transfers: "Transfers & Status"
+        };
+        if (currentTab && tabMap[currentTab]) {
+            subItemTitle = tabMap[currentTab];
+        }
+    } else if (pathname.startsWith("/dashboard/teacher/settings")) {
+        parentTitle = "Account Settings";
+        parentHref = "/dashboard/teacher/settings";
+    }
+
+    if (!parentTitle) {
+        const segments = pathname.replace("/dashboard/teacher/", "").split("/").filter(Boolean);
+        if (segments.length > 0) {
+            parentTitle = segments[0].charAt(0).toUpperCase() + segments[0].slice(1).replace(/-/g, " ");
+            parentHref = `/dashboard/teacher/${segments[0]}`;
+        }
+    }
+
+    return (
+        <nav aria-label="Breadcrumb" className="flex items-center space-x-2 text-xs text-gray-500 mb-4 pb-2 border-b border-gray-200/70 select-none">
+            <Link 
+                href="/dashboard/teacher" 
+                className="hover:text-[#4085b3] transition-colors flex items-center gap-1 font-medium"
+                title="Go to Teacher Dashboard"
+            >
+                <LayoutDashboard className="w-3.5 h-3.5 text-[#4085b3]" />
+                <span>Teacher Dashboard</span>
+            </Link>
+
+            {parentTitle && (
+                <>
+                    <span className="text-gray-300 font-bold">/</span>
+                    {subItemTitle ? (
+                        <Link 
+                            href={parentHref} 
+                            className="hover:text-[#4085b3] transition-colors font-medium text-gray-600"
+                        >
+                            {parentTitle}
+                        </Link>
+                    ) : (
+                        <span className="text-gray-900 font-bold">{parentTitle}</span>
+                    )}
+                </>
+            )}
+
+            {subItemTitle && (
+                <>
+                    <span className="text-gray-300 font-bold">/</span>
+                    <span className="text-gray-900 font-bold">{subItemTitle}</span>
+                </>
+            )}
+        </nav>
+    );
+}
+
 function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
     const { authData, loading, error } = useAuth(true);
     const pathname = usePathname();
     const router = useRouter();
     const searchParams = useSearchParams();
-    const currentTab = searchParams?.get("tab") || "take";
+    const currentTab = searchParams?.get("tab") || "";
+    const currentType = searchParams?.get("type") || "";
 
     const [openMenus, setOpenMenus] = useState<Record<string, boolean>>({
         dashboard: pathname === "/dashboard",
@@ -21,8 +256,16 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
         students: pathname.startsWith("/dashboard/students"),
         teachers: pathname.startsWith("/dashboard/teachers"),
         attendance: pathname.startsWith("/dashboard/attendance"),
+        teacherAssignments: pathname.startsWith("/dashboard/teacher/my-classes"),
         teacherAttendance: pathname.startsWith("/dashboard/teacher/attendance"),
         teacherCurriculum: pathname.startsWith("/dashboard/teacher/curriculum"),
+        teacherAssessment: pathname.startsWith("/dashboard/teacher/assessment"),
+        teacherActivities: pathname.startsWith("/dashboard/teacher/learning"),
+        teacherSupport: pathname.startsWith("/dashboard/teacher/support"),
+        teacherParentComm: pathname.startsWith("/dashboard/teacher/communication/parent"),
+        teacherStaffComm: pathname.startsWith("/dashboard/teacher/communication/staff"),
+        teacherPD: pathname.startsWith("/dashboard/teacher/pd"),
+        teacherReports: pathname.startsWith("/dashboard/teacher/reports"),
         assessment: pathname.startsWith("/dashboard/assessment"),
         learning: pathname.startsWith("/dashboard/learning"),
         parents: pathname.startsWith("/dashboard/parents"),
@@ -335,376 +578,325 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
             <div className="flex flex-1 overflow-hidden">
                 {/* Sidebar */}
                 {isTeacherRoute ? (
-                    <aside className="w-64 bg-white border-r border-gray-200 flex flex-col hidden md:flex overflow-y-auto text-gray-800">
-                        <div className="p-4 flex-1">
-                            <nav className="space-y-1 text-gray-700">
-                                {/* Active Dashboard Button */}
+                    <aside
+                        className={`bg-[#041738] border-r border-[#092254] flex flex-col hidden md:flex overflow-y-auto text-slate-300 font-sans shadow-xl shrink-0 transition-all duration-300 ease-in-out ${sidebarCollapsed ? "w-16" : "w-64"}`}
+                        style={{ scrollbarWidth: "none", msOverflowStyle: "none" } as React.CSSProperties}
+                    >
+                        {/* Sidebar Header with collapse toggle */}
+                        <div className="flex items-center justify-between px-3 pt-4 pb-2 border-b border-[#092254]/60">
+                            {!sidebarCollapsed && (
+                                <p className="text-[10px] text-amber-400 font-bold uppercase tracking-widest px-1">Teacher Workspace</p>
+                            )}
+                            <button
+                                onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+                                title={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+                                className={`flex items-center justify-center w-7 h-7 rounded-lg bg-[#092254] hover:bg-[#0c2d68] text-slate-400 hover:text-amber-400 transition-all cursor-pointer ${sidebarCollapsed ? "mx-auto" : "ml-auto"}`}
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    {sidebarCollapsed
+                                        ? <><polyline points="13 17 18 12 13 7"/><polyline points="6 17 11 12 6 7"/></>  
+                                        : <><polyline points="11 17 6 12 11 7"/><polyline points="18 17 13 12 18 7"/></>
+                                    }
+                                </svg>
+                            </button>
+                        </div>
+                        <div className="p-3 pt-3 flex-1">
+                            <nav className="space-y-1">
+                                {/* Dashboard */}
                                 <Link 
-                                    href="/dashboard/teacher" 
-                                    className={`flex items-center space-x-3 px-3.5 py-2 rounded-xl text-xs font-normal transition-colors ${
+                                    href="/dashboard/teacher"
+                                    title="Dashboard"
+                                    className={`flex items-center ${sidebarCollapsed ? "justify-center px-2" : "justify-between px-3.5"} py-2.5 rounded-xl text-xs font-semibold transition-all ${
                                         pathname === "/dashboard/teacher" 
-                                            ? "bg-[#4085b3] text-white shadow-2xs" 
-                                            : "text-gray-700 hover:bg-gray-100 hover:text-gray-900"
+                                            ? "bg-[#0c2454] text-[#f59e0b] border-l-4 border-[#f59e0b] shadow-inner" 
+                                            : "text-slate-300 hover:bg-[#081e48] hover:text-white"
                                     }`}
                                 >
-                                    <LayoutDashboard className="w-4 h-4" />
-                                    <span>Dashboard</span>
+                                    <div className={`flex items-center ${sidebarCollapsed ? "" : "space-x-3"}`}>
+                                        <LayoutDashboard className={`w-4 h-4 shrink-0 ${pathname === "/dashboard/teacher" ? "text-[#f59e0b]" : "text-amber-400"}`} />
+                                        {!sidebarCollapsed && <span>Dashboard</span>}
+                                    </div>
                                 </Link>
 
                                 {/* Section 1: TEACHING ASSIGNMENTS */}
-                                <div className="pt-2">
+                                <div className="pt-1">
                                     <button 
-                                        onClick={() => toggleMenu("teacherAssignments")}
-                                        className="w-full flex items-center justify-between px-3 py-2 text-xs font-normal text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                                        onClick={() => !sidebarCollapsed && toggleMenu("teacherAssignments")}
+                                        title="My Teaching Assignments"
+                                        className={`w-full flex items-center ${sidebarCollapsed ? "justify-center px-2" : "justify-between px-3.5"} py-2.5 rounded-xl text-xs font-medium text-slate-300 hover:bg-[#081e48] hover:text-white transition-all group cursor-pointer`}
                                     >
-                                        <div className="flex items-center space-x-2.5">
-                                            <BookOpen className="w-4 h-4 text-[#4085b3]" />
-                                            <span>My Teaching Assignments</span>
+                                        <div className={`flex items-center ${sidebarCollapsed ? "" : "space-x-3"}`}>
+                                            <BookOpen className="w-4 h-4 text-amber-400 shrink-0" />
+                                            {!sidebarCollapsed && <span>My Teaching Assignments</span>}
                                         </div>
-                                        {openMenus.teacherAssignments ? <ChevronDown className="w-3.5 h-3.5 text-gray-400" /> : <ChevronRight className="w-3.5 h-3.5 text-gray-400" />}
+                                        {!sidebarCollapsed && (openMenus.teacherAssignments ? <ChevronDown className="w-3.5 h-3.5 text-slate-400 group-hover:text-white" /> : <ChevronRight className="w-3.5 h-3.5 text-slate-500 group-hover:text-slate-300" />)}
                                     </button>
-                                     {openMenus.teacherAssignments && (
-                                        <div className="pl-6 pt-1 space-y-1">
-                                            <Link href="/dashboard/teacher/my-classes?tab=subjects" className="block px-3 py-1.5 rounded-lg text-xs font-medium text-gray-600 hover:bg-gray-50">
-                                                Subjects
-                                            </Link>
-                                            <Link href="/dashboard/teacher/my-classes?tab=grades" className="block px-3 py-1.5 rounded-lg text-xs font-medium text-gray-600 hover:bg-gray-50">
-                                                Grades
-                                            </Link>
-                                            <Link href="/dashboard/teacher/my-classes?tab=sections" className="block px-3 py-1.5 rounded-lg text-xs font-medium text-gray-600 hover:bg-gray-50">
-                                                Sections
-                                            </Link>
-                                            <Link href="/dashboard/teacher/my-classes?tab=classes" className="block px-3 py-1.5 rounded-lg text-xs font-medium text-gray-600 hover:bg-gray-50">
-                                                Classes
-                                            </Link>
-                                            <Link href="/dashboard/teacher/my-classes?tab=schedule" className="block px-3 py-1.5 rounded-lg text-xs font-medium text-gray-600 hover:bg-gray-50">
-                                                Teaching Schedule
-                                            </Link>
+                                    {openMenus.teacherAssignments && !sidebarCollapsed && (
+                                        <div className="pl-8 pr-2 py-1.5 space-y-1 bg-[#020e24]/60 rounded-xl my-1 border-l border-slate-700/50">
+                                            <Link href="/dashboard/teacher/my-classes?tab=subjects" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/teacher/my-classes" && currentTab === "subjects" ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>Subjects</Link>
+                                            <Link href="/dashboard/teacher/my-classes?tab=grades" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/teacher/my-classes" && currentTab === "grades" ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>Grades</Link>
+                                            <Link href="/dashboard/teacher/my-classes?tab=sections" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/teacher/my-classes" && currentTab === "sections" ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>Sections</Link>
+                                            <Link href="/dashboard/teacher/my-classes?tab=classes" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/teacher/my-classes" && currentTab === "classes" ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>Classes</Link>
+                                            <Link href="/dashboard/teacher/my-classes?tab=schedule" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/teacher/my-classes" && currentTab === "schedule" ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>Teaching Schedule</Link>
                                         </div>
                                     )}
                                 </div>
 
                                 {/* Section 2: STUDENT MANAGEMENT */}
-                                <div className="pt-2">
+                                <div className="pt-1">
                                     <Link 
                                         href="/dashboard/teacher/students"
-                                        className={`w-full flex items-center space-x-2.5 px-3 py-2 text-xs font-normal rounded-lg transition-colors ${
+                                        title="Student Management"
+                                        className={`flex items-center ${sidebarCollapsed ? "justify-center px-2" : "justify-between px-3.5"} py-2.5 rounded-xl text-xs font-medium transition-all ${
                                             pathname === "/dashboard/teacher/students" 
-                                                ? "bg-blue-50 text-[#4085b3] font-medium" 
-                                                : "text-gray-700 hover:bg-gray-100"
+                                                ? "bg-[#0c2454] text-[#f59e0b] border-l-4 border-[#f59e0b]" 
+                                                : "text-slate-300 hover:bg-[#081e48] hover:text-white"
                                         }`}
                                     >
-                                        <Users className="w-4 h-4 text-[#4085b3]" />
-                                        <span>Student Management</span>
+                                        <div className={`flex items-center ${sidebarCollapsed ? "" : "space-x-3"}`}>
+                                            <Users className="w-4 h-4 text-amber-400 shrink-0" />
+                                            {!sidebarCollapsed && <span>Student Management</span>}
+                                        </div>
                                     </Link>
                                 </div>
 
                                 {/* Section 3: ATTENDANCE */}
-                                <div className="pt-2">
+                                <div className="pt-1">
                                     <button 
-                                        onClick={() => toggleMenu("teacherAttendance")}
-                                        className="w-full flex items-center justify-between px-3 py-2 text-xs font-normal text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                                        onClick={() => !sidebarCollapsed && toggleMenu("teacherAttendance")}
+                                        title="Attendance"
+                                        className={`w-full flex items-center ${sidebarCollapsed ? "justify-center px-2" : "justify-between px-3.5"} py-2.5 rounded-xl text-xs font-medium text-slate-300 hover:bg-[#081e48] hover:text-white transition-all group cursor-pointer`}
                                     >
-                                        <div className="flex items-center space-x-2.5">
-                                            <ClipboardCheck className="w-4 h-4 text-[#247297]" />
-                                            <span className="font-semibold text-gray-900">Attendance</span>
+                                        <div className={`flex items-center ${sidebarCollapsed ? "" : "space-x-3"}`}>
+                                            <ClipboardCheck className="w-4 h-4 text-amber-400 shrink-0" />
+                                            {!sidebarCollapsed && <span>Attendance</span>}
                                         </div>
-                                        {openMenus.teacherAttendance ? <ChevronDown className="w-3.5 h-3.5 text-gray-400" /> : <ChevronRight className="w-3.5 h-3.5 text-gray-400" />}
+                                        {!sidebarCollapsed && (openMenus.teacherAttendance ? <ChevronDown className="w-3.5 h-3.5 text-slate-400 group-hover:text-white" /> : <ChevronRight className="w-3.5 h-3.5 text-slate-500 group-hover:text-slate-300" />)}
                                     </button>
-                                    {openMenus.teacherAttendance && (
-                                        <div className="pl-6 pt-1 space-y-1">
-                                            <Link 
-                                                href="/dashboard/teacher/attendance?tab=take" 
-                                                className={`block px-3 py-1.5 rounded-lg text-xs transition-colors ${
-                                                    pathname === "/dashboard/teacher/attendance" && (currentTab === "take" || !searchParams?.get("tab"))
-                                                        ? "bg-blue-50 text-[#247297] font-extrabold" 
-                                                        : "text-gray-600 hover:bg-gray-50 font-normal"
-                                                }`}
-                                            >
-                                                Take Student Attendance
-                                            </Link>
-                                            <Link 
-                                                href="/dashboard/teacher/attendance?tab=history" 
-                                                className={`block px-3 py-1.5 rounded-lg text-xs transition-colors ${
-                                                    pathname === "/dashboard/teacher/attendance" && currentTab === "history"
-                                                        ? "bg-blue-50 text-[#247297] font-extrabold" 
-                                                        : "text-gray-600 hover:bg-gray-50 font-normal"
-                                                }`}
-                                            >
-                                                View Attendance History
-                                            </Link>
-                                            <Link 
-                                                href="/dashboard/teacher/attendance?tab=reasons" 
-                                                className={`block px-3 py-1.5 rounded-lg text-xs transition-colors ${
-                                                    pathname === "/dashboard/teacher/attendance" && currentTab === "reasons"
-                                                        ? "bg-blue-50 text-[#247297] font-extrabold" 
-                                                        : "text-gray-600 hover:bg-gray-50 font-normal"
-                                                }`}
-                                            >
-                                                Record Absence Reason
-                                            </Link>
-                                            <Link 
-                                                href="/dashboard/teacher/attendance?tab=repeated" 
-                                                className={`block px-3 py-1.5 rounded-lg text-xs transition-colors ${
-                                                    pathname === "/dashboard/teacher/attendance" && currentTab === "repeated"
-                                                        ? "bg-blue-50 text-[#247297] font-extrabold" 
-                                                        : "text-gray-600 hover:bg-gray-50 font-normal"
-                                                }`}
-                                            >
-                                                Identify Repeated Absences
-                                            </Link>
-                                            <Link 
-                                                href="/dashboard/teacher/attendance?tab=report" 
-                                                className={`block px-3 py-1.5 rounded-lg text-xs transition-colors ${
-                                                    pathname === "/dashboard/teacher/attendance" && currentTab === "report"
-                                                        ? "bg-blue-50 text-[#247297] font-extrabold" 
-                                                        : "text-gray-600 hover:bg-gray-50 font-normal"
-                                                }`}
-                                            >
-                                                Report Attendance Problems
-                                            </Link>
+                                    {openMenus.teacherAttendance && !sidebarCollapsed && (
+                                        <div className="pl-8 pr-2 py-1.5 space-y-1 bg-[#020e24]/60 rounded-xl my-1 border-l border-slate-700/50">
+                                            <Link href="/dashboard/teacher/attendance?tab=take" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/teacher/attendance" && (currentTab === "take" || !searchParams?.get("tab")) ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>Take Student Attendance</Link>
+                                            <Link href="/dashboard/teacher/attendance?tab=history" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/teacher/attendance" && currentTab === "history" ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>View Attendance History</Link>
+                                            <Link href="/dashboard/teacher/attendance?tab=reasons" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/teacher/attendance" && currentTab === "reasons" ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>Record Absence Reason</Link>
+                                            <Link href="/dashboard/teacher/attendance?tab=repeated" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/teacher/attendance" && currentTab === "repeated" ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>Identify Repeated Absences</Link>
+                                            <Link href="/dashboard/teacher/attendance?tab=report" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/teacher/attendance" && currentTab === "report" ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>Report Attendance Problems</Link>
                                         </div>
                                     )}
                                 </div>
 
                                 {/* Section 4: LESSON / CURRICULUM */}
-                                <div className="pt-2">
+                                <div className="pt-1">
                                     <button 
-                                        onClick={() => toggleMenu("teacherCurriculum")}
-                                        className="w-full flex items-center justify-between px-3 py-2 text-xs font-normal text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                                        onClick={() => !sidebarCollapsed && toggleMenu("teacherCurriculum")}
+                                        title="Lesson / Curriculum"
+                                        className={`w-full flex items-center ${sidebarCollapsed ? "justify-center px-2" : "justify-between px-3.5"} py-2.5 rounded-xl text-xs font-medium text-slate-300 hover:bg-[#081e48] hover:text-white transition-all group cursor-pointer`}
                                     >
-                                        <div className="flex items-center space-x-2.5">
-                                            <FileText className="w-4 h-4 text-[#4085b3]" />
-                                            <span>Lesson / Curriculum</span>
+                                        <div className={`flex items-center ${sidebarCollapsed ? "" : "space-x-3"}`}>
+                                            <FileText className="w-4 h-4 text-amber-400 shrink-0" />
+                                            {!sidebarCollapsed && <span>Lesson / Curriculum</span>}
                                         </div>
-                                        {openMenus.teacherCurriculum ? <ChevronDown className="w-3.5 h-3.5 text-gray-400" /> : <ChevronRight className="w-3.5 h-3.5 text-gray-400" />}
+                                        {!sidebarCollapsed && (openMenus.teacherCurriculum ? <ChevronDown className="w-3.5 h-3.5 text-slate-400 group-hover:text-white" /> : <ChevronRight className="w-3.5 h-3.5 text-slate-500 group-hover:text-slate-300" />)}
                                     </button>
-                                    {openMenus.teacherCurriculum && (
-                                        <div className="pl-6 pt-1 space-y-1">
-                                            <Link href="/dashboard/teacher/curriculum?tab=view" className={`block px-3 py-1.5 rounded-lg text-xs font-normal ${pathname === "/dashboard/teacher/curriculum" ? "bg-blue-50 text-[#4085b3]" : "text-gray-600 hover:bg-gray-50"}`}>
-                                                View Curriculum
-                                            </Link>
-                                            <Link href="/dashboard/teacher/curriculum?tab=log" className="block px-3 py-1.5 rounded-lg text-xs font-normal text-gray-600 hover:bg-gray-50">
-                                                Record Lesson Progress
-                                            </Link>
-                                            <Link href="/dashboard/teacher/curriculum?tab=log" className="block px-3 py-1.5 rounded-lg text-xs font-normal text-gray-600 hover:bg-gray-50">
-                                                Record Topics Covered
-                                            </Link>
-                                            <Link href="/dashboard/teacher/curriculum?tab=progress" className="block px-3 py-1.5 rounded-lg text-xs font-normal text-gray-600 hover:bg-gray-50">
-                                                Track Curriculum Progress
-                                            </Link>
-                                            <Link href="/dashboard/teacher/curriculum?tab=difficulties" className="block px-3 py-1.5 rounded-lg text-xs font-normal text-gray-600 hover:bg-gray-50">
-                                                Record Learning Difficulties
-                                            </Link>
-                                            <Link href="/dashboard/teacher/curriculum?tab=notes" className="block px-3 py-1.5 rounded-lg text-xs font-normal text-gray-600 hover:bg-gray-50">
-                                                Record Teaching Notes
-                                            </Link>
+                                    {openMenus.teacherCurriculum && !sidebarCollapsed && (
+                                        <div className="pl-8 pr-2 py-1.5 space-y-1 bg-[#020e24]/60 rounded-xl my-1 border-l border-slate-700/50">
+                                            <Link href="/dashboard/teacher/curriculum?tab=view" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/teacher/curriculum" && currentTab === "view" ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>View Curriculum</Link>
+                                            <Link href="/dashboard/teacher/curriculum?tab=log" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/teacher/curriculum" && currentTab === "log" ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>Record Lesson Progress</Link>
+                                            <Link href="/dashboard/teacher/curriculum?tab=topics" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/teacher/curriculum" && currentTab === "topics" ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>Record Topics Covered</Link>
+                                            <Link href="/dashboard/teacher/curriculum?tab=progress" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/teacher/curriculum" && currentTab === "progress" ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>Track Curriculum Progress</Link>
+                                            <Link href="/dashboard/teacher/curriculum?tab=difficulties" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/teacher/curriculum" && currentTab === "difficulties" ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>Record Learning Difficulties</Link>
+                                            <Link href="/dashboard/teacher/curriculum?tab=notes" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/teacher/curriculum" && currentTab === "notes" ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>Record Teaching Notes</Link>
                                         </div>
                                     )}
                                 </div>
 
                                 {/* Section 5: ASSESSMENT */}
-                                <div className="pt-2">
+                                <div className="pt-1">
                                     <button 
-                                        onClick={() => toggleMenu("teacherAssessment")}
-                                        className="w-full flex items-center justify-between px-3 py-2 text-xs font-normal text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                                        onClick={() => !sidebarCollapsed && toggleMenu("teacherAssessment")}
+                                        title="Assessment & Grades"
+                                        className={`w-full flex items-center ${sidebarCollapsed ? "justify-center px-2" : "justify-between px-3.5"} py-2.5 rounded-xl text-xs font-medium text-slate-300 hover:bg-[#081e48] hover:text-white transition-all group cursor-pointer`}
                                     >
-                                        <div className="flex items-center space-x-2.5">
-                                            <GraduationCap className="w-4 h-4 text-[#4085b3]" />
-                                            <span>Assessment & Grades</span>
+                                        <div className={`flex items-center ${sidebarCollapsed ? "" : "space-x-3"}`}>
+                                            <GraduationCap className="w-4 h-4 text-amber-400 shrink-0" />
+                                            {!sidebarCollapsed && <span>Assessment & Grades</span>}
                                         </div>
-                                        {openMenus.teacherAssessment ? <ChevronDown className="w-3.5 h-3.5 text-gray-400" /> : <ChevronRight className="w-3.5 h-3.5 text-gray-400" />}
+                                        {!sidebarCollapsed && (openMenus.teacherAssessment ? <ChevronDown className="w-3.5 h-3.5 text-slate-400 group-hover:text-white" /> : <ChevronRight className="w-3.5 h-3.5 text-slate-500 group-hover:text-slate-300" />)}
                                     </button>
-                                    {openMenus.teacherAssessment && (
-                                        <div className="pl-6 pt-1 space-y-1">
-                                            <Link href="/dashboard/teacher/assessment?type=ALL" className={`block px-3 py-1.5 rounded-lg text-xs font-normal ${pathname === "/dashboard/teacher/assessment" ? "bg-blue-50 text-[#4085b3]" : "text-gray-600 hover:bg-gray-50"}`}>
-                                                Create Assessment
-                                            </Link>
-                                            <Link href="/dashboard/teacher/assessment?type=QUIZ" className="block px-3 py-1.5 rounded-lg text-xs font-normal text-gray-600 hover:bg-gray-50">
-                                                Create Quiz
-                                            </Link>
-                                            <Link href="/dashboard/teacher/assessment?type=TEST" className="block px-3 py-1.5 rounded-lg text-xs font-normal text-gray-600 hover:bg-gray-50">
-                                                Create Test
-                                            </Link>
-                                            <Link href="/dashboard/teacher/assessment?type=ASSIGNMENT" className="block px-3 py-1.5 rounded-lg text-xs font-normal text-gray-600 hover:bg-gray-50">
-                                                Create Assignment
-                                            </Link>
-                                            <Link href="/dashboard/teacher/assessment?type=PROJECT" className="block px-3 py-1.5 rounded-lg text-xs font-normal text-gray-600 hover:bg-gray-50">
-                                                Create Project
-                                            </Link>
-                                            <Link href="/dashboard/teacher/assessment?tab=conduct" className="block px-3 py-1.5 rounded-lg text-xs font-normal text-gray-600 hover:bg-gray-50">
-                                                Conduct Assessment
-                                            </Link>
-                                            <Link href="/dashboard/teacher/assessment?tab=grade" className="block px-3 py-1.5 rounded-lg text-xs font-normal text-gray-600 hover:bg-gray-50">
-                                                Record Results & Grade
-                                            </Link>
-                                            <Link href="/dashboard/teacher/assessment?tab=feedback" className="block px-3 py-1.5 rounded-lg text-xs font-normal text-gray-600 hover:bg-gray-50">
-                                                Provide Feedback
-                                            </Link>
+                                    {openMenus.teacherAssessment && !sidebarCollapsed && (
+                                        <div className="pl-8 pr-2 py-1.5 space-y-1 bg-[#020e24]/60 rounded-xl my-1 border-l border-slate-700/50">
+                                            <Link href="/dashboard/teacher/assessment?type=ALL" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/teacher/assessment" && currentType === "ALL" ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>Create Assessment</Link>
+                                            <Link href="/dashboard/teacher/assessment?type=QUIZ" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/teacher/assessment" && currentType === "QUIZ" ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>Create Quiz</Link>
+                                            <Link href="/dashboard/teacher/assessment?type=TEST" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/teacher/assessment" && currentType === "TEST" ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>Create Test</Link>
+                                            <Link href="/dashboard/teacher/assessment?type=ASSIGNMENT" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/teacher/assessment" && currentType === "ASSIGNMENT" ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>Create Assignment</Link>
+                                            <Link href="/dashboard/teacher/assessment?type=PROJECT" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/teacher/assessment" && currentType === "PROJECT" ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>Create Project</Link>
+                                            <Link href="/dashboard/teacher/assessment?tab=conduct" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/teacher/assessment" && currentTab === "conduct" ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>Conduct Assessment</Link>
+                                            <Link href="/dashboard/teacher/assessment?tab=grade" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/teacher/assessment" && currentTab === "grade" ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>Record Results & Grade</Link>
+                                            <Link href="/dashboard/teacher/assessment?tab=feedback" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/teacher/assessment" && currentTab === "feedback" ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>Provide Feedback</Link>
                                         </div>
                                     )}
                                 </div>
 
                                 {/* Section 6: LEARNING ACTIVITIES */}
-                                <div className="pt-2">
+                                <div className="pt-1">
                                     <button 
-                                        onClick={() => toggleMenu("teacherActivities")}
-                                        className="w-full flex items-center justify-between px-3 py-2 text-xs font-normal text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                                        onClick={() => !sidebarCollapsed && toggleMenu("teacherActivities")}
+                                        title="Learning Activities"
+                                        className={`w-full flex items-center ${sidebarCollapsed ? "justify-center px-2" : "justify-between px-3.5"} py-2.5 rounded-xl text-xs font-medium text-slate-300 hover:bg-[#081e48] hover:text-white transition-all group cursor-pointer`}
                                     >
-                                        <div className="flex items-center space-x-2.5">
-                                            <ClipboardCheck className="w-4 h-4 text-[#4085b3]" />
-                                            <span>Learning Activities</span>
+                                        <div className={`flex items-center ${sidebarCollapsed ? "" : "space-x-3"}`}>
+                                            <ClipboardCheck className="w-4 h-4 text-amber-400 shrink-0" />
+                                            {!sidebarCollapsed && <span>Learning Activities</span>}
                                         </div>
-                                        {openMenus.teacherActivities ? <ChevronDown className="w-3.5 h-3.5 text-gray-400" /> : <ChevronRight className="w-3.5 h-3.5 text-gray-400" />}
+                                        {!sidebarCollapsed && (openMenus.teacherActivities ? <ChevronDown className="w-3.5 h-3.5 text-slate-400 group-hover:text-white" /> : <ChevronRight className="w-3.5 h-3.5 text-slate-500 group-hover:text-slate-300" />)}
                                     </button>
-                                    {openMenus.teacherActivities && (
-                                        <div className="pl-6 pt-1 space-y-1">
-                                            <Link href="/dashboard/teacher/learning?type=HOMEWORK" className={`block px-3 py-1.5 rounded-lg text-xs font-normal ${pathname === "/dashboard/teacher/learning" ? "bg-blue-50 text-[#4085b3]" : "text-gray-600 hover:bg-gray-50"}`}>
-                                                Create Assignment
-                                            </Link>
-                                            <Link href="/dashboard/teacher/learning?type=QUIZ" className="block px-3 py-1.5 rounded-lg text-xs font-normal text-gray-600 hover:bg-gray-50">
-                                                Create Quiz
-                                            </Link>
-                                            <Link href="/dashboard/teacher/learning?type=CLASS_WORK" className="block px-3 py-1.5 rounded-lg text-xs font-normal text-gray-600 hover:bg-gray-50">
-                                                Create Class Activity
-                                            </Link>
-                                            <Link href="/dashboard/teacher/learning?tab=create" className="block px-3 py-1.5 rounded-lg text-xs font-normal text-gray-600 hover:bg-gray-50">
-                                                Set Deadline
-                                            </Link>
-                                            <Link href="/dashboard/teacher/learning?tab=submissions" className="block px-3 py-1.5 rounded-lg text-xs font-normal text-gray-600 hover:bg-gray-50">
-                                                Review Submissions
-                                            </Link>
-                                            <Link href="/dashboard/teacher/learning?tab=submissions" className="block px-3 py-1.5 rounded-lg text-xs font-normal text-gray-600 hover:bg-gray-50">
-                                                Mark Completion
-                                            </Link>
-                                            <Link href="/dashboard/teacher/learning?tab=submissions" className="block px-3 py-1.5 rounded-lg text-xs font-normal text-gray-600 hover:bg-gray-50">
-                                                Give Feedback
-                                            </Link>
+                                    {openMenus.teacherActivities && !sidebarCollapsed && (
+                                        <div className="pl-8 pr-2 py-1.5 space-y-1 bg-[#020e24]/60 rounded-xl my-1 border-l border-slate-700/50">
+                                            <Link href="/dashboard/teacher/learning?type=HOMEWORK" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/teacher/learning" && currentType === "HOMEWORK" ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>Create Assignment</Link>
+                                            <Link href="/dashboard/teacher/learning?type=QUIZ" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/teacher/learning" && currentType === "QUIZ" ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>Create Quiz</Link>
+                                            <Link href="/dashboard/teacher/learning?type=CLASS_WORK" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/teacher/learning" && currentType === "CLASS_WORK" ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>Create Class Activity</Link>
+                                            <Link href="/dashboard/teacher/learning?tab=create" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/teacher/learning" && currentTab === "create" ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>Set Deadline</Link>
+                                            <Link href="/dashboard/teacher/learning?tab=submissions" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/teacher/learning" && currentTab === "submissions" ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>Review Submissions</Link>
+                                            <Link href="/dashboard/teacher/learning?tab=completion" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/teacher/learning" && currentTab === "completion" ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>Mark Completion</Link>
+                                            <Link href="/dashboard/teacher/learning?tab=feedback" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/teacher/learning" && currentTab === "feedback" ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>Give Feedback</Link>
                                         </div>
                                     )}
                                 </div>
 
                                 {/* Section 7: STUDENT SUPPORT */}
-                                <div className="pt-2">
+                                <div className="pt-1">
                                     <button 
-                                        onClick={() => toggleMenu("teacherSupport")}
-                                        className="w-full flex items-center justify-between px-3 py-2 text-xs font-normal text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                                        onClick={() => !sidebarCollapsed && toggleMenu("teacherSupport")}
+                                        title="Student Support"
+                                        className={`w-full flex items-center ${sidebarCollapsed ? "justify-center px-2" : "justify-between px-3.5"} py-2.5 rounded-xl text-xs font-medium text-slate-300 hover:bg-[#081e48] hover:text-white transition-all group cursor-pointer`}
                                     >
-                                        <div className="flex items-center space-x-2.5">
-                                            <HeartHandshake className="w-4 h-4 text-[#4085b3]" />
-                                            <span>Student Support</span>
+                                        <div className={`flex items-center ${sidebarCollapsed ? "" : "space-x-3"}`}>
+                                            <HeartHandshake className="w-4 h-4 text-amber-400 shrink-0" />
+                                            {!sidebarCollapsed && <span>Student Support</span>}
                                         </div>
-                                        {openMenus.teacherSupport ? <ChevronDown className="w-3.5 h-3.5 text-gray-400" /> : <ChevronRight className="w-3.5 h-3.5 text-gray-400" />}
+                                        {!sidebarCollapsed && (openMenus.teacherSupport ? <ChevronDown className="w-3.5 h-3.5 text-slate-400 group-hover:text-white" /> : <ChevronRight className="w-3.5 h-3.5 text-slate-500 group-hover:text-slate-300" />)}
                                     </button>
-                                    {openMenus.teacherSupport && (
-                                        <div className="pl-6 pt-1 space-y-1">
-                                            <Link href="/dashboard/teacher/support" className={`block px-3 py-1.5 rounded-lg text-xs font-normal ${pathname === "/dashboard/teacher/support" ? "bg-blue-50 text-[#4085b3]" : "text-gray-600 hover:bg-gray-50"}`}>
-                                                Flag At-Risk Student
-                                            </Link>
-                                            <Link href="/dashboard/teacher/support" className="block px-3 py-1.5 rounded-lg text-xs font-normal text-gray-600 hover:bg-gray-50">
-                                                Monitor Interventions
-                                            </Link>
+                                    {openMenus.teacherSupport && !sidebarCollapsed && (
+                                        <div className="pl-8 pr-2 py-1.5 space-y-1 bg-[#020e24]/60 rounded-xl my-1 border-l border-slate-700/50">
+                                            <Link href="/dashboard/teacher/support?tab=flag" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/teacher/support" && (currentTab === "flag" || currentTab === "") ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>Flag At-Risk Student</Link>
+                                            <Link href="/dashboard/teacher/support?tab=interventions" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/teacher/support" && currentTab === "interventions" ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>Monitor Interventions</Link>
                                         </div>
                                     )}
                                 </div>
 
                                 {/* Section 8: PARENT COMMUNICATION */}
-                                <div className="pt-2">
+                                <div className="pt-1">
                                     <button 
-                                        onClick={() => toggleMenu("teacherParentComm")}
-                                        className="w-full flex items-center justify-between px-3 py-2 text-xs font-normal text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                                        onClick={() => !sidebarCollapsed && toggleMenu("teacherParentComm")}
+                                        title="Parent Communication"
+                                        className={`w-full flex items-center ${sidebarCollapsed ? "justify-center px-2" : "justify-between px-3.5"} py-2.5 rounded-xl text-xs font-medium text-slate-300 hover:bg-[#081e48] hover:text-white transition-all group cursor-pointer`}
                                     >
-                                        <div className="flex items-center space-x-2.5">
-                                            <Users className="w-4 h-4 text-[#4085b3]" />
-                                            <span>Parent Communication</span>
+                                        <div className={`flex items-center ${sidebarCollapsed ? "" : "space-x-3"}`}>
+                                            <Users className="w-4 h-4 text-amber-400 shrink-0" />
+                                            {!sidebarCollapsed && <span>Parent Communication</span>}
                                         </div>
-                                        {openMenus.teacherParentComm ? <ChevronDown className="w-3.5 h-3.5 text-gray-400" /> : <ChevronRight className="w-3.5 h-3.5 text-gray-400" />}
+                                        {!sidebarCollapsed && (openMenus.teacherParentComm ? <ChevronDown className="w-3.5 h-3.5 text-slate-400 group-hover:text-white" /> : <ChevronRight className="w-3.5 h-3.5 text-slate-500 group-hover:text-slate-300" />)}
                                     </button>
-                                    {openMenus.teacherParentComm && (
-                                        <div className="pl-6 pt-1 space-y-1">
-                                            <Link href="/dashboard/teacher/communication/parent" className={`block px-3 py-1.5 rounded-lg text-xs font-normal ${pathname.includes("parent") ? "bg-blue-50 text-[#4085b3]" : "text-gray-600 hover:bg-gray-50"}`}>
-                                                Send Parent Message
-                                            </Link>
-                                            <Link href="/dashboard/teacher/communication/parent" className="block px-3 py-1.5 rounded-lg text-xs font-normal text-gray-600 hover:bg-gray-50">
-                                                Attendance Notifications
-                                            </Link>
+                                    {openMenus.teacherParentComm && !sidebarCollapsed && (
+                                        <div className="pl-8 pr-2 py-1.5 space-y-1 bg-[#020e24]/60 rounded-xl my-1 border-l border-slate-700/50">
+                                            <Link href="/dashboard/teacher/communication/parent?tab=message" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname.includes("/communication/parent") && (currentTab === "message" || currentTab === "") ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>Send Parent Message</Link>
+                                            <Link href="/dashboard/teacher/communication/parent?tab=notifications" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname.includes("/communication/parent") && currentTab === "notifications" ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>Attendance Notifications</Link>
                                         </div>
                                     )}
                                 </div>
 
                                 {/* Section 9: STAFF COMMUNICATION */}
-                                <div className="pt-2">
+                                <div className="pt-1">
                                     <button 
-                                        onClick={() => toggleMenu("teacherStaffComm")}
-                                        className="w-full flex items-center justify-between px-3 py-2 text-xs font-normal text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                                        onClick={() => !sidebarCollapsed && toggleMenu("teacherStaffComm")}
+                                        title="Teacher Communication"
+                                        className={`w-full flex items-center ${sidebarCollapsed ? "justify-center px-2" : "justify-between px-3.5"} py-2.5 rounded-xl text-xs font-medium text-slate-300 hover:bg-[#081e48] hover:text-white transition-all group cursor-pointer`}
                                     >
-                                        <div className="flex items-center space-x-2.5">
-                                            <MessageSquare className="w-4 h-4 text-[#4085b3]" />
-                                            <span>Teacher Communication</span>
+                                        <div className={`flex items-center ${sidebarCollapsed ? "" : "space-x-3"}`}>
+                                            <MessageSquare className="w-4 h-4 text-amber-400 shrink-0" />
+                                            {!sidebarCollapsed && <span>Teacher Communication</span>}
                                         </div>
-                                        {openMenus.teacherStaffComm ? <ChevronDown className="w-3.5 h-3.5 text-gray-400" /> : <ChevronRight className="w-3.5 h-3.5 text-gray-400" />}
+                                        {!sidebarCollapsed && (openMenus.teacherStaffComm ? <ChevronDown className="w-3.5 h-3.5 text-slate-400 group-hover:text-white" /> : <ChevronRight className="w-3.5 h-3.5 text-slate-500 group-hover:text-slate-300" />)}
                                     </button>
-                                    {openMenus.teacherStaffComm && (
-                                        <div className="pl-6 pt-1 space-y-1">
-                                            <Link href="/dashboard/teacher/communication/staff" className={`block px-3 py-1.5 rounded-lg text-xs font-normal ${pathname.includes("staff") ? "bg-blue-50 text-[#4085b3]" : "text-gray-600 hover:bg-gray-50"}`}>
-                                                School Announcements
-                                            </Link>
-                                            <Link href="/dashboard/teacher/communication/staff" className="block px-3 py-1.5 rounded-lg text-xs font-normal text-gray-600 hover:bg-gray-50">
-                                                Department Communication
-                                            </Link>
+                                    {openMenus.teacherStaffComm && !sidebarCollapsed && (
+                                        <div className="pl-8 pr-2 py-1.5 space-y-1 bg-[#020e24]/60 rounded-xl my-1 border-l border-slate-700/50">
+                                            <Link href="/dashboard/teacher/communication/staff?tab=announcements" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname.includes("/communication/staff") && (currentTab === "announcements" || currentTab === "") ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>School Announcements</Link>
+                                            <Link href="/dashboard/teacher/communication/staff?tab=department" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname.includes("/communication/staff") && currentTab === "department" ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>Department Communication</Link>
                                         </div>
                                     )}
                                 </div>
 
                                 {/* Section 10: PROFESSIONAL DEVELOPMENT */}
-                                <div className="pt-2">
+                                <div className="pt-1">
                                     <button 
-                                        onClick={() => toggleMenu("teacherPD")}
-                                        className="w-full flex items-center justify-between px-3 py-2 text-xs font-normal text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                                        onClick={() => !sidebarCollapsed && toggleMenu("teacherPD")}
+                                        title="Professional Development"
+                                        className={`w-full flex items-center ${sidebarCollapsed ? "justify-center px-2" : "justify-between px-3.5"} py-2.5 rounded-xl text-xs font-medium text-slate-300 hover:bg-[#081e48] hover:text-white transition-all group cursor-pointer`}
                                     >
-                                        <div className="flex items-center space-x-2.5">
-                                            <GraduationCap className="w-4 h-4 text-[#4085b3]" />
-                                            <span>Professional Dev.</span>
+                                        <div className={`flex items-center ${sidebarCollapsed ? "" : "space-x-3"}`}>
+                                            <GraduationCap className="w-4 h-4 text-amber-400 shrink-0" />
+                                            {!sidebarCollapsed && <span>Professional Dev.</span>}
                                         </div>
-                                        {openMenus.teacherPD ? <ChevronDown className="w-3.5 h-3.5 text-gray-400" /> : <ChevronRight className="w-3.5 h-3.5 text-gray-400" />}
+                                        {!sidebarCollapsed && (openMenus.teacherPD ? <ChevronDown className="w-3.5 h-3.5 text-slate-400 group-hover:text-white" /> : <ChevronRight className="w-3.5 h-3.5 text-slate-500 group-hover:text-slate-300" />)}
                                     </button>
-                                    {openMenus.teacherPD && (
-                                        <div className="pl-6 pt-1 space-y-1">
-                                            <Link href="/dashboard/teacher/pd" className={`block px-3 py-1.5 rounded-lg text-xs font-normal ${pathname === "/dashboard/teacher/pd" ? "bg-blue-50 text-[#4085b3]" : "text-gray-600 hover:bg-gray-50"}`}>
-                                                Training & Workshops
-                                            </Link>
-                                            <Link href="/dashboard/teacher/pd" className="block px-3 py-1.5 rounded-lg text-xs font-normal text-gray-600 hover:bg-gray-50">
-                                                Certificates
-                                            </Link>
+                                    {openMenus.teacherPD && !sidebarCollapsed && (
+                                        <div className="pl-8 pr-2 py-1.5 space-y-1 bg-[#020e24]/60 rounded-xl my-1 border-l border-slate-700/50">
+                                            <Link href="/dashboard/teacher/pd?tab=training" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/teacher/pd" && (currentTab === "training" || currentTab === "") ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>Training & Workshops</Link>
+                                            <Link href="/dashboard/teacher/pd?tab=certificates" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/teacher/pd" && currentTab === "certificates" ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>Certificates</Link>
                                         </div>
                                     )}
                                 </div>
 
                                 {/* Section 11: REPORTS */}
-                                <div className="pt-2 pb-4">
+                                <div className="pt-1">
                                     <button 
-                                        onClick={() => toggleMenu("teacherReports")}
-                                        className="w-full flex items-center justify-between px-3 py-2 text-xs font-normal text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                                        onClick={() => !sidebarCollapsed && toggleMenu("teacherReports")}
+                                        title="Teacher Reports"
+                                        className={`w-full flex items-center ${sidebarCollapsed ? "justify-center px-2" : "justify-between px-3.5"} py-2.5 rounded-xl text-xs font-medium text-slate-300 hover:bg-[#081e48] hover:text-white transition-all group cursor-pointer`}
                                     >
-                                        <div className="flex items-center space-x-2.5">
-                                            <BarChart2 className="w-4 h-4 text-[#4085b3]" />
-                                            <span>Teacher Reports</span>
+                                        <div className={`flex items-center ${sidebarCollapsed ? "" : "space-x-3"}`}>
+                                            <BarChart2 className="w-4 h-4 text-amber-400 shrink-0" />
+                                            {!sidebarCollapsed && <span>Teacher Reports</span>}
                                         </div>
-                                        {openMenus.teacherReports ? <ChevronDown className="w-3.5 h-3.5 text-gray-400" /> : <ChevronRight className="w-3.5 h-3.5 text-gray-400" />}
+                                        {!sidebarCollapsed && (openMenus.teacherReports ? <ChevronDown className="w-3.5 h-3.5 text-slate-400 group-hover:text-white" /> : <ChevronRight className="w-3.5 h-3.5 text-slate-500 group-hover:text-slate-300" />)}
                                     </button>
-                                    {openMenus.teacherReports && (
-                                        <div className="pl-6 pt-1 space-y-1">
-                                            <Link href="/dashboard/teacher/reports" className={`block px-3 py-1.5 rounded-lg text-xs font-normal ${pathname === "/dashboard/teacher/reports" ? "bg-blue-50 text-[#4085b3]" : "text-gray-600 hover:bg-gray-50"}`}>
-                                                Class Attendance & Scores
-                                            </Link>
+                                    {openMenus.teacherReports && !sidebarCollapsed && (
+                                        <div className="pl-8 pr-2 py-1.5 space-y-1 bg-[#020e24]/60 rounded-xl my-1 border-l border-slate-700/50">
+                                            <Link href="/dashboard/teacher/reports" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/teacher/reports" ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>Class Attendance & Scores</Link>
                                         </div>
                                     )}
                                 </div>
-                                {/* Section 12: SETTINGS */}
-                                <div className="pt-4 border-t border-gray-100 mt-4 mb-4">
-                                    <Link href="/dashboard/teacher/settings" className="flex items-center space-x-2.5 px-3 py-2 text-xs font-normal text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
-                                        <Settings className="w-4 h-4 text-gray-500" />
-                                        <span>Settings</span>
+
+                                {/* Section 12: AI TEACHER ASSISTANT (Inactive / Coming Soon) */}
+                                <div className="pt-1">
+                                    <div 
+                                        className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-medium text-slate-500 bg-[#020e24]/30 cursor-not-allowed select-none"
+                                        title="AI Teacher Assistant feature is under development"
+                                    >
+                                        <div className="flex items-center space-x-3">
+                                            <Sparkles className="w-4 h-4 text-purple-400 shrink-0" />
+                                            <span>AI Teacher Assistant</span>
+                                        </div>
+                                        <span className="text-[9px] font-bold px-1.5 py-0.5 bg-purple-900/50 text-purple-300 rounded-md uppercase tracking-wider">
+                                            Soon
+                                        </span>
+                                    </div>
+                                </div>
+
+                                {/* Settings */}
+                                <div className="pt-4 border-t border-[#092254]/60 mt-4 mb-4">
+                                    <Link 
+                                        href="/dashboard/teacher/settings"
+                                        title="Settings"
+                                        className={`flex items-center ${sidebarCollapsed ? "justify-center px-2" : "justify-between px-3.5"} py-2.5 rounded-xl text-xs font-medium transition-all ${
+                                            pathname === "/dashboard/teacher/settings"
+                                                ? "bg-[#0c2454] text-[#f59e0b] border-l-4 border-[#f59e0b]"
+                                                : "text-slate-300 hover:bg-[#081e48] hover:text-white"
+                                        }`}
+                                    >
+                                        <div className={`flex items-center ${sidebarCollapsed ? "" : "space-x-3"}`}>
+                                            <Settings className="w-4 h-4 text-amber-400 shrink-0" />
+                                            {!sidebarCollapsed && <span>Settings</span>}
+                                        </div>
                                     </Link>
                                 </div>
                             </nav>
@@ -1316,6 +1508,9 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
                     
                     {/* Page Content Padding */}
                     <div className={isTeacherRoute ? "p-4 md:p-6" : "p-6 md:p-8"}>
+                        {isTeacherRoute && (
+                            <TeacherBreadcrumbs pathname={pathname} currentTab={currentTab} currentType={currentType} />
+                        )}
                         {children}
                     </div>
                 </main>

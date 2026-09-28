@@ -12,4 +12,4 @@ EXPOSE 5000
 
 # Run Prisma client generation at container start so runtime env vars (DATABASE_URL)
 # provided by docker-compose are available. Then start the dev server.
-CMD ["sh", "-c", "npx prisma generate && npm run dev"]
+CMD ["sh", "-c", "npm install && npx prisma generate && npm run dev"]

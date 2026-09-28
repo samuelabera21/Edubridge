@@ -17,7 +17,7 @@ export class TeacherService {
             throw new Error("Valid Gender is required (MALE or FEMALE)");
         }
 
-        return await prisma.$transaction(async (tx) => {
+        return await prisma.$transaction(async (tx: any) => {
             // Check uniqueness of staffIdCode / employeeId within this school
             if (data.staffIdCode) {
                 const existingStaff = await tx.teacher.findFirst({
@@ -54,7 +54,7 @@ export class TeacherService {
             // Auto-create User account for authentication
             let userId = data.userId || null;
             if (!userId) {
-                const tempPassword = process.env.DEFAULT_INITIAL_PASSWORD || ["Edu", "Bridge", "2026", "!"].join("");
+                const tempPassword = (globalThis as any).process?.env?.DEFAULT_INITIAL_PASSWORD || ["Edu", "Bridge", "2026", "!"].join("");
                 const fullName = `${data.firstName} ${data.fatherName} ${data.lastName}`.trim();
                 
                 let user = await tx.user.findUnique({ where: { email: autoEmail } });
@@ -978,7 +978,7 @@ export class TeacherService {
             }
         });
 
-        return assignments.map((a) => ({
+        return assignments.map((a: any) => ({
             assignment: a,
             students: a.section?.studentEnrollments || []
         }));
@@ -1016,8 +1016,8 @@ export class TeacherService {
         if (!teacher) return [];
 
         const sectionIds = teacher.assignments
-            .map((a) => a.sectionId)
-            .filter((id): id is string => Boolean(id));
+            .map((a: any) => a.sectionId)
+            .filter((id: any): id is string => Boolean(id));
 
         if (sectionIds.length === 0) return [];
 
@@ -1079,7 +1079,7 @@ export class TeacherService {
 
         // Check attendance records for today to determine class completion status
         let attendancePendingCount = 0;
-        const todayClasses = await Promise.all(todayTimetable.map(async (t, index) => {
+        const todayClasses = await Promise.all(todayTimetable.map(async (t: any, index: number) => {
             const hasRecordedAttendance = await prisma.studentAttendance.findFirst({
                 where: {
                     organizationId,
@@ -1109,8 +1109,8 @@ export class TeacherService {
         }));
 
         const sectionIds = teacher ? teacher.assignments
-            .map((a) => a.sectionId)
-            .filter((id): id is string => Boolean(id)) : [];
+            .map((a: any) => a.sectionId)
+            .filter((id: any): id is string => Boolean(id)) : [];
 
         const totalStudents = sectionIds.length > 0 ? await prisma.studentEnrollment.count({
             where: {
@@ -1120,7 +1120,7 @@ export class TeacherService {
             }
         }) : 0;
 
-        const assignmentIds = teacher ? teacher.assignments.map((a) => a.id) : [];
+        const assignmentIds = teacher ? teacher.assignments.map((a: any) => a.id) : [];
         const pendingAssessmentsCount = assignmentIds.length > 0 ? await prisma.assessment.count({
             where: {
                 organizationId,
@@ -1164,7 +1164,7 @@ export class TeacherService {
             take: 10
         }) : [];
 
-        const studentsRequiringAttention = supportFlags.map((sf) => ({
+        const studentsRequiringAttention = supportFlags.map((sf: any) => ({
             id: sf.id,
             studentName: `${sf.enrollment.student.firstName} ${sf.enrollment.student.lastName}`,
             section: `Grade ${sf.enrollment.schoolGrade.grade.level}${sf.enrollment.section?.name || ''}`,
@@ -1175,7 +1175,7 @@ export class TeacherService {
 
         // Calculate class performance overview dynamically from StudentResult
         const classPerformanceOverview = await Promise.all(
-            (teacher?.assignments || []).map(async (assignment) => {
+            (teacher?.assignments || []).map(async (assignment: any) => {
                 const results = await prisma.studentResult.findMany({
                     where: {
                         assessment: {
@@ -1185,7 +1185,7 @@ export class TeacherService {
                     select: { score: true }
                 });
 
-                const totalScore = results.reduce((acc, curr) => acc + curr.score, 0);
+                const totalScore = results.reduce((acc: number, curr: any) => acc + curr.score, 0);
                 const averageScore = results.length > 0 ? Math.round(totalScore / results.length) : 0;
                 const className = `Grade ${assignment.schoolGrade.grade.level}${assignment.section?.name || ''} ${assignment.subject.name}`;
 
@@ -1252,8 +1252,8 @@ export class TeacherService {
         if (!teacher) throw new Error("Teacher profile not found");
 
         const sectionIds = teacher.assignments
-            .map((a) => a.sectionId)
-            .filter((id): id is string => Boolean(id));
+            .map((a: any) => a.sectionId)
+            .filter((id: any): id is string => Boolean(id));
 
         const enrollment = await prisma.studentEnrollment.findFirst({
             where: {
@@ -1394,8 +1394,8 @@ export class TeacherService {
         if (!teacher) return [];
 
         const sectionIds = teacher.assignments
-            .map((a) => a.sectionId)
-            .filter((id): id is string => Boolean(id));
+            .map((a: any) => a.sectionId)
+            .filter((id: any): id is string => Boolean(id));
 
         if (sectionIds.length === 0) return [];
 
@@ -1417,9 +1417,9 @@ export class TeacherService {
         });
 
         const flagged = activeEnrollments
-            .map(e => {
-                const absentCount = e.attendances.filter(a => a.status === "ABSENT").length;
-                const lateCount = e.attendances.filter(a => a.status === "LATE").length;
+            .map((e: any) => {
+                const absentCount = e.attendances.filter((a: any) => a.status === "ABSENT").length;
+                const lateCount = e.attendances.filter((a: any) => a.status === "LATE").length;
                 return {
                     enrollmentId: e.id,
                     student: e.student,
@@ -1431,8 +1431,8 @@ export class TeacherService {
                     lastAbsence: e.attendances[0]?.date || null
                 };
             })
-            .filter(e => e.totalFlags >= 2)
-            .sort((a, b) => b.totalFlags - a.totalFlags);
+            .filter((e: any) => e.totalFlags >= 2)
+            .sort((a: any, b: any) => b.totalFlags - a.totalFlags);
 
         return flagged;
     }
@@ -1442,8 +1442,8 @@ export class TeacherService {
         if (!teacher) return [];
 
         const sectionIds = teacher.assignments
-            .map((a) => a.sectionId)
-            .filter((id): id is string => Boolean(id));
+            .map((a: any) => a.sectionId)
+            .filter((id: any): id is string => Boolean(id));
 
         if (sectionIds.length === 0) return [];
 
@@ -1471,92 +1471,104 @@ export class TeacherService {
         return logs;
     }
 
-    static async getCurriculumData(userId: string, organizationId: string) {
+    static async getCurriculumData(userId: string, organizationId: string, assignmentId?: string) {
         const teacher = await this.getTeacherByUserId(userId, organizationId);
-        if (!teacher) return { overallProgressPercent: 0, unitsCompletedCount: 0, totalUnitsCount: 0, topicsCompletedCount: 0, totalTopicsCount: 0, units: [] };
+        if (!teacher) {
+            return {
+                subject: null,
+                overallProgressPercent: 0,
+                unitsCompletedCount: 0,
+                totalUnitsCount: 0,
+                topicsCompletedCount: 0,
+                totalTopicsCount: 0,
+                totalPlannedHours: 0,
+                totalDeliveredHours: 0,
+                units: []
+            };
+        }
 
-        const defaultUnits = [
-            {
-                id: "unit-1",
-                unitNumber: "Unit 1",
-                title: "Fundamentals of Functions & Algebra",
-                status: "COMPLETED",
-                progressPercent: 100,
-                topicsCount: 5,
-                completedTopicsCount: 5,
-                plannedHours: 12,
-                actualHours: 12,
-                topics: [
-                    "Real Number Systems & Operations",
-                    "Polynomial Functions & Factoring",
-                    "Rational Exponents & Radicals",
-                    "Solving Quadratic Equations",
-                    "Functions & Domain/Range Mapping"
-                ]
-            },
-            {
-                id: "unit-2",
-                unitNumber: "Unit 2",
-                title: "Geometry & Analytical Trigonometry",
-                status: "IN_PROGRESS",
-                progressPercent: 75,
-                topicsCount: 4,
-                completedTopicsCount: 3,
-                plannedHours: 14,
-                actualHours: 10,
-                topics: [
-                    "Trigonometric Ratios & Right Triangles",
-                    "Unit Circle & Periodic Sine/Cosine Graphs",
-                    "Law of Sines & Law of Cosines",
-                    "Analytic Trigonometric Identities"
-                ]
-            },
-            {
-                id: "unit-3",
-                unitNumber: "Unit 3",
-                title: "Systems of Equations & Matrices",
-                status: "IN_PROGRESS",
-                progressPercent: 40,
-                topicsCount: 5,
-                completedTopicsCount: 2,
-                plannedHours: 16,
-                actualHours: 6,
-                topics: [
-                    "Linear Systems in Two & Three Variables",
-                    "Matrix Algebra & Gaussian Elimination",
-                    "Determinants & Cramer's Rule",
-                    "Matrix Inverses & Matrix Equations",
-                    "Linear Programming & Optimization"
-                ]
-            },
-            {
-                id: "unit-4",
-                unitNumber: "Unit 4",
-                title: "Differential Calculus & Rate of Change",
-                status: "UPCOMING",
-                progressPercent: 0,
-                topicsCount: 6,
-                completedTopicsCount: 0,
-                plannedHours: 18,
-                actualHours: 0,
-                topics: [
-                    "Limits & Continuity",
-                    "The Derivative Definition & Slope",
-                    "Power Rule, Product Rule & Quotient Rule",
-                    "Chain Rule & Implicit Differentiation",
-                    "Applications of Derivatives & Extrema",
-                    "Curve Sketching & Rate Problems"
-                ]
+        let assignment: any = null;
+        if (assignmentId) {
+            assignment = await prisma.teachingAssignment.findFirst({
+                where: { id: assignmentId, teacherId: teacher.id },
+                include: {
+                    subject: true,
+                    schoolGrade: { include: { grade: true } },
+                    section: true,
+                    academicYear: true
+                }
+            });
+        }
+
+        if (!assignment) {
+            return {
+                assignment: null,
+                subject: null,
+                overallProgressPercent: 0,
+                unitsCompletedCount: 0,
+                totalUnitsCount: 0,
+                topicsCompletedCount: 0,
+                totalTopicsCount: 0,
+                totalPlannedHours: 0,
+                totalDeliveredHours: 0,
+                units: []
+            };
+        }
+
+        const subjectName = assignment.subject?.name || "";
+        const gradeName = assignment.schoolGrade?.grade?.name || "";
+        const sectionName = assignment.section?.name || "";
+        const academicYearName = assignment.academicYear?.name || "";
+
+        let weeklyPeriods = assignment.periodsPerWeek || 0;
+        if (!weeklyPeriods && assignment.schoolGradeId && assignment.subjectId) {
+            const gradeSubject = await prisma.schoolGradeSubject.findFirst({
+                where: { schoolGradeId: assignment.schoolGradeId, subjectId: assignment.subjectId }
+            });
+            if (gradeSubject?.weeklyPeriods) {
+                weeklyPeriods = gradeSubject.weeklyPeriods;
             }
-        ];
+        }
+
+        // Dynamic curriculum data: empty until uploaded or configured in the database
+        const subjectCompetencies: string[] = [];
+        const units: any[] = [];
+
+        // Aggregate statistics
+        const totalUnitsCount = units.length;
+        const unitsCompletedCount = units.filter(u => u.status === "COMPLETED").length;
+        const totalTopicsCount = units.reduce((acc, u) => acc + (u.topics?.length || 0), 0);
+        const topicsCompletedCount = units.reduce((acc, u) => acc + (u.completedTopicsCount || 0), 0);
+        const totalPlannedHours = units.reduce((acc, u) => acc + (u.plannedHours || 0), 0);
+        const totalDeliveredHours = units.reduce((acc, u) => acc + (u.actualHours || 0), 0);
+        const overallProgressPercent = totalTopicsCount > 0 ? Math.round((topicsCompletedCount / totalTopicsCount) * 100) : 0;
 
         return {
-            overallProgressPercent: 62,
-            unitsCompletedCount: 1,
-            totalUnitsCount: 4,
-            topicsCompletedCount: 10,
-            totalTopicsCount: 20,
-            units: defaultUnits
+            assignment: assignment ? {
+                id: assignment.id,
+                subjectId: assignment.subjectId,
+                subjectName,
+                gradeName,
+                sectionName,
+                academicYearName,
+                weeklyPeriods
+            } : null,
+            subject: {
+                name: subjectName,
+                gradeLevel: gradeName,
+                section: sectionName,
+                academicYear: academicYearName,
+                weeklyPeriods,
+                generalCompetencies: subjectCompetencies
+            },
+            overallProgressPercent,
+            unitsCompletedCount,
+            totalUnitsCount,
+            topicsCompletedCount,
+            totalTopicsCount,
+            totalPlannedHours,
+            totalDeliveredHours,
+            units
         };
     }
 
@@ -1750,8 +1762,8 @@ export class TeacherService {
         let totalScores = 0;
         let totalCount = 0;
 
-        students.forEach((s) => {
-            s.results.forEach((r) => {
+        students.forEach((s: any) => {
+            s.results.forEach((r: any) => {
                 totalScores += r.score;
                 totalCount += 1;
             });
