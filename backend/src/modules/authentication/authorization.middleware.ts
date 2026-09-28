@@ -116,7 +116,7 @@ export function requireOrganizationAccess(paramName: string = "organizationId") 
             return res.status(401).json({ message: "Unauthorized" });
         }
 
-        const requestedOrgId = req.params[paramName] || req.body[paramName] || req.query[paramName];
+        const requestedOrgId = req.params?.[paramName] || req.body?.[paramName] || req.query?.[paramName];
 
         if (!requestedOrgId) {
             return res.status(400).json({ message: `Missing ${paramName} in request` });
@@ -165,7 +165,7 @@ export function requireHierarchicalScope(paramName?: string) {
             const scope = await HierarchyScopeService.getAccessibleOrganizationScope(session.user.id);
 
             if (paramName) {
-                const requestedOrgId = (req.params[paramName] || req.body[paramName] || req.query[paramName]) as string;
+                const requestedOrgId = (req.params?.[paramName] || req.body?.[paramName] || req.query?.[paramName]) as string;
 
                 if (requestedOrgId && !scope.accessibleOrganizationIds.includes(requestedOrgId)) {
                     return res.status(403).json({
