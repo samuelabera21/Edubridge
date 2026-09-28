@@ -73,12 +73,12 @@ describe("GovernanceDashboardService (H3 Governance Dashboard Foundation)", () =
 
     const mockEnrollments = [
         // sch-a1a1: 2 students (1 Male Grade 9, 1 Female Grade 10)
-        { id: "enr-1", organizationId: "sch-a1a1", schoolGradeId: "g9", schoolGrade: { id: "g9", name: "Grade 9", level: 9 }, student: { gender: "MALE" } },
-        { id: "enr-2", organizationId: "sch-a1a1", schoolGradeId: "g10", schoolGrade: { id: "g10", name: "Grade 10", level: 10 }, student: { gender: "FEMALE" } },
+        { id: "enr-1", organizationId: "sch-a1a1", schoolGradeId: "g9", schoolGrade: { id: "g9", grade: { id: "g9", name: "Grade 9", level: 9 } }, student: { gender: "MALE" } },
+        { id: "enr-2", organizationId: "sch-a1a1", schoolGradeId: "g10", schoolGrade: { id: "g10", grade: { id: "g10", name: "Grade 10", level: 10 } }, student: { gender: "FEMALE" } },
         // sch-a1a2: 1 student (Female Grade 11)
-        { id: "enr-3", organizationId: "sch-a1a2", schoolGradeId: "g11", schoolGrade: { id: "g11", name: "Grade 11", level: 11 }, student: { gender: "FEMALE" } },
+        { id: "enr-3", organizationId: "sch-a1a2", schoolGradeId: "g11", schoolGrade: { id: "g11", grade: { id: "g11", name: "Grade 11", level: 11 } }, student: { gender: "FEMALE" } },
         // sch-b1a1 (Region B): 1 student (Male Grade 9)
-        { id: "enr-4", organizationId: "sch-b1a1", schoolGradeId: "g9", schoolGrade: { id: "g9", name: "Grade 9", level: 9 }, student: { gender: "MALE" } },
+        { id: "enr-4", organizationId: "sch-b1a1", schoolGradeId: "g9", schoolGrade: { id: "g9", grade: { id: "g9", name: "Grade 9", level: 9 } }, student: { gender: "MALE" } },
     ];
 
     const mockTeachers = [

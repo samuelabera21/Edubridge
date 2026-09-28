@@ -247,7 +247,7 @@ export class GovernanceDashboardService {
                     id: true,
                     organizationId: true,
                     schoolGradeId: true,
-                    schoolGrade: { select: { id: true, name: true, level: true } },
+                    schoolGrade: { select: { id: true, grade: { select: { id: true, name: true, level: true } } } },
                     student: { select: { gender: true } },
                 },
             }),
@@ -309,15 +309,18 @@ export class GovernanceDashboardService {
             else if (gender === "FEMALE") femaleCount++;
             else otherCount++;
 
-            if (e.schoolGrade) {
-                const g = gradeMap.get(e.schoolGrade.id) || {
-                    gradeId: e.schoolGrade.id,
-                    gradeName: e.schoolGrade.name,
-                    level: e.schoolGrade.level,
+            if (e.schoolGrade?.grade) {
+                const gradeId = e.schoolGrade.grade.id || e.schoolGrade.id;
+                const gradeName = e.schoolGrade.grade.name || "Unknown Grade";
+                const gradeLevel = e.schoolGrade.grade.level ?? 0;
+                const g = gradeMap.get(gradeId) || {
+                    gradeId,
+                    gradeName,
+                    level: gradeLevel,
                     count: 0,
                 };
                 g.count++;
-                gradeMap.set(e.schoolGrade.id, g);
+                gradeMap.set(gradeId, g);
             }
         }
 
