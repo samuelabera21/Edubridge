@@ -1284,31 +1284,19 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
                                             )}
                                         </div>
 
-                                        {/* School Settings Group */}
+                                        {/* School Settings */}
                                         <div className="pt-1">
-                                            <button 
-                                                onClick={() => toggleMenu("schoolSettings")}
-                                                className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-medium text-slate-300 hover:bg-[#081e48] hover:text-white transition-all group cursor-pointer"
+                                            <Link 
+                                                href="/dashboard/school-settings"
+                                                className={`w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-xs font-medium transition-all ${
+                                                    pathname.startsWith("/dashboard/school-settings")
+                                                        ? "text-[#f59e0b] font-bold bg-[#0c2454]"
+                                                        : "text-slate-300 hover:bg-[#081e48] hover:text-white"
+                                                }`}
                                             >
-                                                <div className="flex items-center space-x-3">
-                                                    <Settings className="w-4 h-4 text-amber-400" />
-                                                    <span>School Settings</span>
-                                                </div>
-                                                {openMenus.schoolSettings ? 
-                                                    <ChevronDown className="w-3.5 h-3.5 text-slate-400 group-hover:text-white" /> : 
-                                                    <ChevronRight className="w-3.5 h-3.5 text-slate-500 group-hover:text-slate-300" />
-                                                }
-                                            </button>
-                                            {openMenus.schoolSettings && (
-                                                <div className="pl-8 pr-2 py-1.5 space-y-1 bg-[#020e24]/60 rounded-xl my-1 border-l border-slate-700/50">
-                                                    <Link href="/dashboard/school-settings/school-configuration" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/school-settings/school-configuration" ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>1. School Config</Link>
-                                                    <Link href="/dashboard/school-settings/academic-configuration" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/school-settings/academic-configuration" ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>2. Academic Config</Link>
-                                                    <Link href="/dashboard/school-settings/notification-settings" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/school-settings/notification-settings" ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>3. Notification Rules</Link>
-                                                    <Link href="/dashboard/school-settings/integrations" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/school-settings/integrations" ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>4. System Integrations</Link>
-                                                    <Link href="/dashboard/school-settings/audit-activity" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/school-settings/audit-activity" ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>5. Audit Activity Log</Link>
-                                                    <Link href="/dashboard/school-settings/data-management" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/school-settings/data-management" ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>6. Data Management</Link>
-                                                </div>
-                                            )}
+                                                <Settings className="w-4 h-4 text-amber-400" />
+                                                <span>School Settings</span>
+                                            </Link>
                                         </div>
 
                                         {/* Operations Group */}

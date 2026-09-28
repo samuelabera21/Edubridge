@@ -4,71 +4,76 @@ import { SchoolSettingsService } from "./school-settings.service.js";
 export const getSettings = async (req: Request, res: Response) => {
     try {
         const organizationId = (req as any).accessScope?.id;
-        if (!organizationId) return res.status(403).json({ error: "Missing school scope" });
+        if (!organizationId) {
+            return res.status(403).json({ error: "Missing school scope" });
+        }
 
-        const { category } = req.query;
-        const items = await SchoolSettingsService.getSettings(organizationId, category as string);
-        return res.json(items);
+        const settings = await SchoolSettingsService.getSettings(organizationId);
+        return res.json(settings);
     } catch (err: any) {
-        return res.status(500).json({ error: err.message || "Failed to fetch school settings" });
+        return res.status(500).json({ error: err.message || "Failed to fetch school operational settings" });
     }
 };
 
-export const setSetting = async (req: Request, res: Response) => {
+export const updateSettings = async (req: Request, res: Response) => {
     try {
         const organizationId = (req as any).accessScope?.id;
-        if (!organizationId) return res.status(403).json({ error: "Missing school scope" });
-
-        const { key, value, category } = req.body;
-        if (!key || value === undefined) {
-            return res.status(400).json({ error: "key and value are required" });
+        const userId = req.user?.id;
+        if (!organizationId) {
+            return res.status(403).json({ error: "Missing school scope" });
         }
 
-        const item = await SchoolSettingsService.setSetting(organizationId, key, value, category);
-        
-        // Log action in AuditLog
-        await SchoolSettingsService.createAuditLog(organizationId, {
-            userId: (req as any).user?.id,
-            action: "UPDATE_SETTING",
-            entityType: "SCHOOL_SETTING",
-            details: `Updated setting ${key} to ${value}`
-        });
+        const { category, data, general, attendance, notifications } = req.body;
 
-        return res.json(item);
+        let targetCategory: "general" | "attendance" | "notifications" | "all" = "all";
+        let targetData: any = {};
+
+        if (category) {
+            targetCategory = category;
+            targetData = data !== undefined ? data : req.body;
+        } else if (general) {
+            targetCategory = "general";
+            targetData = general;
+        } else if (attendance) {
+            targetCategory = "attendance";
+            targetData = attendance;
+        } else if (notifications) {
+            targetCategory = "notifications";
+            targetData = notifications;
+        } else {
+            targetCategory = "all";
+            targetData = req.body;
+        }
+
+        const updated = await SchoolSettingsService.updateSettings(
+            organizationId,
+            targetCategory,
+            targetData,
+            userId
+        );
+
+        return res.json({
+            message: "School operational settings updated successfully",
+            settings: updated
+        });
     } catch (err: any) {
-        return res.status(400).json({ error: err.message || "Failed to update school setting" });
+        return res.status(400).json({ error: err.message || "Failed to update school operational settings" });
     }
 };
 
 export const getAuditLogs = async (req: Request, res: Response) => {
     try {
         const organizationId = (req as any).accessScope?.id;
-        if (!organizationId) return res.status(403).json({ error: "Missing school scope" });
+        if (!organizationId) {
+            return res.status(403).json({ error: "Missing school scope" });
+        }
 
-        const logs = await SchoolSettingsService.getAuditLogs(organizationId);
-        return res.json(logs);
+        const page = parseInt(req.query.page as string, 10) || 1;
+        const limit = parseInt(req.query.limit as string, 10) || 20;
+
+        const result = await SchoolSettingsService.getAuditLogs(organizationId, page, limit);
+        return res.json(result);
     } catch (err: any) {
         return res.status(500).json({ error: err.message || "Failed to fetch audit activity logs" });
-    }
-};
-
-export const exportSchoolData = async (req: Request, res: Response) => {
-    try {
-        const organizationId = (req as any).accessScope?.id;
-        if (!organizationId) return res.status(403).json({ error: "Missing school scope" });
-
-        const exportSummary = await SchoolSettingsService.exportSchoolData(organizationId);
-        
-        // Log action in AuditLog
-        await SchoolSettingsService.createAuditLog(organizationId, {
-            userId: (req as any).user?.id,
-            action: "EXPORT_DATA",
-            entityType: "DATABASE_BACKUP",
-            details: "Generated full institutional backup package"
-        });
-
-        return res.json(exportSummary);
-    } catch (err: any) {
-        return res.status(500).json({ error: err.message || "Failed to export school data" });
     }
 };
