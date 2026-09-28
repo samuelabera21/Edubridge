@@ -12,16 +12,14 @@ import {
     Save, 
     CheckCircle2, 
     AlertCircle, 
-    Calendar,
     RefreshCw,
     User,
     ArrowLeft,
     ArrowRight
 } from "lucide-react";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/Card";
+import { Card, CardContent } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { LoadingState } from "@/components/ui/LoadingState";
-import { ErrorState } from "@/components/ui/ErrorState";
 
 const ALL_INSTRUCTIONAL_DAYS = [
     { key: "MONDAY", label: "Monday" },
@@ -143,7 +141,7 @@ export default function SchoolSettingsPage() {
             let payload: any = {};
             if (category === "general") {
                 if (generalSettings.schoolDayStartTime >= generalSettings.schoolDayEndTime) {
-                    setError("School day start time must be strictly earlier than end time.");
+                    setError("Start time must be before end time.");
                     setSaving(false);
                     return;
                 }
@@ -153,7 +151,7 @@ export default function SchoolSettingsPage() {
                     return;
                 }
                 if (generalSettings.instructionalDays.length === 0) {
-                    setError("At least one instructional day must be selected.");
+                    setError("Select at least one instructional day.");
                     setSaving(false);
                     return;
                 }
@@ -192,11 +190,11 @@ export default function SchoolSettingsPage() {
                 if (resData.settings.notifications) setNotificationSettings(resData.settings.notifications);
             }
 
-            setSuccessMessage(`${category.charAt(0).toUpperCase() + category.slice(1)} settings updated successfully.`);
-            setTimeout(() => setSuccessMessage(null), 4000);
+            setSuccessMessage("Settings saved successfully.");
+            setTimeout(() => setSuccessMessage(null), 3000);
         } catch (err: any) {
             console.error("Save error:", err);
-            setError(err.message || "Failed to update school settings.");
+            setError(err.message || "Failed to save settings.");
         } finally {
             setSaving(false);
         }
@@ -212,123 +210,112 @@ export default function SchoolSettingsPage() {
         });
     };
 
-    if (loading) return <LoadingState message="Loading school operational settings..." />;
+    if (loading) return <LoadingState message="Loading settings..." />;
 
     return (
-        <div className="space-y-6 text-black">
+        <div className="space-y-5 text-slate-800">
             {/* Header */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-gray-200 pb-4">
-                <div>
-                    <h1 className="text-2xl font-bold text-gray-900 flex items-center space-x-2.5">
-                        <Settings className="w-7 h-7 text-[#006b3f]" />
-                        <span>School Operational Settings</span>
-                    </h1>
-                    <p className="text-sm text-gray-500 mt-1">
-                        Configure institutional schedules, attendance alert rules, and operational preferences.
-                    </p>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 pb-3">
+                <div className="flex items-center space-x-2.5">
+                    <Settings className="w-6 h-6 text-[#4085b3]" />
+                    <div>
+                        <h1 className="text-xl font-bold text-slate-900">School Settings</h1>
+                        <p className="text-xs text-slate-500">Operational configuration, bell schedules, and audit log.</p>
+                    </div>
                 </div>
             </div>
 
             {/* Error / Success Alerts */}
             {error && (
-                <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex items-center gap-3 text-sm text-red-800">
-                    <AlertCircle className="w-5 h-5 text-red-600 shrink-0" />
-                    <span className="font-medium">{error}</span>
+                <div className="bg-red-50 border border-red-200 rounded-lg p-3 flex items-center gap-2.5 text-xs text-red-800 font-medium">
+                    <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />
+                    <span>{error}</span>
                 </div>
             )}
 
             {successMessage && (
-                <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 flex items-center gap-3 text-sm text-emerald-800">
-                    <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
-                    <span className="font-medium">{successMessage}</span>
+                <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-3 flex items-center gap-2.5 text-xs text-emerald-800 font-medium">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                    <span>{successMessage}</span>
                 </div>
             )}
 
             {/* Tab Navigation */}
-            <div className="flex border-b border-gray-200 space-x-2 overflow-x-auto">
+            <div className="flex border-b border-slate-200 space-x-1 overflow-x-auto text-xs">
                 <button
                     onClick={() => { setActiveTab("general"); setError(null); }}
-                    className={`flex items-center space-x-2 py-3 px-4 text-sm font-semibold border-b-2 transition-colors whitespace-nowrap ${
+                    className={`flex items-center space-x-2 py-2.5 px-4 font-semibold border-b-2 transition-colors whitespace-nowrap ${
                         activeTab === "general"
-                            ? "border-[#006b3f] text-[#006b3f]"
-                            : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                            ? "border-[#4085b3] text-[#4085b3]"
+                            : "border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300"
                     }`}
                 >
-                    <Clock className="w-4 h-4" />
+                    <Clock className="w-3.5 h-3.5" />
                     <span>General Operations</span>
                 </button>
 
                 <button
                     onClick={() => { setActiveTab("attendance"); setError(null); }}
-                    className={`flex items-center space-x-2 py-3 px-4 text-sm font-semibold border-b-2 transition-colors whitespace-nowrap ${
+                    className={`flex items-center space-x-2 py-2.5 px-4 font-semibold border-b-2 transition-colors whitespace-nowrap ${
                         activeTab === "attendance"
-                            ? "border-[#006b3f] text-[#006b3f]"
-                            : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                            ? "border-[#4085b3] text-[#4085b3]"
+                            : "border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300"
                     }`}
                 >
-                    <ShieldCheck className="w-4 h-4" />
+                    <ShieldCheck className="w-3.5 h-3.5" />
                     <span>Attendance Rules</span>
                 </button>
 
                 <button
                     onClick={() => { setActiveTab("notifications"); setError(null); }}
-                    className={`flex items-center space-x-2 py-3 px-4 text-sm font-semibold border-b-2 transition-colors whitespace-nowrap ${
+                    className={`flex items-center space-x-2 py-2.5 px-4 font-semibold border-b-2 transition-colors whitespace-nowrap ${
                         activeTab === "notifications"
-                            ? "border-[#006b3f] text-[#006b3f]"
-                            : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                            ? "border-[#4085b3] text-[#4085b3]"
+                            : "border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300"
                     }`}
                 >
-                    <Bell className="w-4 h-4" />
+                    <Bell className="w-3.5 h-3.5" />
                     <span>Notification Preferences</span>
                 </button>
 
                 <button
                     onClick={() => { setActiveTab("audit"); setError(null); }}
-                    className={`flex items-center space-x-2 py-3 px-4 text-sm font-semibold border-b-2 transition-colors whitespace-nowrap ${
+                    className={`flex items-center space-x-2 py-2.5 px-4 font-semibold border-b-2 transition-colors whitespace-nowrap ${
                         activeTab === "audit"
-                            ? "border-[#006b3f] text-[#006b3f]"
-                            : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                            ? "border-[#4085b3] text-[#4085b3]"
+                            : "border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300"
                     }`}
                 >
-                    <History className="w-4 h-4" />
+                    <History className="w-3.5 h-3.5" />
                     <span>Audit Activity</span>
                 </button>
             </div>
 
             {/* TAB 1: GENERAL OPERATIONS */}
             {activeTab === "general" && (
-                <div className="space-y-6">
-                    <Card className="shadow-sm">
-                        <CardHeader className="py-4 border-b border-gray-100">
-                            <CardTitle className="text-base font-bold text-gray-900 flex items-center">
-                                <Clock className="w-5 h-5 mr-2 text-[#006b3f]" />
-                                Instructional Schedule & Language
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent className="py-6 space-y-5">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                {/* Primary Language */}
+                <div className="space-y-4">
+                    <Card className="shadow-sm border border-slate-200">
+                        <CardContent className="p-5 space-y-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
-                                    <label className="block text-xs font-bold text-gray-700 uppercase mb-1.5">
-                                        Primary Language of Instruction
+                                    <label className="block text-xs font-semibold text-slate-700 mb-1">
+                                        Primary Language
                                     </label>
                                     <select
                                         value={generalSettings.primaryLanguage}
                                         onChange={(e) => setGeneralSettings({ ...generalSettings, primaryLanguage: e.target.value })}
                                         disabled={!hasUpdatePermission}
-                                        className="w-full border border-gray-300 rounded-lg p-2.5 text-sm bg-white focus:ring-2 focus:ring-[#006b3f] focus:outline-none"
+                                        className="w-full border border-slate-200 rounded-lg p-2 text-xs bg-white focus:ring-2 focus:ring-[#4085b3] focus:outline-none"
                                     >
                                         {LANGUAGE_OPTIONS.map((lang) => (
                                             <option key={lang} value={lang}>{lang}</option>
                                         ))}
                                     </select>
-                                    <p className="text-xs text-gray-500 mt-1">Default medium of instruction across academic sections.</p>
                                 </div>
 
-                                {/* Period Duration */}
                                 <div>
-                                    <label className="block text-xs font-bold text-gray-700 uppercase mb-1.5">
-                                        Standard Period Duration (Minutes)
+                                    <label className="block text-xs font-semibold text-slate-700 mb-1">
+                                        Period Duration (Minutes)
                                     </label>
                                     <input
                                         type="number"
@@ -337,49 +324,43 @@ export default function SchoolSettingsPage() {
                                         value={generalSettings.periodDurationMinutes}
                                         onChange={(e) => setGeneralSettings({ ...generalSettings, periodDurationMinutes: parseInt(e.target.value, 10) || 45 })}
                                         disabled={!hasUpdatePermission}
-                                        className="w-full border border-gray-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-[#006b3f] focus:outline-none"
+                                        className="w-full border border-slate-200 rounded-lg p-2 text-xs focus:ring-2 focus:ring-[#4085b3] focus:outline-none"
                                     />
-                                    <p className="text-xs text-gray-500 mt-1">Standard lesson duration for class scheduling.</p>
                                 </div>
 
-                                {/* Start Time */}
                                 <div>
-                                    <label className="block text-xs font-bold text-gray-700 uppercase mb-1.5">
-                                        School Day Start Time (HH:MM)
+                                    <label className="block text-xs font-semibold text-slate-700 mb-1">
+                                        School Day Start Time
                                     </label>
                                     <input
                                         type="time"
                                         value={generalSettings.schoolDayStartTime}
                                         onChange={(e) => setGeneralSettings({ ...generalSettings, schoolDayStartTime: e.target.value })}
                                         disabled={!hasUpdatePermission}
-                                        className="w-full border border-gray-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-[#006b3f] focus:outline-none"
+                                        className="w-full border border-slate-200 rounded-lg p-2 text-xs focus:ring-2 focus:ring-[#4085b3] focus:outline-none"
                                     />
-                                    <p className="text-xs text-gray-500 mt-1">Official morning bell schedule start time.</p>
                                 </div>
 
-                                {/* End Time */}
                                 <div>
-                                    <label className="block text-xs font-bold text-gray-700 uppercase mb-1.5">
-                                        School Day End Time (HH:MM)
+                                    <label className="block text-xs font-semibold text-slate-700 mb-1">
+                                        School Day End Time
                                     </label>
                                     <input
                                         type="time"
                                         value={generalSettings.schoolDayEndTime}
                                         onChange={(e) => setGeneralSettings({ ...generalSettings, schoolDayEndTime: e.target.value })}
                                         disabled={!hasUpdatePermission}
-                                        className="w-full border border-gray-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-[#006b3f] focus:outline-none"
+                                        className="w-full border border-slate-200 rounded-lg p-2 text-xs focus:ring-2 focus:ring-[#4085b3] focus:outline-none"
                                     />
-                                    <p className="text-xs text-gray-500 mt-1">Official dismissal time for standard school days.</p>
                                 </div>
                             </div>
 
                             {/* Instructional Days */}
-                            <div className="pt-2 border-t border-gray-100">
-                                <label className="block text-xs font-bold text-gray-700 uppercase mb-2 flex items-center">
-                                    <Calendar className="w-4 h-4 mr-1 text-[#006b3f]" />
-                                    Active Instructional Days
+                            <div className="pt-3 border-t border-slate-100">
+                                <label className="block text-xs font-semibold text-slate-700 mb-2">
+                                    Instructional Days
                                 </label>
-                                <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-2.5">
+                                <div className="flex flex-wrap gap-2">
                                     {ALL_INSTRUCTIONAL_DAYS.map((day) => {
                                         const isSelected = generalSettings.instructionalDays.includes(day.key);
                                         return (
@@ -388,10 +369,10 @@ export default function SchoolSettingsPage() {
                                                 type="button"
                                                 onClick={() => toggleInstructionalDay(day.key)}
                                                 disabled={!hasUpdatePermission}
-                                                className={`py-2 px-3 rounded-lg text-xs font-semibold border transition-all text-center ${
+                                                className={`py-1.5 px-3.5 rounded-lg text-xs font-medium border transition-all ${
                                                     isSelected
-                                                        ? "bg-[#006b3f] text-white border-[#006b3f] shadow-sm"
-                                                        : "bg-gray-50 text-gray-600 border-gray-200 hover:bg-gray-100"
+                                                        ? "bg-[#4085b3] text-white border-[#4085b3] shadow-sm hover:bg-[#32698e]"
+                                                        : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
                                                 }`}
                                             >
                                                 {day.label}
@@ -399,7 +380,6 @@ export default function SchoolSettingsPage() {
                                         );
                                     })}
                                 </div>
-                                <p className="text-xs text-gray-500 mt-2">Selected days define the active timetable cycle for the institution.</p>
                             </div>
                         </CardContent>
                     </Card>
@@ -409,8 +389,8 @@ export default function SchoolSettingsPage() {
                             <Button
                                 onClick={() => handleSaveCategory("general")}
                                 isLoading={saving}
-                                leftIcon={<Save className="w-4 h-4" />}
-                                className="bg-[#006b3f] hover:bg-[#005432] text-white"
+                                leftIcon={<Save className="w-3.5 h-3.5" />}
+                                className="bg-[#4085b3] hover:bg-[#32698e] text-white"
                             >
                                 Save General Operations
                             </Button>
@@ -421,18 +401,11 @@ export default function SchoolSettingsPage() {
 
             {/* TAB 2: ATTENDANCE RULES */}
             {activeTab === "attendance" && (
-                <div className="space-y-6">
-                    <Card className="shadow-sm">
-                        <CardHeader className="py-4 border-b border-gray-100">
-                            <CardTitle className="text-base font-bold text-gray-900 flex items-center">
-                                <ShieldCheck className="w-5 h-5 mr-2 text-[#006b3f]" />
-                                Attendance Policy & Absence Triggers
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent className="py-6 space-y-5">
-                            {/* Absence Threshold */}
+                <div className="space-y-4">
+                    <Card className="shadow-sm border border-slate-200">
+                        <CardContent className="p-5 space-y-4">
                             <div>
-                                <label className="block text-xs font-bold text-gray-700 uppercase mb-1.5">
+                                <label className="block text-xs font-semibold text-slate-700 mb-1">
                                     Consecutive Unexcused Absence Warning Threshold (Days)
                                 </label>
                                 <div className="max-w-xs">
@@ -446,21 +419,15 @@ export default function SchoolSettingsPage() {
                                             consecutiveUnexcusedAbsenceThreshold: parseInt(e.target.value, 10) || 3
                                         })}
                                         disabled={!hasUpdatePermission}
-                                        className="w-full border border-gray-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-[#006b3f] focus:outline-none"
+                                        className="w-full border border-slate-200 rounded-lg p-2 text-xs focus:ring-2 focus:ring-[#4085b3] focus:outline-none"
                                     />
                                 </div>
-                                <p className="text-xs text-gray-500 mt-1">
-                                    Number of consecutive unexcused absences before a student is flagged for administrative intervention.
-                                </p>
                             </div>
 
-                            {/* Absence Alert Toggle */}
-                            <div className="pt-3 border-t border-gray-100 flex items-start justify-between gap-4">
+                            <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
                                 <div>
-                                    <h4 className="text-sm font-semibold text-gray-900">Automated Truancy Risk Flagging</h4>
-                                    <p className="text-xs text-gray-500 mt-0.5">
-                                        Highlight students exceeding the unexcused absence threshold on the Attendance Oversight dashboard.
-                                    </p>
+                                    <div className="text-xs font-semibold text-slate-900">Automated Truancy Risk Flagging</div>
+                                    <div className="text-[11px] text-slate-500">Highlight students exceeding the unexcused absence threshold</div>
                                 </div>
                                 <label className="relative inline-flex items-center cursor-pointer shrink-0">
                                     <input
@@ -473,17 +440,14 @@ export default function SchoolSettingsPage() {
                                         disabled={!hasUpdatePermission}
                                         className="sr-only peer"
                                     />
-                                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#006b3f]"></div>
+                                    <div className="w-10 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[#4085b3]"></div>
                                 </label>
                             </div>
 
-                            {/* Attendance Notification Toggle */}
-                            <div className="pt-3 border-t border-gray-100 flex items-start justify-between gap-4">
+                            <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
                                 <div>
-                                    <h4 className="text-sm font-semibold text-gray-900">Attendance Roll-Call Summaries</h4>
-                                    <p className="text-xs text-gray-500 mt-0.5">
-                                        Enable daily section attendance completion tracking and summary notifications for school leadership.
-                                    </p>
+                                    <div className="text-xs font-semibold text-slate-900">Roll-Call Completion Summaries</div>
+                                    <div className="text-[11px] text-slate-500">Track daily section attendance completion for administration</div>
                                 </div>
                                 <label className="relative inline-flex items-center cursor-pointer shrink-0">
                                     <input
@@ -496,7 +460,7 @@ export default function SchoolSettingsPage() {
                                         disabled={!hasUpdatePermission}
                                         className="sr-only peer"
                                     />
-                                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#006b3f]"></div>
+                                    <div className="w-10 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[#4085b3]"></div>
                                 </label>
                             </div>
                         </CardContent>
@@ -507,8 +471,8 @@ export default function SchoolSettingsPage() {
                             <Button
                                 onClick={() => handleSaveCategory("attendance")}
                                 isLoading={saving}
-                                leftIcon={<Save className="w-4 h-4" />}
-                                className="bg-[#006b3f] hover:bg-[#005432] text-white"
+                                leftIcon={<Save className="w-3.5 h-3.5" />}
+                                className="bg-[#4085b3] hover:bg-[#32698e] text-white"
                             >
                                 Save Attendance Rules
                             </Button>
@@ -519,22 +483,13 @@ export default function SchoolSettingsPage() {
 
             {/* TAB 3: NOTIFICATION PREFERENCES */}
             {activeTab === "notifications" && (
-                <div className="space-y-6">
-                    <Card className="shadow-sm">
-                        <CardHeader className="py-4 border-b border-gray-100">
-                            <CardTitle className="text-base font-bold text-gray-900 flex items-center">
-                                <Bell className="w-5 h-5 mr-2 text-[#006b3f]" />
-                                Operational Notification Preferences
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent className="py-6 space-y-5">
-                            {/* Emergency Broadcast Toggle */}
-                            <div className="flex items-start justify-between gap-4">
+                <div className="space-y-4">
+                    <Card className="shadow-sm border border-slate-200">
+                        <CardContent className="p-5 space-y-4">
+                            <div className="flex items-center justify-between">
                                 <div>
-                                    <h4 className="text-sm font-semibold text-gray-900">Emergency & Critical Notices</h4>
-                                    <p className="text-xs text-gray-500 mt-0.5">
-                                        Allow emergency announcements and critical directives to be published and highlighted across all portals.
-                                    </p>
+                                    <div className="text-xs font-semibold text-slate-900">Emergency Broadcasts</div>
+                                    <div className="text-[11px] text-slate-500">Publish urgent notices across staff and parent dashboards</div>
                                 </div>
                                 <label className="relative inline-flex items-center cursor-pointer shrink-0">
                                     <input
@@ -547,17 +502,14 @@ export default function SchoolSettingsPage() {
                                         disabled={!hasUpdatePermission}
                                         className="sr-only peer"
                                     />
-                                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#006b3f]"></div>
+                                    <div className="w-10 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[#4085b3]"></div>
                                 </label>
                             </div>
 
-                            {/* Daily Summary Toggle */}
-                            <div className="pt-3 border-t border-gray-100 flex items-start justify-between gap-4">
+                            <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
                                 <div>
-                                    <h4 className="text-sm font-semibold text-gray-900">Daily Executive Summary</h4>
-                                    <p className="text-xs text-gray-500 mt-0.5">
-                                        Generate an end-of-day administrative summary covering attendance rates and active incidents.
-                                    </p>
+                                    <div className="text-xs font-semibold text-slate-900">Daily Summary Report</div>
+                                    <div className="text-[11px] text-slate-500">Generate end-of-day operational summary</div>
                                 </div>
                                 <label className="relative inline-flex items-center cursor-pointer shrink-0">
                                     <input
@@ -570,7 +522,7 @@ export default function SchoolSettingsPage() {
                                         disabled={!hasUpdatePermission}
                                         className="sr-only peer"
                                     />
-                                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#006b3f]"></div>
+                                    <div className="w-10 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[#4085b3]"></div>
                                 </label>
                             </div>
                         </CardContent>
@@ -581,8 +533,8 @@ export default function SchoolSettingsPage() {
                             <Button
                                 onClick={() => handleSaveCategory("notifications")}
                                 isLoading={saving}
-                                leftIcon={<Save className="w-4 h-4" />}
-                                className="bg-[#006b3f] hover:bg-[#005432] text-white"
+                                leftIcon={<Save className="w-3.5 h-3.5" />}
+                                className="bg-[#4085b3] hover:bg-[#32698e] text-white"
                             >
                                 Save Notification Preferences
                             </Button>
@@ -594,65 +546,61 @@ export default function SchoolSettingsPage() {
             {/* TAB 4: AUDIT ACTIVITY */}
             {activeTab === "audit" && (
                 <div className="space-y-4">
-                    <Card className="shadow-sm">
-                        <CardHeader className="py-4 border-b border-gray-100 flex flex-row items-center justify-between">
-                            <CardTitle className="text-base font-bold text-gray-900 flex items-center">
-                                <History className="w-5 h-5 mr-2 text-[#006b3f]" />
-                                Administrative Audit Activity Trail ({auditTotal} events)
-                            </CardTitle>
+                    <Card className="shadow-sm border border-slate-200">
+                        <div className="p-4 border-b border-slate-100 flex items-center justify-between">
+                            <span className="text-xs font-semibold text-slate-900">
+                                Audit Activity ({auditTotal} events)
+                            </span>
                             <Button
                                 variant="outline"
                                 size="sm"
                                 onClick={() => loadAuditLogs(auditPage)}
                                 isLoading={auditLoading}
-                                leftIcon={<RefreshCw className="w-3.5 h-3.5" />}
+                                leftIcon={<RefreshCw className="w-3 h-3" />}
                             >
                                 Refresh
                             </Button>
-                        </CardHeader>
+                        </div>
 
                         <CardContent className="p-0">
                             {auditLoading ? (
-                                <div className="p-8 text-center text-sm text-gray-500">Loading audit activity logs...</div>
+                                <div className="p-6 text-center text-xs text-slate-500">Loading audit log...</div>
                             ) : auditLogs.length === 0 ? (
-                                <div className="p-12 text-center text-gray-500">
-                                    <History className="w-10 h-10 mx-auto text-emerald-300 mb-2" />
-                                    <p className="font-semibold text-gray-800">No audit activity logged yet</p>
-                                    <p className="text-xs text-gray-400 mt-1">Audit entries will automatically populate as administrative changes occur.</p>
+                                <div className="p-8 text-center text-slate-500">
+                                    <History className="w-8 h-8 mx-auto text-slate-300 mb-2" />
+                                    <p className="text-xs font-semibold text-slate-700">No audit activity logged</p>
                                 </div>
                             ) : (
                                 <div className="overflow-x-auto">
-                                    <table className="w-full text-sm text-left">
-                                        <thead className="text-xs text-gray-500 uppercase bg-gray-50 border-b border-gray-200">
+                                    <table className="w-full text-xs text-left">
+                                        <thead className="text-[11px] text-slate-500 uppercase bg-slate-50 border-b border-slate-200">
                                             <tr>
-                                                <th className="px-5 py-3 font-semibold">Action</th>
-                                                <th className="px-5 py-3 font-semibold">Resource</th>
-                                                <th className="px-5 py-3 font-semibold">Actor</th>
-                                                <th className="px-5 py-3 font-semibold">Details</th>
-                                                <th className="px-5 py-3 font-semibold">Timestamp</th>
+                                                <th className="px-4 py-2.5 font-semibold">Action</th>
+                                                <th className="px-4 py-2.5 font-semibold">Resource</th>
+                                                <th className="px-4 py-2.5 font-semibold">Actor</th>
+                                                <th className="px-4 py-2.5 font-semibold">Details</th>
+                                                <th className="px-4 py-2.5 font-semibold">Timestamp</th>
                                             </tr>
                                         </thead>
-                                        <tbody className="divide-y divide-gray-100">
+                                        <tbody className="divide-y divide-slate-100">
                                             {auditLogs.map((log) => (
-                                                <tr key={log.id} className="hover:bg-gray-50/60 transition-colors">
-                                                    <td className="px-5 py-3.5">
-                                                        <span className="inline-block px-2 py-0.5 text-xs font-mono font-bold rounded bg-emerald-100 text-emerald-800 border border-emerald-200">
-                                                            {log.action}
-                                                        </span>
+                                                <tr key={log.id} className="hover:bg-slate-50/70 transition-colors">
+                                                    <td className="px-4 py-2.5 font-mono font-semibold text-[11px] text-[#4085b3]">
+                                                        {log.action}
                                                     </td>
-                                                    <td className="px-5 py-3.5 text-xs font-semibold text-gray-700">
+                                                    <td className="px-4 py-2.5 text-slate-700 font-medium">
                                                         {log.resource}
                                                     </td>
-                                                    <td className="px-5 py-3.5 text-xs text-gray-600">
+                                                    <td className="px-4 py-2.5 text-slate-600">
                                                         <div className="flex items-center gap-1.5">
-                                                            <User className="w-3.5 h-3.5 text-gray-400" />
+                                                            <User className="w-3 h-3 text-slate-400" />
                                                             <span>{log.user?.name || log.user?.email || "System"}</span>
                                                         </div>
                                                     </td>
-                                                    <td className="px-5 py-3.5 text-xs text-gray-600 max-w-xs truncate">
+                                                    <td className="px-4 py-2.5 text-slate-500 max-w-xs truncate font-mono text-[11px]">
                                                         {log.newValue ? JSON.stringify(log.newValue) : "—"}
                                                     </td>
-                                                    <td className="px-5 py-3.5 text-xs text-gray-500 whitespace-nowrap">
+                                                    <td className="px-4 py-2.5 text-slate-500 whitespace-nowrap">
                                                         {new Date(log.createdAt).toLocaleString()}
                                                     </td>
                                                 </tr>
@@ -662,10 +610,10 @@ export default function SchoolSettingsPage() {
                                 </div>
                             )}
 
-                            {/* Pagination Controls */}
+                            {/* Pagination */}
                             {auditTotalPages > 1 && (
-                                <div className="p-4 border-t border-gray-100 flex items-center justify-between">
-                                    <span className="text-xs text-gray-500">
+                                <div className="p-3 border-t border-slate-100 flex items-center justify-between text-xs">
+                                    <span className="text-slate-500">
                                         Page {auditPage} of {auditTotalPages}
                                     </span>
                                     <div className="flex items-center space-x-2">
@@ -674,7 +622,7 @@ export default function SchoolSettingsPage() {
                                             size="sm"
                                             onClick={() => setAuditPage(prev => Math.max(1, prev - 1))}
                                             disabled={auditPage <= 1 || auditLoading}
-                                            leftIcon={<ArrowLeft className="w-3.5 h-3.5" />}
+                                            leftIcon={<ArrowLeft className="w-3 h-3" />}
                                         >
                                             Previous
                                         </Button>
@@ -686,7 +634,7 @@ export default function SchoolSettingsPage() {
                                         >
                                             <span className="flex items-center gap-1">
                                                 Next
-                                                <ArrowRight className="w-3.5 h-3.5" />
+                                                <ArrowRight className="w-3 h-3" />
                                             </span>
                                         </Button>
                                     </div>
