@@ -80,10 +80,12 @@ export class GovernanceDashboardService {
      * Primary governance aggregation engine.
      * Computes hierarchical metrics for the authenticated user (or authorized target drill-down)
      * strictly across descendant schools in the active academic year context.
+     * Validates administrative tier boundaries (FEDERAL, REGION, ZONE, WOREDA).
      */
     static async getGovernanceDashboard(
         userId: string,
-        targetOrgId?: string
+        targetOrgId?: string,
+        requiredTier?: OrganizationUnitType
     ): Promise<GovernanceDashboardData> {
         if (!userId) {
             throw new Error("User ID is required to access governance dashboard");
@@ -92,10 +94,14 @@ export class GovernanceDashboardService {
         // 1. Resolve caller's authorized scope via H2
         const userScope = await HierarchyScopeService.getAccessibleOrganizationScope(userId);
 
+        if (userScope.currentOrganizationType === "SCHOOL") {
+            throw new Error("Forbidden: School level users cannot access administrative hierarchy dashboards. Use /dashboard instead.");
+        }
+
         // 2. Resolve Effective Unit & Lineage
         let effectiveOrgId = userScope.currentOrganizationId;
         let effectiveOrgName = userScope.currentOrganization.name;
-        let effectiveOrgType = userScope.currentOrganizationType;
+        let effectiveOrgType: OrganizationUnitType = userScope.currentOrganizationType;
         let effectiveLineage = userScope.lineage;
         let isDrillDown = false;
 
@@ -118,6 +124,11 @@ export class GovernanceDashboardService {
             effectiveOrgType = targetUnit.type;
             effectiveLineage = await HierarchyScopeService.getLineage(targetOrgId);
             isDrillDown = true;
+        }
+
+        // 2.1 Enforce Administrative Tier Validation
+        if (requiredTier && effectiveOrgType !== requiredTier) {
+            throw new Error(`Forbidden: Organization tier '${effectiveOrgType}' is not authorized for ${requiredTier} dashboard`);
         }
 
         // 3. Load all hierarchy units once for in-memory child mapping & descendant resolution

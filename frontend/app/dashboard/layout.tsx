@@ -7,6 +7,7 @@ import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { fetchApi } from "../../lib/api";
 import StudentNavigation from "./student/StudentNavigation";
+import AdministrativeNavigation from "../../components/governance/AdministrativeNavigation";
 
 function TeacherBreadcrumbs({ pathname, currentTab, currentType }: { pathname: string; currentTab: string; currentType: string }) {
     if (pathname === "/dashboard/teacher") {
@@ -285,6 +286,11 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
     const roleName = primaryAccess?.role?.name || "Unassigned";
     const isTeacherRoute = (pathname === "/dashboard/teacher" || pathname.startsWith("/dashboard/teacher/")) && roleName === "TEACHER";
     const isStudentRoute = (pathname === "/dashboard/student" || pathname.startsWith("/dashboard/student/")) || roleName === "STUDENT";
+    const isAdministrativeRoute = 
+        pathname.startsWith("/dashboard/federal") ||
+        pathname.startsWith("/dashboard/region") ||
+        pathname.startsWith("/dashboard/zone") ||
+        pathname.startsWith("/dashboard/woreda");
 
     useEffect(() => {
         if (isTeacherRoute && authData) {
@@ -395,6 +401,11 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
         // 6. Vice Principal routes
         if (pathname.startsWith("/dashboard/vice-principal")) {
             return roleName === "VICE_PRINCIPAL" || isAdmin;
+        }
+
+        // 7. Administrative hierarchy routes (FEDERAL, REGION, ZONE, WOREDA)
+        if (isAdministrativeRoute) {
+            return isAdmin;
         }
 
         return true;
@@ -904,6 +915,11 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
                     </aside>
                 ) : isStudentRoute ? (
                     <StudentNavigation />
+                ) : isAdministrativeRoute ? (
+                    <AdministrativeNavigation 
+                        sidebarCollapsed={sidebarCollapsed}
+                        onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
+                    />
                 ) : (
                     <aside
                         className={`bg-[#184973] border-r border-[#265e8e] flex flex-col hidden md:flex overflow-y-auto scrollbar-hide text-blue-100 font-sans shadow-lg shrink-0 transition-all duration-300 ease-in-out ${sidebarCollapsed ? "w-16" : "w-64"}`}
@@ -941,18 +957,6 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
                                             <div className={`flex items-center ${sidebarCollapsed ? "" : "space-x-3"}`}>
                                                 <LayoutDashboard className={`w-4 h-4 shrink-0 transition-transform group-hover:scale-105 ${pathname === "/dashboard" || pathname === "/dashboard/admin" ? "text-amber-300" : "text-amber-300/90"}`} />
                                                 {!sidebarCollapsed && <span>Dashboard</span>}
-                                            </div>
-                                        </Link>
-
-                                        {/* Governance Overview */}
-                                        <Link 
-                                            href="/dashboard/governance" 
-                                            title="Governance Overview"
-                                            className={`flex items-center ${sidebarCollapsed ? "justify-center px-2" : "justify-between px-3.5"} py-2 rounded-xl text-xs font-medium transition-all duration-150 cursor-pointer ${pathname === "/dashboard/governance" ? "bg-[#0f2f4c] text-amber-300 font-semibold border-l-2 border-amber-400 shadow-xs" : "text-blue-50/90 hover:bg-[#225785] hover:text-white hover:translate-x-0.5"}`}
-                                        >
-                                            <div className={`flex items-center ${sidebarCollapsed ? "" : "space-x-3"}`}>
-                                                <Landmark className={`w-4 h-4 shrink-0 transition-transform group-hover:scale-105 ${pathname === "/dashboard/governance" ? "text-amber-300" : "text-amber-300/90"}`} />
-                                                {!sidebarCollapsed && <span>Governance Overview</span>}
                                             </div>
                                         </Link>
 
