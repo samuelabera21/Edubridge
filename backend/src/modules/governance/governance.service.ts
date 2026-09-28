@@ -98,6 +98,14 @@ export class GovernanceDashboardService {
             throw new Error("Forbidden: School level users cannot access administrative hierarchy dashboards. Use /dashboard instead.");
         }
 
+        const TIER_ORDER: Record<OrganizationUnitType, number> = {
+            FEDERAL: 4,
+            REGION: 3,
+            ZONE: 2,
+            WOREDA: 1,
+            SCHOOL: 0,
+        };
+
         // 2. Resolve Effective Unit & Lineage
         let effectiveOrgId = userScope.currentOrganizationId;
         let effectiveOrgName = userScope.currentOrganization.name;
@@ -119,14 +127,46 @@ export class GovernanceDashboardService {
                 throw new Error(`Target organization unit '${targetOrgId}' not found`);
             }
 
+            if (requiredTier && targetUnit.type !== requiredTier) {
+                throw new Error(`Forbidden: Target organization tier '${targetUnit.type}' is not authorized for ${requiredTier} dashboard`);
+            }
+
             effectiveOrgId = targetUnit.id;
             effectiveOrgName = targetUnit.name;
             effectiveOrgType = targetUnit.type;
             effectiveLineage = await HierarchyScopeService.getLineage(targetOrgId);
             isDrillDown = true;
+        } else if (requiredTier) {
+            // No specific targetOrgId provided: validate tier compatibility
+            const callerTierRank = TIER_ORDER[userScope.currentOrganizationType] ?? 0;
+            const requiredTierRank = TIER_ORDER[requiredTier] ?? 0;
+
+            if (callerTierRank < requiredTierRank) {
+                // Subordinate tier trying to access superior dashboard (e.g. Region trying to access Federal)
+                throw new Error(`Forbidden: Organization tier '${userScope.currentOrganizationType}' is not authorized for ${requiredTier} dashboard`);
+            } else if (callerTierRank > requiredTierRank) {
+                // Superior tier accessing subordinate dashboard directly without targetOrgId (e.g. Federal accessing Region/Zone/Woreda)
+                // Find first descendant organization matching requiredTier within authorized scope
+                const descendantOfTier = await prisma.organizationUnit.findFirst({
+                    where: {
+                        id: { in: userScope.accessibleOrganizationIds },
+                        type: requiredTier,
+                    },
+                    select: { id: true, name: true, type: true, parentId: true },
+                    orderBy: { name: "asc" },
+                });
+
+                if (descendantOfTier) {
+                    effectiveOrgId = descendantOfTier.id;
+                    effectiveOrgName = descendantOfTier.name;
+                    effectiveOrgType = descendantOfTier.type;
+                    effectiveLineage = await HierarchyScopeService.getLineage(descendantOfTier.id);
+                    isDrillDown = true;
+                }
+            }
         }
 
-        // 2.1 Enforce Administrative Tier Validation
+        // Enforce final sanity check on effectiveOrgType
         if (requiredTier && effectiveOrgType !== requiredTier) {
             throw new Error(`Forbidden: Organization tier '${effectiveOrgType}' is not authorized for ${requiredTier} dashboard`);
         }

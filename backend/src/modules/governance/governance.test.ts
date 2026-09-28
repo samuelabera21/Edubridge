@@ -9,6 +9,7 @@ vi.mock("../../infrastructure/prisma/client.js", () => ({
         organizationUnit: {
             findMany: vi.fn(),
             findUnique: vi.fn(),
+            findFirst: vi.fn(),
         },
         academicYear: {
             findMany: vi.fn(),
@@ -502,6 +503,41 @@ describe("GovernanceDashboardService (H3 Governance Dashboard Foundation)", () =
 
             const dashboard = await GovernanceDashboardService.getGovernanceDashboard("user-reg-a", undefined, "REGION");
             expect(dashboard.context.organizationType).toBe("REGION");
+        });
+
+        it("4.5 should allow Federal user on subordinate WOREDA tier dashboard and auto-resolve descendant Woreda", async () => {
+            (HierarchyScopeService.getAccessibleOrganizationScope as any).mockResolvedValue({
+                userId: "user-fed",
+                currentOrganizationId: "fed-1",
+                currentOrganizationType: "FEDERAL",
+                currentOrganization: { id: "fed-1", name: "Federal Ministry", type: "FEDERAL", parentId: null },
+                accessibleOrganizationIds: mockAllUnits.map(u => u.id),
+                descendantSchoolIds: ["sch-a1a1", "sch-a1a2", "sch-b1a1"],
+                lineage: [{ id: "fed-1", name: "Federal Ministry", type: "FEDERAL", parentId: null }],
+            });
+
+            (prisma.organizationUnit.findFirst as any).mockResolvedValue({
+                id: "wor-a1a",
+                name: "Kirkos Woreda",
+                type: "WOREDA",
+                parentId: "zone-a1",
+            });
+
+            (HierarchyScopeService.getLineage as any).mockResolvedValue([
+                { id: "wor-a1a", name: "Kirkos Woreda", type: "WOREDA", parentId: "zone-a1" },
+                { id: "zone-a1", name: "Central Zone", type: "ZONE", parentId: "reg-a" },
+                { id: "reg-a", name: "Addis Ababa Region", type: "REGION", parentId: "fed-1" },
+                { id: "fed-1", name: "Federal Ministry", type: "FEDERAL", parentId: null },
+            ]);
+
+            (prisma.studentEnrollment.findMany as any).mockResolvedValue([]);
+            (prisma.teacher.findMany as any).mockResolvedValue([]);
+            (prisma.studentAttendance.findMany as any).mockResolvedValue([]);
+            (prisma.studentResult.findMany as any).mockResolvedValue([]);
+
+            const dashboard = await GovernanceDashboardService.getGovernanceDashboard("user-fed", undefined, "WOREDA");
+            expect(dashboard.context.organizationType).toBe("WOREDA");
+            expect(dashboard.context.organizationId).toBe("wor-a1a");
         });
     });
 });
