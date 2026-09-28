@@ -407,3 +407,6 @@ export class HierarchyService {
         });
     }
 }
+
+export * from "./hierarchy-scope.service.js";
+

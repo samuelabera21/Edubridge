@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { HierarchyService } from "./hierarchy.service.js";
+import { HierarchyService, HierarchyScopeService } from "./hierarchy.service.js";
 
 export async function getHierarchyTreeHandler(req: Request, res: Response) {
     try {
@@ -155,3 +155,46 @@ export async function deleteOrganizationUnitHandler(req: Request, res: Response)
         });
     }
 }
+
+export async function getAccessibleScopeHandler(req: Request, res: Response) {
+    try {
+        const userId = (req as any).user?.id;
+        if (!userId) {
+            return res.status(401).json({
+                success: false,
+                message: "Unauthorized"
+            });
+        }
+
+        const scope = await HierarchyScopeService.getAccessibleOrganizationScope(userId);
+        return res.status(200).json({
+            success: true,
+            data: scope
+        });
+    } catch (error: any) {
+        console.error("Error in getAccessibleScopeHandler:", error);
+        const isForbidden = error.message?.includes("No authorized");
+        return res.status(isForbidden ? 403 : 500).json({
+            success: false,
+            message: error.message || "Failed to resolve accessible organization scope"
+        });
+    }
+}
+
+export async function getDescendantSchoolsHandler(req: Request, res: Response) {
+    try {
+        const id = String(req.params.id);
+        const schools = await HierarchyScopeService.getDescendantSchoolIds(id);
+        return res.status(200).json({
+            success: true,
+            data: schools
+        });
+    } catch (error: any) {
+        console.error("Error in getDescendantSchoolsHandler:", error);
+        return res.status(500).json({
+            success: false,
+            message: error.message || "Failed to resolve descendant schools"
+        });
+    }
+}
+
