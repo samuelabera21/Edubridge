@@ -450,14 +450,14 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
             {/* Top Navigation Bar */}
             <header className="bg-white border-b border-gray-200 h-16 flex items-center justify-between px-6 z-10">
                 <div className="flex items-center space-x-3">
-                    <div className="flex items-center space-x-2">
-                        <div className="text-[#006b3f]">
-                            <svg className="w-8 h-8" viewBox="0 0 24 24" fill="currentColor">
-                                <path d="M12 2L2 7l10 5 10-5-10-5zm0 7.5L4.5 7 12 4.25 19.5 7 12 9.5zM2 12l10 5 10-5v5l-10 5-10-5v-5z"/>
-                            </svg>
+                    <Link href="/dashboard" className="flex items-center space-x-2.5 group">
+                        <div className="w-8 h-8 rounded-lg bg-[#4085b3] flex items-center justify-center text-white shadow-xs transition-transform group-hover:scale-105">
+                            <GraduationCap className="w-5 h-5" />
                         </div>
-                        <span className="text-xl font-bold text-orange-500 tracking-tight">Edu<span className="text-[#006b3f]">Bridge</span></span>
-                    </div>
+                        <span className="text-lg font-bold text-slate-900 tracking-tight">
+                            Edu<span className="text-[#4085b3]">Bridge</span>
+                        </span>
+                    </Link>
                 </div>
 
                 <div className="hidden md:flex items-center space-x-5">
@@ -912,7 +912,7 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
                         {/* Sidebar Header with collapse toggle */}
                         <div className="flex items-center justify-between px-3 pt-4 pb-2 border-b border-[#092254]/60">
                             {!sidebarCollapsed && (
-                                <p className="text-[10px] text-amber-400 font-bold uppercase tracking-widest px-1">Navigation</p>
+                                <p className="text-[10px] text-slate-400 font-semibold uppercase tracking-widest px-1">Navigation</p>
                             )}
                             <button
                                 onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
@@ -936,10 +936,10 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
                                         <Link 
                                             href="/dashboard/admin" 
                                             title="Dashboard"
-                                            className={`flex items-center ${sidebarCollapsed ? "justify-center px-2" : "justify-between px-3.5"} py-2.5 rounded-xl text-xs font-semibold transition-all ${pathname === "/dashboard" || pathname === "/dashboard/admin" ? "bg-[#0c2454] text-[#f59e0b] border-l-4 border-[#f59e0b] shadow-inner" : "text-slate-300 hover:bg-[#081e48] hover:text-white"}`}
+                                            className={`flex items-center ${sidebarCollapsed ? "justify-center px-2" : "justify-between px-3.5"} py-2 rounded-xl text-xs font-medium transition-all ${pathname === "/dashboard" || pathname === "/dashboard/admin" ? "bg-[#0c2454] text-amber-300 font-semibold border-l-2 border-amber-400 shadow-xs" : "text-slate-300 hover:bg-[#081e48] hover:text-white"}`}
                                         >
                                             <div className={`flex items-center ${sidebarCollapsed ? "" : "space-x-3"}`}>
-                                                <LayoutDashboard className={`w-4 h-4 shrink-0 ${pathname === "/dashboard" || pathname === "/dashboard/admin" ? "text-[#f59e0b]" : "text-amber-400"}`} />
+                                                <LayoutDashboard className={`w-4 h-4 shrink-0 ${pathname === "/dashboard" || pathname === "/dashboard/admin" ? "text-amber-300" : "text-amber-400/90"}`} />
                                                 {!sidebarCollapsed && <span>Dashboard</span>}
                                             </div>
                                         </Link>
@@ -948,24 +948,24 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
                                         <Link 
                                             href="/dashboard/school/profile"
                                             title="School Profile"
-                                            className={`flex items-center ${sidebarCollapsed ? "justify-center px-2" : "justify-between px-3.5"} py-2.5 rounded-xl text-xs font-medium transition-all ${pathname === "/dashboard/school/profile" ? "bg-[#0c2454] text-[#f59e0b] border-l-4 border-[#f59e0b]" : "text-slate-300 hover:bg-[#081e48] hover:text-white"}`}
+                                            className={`flex items-center ${sidebarCollapsed ? "justify-center px-2" : "justify-between px-3.5"} py-2 rounded-xl text-xs font-medium transition-all ${pathname === "/dashboard/school/profile" ? "bg-[#0c2454] text-amber-300 font-semibold border-l-2 border-amber-400 shadow-xs" : "text-slate-300 hover:bg-[#081e48] hover:text-white"}`}
                                         >
                                             <div className={`flex items-center ${sidebarCollapsed ? "" : "space-x-3"}`}>
-                                                <Building className="w-4 h-4 text-amber-400 shrink-0" />
+                                                <Building className={`w-4 h-4 shrink-0 ${pathname === "/dashboard/school/profile" ? "text-amber-300" : "text-amber-400/90"}`} />
                                                 {!sidebarCollapsed && <span>School Profile</span>}
                                             </div>
                                         </Link>
 
 
                                         {/* Academics Group */}
-                                        <div className="pt-1">
+                                        <div className="pt-0.5">
                                             <button 
                                                 onClick={() => !sidebarCollapsed && toggleMenu("academics")}
                                                 title="Academics"
-                                                className={`w-full flex items-center ${sidebarCollapsed ? "justify-center px-2" : "justify-between px-3.5"} py-2.5 rounded-xl text-xs font-medium text-slate-300 hover:bg-[#081e48] hover:text-white transition-all group cursor-pointer`}
+                                                className={`w-full flex items-center ${sidebarCollapsed ? "justify-center px-2" : "justify-between px-3.5"} py-2 rounded-xl text-xs font-medium text-slate-300 hover:bg-[#081e48] hover:text-white transition-all group cursor-pointer`}
                                             >
                                                 <div className={`flex items-center ${sidebarCollapsed ? "" : "space-x-3"}`}>
-                                                    <Calendar className="w-4 h-4 text-amber-400 shrink-0" />
+                                                    <Calendar className="w-4 h-4 text-amber-400/90 group-hover:text-amber-300 shrink-0" />
                                                     {!sidebarCollapsed && <span>Academics</span>}
                                                 </div>
                                                 {!sidebarCollapsed && (openMenus.academics ? 
@@ -975,24 +975,24 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
                                             </button>
                                             {openMenus.academics && !sidebarCollapsed && (
                                                 <div className="pl-8 pr-2 py-1.5 space-y-1 bg-[#020e24]/60 rounded-xl my-1 border-l border-slate-700/50">
-                                                    <Link href="/dashboard/academics/years" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/academics/years" ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>Academic Years</Link>
-                                                    <Link href="/dashboard/academics/grades" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname.startsWith("/dashboard/academics/grades") ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>Grades & Sections</Link>
-                                                    <Link href="/dashboard/academics/subjects" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname.startsWith("/dashboard/academics/subjects") ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>Subjects</Link>
-                                                    <Link href="/dashboard/academics/calendar" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname.startsWith("/dashboard/academics/calendar") ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>Academic Calendar</Link>
-                                                    <Link href="/dashboard/academics/timetable" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname.startsWith("/dashboard/academics/timetable") ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>Instructional Timetable</Link>
+                                                    <Link href="/dashboard/academics/years" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/academics/years" ? "text-amber-300 font-semibold bg-[#0c2454]" : "text-slate-400 hover:text-amber-200 hover:bg-[#0c2454]/40"}`}>Academic Years</Link>
+                                                    <Link href="/dashboard/academics/grades" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname.startsWith("/dashboard/academics/grades") ? "text-amber-300 font-semibold bg-[#0c2454]" : "text-slate-400 hover:text-amber-200 hover:bg-[#0c2454]/40"}`}>Grades & Sections</Link>
+                                                    <Link href="/dashboard/academics/subjects" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname.startsWith("/dashboard/academics/subjects") ? "text-amber-300 font-semibold bg-[#0c2454]" : "text-slate-400 hover:text-amber-200 hover:bg-[#0c2454]/40"}`}>Subjects</Link>
+                                                    <Link href="/dashboard/academics/calendar" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname.startsWith("/dashboard/academics/calendar") ? "text-amber-300 font-semibold bg-[#0c2454]" : "text-slate-400 hover:text-amber-200 hover:bg-[#0c2454]/40"}`}>Academic Calendar</Link>
+                                                    <Link href="/dashboard/academics/timetable" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname.startsWith("/dashboard/academics/timetable") ? "text-amber-300 font-semibold bg-[#0c2454]" : "text-slate-400 hover:text-amber-200 hover:bg-[#0c2454]/40"}`}>Instructional Timetable</Link>
                                                 </div>
                                             )}
                                         </div>
 
                                         {/* Students Group */}
-                                        <div className="pt-1">
+                                        <div className="pt-0.5">
                                             <button 
                                                 onClick={() => !sidebarCollapsed && toggleMenu("students")}
                                                 title="Students"
-                                                className={`w-full flex items-center ${sidebarCollapsed ? "justify-center px-2" : "justify-between px-3.5"} py-2.5 rounded-xl text-xs font-medium text-slate-300 hover:bg-[#081e48] hover:text-white transition-all group cursor-pointer`}
+                                                className={`w-full flex items-center ${sidebarCollapsed ? "justify-center px-2" : "justify-between px-3.5"} py-2 rounded-xl text-xs font-medium text-slate-300 hover:bg-[#081e48] hover:text-white transition-all group cursor-pointer`}
                                             >
                                                 <div className={`flex items-center ${sidebarCollapsed ? "" : "space-x-3"}`}>
-                                                    <Users className="w-4 h-4 text-amber-400 shrink-0" />
+                                                    <Users className="w-4 h-4 text-amber-400/90 group-hover:text-amber-300 shrink-0" />
                                                     {!sidebarCollapsed && <span>Students</span>}
                                                 </div>
                                                 {!sidebarCollapsed && (openMenus.students ? 
@@ -1002,22 +1002,22 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
                                             </button>
                                             {openMenus.students && !sidebarCollapsed && (
                                                 <div className="pl-8 pr-2 py-1.5 space-y-1 bg-[#020e24]/60 rounded-xl my-1 border-l border-slate-700/50">
-                                                    <Link href="/dashboard/students" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/students" ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>All Students</Link>
-                                                    <Link href="/dashboard/students/enrollments" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname.startsWith("/dashboard/students/enrollments") ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>Student Enrollments</Link>
-                                                    <Link href="/dashboard/students/placement" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname.startsWith("/dashboard/students/placement") ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>Classroom Placement</Link>
+                                                    <Link href="/dashboard/students" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/students" ? "text-amber-300 font-semibold bg-[#0c2454]" : "text-slate-400 hover:text-amber-200 hover:bg-[#0c2454]/40"}`}>All Students</Link>
+                                                    <Link href="/dashboard/students/enrollments" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname.startsWith("/dashboard/students/enrollments") ? "text-amber-300 font-semibold bg-[#0c2454]" : "text-slate-400 hover:text-amber-200 hover:bg-[#0c2454]/40"}`}>Student Enrollments</Link>
+                                                    <Link href="/dashboard/students/placement" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname.startsWith("/dashboard/students/placement") ? "text-amber-300 font-semibold bg-[#0c2454]" : "text-slate-400 hover:text-amber-200 hover:bg-[#0c2454]/40"}`}>Classroom Placement</Link>
                                                 </div>
                                             )}
                                         </div>
 
                                         {/* Teachers Group */}
-                                        <div className="pt-1">
+                                        <div className="pt-0.5">
                                             <button 
                                                 onClick={() => !sidebarCollapsed && toggleMenu("teachers")}
                                                 title="Teachers"
-                                                className={`w-full flex items-center ${sidebarCollapsed ? "justify-center px-2" : "justify-between px-3.5"} py-2.5 rounded-xl text-xs font-medium text-slate-300 hover:bg-[#081e48] hover:text-white transition-all group cursor-pointer`}
+                                                className={`w-full flex items-center ${sidebarCollapsed ? "justify-center px-2" : "justify-between px-3.5"} py-2 rounded-xl text-xs font-medium text-slate-300 hover:bg-[#081e48] hover:text-white transition-all group cursor-pointer`}
                                             >
                                                 <div className={`flex items-center ${sidebarCollapsed ? "" : "space-x-3"}`}>
-                                                    <GraduationCap className="w-4 h-4 text-amber-400 shrink-0" />
+                                                    <GraduationCap className="w-4 h-4 text-amber-400/90 group-hover:text-amber-300 shrink-0" />
                                                     {!sidebarCollapsed && <span>Teachers</span>}
                                                 </div>
                                                 {!sidebarCollapsed && (openMenus.teachers ? 
@@ -1027,21 +1027,21 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
                                             </button>
                                             {openMenus.teachers && !sidebarCollapsed && (
                                                 <div className="pl-8 pr-2 py-1.5 space-y-1 bg-[#020e24]/60 rounded-xl my-1 border-l border-slate-700/50">
-                                                    <Link href="/dashboard/teachers" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/teachers" ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>All Teachers</Link>
-                                                    <Link href="/dashboard/teachers/assignments" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname.startsWith("/dashboard/teachers/assignments") ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>Teaching Assignments</Link>
+                                                    <Link href="/dashboard/teachers" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/teachers" ? "text-amber-300 font-semibold bg-[#0c2454]" : "text-slate-400 hover:text-amber-200 hover:bg-[#0c2454]/40"}`}>All Teachers</Link>
+                                                    <Link href="/dashboard/teachers/assignments" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname.startsWith("/dashboard/teachers/assignments") ? "text-amber-300 font-semibold bg-[#0c2454]" : "text-slate-400 hover:text-amber-200 hover:bg-[#0c2454]/40"}`}>Teaching Assignments</Link>
                                                 </div>
                                             )}
                                         </div>
                                         
                                         {/* Attendance Group */}
-                                        <div className="pt-1">
+                                        <div className="pt-0.5">
                                             <button 
                                                 onClick={() => !sidebarCollapsed && toggleMenu("attendance")}
                                                 title="Attendance"
-                                                className={`w-full flex items-center ${sidebarCollapsed ? "justify-center px-2" : "justify-between px-3.5"} py-2.5 rounded-xl text-xs font-medium text-slate-300 hover:bg-[#081e48] hover:text-white transition-all group cursor-pointer`}
+                                                className={`w-full flex items-center ${sidebarCollapsed ? "justify-center px-2" : "justify-between px-3.5"} py-2 rounded-xl text-xs font-medium text-slate-300 hover:bg-[#081e48] hover:text-white transition-all group cursor-pointer`}
                                             >
                                                 <div className={`flex items-center ${sidebarCollapsed ? "" : "space-x-3"}`}>
-                                                    <ClipboardCheck className="w-4 h-4 text-amber-400 shrink-0" />
+                                                    <ClipboardCheck className="w-4 h-4 text-amber-400/90 group-hover:text-amber-300 shrink-0" />
                                                     {!sidebarCollapsed && <span>Attendance</span>}
                                                 </div>
                                                 {!sidebarCollapsed && (openMenus.attendance ? 
@@ -1051,24 +1051,24 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
                                             </button>
                                             {openMenus.attendance && !sidebarCollapsed && (
                                                 <div className="pl-8 pr-2 py-1.5 space-y-1 bg-[#020e24]/60 rounded-xl my-1 border-l border-slate-700/50">
-                                                    <Link href="/dashboard/attendance/overview" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/attendance/overview" ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>Executive Overview</Link>
-                                                    <Link href="/dashboard/attendance/student" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/attendance/student" ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>Student Attendance</Link>
-                                                    <Link href="/dashboard/attendance/teacher" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/attendance/teacher" ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>Teacher Attendance</Link>
-                                                    <Link href="/dashboard/attendance/alerts" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/attendance/alerts" ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>Absence Risk Alerts</Link>
-                                                    <Link href="/dashboard/attendance/corrections" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/attendance/corrections" ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>Official Corrections</Link>
+                                                    <Link href="/dashboard/attendance/overview" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/attendance/overview" ? "text-amber-300 font-semibold bg-[#0c2454]" : "text-slate-400 hover:text-amber-200 hover:bg-[#0c2454]/40"}`}>Executive Overview</Link>
+                                                    <Link href="/dashboard/attendance/student" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/attendance/student" ? "text-amber-300 font-semibold bg-[#0c2454]" : "text-slate-400 hover:text-amber-200 hover:bg-[#0c2454]/40"}`}>Student Attendance</Link>
+                                                    <Link href="/dashboard/attendance/teacher" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/attendance/teacher" ? "text-amber-300 font-semibold bg-[#0c2454]" : "text-slate-400 hover:text-amber-200 hover:bg-[#0c2454]/40"}`}>Teacher Attendance</Link>
+                                                    <Link href="/dashboard/attendance/alerts" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/attendance/alerts" ? "text-amber-300 font-semibold bg-[#0c2454]" : "text-slate-400 hover:text-amber-200 hover:bg-[#0c2454]/40"}`}>Absence Risk Alerts</Link>
+                                                    <Link href="/dashboard/attendance/corrections" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/attendance/corrections" ? "text-amber-300 font-semibold bg-[#0c2454]" : "text-slate-400 hover:text-amber-200 hover:bg-[#0c2454]/40"}`}>Official Corrections</Link>
                                                 </div>
                                             )}
                                         </div>
 
                                         {/* Assessment Group */}
-                                        <div className="pt-1">
+                                        <div className="pt-0.5">
                                             <button 
                                                 onClick={() => !sidebarCollapsed && toggleMenu("assessment")}
                                                 title="Assessment"
-                                                className={`w-full flex items-center ${sidebarCollapsed ? "justify-center px-2" : "justify-between px-3.5"} py-2.5 rounded-xl text-xs font-medium text-slate-300 hover:bg-[#081e48] hover:text-white transition-all group cursor-pointer`}
+                                                className={`w-full flex items-center ${sidebarCollapsed ? "justify-center px-2" : "justify-between px-3.5"} py-2 rounded-xl text-xs font-medium text-slate-300 hover:bg-[#081e48] hover:text-white transition-all group cursor-pointer`}
                                             >
                                                 <div className={`flex items-center ${sidebarCollapsed ? "" : "space-x-3"}`}>
-                                                    <FileText className="w-4 h-4 text-amber-400 shrink-0" />
+                                                    <FileText className="w-4 h-4 text-amber-400/90 group-hover:text-amber-300 shrink-0" />
                                                     {!sidebarCollapsed && <span>Assessment</span>}
                                                 </div>
                                                 {!sidebarCollapsed && (openMenus.assessment ? 
@@ -1078,21 +1078,21 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
                                             </button>
                                             {openMenus.assessment && !sidebarCollapsed && (
                                                 <div className="pl-8 pr-2 py-1.5 space-y-1 bg-[#020e24]/60 rounded-xl my-1 border-l border-slate-700/50">
-                                                    <Link href="/dashboard/assessment" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/assessment" ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>Overview & Performance</Link>
-                                                    <Link href="/dashboard/assessment/results" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname.startsWith("/dashboard/assessment/results") ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>Student Results</Link>
+                                                    <Link href="/dashboard/assessment" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/assessment" ? "text-amber-300 font-semibold bg-[#0c2454]" : "text-slate-400 hover:text-amber-200 hover:bg-[#0c2454]/40"}`}>Overview & Performance</Link>
+                                                    <Link href="/dashboard/assessment/results" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname.startsWith("/dashboard/assessment/results") ? "text-amber-300 font-semibold bg-[#0c2454]" : "text-slate-400 hover:text-amber-200 hover:bg-[#0c2454]/40"}`}>Student Results</Link>
                                                 </div>
                                             )}
                                         </div>
 
                                         {/* Learning Group */}
-                                        <div className="pt-1">
+                                        <div className="pt-0.5">
                                             <button 
                                                 onClick={() => !sidebarCollapsed && toggleMenu("learning")}
                                                 title="Learning & Support"
-                                                className={`w-full flex items-center ${sidebarCollapsed ? "justify-center px-2" : "justify-between px-3.5"} py-2.5 rounded-xl text-xs font-medium text-slate-300 hover:bg-[#081e48] hover:text-white transition-all group cursor-pointer`}
+                                                className={`w-full flex items-center ${sidebarCollapsed ? "justify-center px-2" : "justify-between px-3.5"} py-2 rounded-xl text-xs font-medium text-slate-300 hover:bg-[#081e48] hover:text-white transition-all group cursor-pointer`}
                                             >
                                                 <div className={`flex items-center ${sidebarCollapsed ? "" : "space-x-3"}`}>
-                                                    <BookOpen className="w-4 h-4 text-amber-400 shrink-0" />
+                                                    <BookOpen className="w-4 h-4 text-amber-400/90 group-hover:text-amber-300 shrink-0" />
                                                     {!sidebarCollapsed && <span>Learning & Support</span>}
                                                 </div>
                                                 {!sidebarCollapsed && (openMenus.learning ? 
@@ -1102,26 +1102,26 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
                                             </button>
                                             {openMenus.learning && !sidebarCollapsed && (
                                                 <div className="pl-8 pr-2 py-1.5 space-y-1 bg-[#020e24]/60 rounded-xl my-1 border-l border-slate-700/50">
-                                                    <Link href="/dashboard/support/at-risk" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/support/at-risk" ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>1. At-Risk Students</Link>
-                                                    <Link href="/dashboard/support/learning-difficulties" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/support/learning-difficulties" ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>2. Learning Difficulties</Link>
-                                                    <Link href="/dashboard/support/remedial" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/support/remedial" ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>3. Remedial Programs</Link>
-                                                    <Link href="/dashboard/support/enrichment" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/support/enrichment" ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>4. Enrichment Programs</Link>
-                                                    <Link href="/dashboard/support/intervention-plans" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/support/intervention-plans" ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>5. Intervention Plans</Link>
-                                                    <Link href="/dashboard/support/monitoring" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/support/monitoring" ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>6. Intervention Monitoring</Link>
-                                                    <Link href="/dashboard/support/outcomes" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/support/outcomes" ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>7. Intervention Outcomes</Link>
+                                                    <Link href="/dashboard/support/at-risk" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/support/at-risk" ? "text-amber-300 font-semibold bg-[#0c2454]" : "text-slate-400 hover:text-amber-200 hover:bg-[#0c2454]/40"}`}>1. At-Risk Students</Link>
+                                                    <Link href="/dashboard/support/learning-difficulties" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/support/learning-difficulties" ? "text-amber-300 font-semibold bg-[#0c2454]" : "text-slate-400 hover:text-amber-200 hover:bg-[#0c2454]/40"}`}>2. Learning Difficulties</Link>
+                                                    <Link href="/dashboard/support/remedial" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/support/remedial" ? "text-amber-300 font-semibold bg-[#0c2454]" : "text-slate-400 hover:text-amber-200 hover:bg-[#0c2454]/40"}`}>3. Remedial Programs</Link>
+                                                    <Link href="/dashboard/support/enrichment" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/support/enrichment" ? "text-amber-300 font-semibold bg-[#0c2454]" : "text-slate-400 hover:text-amber-200 hover:bg-[#0c2454]/40"}`}>4. Enrichment Programs</Link>
+                                                    <Link href="/dashboard/support/intervention-plans" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/support/intervention-plans" ? "text-amber-300 font-semibold bg-[#0c2454]" : "text-slate-400 hover:text-amber-200 hover:bg-[#0c2454]/40"}`}>5. Intervention Plans</Link>
+                                                    <Link href="/dashboard/support/monitoring" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/support/monitoring" ? "text-amber-300 font-semibold bg-[#0c2454]" : "text-slate-400 hover:text-amber-200 hover:bg-[#0c2454]/40"}`}>6. Intervention Monitoring</Link>
+                                                    <Link href="/dashboard/support/outcomes" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/support/outcomes" ? "text-amber-300 font-semibold bg-[#0c2454]" : "text-slate-400 hover:text-amber-200 hover:bg-[#0c2454]/40"}`}>7. Intervention Outcomes</Link>
                                                 </div>
                                             )}
                                         </div>
 
                                         {/* Parents Group */}
-                                        <div className="pt-1">
+                                        <div className="pt-0.5">
                                             <button 
                                                 onClick={() => !sidebarCollapsed && toggleMenu("parents")}
                                                 title="Parents"
-                                                className={`w-full flex items-center ${sidebarCollapsed ? "justify-center px-2" : "justify-between px-3.5"} py-2.5 rounded-xl text-xs font-medium text-slate-300 hover:bg-[#081e48] hover:text-white transition-all group cursor-pointer`}
+                                                className={`w-full flex items-center ${sidebarCollapsed ? "justify-center px-2" : "justify-between px-3.5"} py-2 rounded-xl text-xs font-medium text-slate-300 hover:bg-[#081e48] hover:text-white transition-all group cursor-pointer`}
                                             >
                                                 <div className={`flex items-center ${sidebarCollapsed ? "" : "space-x-3"}`}>
-                                                    <Users className="w-4 h-4 text-amber-400 shrink-0" />
+                                                    <Users className="w-4 h-4 text-amber-400/90 group-hover:text-amber-300 shrink-0" />
                                                     {!sidebarCollapsed && <span>Parents</span>}
                                                 </div>
                                                 {!sidebarCollapsed && (openMenus.parents ? 
@@ -1131,20 +1131,20 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
                                             </button>
                                             {openMenus.parents && !sidebarCollapsed && (
                                                 <div className="pl-8 pr-2 py-1.5 space-y-1 bg-[#020e24]/60 rounded-xl my-1 border-l border-slate-700/50">
-                                                    <Link href="/dashboard/parents" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname.startsWith("/dashboard/parents") ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>Guardians & Relationships</Link>
+                                                    <Link href="/dashboard/parents" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname.startsWith("/dashboard/parents") ? "text-amber-300 font-semibold bg-[#0c2454]" : "text-slate-400 hover:text-amber-200 hover:bg-[#0c2454]/40"}`}>Guardians & Relationships</Link>
                                                 </div>
                                             )}
                                         </div>
 
                                         {/* Communication Group */}
-                                        <div className="pt-1">
+                                        <div className="pt-0.5">
                                             <button 
                                                 onClick={() => !sidebarCollapsed && toggleMenu("communication")}
                                                 title="Communication"
-                                                className={`w-full flex items-center ${sidebarCollapsed ? "justify-center px-2" : "justify-between px-3.5"} py-2.5 rounded-xl text-xs font-medium text-slate-300 hover:bg-[#081e48] hover:text-white transition-all group cursor-pointer`}
+                                                className={`w-full flex items-center ${sidebarCollapsed ? "justify-center px-2" : "justify-between px-3.5"} py-2 rounded-xl text-xs font-medium text-slate-300 hover:bg-[#081e48] hover:text-white transition-all group cursor-pointer`}
                                             >
                                                 <div className={`flex items-center ${sidebarCollapsed ? "" : "space-x-3"}`}>
-                                                    <Megaphone className="w-4 h-4 text-amber-400 shrink-0" />
+                                                    <Megaphone className="w-4 h-4 text-amber-400/90 group-hover:text-amber-300 shrink-0" />
                                                     {!sidebarCollapsed && <span>Communication</span>}
                                                 </div>
                                                 {!sidebarCollapsed && (openMenus.communication ? 
@@ -1154,27 +1154,27 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
                                             </button>
                                             {openMenus.communication && !sidebarCollapsed && (
                                                 <div className="pl-8 pr-2 py-1.5 space-y-1 bg-[#020e24]/60 rounded-xl my-1 border-l border-slate-700/50">
-                                                    <Link href="/dashboard/communication/announcements" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/communication/announcements" ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>Announcements</Link>
-                                                    <Link href="/dashboard/communication/notices" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/communication/notices" ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>Important Notices</Link>
-                                                    <Link href="/dashboard/communication/messages" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/communication/messages" ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>Direct Messages</Link>
-                                                    <Link href="/dashboard/communication/notifications" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/communication/notifications" ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>Notifications</Link>
-                                                    <Link href="/dashboard/communication/teacher" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/communication/teacher" ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>Faculty Circulars</Link>
-                                                    <Link href="/dashboard/communication/student" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/communication/student" ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>Student Broadcasts</Link>
-                                                    <Link href="/dashboard/communication/parent" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/communication/parent" ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>Parent Broadcasts</Link>
-                                                    <Link href="/dashboard/communication/staff" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/communication/staff" ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>Staff Circulars</Link>
+                                                    <Link href="/dashboard/communication/announcements" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/communication/announcements" ? "text-amber-300 font-semibold bg-[#0c2454]" : "text-slate-400 hover:text-amber-200 hover:bg-[#0c2454]/40"}`}>Announcements</Link>
+                                                    <Link href="/dashboard/communication/notices" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/communication/notices" ? "text-amber-300 font-semibold bg-[#0c2454]" : "text-slate-400 hover:text-amber-200 hover:bg-[#0c2454]/40"}`}>Important Notices</Link>
+                                                    <Link href="/dashboard/communication/messages" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/communication/messages" ? "text-amber-300 font-semibold bg-[#0c2454]" : "text-slate-400 hover:text-amber-200 hover:bg-[#0c2454]/40"}`}>Direct Messages</Link>
+                                                    <Link href="/dashboard/communication/notifications" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/communication/notifications" ? "text-amber-300 font-semibold bg-[#0c2454]" : "text-slate-400 hover:text-amber-200 hover:bg-[#0c2454]/40"}`}>Notifications</Link>
+                                                    <Link href="/dashboard/communication/teacher" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/communication/teacher" ? "text-amber-300 font-semibold bg-[#0c2454]" : "text-slate-400 hover:text-amber-200 hover:bg-[#0c2454]/40"}`}>Faculty Circulars</Link>
+                                                    <Link href="/dashboard/communication/student" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/communication/student" ? "text-amber-300 font-semibold bg-[#0c2454]" : "text-slate-400 hover:text-amber-200 hover:bg-[#0c2454]/40"}`}>Student Broadcasts</Link>
+                                                    <Link href="/dashboard/communication/parent" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/communication/parent" ? "text-amber-300 font-semibold bg-[#0c2454]" : "text-slate-400 hover:text-amber-200 hover:bg-[#0c2454]/40"}`}>Parent Broadcasts</Link>
+                                                    <Link href="/dashboard/communication/staff" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/communication/staff" ? "text-amber-300 font-semibold bg-[#0c2454]" : "text-slate-400 hover:text-amber-200 hover:bg-[#0c2454]/40"}`}>Staff Circulars</Link>
                                                 </div>
                                             )}
                                         </div>
 
                                         {/* School Improvement Group */}
-                                        <div className="pt-1">
+                                        <div className="pt-0.5">
                                             <button 
                                                 onClick={() => !sidebarCollapsed && toggleMenu("improvement")}
                                                 title="School Improvement"
-                                                className={`w-full flex items-center ${sidebarCollapsed ? "justify-center px-2" : "justify-between px-3.5"} py-2.5 rounded-xl text-xs font-medium text-slate-300 hover:bg-[#081e48] hover:text-white transition-all group cursor-pointer`}
+                                                className={`w-full flex items-center ${sidebarCollapsed ? "justify-center px-2" : "justify-between px-3.5"} py-2 rounded-xl text-xs font-medium text-slate-300 hover:bg-[#081e48] hover:text-white transition-all group cursor-pointer`}
                                             >
                                                 <div className={`flex items-center ${sidebarCollapsed ? "" : "space-x-3"}`}>
-                                                    <TrendingUp className="w-4 h-4 text-amber-400 shrink-0" />
+                                                    <TrendingUp className="w-4 h-4 text-amber-400/90 group-hover:text-amber-300 shrink-0" />
                                                     {!sidebarCollapsed && <span>School Improvement</span>}
                                                 </div>
                                                 {!sidebarCollapsed && (openMenus.improvement ? 
@@ -1184,26 +1184,26 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
                                             </button>
                                             {openMenus.improvement && !sidebarCollapsed && (
                                                 <div className="pl-8 pr-2 py-1.5 space-y-1 bg-[#020e24]/60 rounded-xl my-1 border-l border-slate-700/50">
-                                                    <Link href="/dashboard/improvement/problems" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/improvement/problems" ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>1. Identify Problems</Link>
-                                                    <Link href="/dashboard/improvement/priorities" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/improvement/priorities" ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>2. Improvement Priorities</Link>
-                                                    <Link href="/dashboard/improvement/plans" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/improvement/plans" ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>3. Improvement Plans</Link>
-                                                    <Link href="/dashboard/improvement/activities" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/improvement/activities" ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>4. Improvement Activities</Link>
-                                                    <Link href="/dashboard/improvement/targets" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/improvement/targets" ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>5. KPI Targets</Link>
-                                                    <Link href="/dashboard/improvement/monitoring" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/improvement/monitoring" ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>6. Progress Monitoring</Link>
-                                                    <Link href="/dashboard/improvement/outcomes" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/improvement/outcomes" ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>7. Outcomes & Impact</Link>
+                                                    <Link href="/dashboard/improvement/problems" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/improvement/problems" ? "text-amber-300 font-semibold bg-[#0c2454]" : "text-slate-400 hover:text-amber-200 hover:bg-[#0c2454]/40"}`}>1. Identify Problems</Link>
+                                                    <Link href="/dashboard/improvement/priorities" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/improvement/priorities" ? "text-amber-300 font-semibold bg-[#0c2454]" : "text-slate-400 hover:text-amber-200 hover:bg-[#0c2454]/40"}`}>2. Improvement Priorities</Link>
+                                                    <Link href="/dashboard/improvement/plans" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/improvement/plans" ? "text-amber-300 font-semibold bg-[#0c2454]" : "text-slate-400 hover:text-amber-200 hover:bg-[#0c2454]/40"}`}>3. Improvement Plans</Link>
+                                                    <Link href="/dashboard/improvement/activities" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/improvement/activities" ? "text-amber-300 font-semibold bg-[#0c2454]" : "text-slate-400 hover:text-amber-200 hover:bg-[#0c2454]/40"}`}>4. Improvement Activities</Link>
+                                                    <Link href="/dashboard/improvement/targets" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/improvement/targets" ? "text-amber-300 font-semibold bg-[#0c2454]" : "text-slate-400 hover:text-amber-200 hover:bg-[#0c2454]/40"}`}>5. KPI Targets</Link>
+                                                    <Link href="/dashboard/improvement/monitoring" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/improvement/monitoring" ? "text-amber-300 font-semibold bg-[#0c2454]" : "text-slate-400 hover:text-amber-200 hover:bg-[#0c2454]/40"}`}>6. Progress Monitoring</Link>
+                                                    <Link href="/dashboard/improvement/outcomes" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/improvement/outcomes" ? "text-amber-300 font-semibold bg-[#0c2454]" : "text-slate-400 hover:text-amber-200 hover:bg-[#0c2454]/40"}`}>7. Outcomes & Impact</Link>
                                                 </div>
                                             )}
                                         </div>
 
                                         {/* Reports & Analytics Group */}
-                                        <div className="pt-1">
+                                        <div className="pt-0.5">
                                             <button 
                                                 onClick={() => !sidebarCollapsed && toggleMenu("reports")}
                                                 title="Reports & Analytics"
-                                                className={`w-full flex items-center ${sidebarCollapsed ? "justify-center px-2" : "justify-between px-3.5"} py-2.5 rounded-xl text-xs font-medium text-slate-300 hover:bg-[#081e48] hover:text-white transition-all group cursor-pointer`}
+                                                className={`w-full flex items-center ${sidebarCollapsed ? "justify-center px-2" : "justify-between px-3.5"} py-2 rounded-xl text-xs font-medium text-slate-300 hover:bg-[#081e48] hover:text-white transition-all group cursor-pointer`}
                                             >
                                                 <div className={`flex items-center ${sidebarCollapsed ? "" : "space-x-3"}`}>
-                                                    <BarChart2 className="w-4 h-4 text-amber-400 shrink-0" />
+                                                    <BarChart2 className="w-4 h-4 text-amber-400/90 group-hover:text-amber-300 shrink-0" />
                                                     {!sidebarCollapsed && <span>Reports & Analytics</span>}
                                                 </div>
                                                 {!sidebarCollapsed && (openMenus.reports ? 
@@ -1213,24 +1213,24 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
                                             </button>
                                             {openMenus.reports && !sidebarCollapsed && (
                                                 <div className="pl-8 pr-2 py-1.5 space-y-1 bg-[#020e24]/60 rounded-xl my-1 border-l border-slate-700/50">
-                                                    <Link href="/dashboard/reports/enrollment" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/reports/enrollment" ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>1. Enrollment Reports</Link>
-                                                    <Link href="/dashboard/reports/attendance" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/reports/attendance" ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>2. Attendance Reports</Link>
-                                                    <Link href="/dashboard/reports/teacher" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/reports/teacher" ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>3. Teacher Reports</Link>
-                                                    <Link href="/dashboard/reports/assessment" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/reports/assessment" ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>4. Assessment Reports</Link>
-                                                    <Link href="/dashboard/reports/performance" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/reports/performance" ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>5. Student Performance</Link>
-                                                    <Link href="/dashboard/reports/curriculum" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/reports/curriculum" ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>6. Curriculum Progress</Link>
-                                                    <Link href="/dashboard/reports/support" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/reports/support" ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>7. Student Support</Link>
-                                                    <Link href="/dashboard/reports/school-performance" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/reports/school-performance" ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>8. School Performance</Link>
+                                                    <Link href="/dashboard/reports/enrollment" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/reports/enrollment" ? "text-amber-300 font-semibold bg-[#0c2454]" : "text-slate-400 hover:text-amber-200 hover:bg-[#0c2454]/40"}`}>1. Enrollment Reports</Link>
+                                                    <Link href="/dashboard/reports/attendance" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/reports/attendance" ? "text-amber-300 font-semibold bg-[#0c2454]" : "text-slate-400 hover:text-amber-200 hover:bg-[#0c2454]/40"}`}>2. Attendance Reports</Link>
+                                                    <Link href="/dashboard/reports/teacher" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/reports/teacher" ? "text-amber-300 font-semibold bg-[#0c2454]" : "text-slate-400 hover:text-amber-200 hover:bg-[#0c2454]/40"}`}>3. Teacher Reports</Link>
+                                                    <Link href="/dashboard/reports/assessment" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/reports/assessment" ? "text-amber-300 font-semibold bg-[#0c2454]" : "text-slate-400 hover:text-amber-200 hover:bg-[#0c2454]/40"}`}>4. Assessment Reports</Link>
+                                                    <Link href="/dashboard/reports/performance" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/reports/performance" ? "text-amber-300 font-semibold bg-[#0c2454]" : "text-slate-400 hover:text-amber-200 hover:bg-[#0c2454]/40"}`}>5. Student Performance</Link>
+                                                    <Link href="/dashboard/reports/curriculum" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/reports/curriculum" ? "text-amber-300 font-semibold bg-[#0c2454]" : "text-slate-400 hover:text-amber-200 hover:bg-[#0c2454]/40"}`}>6. Curriculum Progress</Link>
+                                                    <Link href="/dashboard/reports/support" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/reports/support" ? "text-amber-300 font-semibold bg-[#0c2454]" : "text-slate-400 hover:text-amber-200 hover:bg-[#0c2454]/40"}`}>7. Student Support</Link>
+                                                    <Link href="/dashboard/reports/school-performance" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/reports/school-performance" ? "text-amber-300 font-semibold bg-[#0c2454]" : "text-slate-400 hover:text-amber-200 hover:bg-[#0c2454]/40"}`}>8. School Performance</Link>
                                                 </div>
                                             )}
                                         </div>
 
                                         {/* AI School Leadership Group */}
-                                        <div className="pt-1">
+                                        <div className="pt-0.5">
                                             <button 
                                                 onClick={() => !sidebarCollapsed && toggleMenu("aiLeadership")}
                                                 title="AI School Leadership"
-                                                className={`w-full flex items-center ${sidebarCollapsed ? "justify-center px-2" : "justify-between px-3.5"} py-2.5 rounded-xl text-xs font-medium text-slate-300 hover:bg-[#081e48] hover:text-white transition-all group cursor-pointer`}
+                                                className={`w-full flex items-center ${sidebarCollapsed ? "justify-center px-2" : "justify-between px-3.5"} py-2 rounded-xl text-xs font-medium text-slate-300 hover:bg-[#081e48] hover:text-white transition-all group cursor-pointer`}
                                             >
                                                 <div className={`flex items-center ${sidebarCollapsed ? "" : "space-x-3"}`}>
                                                     <Brain className="w-4 h-4 text-purple-400 shrink-0" />
@@ -1243,27 +1243,27 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
                                             </button>
                                             {openMenus.aiLeadership && !sidebarCollapsed && (
                                                 <div className="pl-8 pr-2 py-1.5 space-y-1 bg-[#020e24]/60 rounded-xl my-1 border-l border-slate-700/50">
-                                                    <Link href="/dashboard/ai-leadership/school-performance" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/ai-leadership/school-performance" ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>1. Performance Analysis</Link>
-                                                    <Link href="/dashboard/ai-leadership/attendance" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/ai-leadership/attendance" ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>2. Attendance Modeling</Link>
-                                                    <Link href="/dashboard/ai-leadership/student-risk" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/ai-leadership/student-risk" ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>3. Student-Risk Insights</Link>
-                                                    <Link href="/dashboard/ai-leadership/performance-trends" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/ai-leadership/performance-trends" ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>4. Trend Detection</Link>
-                                                    <Link href="/dashboard/ai-leadership/intervention" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/ai-leadership/intervention" ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>5. Intervention Analysis</Link>
-                                                    <Link href="/dashboard/ai-leadership/improvement-recommendations" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/ai-leadership/improvement-recommendations" ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>6. SIP Recommendations</Link>
-                                                    <Link href="/dashboard/ai-leadership/natural-language" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/ai-leadership/natural-language" ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>7. Natural-Language AI</Link>
-                                                    <Link href="/dashboard/ai-leadership/executive-summaries" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/ai-leadership/executive-summaries" ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>8. Executive Summaries</Link>
+                                                    <Link href="/dashboard/ai-leadership/school-performance" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/ai-leadership/school-performance" ? "text-amber-300 font-semibold bg-[#0c2454]" : "text-slate-400 hover:text-amber-200 hover:bg-[#0c2454]/40"}`}>1. Performance Analysis</Link>
+                                                    <Link href="/dashboard/ai-leadership/attendance" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/ai-leadership/attendance" ? "text-amber-300 font-semibold bg-[#0c2454]" : "text-slate-400 hover:text-amber-200 hover:bg-[#0c2454]/40"}`}>2. Attendance Modeling</Link>
+                                                    <Link href="/dashboard/ai-leadership/student-risk" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/ai-leadership/student-risk" ? "text-amber-300 font-semibold bg-[#0c2454]" : "text-slate-400 hover:text-amber-200 hover:bg-[#0c2454]/40"}`}>3. Student-Risk Insights</Link>
+                                                    <Link href="/dashboard/ai-leadership/performance-trends" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/ai-leadership/performance-trends" ? "text-amber-300 font-semibold bg-[#0c2454]" : "text-slate-400 hover:text-amber-200 hover:bg-[#0c2454]/40"}`}>4. Trend Detection</Link>
+                                                    <Link href="/dashboard/ai-leadership/intervention" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/ai-leadership/intervention" ? "text-amber-300 font-semibold bg-[#0c2454]" : "text-slate-400 hover:text-amber-200 hover:bg-[#0c2454]/40"}`}>5. Intervention Analysis</Link>
+                                                    <Link href="/dashboard/ai-leadership/improvement-recommendations" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/ai-leadership/improvement-recommendations" ? "text-amber-300 font-semibold bg-[#0c2454]" : "text-slate-400 hover:text-amber-200 hover:bg-[#0c2454]/40"}`}>6. SIP Recommendations</Link>
+                                                    <Link href="/dashboard/ai-leadership/natural-language" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/ai-leadership/natural-language" ? "text-amber-300 font-semibold bg-[#0c2454]" : "text-slate-400 hover:text-amber-200 hover:bg-[#0c2454]/40"}`}>7. Natural-Language AI</Link>
+                                                    <Link href="/dashboard/ai-leadership/executive-summaries" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/ai-leadership/executive-summaries" ? "text-amber-300 font-semibold bg-[#0c2454]" : "text-slate-400 hover:text-amber-200 hover:bg-[#0c2454]/40"}`}>8. Executive Summaries</Link>
                                                 </div>
                                             )}
                                         </div>
 
                                         {/* Users & Permissions Group */}
-                                        <div className="pt-1">
+                                        <div className="pt-0.5">
                                             <button 
                                                 onClick={() => !sidebarCollapsed && toggleMenu("usersPermissions")}
                                                 title="Users & Permissions"
-                                                className={`w-full flex items-center ${sidebarCollapsed ? "justify-center px-2" : "justify-between px-3.5"} py-2.5 rounded-xl text-xs font-medium text-slate-300 hover:bg-[#081e48] hover:text-white transition-all group cursor-pointer`}
+                                                className={`w-full flex items-center ${sidebarCollapsed ? "justify-center px-2" : "justify-between px-3.5"} py-2 rounded-xl text-xs font-medium text-slate-300 hover:bg-[#081e48] hover:text-white transition-all group cursor-pointer`}
                                             >
                                                 <div className={`flex items-center ${sidebarCollapsed ? "" : "space-x-3"}`}>
-                                                    <Lock className="w-4 h-4 text-amber-400 shrink-0" />
+                                                    <Lock className="w-4 h-4 text-amber-400/90 group-hover:text-amber-300 shrink-0" />
                                                     {!sidebarCollapsed && <span>Users & Permissions</span>}
                                                 </div>
                                                 {!sidebarCollapsed && (openMenus.usersPermissions ? 
@@ -1273,40 +1273,40 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
                                             </button>
                                             {openMenus.usersPermissions && !sidebarCollapsed && (
                                                 <div className="pl-8 pr-2 py-1.5 space-y-1 bg-[#020e24]/60 rounded-xl my-1 border-l border-slate-700/50">
-                                                    <Link href="/dashboard/users-permissions" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/users-permissions" ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>All Accounts</Link>
-                                                    <Link href="/dashboard/users-permissions/administrators" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/users-permissions/administrators" ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>Administrators & Leadership</Link>
-                                                    <Link href="/dashboard/users-permissions/teachers" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/users-permissions/teachers" ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>Teachers</Link>
-                                                    <Link href="/dashboard/users-permissions/students" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/users-permissions/students" ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>Students</Link>
-                                                    <Link href="/dashboard/users-permissions/parents" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/users-permissions/parents" ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>Parents & Guardians</Link>
-                                                    <Link href="/dashboard/users-permissions/staff" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/users-permissions/staff" ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>Support Staff</Link>
-                                                    <Link href="/dashboard/users-permissions/roles" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/users-permissions/roles" ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>Roles & Permissions</Link>
+                                                    <Link href="/dashboard/users-permissions" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/users-permissions" ? "text-amber-300 font-semibold bg-[#0c2454]" : "text-slate-400 hover:text-amber-200 hover:bg-[#0c2454]/40"}`}>All Accounts</Link>
+                                                    <Link href="/dashboard/users-permissions/administrators" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/users-permissions/administrators" ? "text-amber-300 font-semibold bg-[#0c2454]" : "text-slate-400 hover:text-amber-200 hover:bg-[#0c2454]/40"}`}>Administrators & Leadership</Link>
+                                                    <Link href="/dashboard/users-permissions/teachers" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/users-permissions/teachers" ? "text-amber-300 font-semibold bg-[#0c2454]" : "text-slate-400 hover:text-amber-200 hover:bg-[#0c2454]/40"}`}>Teachers</Link>
+                                                    <Link href="/dashboard/users-permissions/students" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/users-permissions/students" ? "text-amber-300 font-semibold bg-[#0c2454]" : "text-slate-400 hover:text-amber-200 hover:bg-[#0c2454]/40"}`}>Students</Link>
+                                                    <Link href="/dashboard/users-permissions/parents" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/users-permissions/parents" ? "text-amber-300 font-semibold bg-[#0c2454]" : "text-slate-400 hover:text-amber-200 hover:bg-[#0c2454]/40"}`}>Parents & Guardians</Link>
+                                                    <Link href="/dashboard/users-permissions/staff" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/users-permissions/staff" ? "text-amber-300 font-semibold bg-[#0c2454]" : "text-slate-400 hover:text-amber-200 hover:bg-[#0c2454]/40"}`}>Support Staff</Link>
+                                                    <Link href="/dashboard/users-permissions/roles" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/users-permissions/roles" ? "text-amber-300 font-semibold bg-[#0c2454]" : "text-slate-400 hover:text-amber-200 hover:bg-[#0c2454]/40"}`}>Roles & Permissions</Link>
                                                 </div>
                                             )}
                                         </div>
 
                                         {/* School Settings */}
-                                        <div className="pt-1">
+                                        <div className="pt-0.5">
                                             <Link 
                                                 href="/dashboard/school-settings"
-                                                className={`w-full flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-xs font-medium transition-all ${
+                                                className={`w-full flex items-center space-x-3 px-3.5 py-2 rounded-xl text-xs font-medium transition-all ${
                                                     pathname.startsWith("/dashboard/school-settings")
-                                                        ? "text-[#f59e0b] font-bold bg-[#0c2454]"
+                                                        ? "text-amber-300 font-semibold bg-[#0c2454] border-l-2 border-amber-400 shadow-xs"
                                                         : "text-slate-300 hover:bg-[#081e48] hover:text-white"
                                                 }`}
                                             >
-                                                <Settings className="w-4 h-4 text-amber-400" />
-                                                <span>School Settings</span>
+                                                <Settings className={`w-4 h-4 shrink-0 ${pathname.startsWith("/dashboard/school-settings") ? "text-amber-300" : "text-amber-400/90"}`} />
+                                                {!sidebarCollapsed && <span>School Settings</span>}
                                             </Link>
                                         </div>
 
                                         {/* Operations Group */}
-                                        <div className="pt-1">
+                                        <div className="pt-0.5">
                                             <button 
                                                 onClick={() => toggleMenu("operations")}
-                                                className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-medium text-slate-300 hover:bg-[#081e48] hover:text-white transition-all group cursor-pointer"
+                                                className="w-full flex items-center justify-between px-3.5 py-2 rounded-xl text-xs font-medium text-slate-300 hover:bg-[#081e48] hover:text-white transition-all group cursor-pointer"
                                             >
                                                 <div className="flex items-center space-x-3">
-                                                    <Settings className="w-4 h-4 text-amber-400" />
+                                                    <Settings className="w-4 h-4 text-amber-400/90 group-hover:text-amber-300" />
                                                     <span>Operations</span>
                                                 </div>
                                                 {openMenus.operations ? 
@@ -1316,9 +1316,9 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
                                             </button>
                                             {openMenus.operations && (
                                                 <div className="pl-8 pr-2 py-1.5 space-y-1 bg-[#020e24]/60 rounded-xl my-1 border-l border-slate-700/50">
-                                                    <Link href="/dashboard/operations/resources" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/operations/resources" ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>Resources</Link>
-                                                    <Link href="/dashboard/operations/issues" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/operations/issues" ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>Issues</Link>
-                                                    <Link href="/dashboard/operations/improvements" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/operations/improvements" ? "text-[#f59e0b] font-bold bg-[#0c2454]" : "text-slate-400 hover:text-amber-300 hover:bg-[#0c2454]/40"}`}>Improvements</Link>
+                                                    <Link href="/dashboard/operations/resources" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/operations/resources" ? "text-amber-300 font-semibold bg-[#0c2454]" : "text-slate-400 hover:text-amber-200 hover:bg-[#0c2454]/40"}`}>Resources</Link>
+                                                    <Link href="/dashboard/operations/issues" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/operations/issues" ? "text-amber-300 font-semibold bg-[#0c2454]" : "text-slate-400 hover:text-amber-200 hover:bg-[#0c2454]/40"}`}>Issues</Link>
+                                                    <Link href="/dashboard/operations/improvements" className={`block py-1.5 px-2 rounded-lg text-xs transition-colors ${pathname === "/dashboard/operations/improvements" ? "text-amber-300 font-semibold bg-[#0c2454]" : "text-slate-400 hover:text-amber-200 hover:bg-[#0c2454]/40"}`}>Improvements</Link>
                                                 </div>
                                             )}
                                         </div>
