@@ -22,17 +22,7 @@ export default function StudentSubjectsPage() {
         const dashboardResponse = await fetchApi("/student/dashboard");
         if (!dashboardResponse.ok) throw new Error("Dashboard request failed");
         const dashboard = await dashboardResponse.json();
-        const sectionId = dashboard.enrollment?.section?.id;
-        const academicYearId = dashboard.enrollment?.academicYear?.id;
-
-        if (!sectionId || !academicYearId) {
-          setEntries([]);
-          return;
-        }
-
-        const timetableResponse = await fetchApi(`/timetable/section/${sectionId}?academicYearId=${academicYearId}`);
-        if (!timetableResponse.ok) throw new Error("Subjects request failed");
-        setEntries(await timetableResponse.json());
+        setEntries(Array.isArray(dashboard.weeklyClasses) ? dashboard.weeklyClasses : []);
       } catch {
         setError(true);
       } finally {

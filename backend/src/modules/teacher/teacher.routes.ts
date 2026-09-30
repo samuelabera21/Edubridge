@@ -33,11 +33,13 @@ import { createActivity, getActivities, submitActivity, raiseSupportFlag, getSup
 import { recordStudentAttendance, getStudentAttendance } from "../attendance/attendance.controller.js";
 import { createAssessment, getAssessments, recordResult, getStudentResults } from "../assessment/assessment.controller.js";
 import { requirePermission, requireScope } from "../authentication/authorization.middleware.js";
+import { recommendDigitalResource } from "../operational/operational.controller.js";
 
 const router = Router();
 
 // Ensure all teacher routes are scoped to SCHOOL
 router.use(requireScope("SCHOOL"));
+router.post("/resources/recommend", recommendDigitalResource);
 
 /**
  * @openapi

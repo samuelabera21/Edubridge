@@ -27,6 +27,39 @@ export const createResource = async (req: Request, res: Response) => {
     }
 };
 
+export const createDigitalResource = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        const userId = req.user?.id;
+        if (!organizationId || !userId) return res.status(403).json({ error: "Missing school scope or authentication" });
+        if (!req.body.title) return res.status(400).json({ error: "title is required" });
+        return res.status(201).json(await OperationalService.createDigitalResource(organizationId, userId, req.body));
+    } catch (error: any) {
+        return res.status(400).json({ error: error.message || "Failed to create digital resource" });
+    }
+};
+
+export const getDigitalResources = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        if (!organizationId) return res.status(403).json({ error: "Missing school scope" });
+        return res.json(await OperationalService.getDigitalResources(organizationId));
+    } catch {
+        return res.status(500).json({ error: "Internal server error" });
+    }
+};
+
+export const recommendDigitalResource = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        const userId = req.user?.id;
+        if (!organizationId || !userId) return res.status(403).json({ error: "Missing school scope or authentication" });
+        return res.status(201).json(await OperationalService.recommendDigitalResource(organizationId, userId, req.body));
+    } catch (error: any) {
+        return res.status(400).json({ error: error.message || "Failed to recommend resource" });
+    }
+};
+
 export const getResources = async (req: Request, res: Response) => {
     try {
         const organizationId = (req as any).accessScope?.id;

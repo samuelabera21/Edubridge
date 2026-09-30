@@ -66,7 +66,7 @@ docker compose up
 | Field | Value |
 |-------|-------|
 | Email | `admin@edubridge.local` |
-| Password | See the `DEFAULT_INITIAL_PASSWORD` value in your local `.env` file. |
+| Password | `EduBridge2026!` |
 
 > **⚠️ Important:** `.env` is git-ignored and will NOT be committed. Every developer must run `bash setup.sh` once after cloning or pulling on a new machine.
 

@@ -2,25 +2,78 @@ import { prisma } from "../../infrastructure/prisma/client.js";
 import { ActivityType, SubmissionStatus, SupportFlagType } from "../../generated/prisma/enums.js";
 
 export class LearningService {
-    static async createActivity(organizationId: string, data: { academicYearId: string; teachingAssignmentId: string; title: string; description?: string; type: ActivityType; dueDate?: string }) {
+    static async createActivity(organizationId: string, data: { academicYearId: string; teachingAssignmentId: string; title: string; description?: string; type: ActivityType; dueDate?: string; supportCategory?: string | null; targetEnrollmentIds?: string[]; userId?: string }) {
         const assignment = await prisma.teachingAssignment.findFirst({
-            where: { id: data.teachingAssignmentId, teacher: { organizationId } }
+            where: { id: data.teachingAssignmentId, academicYearId: data.academicYearId, teacher: { organizationId } }
         });
         
         if (!assignment) {
             throw new Error("Teaching assignment not found");
         }
 
-        const activity = await prisma.learningActivity.create({
-            data: {
-                organizationId,
-                academicYearId: data.academicYearId,
-                teachingAssignmentId: data.teachingAssignmentId,
-                title: data.title,
-                description: data.description,
-                type: data.type,
-                dueDate: data.dueDate ? new Date(data.dueDate) : null
+        if (data.userId) {
+            const teacher = await prisma.teacher.findFirst({
+                where: { organizationId, userId: data.userId },
+                select: { id: true }
+            });
+            if (teacher && assignment.teacherId !== teacher.id) {
+                throw new Error("Teachers can only assign activities to their own classes");
             }
+        }
+
+        const allowedSupportCategories = new Set(["RECOMMENDATION", "REMEDIAL", "ENRICHMENT"]);
+        const supportCategory = data.supportCategory || null;
+        if (supportCategory && !allowedSupportCategories.has(supportCategory)) {
+            throw new Error("Invalid support category");
+        }
+
+        const targetEnrollmentIds = [...new Set(data.targetEnrollmentIds || [])];
+        if (supportCategory && targetEnrollmentIds.length === 0) {
+            throw new Error("Select at least one student for a support activity");
+        }
+
+        if (targetEnrollmentIds.length > 0) {
+            const eligibleEnrollments = await prisma.studentEnrollment.findMany({
+                where: {
+                    id: { in: targetEnrollmentIds },
+                    organizationId,
+                    academicYearId: assignment.academicYearId,
+                    schoolGradeId: assignment.schoolGradeId,
+                    sectionId: assignment.sectionId,
+                    status: { in: ["ACTIVE", "ENROLLED"] }
+                },
+                select: { id: true }
+            });
+            if (eligibleEnrollments.length !== targetEnrollmentIds.length) {
+                throw new Error("Every selected student must be actively enrolled in the assigned class and year");
+            }
+        }
+
+        const activity = await prisma.$transaction(async (transaction) => {
+            const createdActivity = await transaction.learningActivity.create({
+                data: {
+                    organizationId,
+                    academicYearId: data.academicYearId,
+                    teachingAssignmentId: data.teachingAssignmentId,
+                    title: data.title,
+                    description: data.description,
+                    type: data.type,
+                    supportCategory,
+                    dueDate: data.dueDate ? new Date(data.dueDate) : null
+                }
+            });
+
+            if (targetEnrollmentIds.length > 0) {
+                await transaction.submission.createMany({
+                    data: targetEnrollmentIds.map((enrollmentId) => ({
+                        learningActivityId: createdActivity.id,
+                        enrollmentId,
+                        status: SubmissionStatus.PENDING
+                    }))
+                });
+            }
+
+            return createdActivity;
         });
 
         return activity;

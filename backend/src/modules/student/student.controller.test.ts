@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { Request, Response } from "express";
 import { 
     createStudent, getStudents, enrollStudent, 
-    getEnrollments, transferStudent, updateStudentStatus, getStudentProfile
+    getEnrollments, transferStudent, updateStudentStatus, getStudentProfile, getMySupportActivities
 } from "./student.controller.js";
 import { StudentService } from "./student.service.js";
 
@@ -15,6 +15,7 @@ vi.mock("./student.service.js", () => ({
         transferStudent: vi.fn(),
         updateStudentStatus: vi.fn(),
         getStudentByUserId: vi.fn(),
+        getStudentSupportActivities: vi.fn(),
     }
 }));
 
@@ -131,6 +132,29 @@ describe("Student Controller", () => {
 
             expect(mockRes.status).toHaveBeenCalledWith(404);
             expect(mockRes.json).toHaveBeenCalledWith({ error: "Student profile not found" });
+        });
+    });
+
+    describe("getMySupportActivities", () => {
+        it("returns support activities for the authenticated student and school scope", async () => {
+            (mockReq as any).accessScope = { id: "school1" };
+            (mockReq as any).user = { id: "user1" };
+            const activities = [{ id: "support1", supportCategory: "REMEDIAL" }];
+            vi.mocked(StudentService.getStudentSupportActivities).mockResolvedValue(activities as any);
+
+            await getMySupportActivities(mockReq as Request, mockRes as Response);
+
+            expect(StudentService.getStudentSupportActivities).toHaveBeenCalledWith("user1", "school1");
+            expect(mockRes.json).toHaveBeenCalledWith(activities);
+        });
+
+        it("rejects requests without an authenticated student context", async () => {
+            (mockReq as any).accessScope = { id: "school1" };
+
+            await getMySupportActivities(mockReq as Request, mockRes as Response);
+
+            expect(mockRes.status).toHaveBeenCalledWith(403);
+            expect(StudentService.getStudentSupportActivities).not.toHaveBeenCalled();
         });
     });
 });

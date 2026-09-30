@@ -2,6 +2,78 @@ import { prisma } from "../../infrastructure/prisma/client.js";
 import { ResourceType, IssueStatus, IssuePriority } from "../../generated/prisma/enums.js";
 
 export class OperationalService {
+    static async createDigitalResource(organizationId: string, createdById: string, data: any) {
+        return prisma.digitalResource.create({
+            data: {
+                organizationId,
+                createdById,
+                title: data.title,
+                description: data.description,
+                subjectName: data.subjectName,
+                gradeName: data.gradeName,
+                academicYearId: data.academicYearId || null,
+                resourceType: data.resourceType || "HANDOUT",
+                fileUrl: data.fileUrl || null,
+                externalUrl: data.externalUrl || null,
+                source: data.source || null,
+                status: "PUBLISHED"
+            }
+        });
+    }
+
+    static async getDigitalResources(organizationId: string) {
+        return prisma.digitalResource.findMany({
+            where: { organizationId },
+            orderBy: { createdAt: "desc" }
+        });
+    }
+
+    static async recommendDigitalResource(organizationId: string, userId: string, data: any) {
+        const teacher = await prisma.teacher.findFirst({ where: { organizationId, userId }, select: { id: true } });
+        if (!teacher) throw new Error("Teacher profile not found");
+
+        const assignment = await prisma.teachingAssignment.findFirst({
+            where: {
+                teacherId: teacher.id,
+                academicYearId: data.academicYearId,
+                schoolGradeId: data.schoolGradeId,
+                sectionId: data.sectionId || null
+            }
+        });
+        if (!assignment) throw new Error("You can only recommend resources for your assigned class");
+
+        const resource = await prisma.digitalResource.findFirst({
+            where: { id: data.resourceId, organizationId, status: "PUBLISHED" }
+        });
+        if (!resource) throw new Error("Published resource not found");
+
+        if (data.enrollmentId) {
+            const enrollment = await prisma.studentEnrollment.findFirst({
+                where: {
+                    id: data.enrollmentId,
+                    organizationId,
+                    academicYearId: assignment.academicYearId,
+                    schoolGradeId: assignment.schoolGradeId,
+                    sectionId: assignment.sectionId,
+                    status: { in: ["ACTIVE", "ENROLLED"] }
+                }
+            });
+            if (!enrollment) throw new Error("Student is not in your assigned class");
+        }
+
+        return prisma.resourceRecommendation.create({
+            data: {
+                resourceId: resource.id,
+                teacherId: teacher.id,
+                academicYearId: assignment.academicYearId,
+                schoolGradeId: assignment.schoolGradeId,
+                sectionId: assignment.sectionId,
+                enrollmentId: data.enrollmentId || null,
+                note: data.note || null
+            }
+        });
+    }
+
     static async createResource(organizationId: string, data: { name: string; type: ResourceType; capacity?: number; status?: string; description?: string }) {
         return prisma.schoolResource.create({
             data: {

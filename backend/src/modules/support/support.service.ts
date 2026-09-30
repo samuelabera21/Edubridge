@@ -27,21 +27,46 @@ export class SupportService {
     static async getRemedialPrograms(organizationId: string) {
         return prisma.remedialProgram.findMany({
             where: { organizationId },
+            include: { _count: { select: { assignments: true } } },
             orderBy: { createdAt: "desc" }
         });
     }
 
     static async createRemedialProgram(organizationId: string, data: any) {
-        return prisma.remedialProgram.create({
-            data: {
+        const enrollmentIds: string[] = Array.from(new Set<string>(Array.isArray(data.enrollmentIds)
+            ? data.enrollmentIds.filter((id: unknown): id is string => typeof id === "string")
+            : []));
+        if (enrollmentIds.length === 0) throw new Error("Select at least one active student for the remedial program");
+        const maxCapacity = Number(data.maxCapacity) || 30;
+        if (enrollmentIds.length > maxCapacity) throw new Error("Selected student count exceeds the program capacity");
+
+        const enrollments = await prisma.studentEnrollment.findMany({
+            where: {
+                id: { in: enrollmentIds },
                 organizationId,
-                programTitle: data.programTitle,
-                subjectName: data.subjectName,
-                gradeName: data.gradeName,
-                leadTeacher: data.leadTeacher,
-                scheduleTime: data.scheduleTime,
-                maxCapacity: Number(data.maxCapacity) || 30
-            }
+                status: { in: ["ACTIVE", "ENROLLED"] }
+            },
+            select: { id: true }
+        });
+        if (enrollments.length !== enrollmentIds.length) throw new Error("Selected students must have active enrollment in this school");
+
+        return prisma.$transaction(async (transaction) => {
+            const program = await transaction.remedialProgram.create({
+                data: {
+                    organizationId,
+                    programTitle: data.programTitle,
+                    subjectName: data.subjectName,
+                    gradeName: data.gradeName,
+                    leadTeacher: data.leadTeacher,
+                    scheduleTime: data.scheduleTime,
+                    enrolledCount: enrollmentIds.length,
+                    maxCapacity
+                }
+            });
+            await transaction.remedialProgramAssignment.createMany({
+                data: enrollmentIds.map((enrollmentId) => ({ remedialProgramId: program.id, enrollmentId }))
+            });
+            return program;
         });
     }
 
@@ -75,12 +100,26 @@ export class SupportService {
     }
 
     static async createInterventionPlan(organizationId: string, data: any) {
+        const enrollment = data.studentId ? await prisma.studentEnrollment.findFirst({
+            where: {
+                organizationId,
+                studentId: data.studentId,
+                status: { in: ["ACTIVE", "ENROLLED"] }
+            },
+            include: {
+                student: true,
+                schoolGrade: { include: { grade: true } }
+            },
+            orderBy: { createdAt: "desc" }
+        }) : null;
+        if (!enrollment) throw new Error("Select a student with an active enrollment in this school");
+
         return prisma.interventionPlan.create({
             data: {
                 organizationId,
-                studentId: data.studentId || null,
-                studentName: data.studentName,
-                gradeName: data.gradeName,
+                studentId: enrollment.studentId,
+                studentName: [enrollment.student.firstName, enrollment.student.lastName].filter(Boolean).join(" "),
+                gradeName: enrollment.schoolGrade.grade.name,
                 targetScore: data.targetScore || "65%",
                 counselorName: data.counselorName,
                 reviewDate: data.reviewDate ? new Date(data.reviewDate) : null,

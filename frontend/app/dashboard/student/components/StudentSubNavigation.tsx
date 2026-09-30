@@ -24,7 +24,7 @@ type StudentSubNavigationProps = {
 
 export default function StudentSubNavigation({ group, isOpen, pathname, onToggle }: StudentSubNavigationProps) {
     const Icon = group.icon;
-    const isActive = (href: string) => pathname === href || pathname.startsWith(`${href}/`);
+    const isActive = (href: string) => pathname === href;
 
     return (
         <div className="pt-2">

@@ -4,14 +4,46 @@ import { useEffect, useState } from "react";
 import { fetchApi } from "@/lib/api";
 import Link from "next/link";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/Card";
-import { ClipboardCheck, ArrowLeft, Plus, CheckCircle2, Inbox, Save } from "lucide-react";
+import { ClipboardCheck, ArrowLeft, Plus, Inbox } from "lucide-react";
+
+type StudentEnrollment = {
+    id: string;
+    status: string;
+    student: { firstName: string; lastName: string; studentId: string };
+};
+
+type TeacherClass = {
+    id: string;
+    assignment?: {
+        id: string;
+        academicYearId: string;
+        schoolGrade?: { grade?: { level?: string | number } };
+        section?: { name?: string } | null;
+        subject?: { name?: string };
+    };
+    schoolGrade?: { grade?: { level?: string | number } };
+    section?: { name?: string } | null;
+    subject?: { name?: string };
+    students?: StudentEnrollment[];
+};
+
+type LearningActivity = {
+    id: string;
+    title: string;
+    description?: string | null;
+    type: string;
+    supportCategory?: string | null;
+    dueDate?: string | null;
+};
 
 export default function ActivitiesPage() {
-    const [activities, setActivities] = useState<any[]>([]);
-    const [classes, setClasses] = useState<any[]>([]);
+    const [activities, setActivities] = useState<LearningActivity[]>([]);
+    const [classes, setClasses] = useState<TeacherClass[]>([]);
     const [showModal, setShowModal] = useState(false);
     const [title, setTitle] = useState("");
     const [type, setType] = useState("HOMEWORK");
+    const [supportCategory, setSupportCategory] = useState("");
+    const [targetEnrollmentIds, setTargetEnrollmentIds] = useState<string[]>([]);
     const [dueDate, setDueDate] = useState("");
     const [assignmentId, setAssignmentId] = useState("");
     const [loading, setLoading] = useState(true);
@@ -27,10 +59,12 @@ export default function ActivitiesPage() {
                 const actData = actRes.ok ? await actRes.json() : [];
                 const classData = classRes.ok ? await classRes.json() : [];
 
-                setActivities(Array.isArray(actData) ? actData : []);
-                setClasses(Array.isArray(classData) ? classData : []);
-                if (Array.isArray(classData) && classData.length > 0) {
-                    setAssignmentId(classData[0].assignment?.id || classData[0].id);
+                const activityList = Array.isArray(actData) ? actData as LearningActivity[] : [];
+                const classList = Array.isArray(classData) ? classData as TeacherClass[] : [];
+                setActivities(activityList);
+                setClasses(classList);
+                if (classList.length > 0) {
+                    setAssignmentId(classList[0].assignment?.id || classList[0].id);
                 }
             } catch (err) {
                 console.error("Failed to load learning activities:", err);
@@ -44,9 +78,13 @@ export default function ActivitiesPage() {
     async function handleCreateActivity(e: React.FormEvent) {
         e.preventDefault();
         if (!title || !assignmentId) return;
+        if (supportCategory && targetEnrollmentIds.length === 0) {
+            alert("Select at least one student for this support activity.");
+            return;
+        }
 
         try {
-            const selectedAssignment = classes.find((c: any) => (c.assignment?.id || c.id) === assignmentId);
+            const selectedAssignment = classes.find((item) => (item.assignment?.id || item.id) === assignmentId);
             const res = await fetchApi("/teacher/learning/activity", {
                 method: "POST",
                 body: JSON.stringify({
@@ -54,7 +92,9 @@ export default function ActivitiesPage() {
                     teachingAssignmentId: assignmentId,
                     title,
                     type,
-                    dueDate: dueDate || null
+                    dueDate: dueDate || null,
+                    supportCategory: supportCategory || null,
+                    targetEnrollmentIds
                 })
             });
 
@@ -63,9 +103,11 @@ export default function ActivitiesPage() {
                 setActivities([created, ...activities]);
                 setShowModal(false);
                 setTitle("");
+                setSupportCategory("");
+                setTargetEnrollmentIds([]);
             }
-        } catch (err: any) {
-            alert(err.message || "Failed to create activity");
+        } catch (err: unknown) {
+            alert(err instanceof Error ? err.message : "Failed to create activity");
         }
     }
 
@@ -116,7 +158,7 @@ export default function ActivitiesPage() {
                         <div className="py-12 text-center text-gray-400 space-y-2">
                             <Inbox className="w-10 h-10 mx-auto text-gray-300" />
                             <p className="text-sm font-semibold text-gray-600">No learning activities posted yet</p>
-                            <p className="text-xs text-gray-400">Click "Create Learning Activity" above to post homework or practice assignments for your classes.</p>
+                            <p className="text-xs text-gray-400">Click &quot;Create Learning Activity&quot; above to post homework or practice assignments for your classes.</p>
                         </div>
                     ) : (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -149,11 +191,14 @@ export default function ActivitiesPage() {
                                 <label className="block font-bold text-gray-700 mb-1">Target Class</label>
                                 <select
                                     value={assignmentId}
-                                    onChange={(e) => setAssignmentId(e.target.value)}
+                                    onChange={(e) => {
+                                        setAssignmentId(e.target.value);
+                                        setTargetEnrollmentIds([]);
+                                    }}
                                     className="w-full p-2.5 rounded-lg border border-gray-200"
                                 >
-                                    {classes.map((c, i) => {
-                                        const a = c.assignment || c;
+                                    {classes.map((item, i) => {
+                                        const a = item.assignment || item;
                                         return (
                                             <option key={a.id || i} value={a.id}>
                                                 Grade {a.schoolGrade?.grade?.level}{a.section?.name} - {a.subject?.name}
@@ -186,6 +231,45 @@ export default function ActivitiesPage() {
                                     <option value="PRACTICE">PRACTICE</option>
                                 </select>
                             </div>
+                            <div>
+                                <label className="block font-bold text-gray-700 mb-1">Support Purpose</label>
+                                <select
+                                    value={supportCategory}
+                                    onChange={(event) => {
+                                        setSupportCategory(event.target.value);
+                                        setTargetEnrollmentIds([]);
+                                    }}
+                                    className="w-full p-2.5 rounded-lg border border-gray-200"
+                                >
+                                    <option value="">General class activity</option>
+                                    <option value="RECOMMENDATION">Recommendation</option>
+                                    <option value="REMEDIAL">Remedial support</option>
+                                    <option value="ENRICHMENT">Enrichment</option>
+                                </select>
+                            </div>
+                            {supportCategory && (() => {
+                                const selectedClass = classes.find((item) => (item.assignment?.id || item.id) === assignmentId);
+                                const roster = (selectedClass?.students || []).filter((enrollment) => ["ACTIVE", "ENROLLED"].includes(enrollment.status));
+                                return (
+                                    <div>
+                                        <label className="block font-bold text-gray-700 mb-1">Assign to students</label>
+                                        <select
+                                            multiple
+                                            value={targetEnrollmentIds}
+                                            onChange={(event) => setTargetEnrollmentIds(Array.from(event.target.selectedOptions, (option) => option.value))}
+                                            className="w-full min-h-32 p-2.5 rounded-lg border border-gray-200"
+                                            required
+                                        >
+                                            {roster.map((enrollment) => (
+                                                <option key={enrollment.id} value={enrollment.id}>
+                                                    {enrollment.student.firstName} {enrollment.student.lastName} · {enrollment.student.studentId}
+                                                </option>
+                                            ))}
+                                        </select>
+                                        {roster.length === 0 && <p className="mt-1 text-xs text-amber-700">No currently enrolled students are available in this class.</p>}
+                                    </div>
+                                );
+                            })()}
                             <div>
                                 <label className="block font-bold text-gray-700 mb-1">Due Date</label>
                                 <input

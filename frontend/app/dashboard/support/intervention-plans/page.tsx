@@ -2,32 +2,44 @@
 
 import { useEffect, useState } from "react";
 import { fetchApi } from "@/lib/api";
-import { useAuth } from "@/hooks/useAuth";
 import { 
     FileText, 
     Plus, 
-    Search, 
     Sparkles, 
     Target, 
-    Calendar, 
-    UserCheck, 
-    X,
-    CheckCircle2
+    X
 } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { LoadingState } from "@/components/ui/LoadingState";
 
+type StudentEnrollmentOption = {
+    id: string;
+    status: string;
+    student: { id: string; firstName: string; lastName: string; studentId: string };
+    schoolGrade?: { grade?: { name?: string; level?: string | number } };
+    section?: { name: string } | null;
+};
+
+type InterventionPlanRecord = {
+    id: string;
+    studentName: string;
+    gradeName: string;
+    targetScore: string;
+    counselorName?: string | null;
+    reviewDate?: string | null;
+    status: string;
+};
+
 export default function InterventionPlansPage() {
-    const { authData } = useAuth();
     const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
-    const [plans, setPlans] = useState<any[]>([]);
+    const [plans, setPlans] = useState<InterventionPlanRecord[]>([]);
+    const [enrollments, setEnrollments] = useState<StudentEnrollmentOption[]>([]);
     const [isModalOpen, setIsModalOpen] = useState(false);
 
     const [form, setForm] = useState({
-        studentName: "",
-        gradeName: "",
+        studentId: "",
         targetScore: "65%",
         counselorName: "",
         reviewDate: new Date().toISOString().split("T")[0],
@@ -36,15 +48,21 @@ export default function InterventionPlansPage() {
 
     const loadPlans = async () => {
         try {
-            setLoading(true);
-            const res = await fetchApi("/support/intervention-plans");
+            const [res, enrollmentResponse] = await Promise.all([
+                fetchApi("/support/intervention-plans"),
+                fetchApi("/student/enrollments")
+            ]);
             if (res.ok) {
                 const data = await res.json();
-                setPlans(Array.isArray(data) ? data : []);
+                setPlans(Array.isArray(data) ? data as InterventionPlanRecord[] : []);
             } else {
                 setPlans([]);
             }
-        } catch (err: any) {
+            if (enrollmentResponse.ok) {
+                const data = await enrollmentResponse.json();
+                setEnrollments(Array.isArray(data) ? (data as StudentEnrollmentOption[]).filter((item) => ["ACTIVE", "ENROLLED"].includes(item.status)) : []);
+            }
+        } catch (err: unknown) {
             console.error(err);
             setPlans([]);
         } finally {
@@ -53,12 +71,12 @@ export default function InterventionPlansPage() {
     };
 
     useEffect(() => {
-        loadPlans();
+        void Promise.resolve().then(loadPlans);
     }, []);
 
     const handleCreatePlan = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!form.studentName.trim()) return;
+        if (!form.studentId) return;
 
         try {
             setSubmitting(true);
@@ -70,8 +88,7 @@ export default function InterventionPlansPage() {
             if (res.ok) {
                 setIsModalOpen(false);
                 setForm({
-                    studentName: "",
-                    gradeName: "",
+                    studentId: "",
                     targetScore: "65%",
                     counselorName: "",
                     reviewDate: new Date().toISOString().split("T")[0],
@@ -79,7 +96,7 @@ export default function InterventionPlansPage() {
                 });
                 loadPlans();
             }
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error(err);
         } finally {
             setSubmitting(false);
@@ -135,7 +152,7 @@ export default function InterventionPlansPage() {
                         <div className="p-12 text-center text-gray-500">
                             <Target className="w-12 h-12 mx-auto text-emerald-300 mb-2" />
                             <p className="font-semibold text-gray-800">No active intervention plans created in database</p>
-                            <p className="text-xs text-gray-400 mt-1">Click "Formulate Intervention Plan" above to set target GPA scores & counselor review dates.</p>
+                            <p className="text-xs text-gray-400 mt-1">Click &quot;Formulate Intervention Plan&quot; above to set target GPA scores &amp; counselor review dates.</p>
                         </div>
                     ) : (
                         <div className="overflow-x-auto">
@@ -185,28 +202,28 @@ export default function InterventionPlansPage() {
 
                         <form onSubmit={handleCreatePlan} className="space-y-4">
                             <div>
-                                <label className="block text-xs font-semibold text-gray-700 uppercase mb-1">Student Full Name *</label>
-                                <input
-                                    type="text"
+                                <label className="block text-xs font-semibold text-gray-700 uppercase mb-1">Student *</label>
+                                <select
                                     required
-                                    value={form.studentName}
-                                    onChange={(e) => setForm({ ...form, studentName: e.target.value })}
-                                    placeholder="e.g. Abebe Kebede"
+                                    value={form.studentId}
+                                    onChange={(e) => setForm({ ...form, studentId: e.target.value })}
                                     className="w-full border border-gray-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-[#006b3f]"
-                                />
+                                >
+                                    <option value="">Choose an enrolled student</option>
+                                    {enrollments.map((enrollment) => (
+                                        <option key={enrollment.id} value={enrollment.student.id}>
+                                            {enrollment.student.firstName} {enrollment.student.lastName} · {enrollment.student.studentId} · Grade {enrollment.schoolGrade?.grade?.level ?? enrollment.schoolGrade?.grade?.name ?? ""} {enrollment.section?.name ?? ""}
+                                        </option>
+                                    ))}
+                                </select>
                             </div>
 
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                    <label className="block text-xs font-semibold text-gray-700 uppercase mb-1">Grade Level *</label>
-                                    <input
-                                        type="text"
-                                        required
-                                        value={form.gradeName}
-                                        onChange={(e) => setForm({ ...form, gradeName: e.target.value })}
-                                        placeholder="e.g. Grade 9"
-                                        className="w-full border border-gray-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-[#006b3f]"
-                                    />
+                                    <label className="block text-xs font-semibold text-gray-700 uppercase mb-1">Grade Level</label>
+                                    <p className="rounded-lg border border-gray-200 bg-gray-50 p-2.5 text-sm text-gray-600">
+                                        {enrollments.find((enrollment) => enrollment.student.id === form.studentId)?.schoolGrade?.grade?.level ?? enrollments.find((enrollment) => enrollment.student.id === form.studentId)?.schoolGrade?.grade?.name ?? "Selected from student enrollment"}
+                                    </p>
                                 </div>
                                 <div>
                                     <label className="block text-xs font-semibold text-gray-700 uppercase mb-1">Target Score %</label>

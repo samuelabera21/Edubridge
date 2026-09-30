@@ -34,10 +34,7 @@ if (Test-Path $EnvFile) {
     $rng.GetBytes($authSecretBytes)
     $authSecret = [System.BitConverter]::ToString($authSecretBytes) -replace '-', ''
 
-    # --- Generate DEFAULT_INITIAL_PASSWORD ---
-    $defaultPassBytes = New-Object byte[] 18
-    [System.Security.Cryptography.RandomNumberGenerator]::Fill($defaultPassBytes)
-    $defaultPass = [Convert]::ToBase64String($defaultPassBytes)
+    $defaultPass = "EduBridge2026!"
 
     # Replace blank values
     $content = $content -replace "(?m)^POSTGRES_PASSWORD=.*$", "POSTGRES_PASSWORD=$pgPass"
@@ -74,11 +71,6 @@ $backendEnvContent = @"
 DATABASE_URL="postgresql://${pgUser}:${pgPass}@localhost:${dbPort}/${pgDb}"
 BETTER_AUTH_SECRET="${authSec}"
 BETTER_AUTH_URL="http://localhost:5000"
-POSTGRES_USER=${pgUser}
-POSTGRES_PASSWORD=${pgPass}
-POSTGRES_DB=${pgDb}
-DEFAULT_INITIAL_PASSWORD=${defaultPass}
-ADMIN_PASSWORD=${defaultPass}
 "@
 
 Set-Content -Path $BackendEnv -Value $backendEnvContent
@@ -91,6 +83,6 @@ Write-Host "    docker compose up" -ForegroundColor White
 Write-Host ""
 Write-Host "  Then log in at: http://localhost:3001" -ForegroundColor White
 Write-Host "  Email    : admin@edubridge.local" -ForegroundColor White
-Write-Host "  Password : value configured in your .env" -ForegroundColor White
+Write-Host "  Password : EduBridge2026!" -ForegroundColor White
 Write-Host "==============================================" -ForegroundColor Cyan
 Write-Host ""

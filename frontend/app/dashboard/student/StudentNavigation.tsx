@@ -46,7 +46,7 @@ const studentNavGroups: StudentNavGroup[] = [
         icon: ClipboardCheck,
         links: [
             { label: "Attendance History", href: "/dashboard/student/attendance" },
-            { label: "Absence Records", href: "/dashboard/student/attendance" },
+            { label: "Absence Records", href: "/dashboard/student/attendance/absence" },
             { label: "Submit Explanation", href: "/dashboard/student/attendance/explanation" },
         ],
     },
@@ -65,8 +65,8 @@ const studentNavGroups: StudentNavGroup[] = [
         label: "My Learning Activities",
         icon: Activity,
         links: [
-            { label: "Assignments", href: "/dashboard/student/learning" },
-            { label: "Practice and Quizzes", href: "/dashboard/student/learning" },
+            { label: "Assignments", href: "/dashboard/student/learning/assignments" },
+            { label: "Practice and Quizzes", href: "/dashboard/student/learning/practice" },
             { label: "Submitted Work", href: "/dashboard/student/learning/submissions" },
         ],
     },
@@ -75,9 +75,10 @@ const studentNavGroups: StudentNavGroup[] = [
         label: "My Support",
         icon: HeartHandshake,
         links: [
-            { label: "Recommendations", href: "/dashboard/student/support" },
-            { label: "Remedial Activities", href: "/dashboard/student/support" },
-            { label: "Progress", href: "/dashboard/student/support" },
+            { label: "Recommendations", href: "/dashboard/student/support/recommendations" },
+            { label: "Remedial Activities", href: "/dashboard/student/support/remedial" },
+            { label: "Enrichment Activities", href: "/dashboard/student/support/enrichment" },
+            { label: "Intervention & Progress", href: "/dashboard/student/support/progress" },
         ],
     },
     {
@@ -85,9 +86,8 @@ const studentNavGroups: StudentNavGroup[] = [
         label: "Communication",
         icon: MessageSquare,
         links: [
-            { label: "Teacher Messages", href: "/dashboard/student/communication" },
-            { label: "School Announcements", href: "/dashboard/student/communication" },
-            { label: "Notifications", href: "/dashboard/student/communication" },
+            { label: "Teacher Messages", href: "/dashboard/student/communication/messages" },
+            { label: "School Announcements", href: "/dashboard/student/communication/announcements" },
         ],
     },
     {
@@ -127,7 +127,10 @@ export default function StudentNavigation() {
     });
 
     const toggleGroup = (key: string) => {
-        setOpenGroups((current) => ({ ...current, [key]: !current[key] }));
+        setOpenGroups((current) => {
+            const willOpen = !current[key];
+            return Object.fromEntries(Object.keys(current).map((groupKey) => [groupKey, groupKey === key && willOpen])) as Record<string, boolean>;
+        });
     };
 
     const isActive = (href: string) => pathname === href || pathname.startsWith(`${href}/`);

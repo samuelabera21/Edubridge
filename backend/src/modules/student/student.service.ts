@@ -58,7 +58,10 @@ export class StudentService {
                         schoolGrade: {
                             include: { grade: true }
                         },
-                        section: true
+                        section: true,
+                        organization: {
+                            include: { schoolProfile: true }
+                        }
                     }
                 },
                 parents: true
@@ -222,7 +225,9 @@ export class StudentService {
                     include: {
                         schoolGrade: { include: { grade: true } },
                         section: true,
-                        organization: true,
+                        organization: {
+                            include: { schoolProfile: true }
+                        },
                         academicYear: true
                     }
                 }
@@ -242,7 +247,7 @@ export class StudentService {
         const tomorrow = new Date(todayStart);
         tomorrow.setDate(tomorrow.getDate() + 1);
 
-        const [todayClasses, attendance, results, activities, notifications, supportFlags, announcements] = await Promise.all([
+        const [todayClasses, weeklyClasses, attendance, results, activities, notifications, supportFlags, announcements] = await Promise.all([
             prisma.timetable.findMany({
                 where: {
                     organizationId,
@@ -257,6 +262,21 @@ export class StudentService {
                     }
                 },
                 orderBy: { classPeriod: { startTime: "asc" } }
+            }),
+            prisma.timetable.findMany({
+                where: {
+                    organizationId,
+                    academicYearId: enrollment.academicYearId,
+                    teachingAssignment: { sectionId: enrollment.sectionId }
+                },
+                include: {
+                    classPeriod: true,
+                    teachingAssignment: {
+                        include: { subject: true, teacher: true, section: true }
+                    },
+                    room: true
+                },
+                orderBy: [{ dayOfWeek: "asc" }, { classPeriod: { startTime: "asc" } }]
             }),
             prisma.studentAttendance.findMany({
                 where: { organizationId, enrollmentId: enrollment.id },
@@ -324,6 +344,7 @@ export class StudentService {
             },
             enrollment,
             todayClasses,
+            weeklyClasses,
             attendance: { rate: attendanceRate, records: attendance.length },
             recentResults: results.map(result => ({
                 id: result.id,
@@ -342,6 +363,402 @@ export class StudentService {
             generatedAt: today.toISOString(),
             dateRange: { today: todayStart.toISOString(), tomorrow: tomorrow.toISOString() }
         };
+    }
+
+    static async getStudentAttendance(userId: string, organizationId: string, startDate?: string, endDate?: string) {
+        const student = await this.getStudentByUserId(userId, organizationId);
+        const enrollment = student?.enrollments[0];
+        if (!student || !enrollment) return null;
+
+        return prisma.studentAttendance.findMany({
+            where: {
+                organizationId,
+                enrollmentId: enrollment.id,
+                ...(startDate || endDate ? {
+                    date: {
+                        ...(startDate ? { gte: new Date(startDate) } : {}),
+                        ...(endDate ? { lte: new Date(endDate) } : {})
+                    }
+                } : {})
+            },
+            include: { classPeriod: true },
+            orderBy: { date: "desc" }
+        });
+    }
+
+    static async getStudentAttendanceTeachers(userId: string, organizationId: string) {
+        const student = await this.getStudentByUserId(userId, organizationId);
+        const enrollment = student?.enrollments[0];
+        if (!enrollment) return null;
+
+        return prisma.teacher.findMany({
+            where: {
+                organizationId,
+                assignments: {
+                    some: {
+                        academicYearId: enrollment.academicYearId,
+                        schoolGradeId: enrollment.schoolGradeId,
+                        sectionId: enrollment.sectionId
+                    }
+                }
+            },
+            select: { id: true, firstName: true, lastName: true },
+            orderBy: [{ firstName: "asc" }, { lastName: "asc" }]
+        });
+    }
+
+    static async getStudentDigitalResources(userId: string, organizationId: string) {
+        const student = await this.getStudentByUserId(userId, organizationId);
+        const enrollment = student?.enrollments[0];
+        if (!student || !enrollment) return null;
+
+        return prisma.digitalResource.findMany({
+            where: {
+                organizationId,
+                status: "PUBLISHED",
+                OR: [
+                    { academicYearId: null },
+                    { academicYearId: enrollment.academicYearId }
+                ],
+                AND: [
+                    {
+                        OR: [
+                            { gradeName: null },
+                            { gradeName: enrollment.schoolGrade.grade.name },
+                            { gradeName: String(enrollment.schoolGrade.grade.level) }
+                        ]
+                    },
+                    {
+                        OR: [
+                            { recommendations: { some: { enrollmentId: enrollment.id } } },
+                            { recommendations: { some: { academicYearId: enrollment.academicYearId, schoolGradeId: enrollment.schoolGradeId, sectionId: enrollment.sectionId } } },
+                            { recommendations: { none: {} } }
+                        ]
+                    }
+                ]
+            },
+            include: {
+                recommendations: {
+                    where: {
+                        OR: [
+                            { enrollmentId: enrollment.id },
+                            { academicYearId: enrollment.academicYearId, schoolGradeId: enrollment.schoolGradeId, sectionId: enrollment.sectionId }
+                        ]
+                    },
+                    select: { note: true, teacher: { select: { firstName: true, lastName: true } } }
+                }
+            },
+            orderBy: { createdAt: "desc" }
+        });
+    }
+
+    static async getStudentCommunicationTeachers(userId: string, organizationId: string) {
+        const student = await this.getStudentByUserId(userId, organizationId);
+        const enrollment = student?.enrollments[0];
+        if (!student || !enrollment) return null;
+
+        return prisma.teacher.findMany({
+            where: {
+                organizationId,
+                assignments: {
+                    some: {
+                        academicYearId: enrollment.academicYearId,
+                        schoolGradeId: enrollment.schoolGradeId,
+                        sectionId: enrollment.sectionId
+                    }
+                }
+            },
+            select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                photoUrl: true,
+                userId: true,
+                assignments: {
+                    where: {
+                        academicYearId: enrollment.academicYearId,
+                        schoolGradeId: enrollment.schoolGradeId,
+                        sectionId: enrollment.sectionId
+                    },
+                    select: { subject: { select: { name: true } } }
+                }
+            },
+            orderBy: [{ firstName: "asc" }, { lastName: "asc" }]
+        });
+    }
+
+    static async getStudentAnnouncements(userId: string, organizationId: string) {
+        const student = await this.getStudentByUserId(userId, organizationId);
+        const enrollment = student?.enrollments[0];
+        if (!student || !enrollment) return null;
+
+        return prisma.announcement.findMany({
+            where: {
+                organizationId,
+                OR: [
+                    { target: "ALL" },
+                    { target: "STUDENTS" },
+                    { target: "SPECIFIC_GRADE", targetId: enrollment.schoolGradeId },
+                    { target: "SPECIFIC_SECTION", targetId: enrollment.sectionId }
+                ],
+                AND: [{ OR: [{ expiresAt: null }, { expiresAt: { gte: new Date() } }] }]
+            },
+            include: { author: { select: { name: true } } },
+            orderBy: [{ createdAt: "desc" }]
+        });
+    }
+
+    static async getStudentNotifications(userId: string) {
+        return prisma.notification.findMany({
+            where: { userId },
+            orderBy: { createdAt: "desc" }
+        });
+    }
+
+    static async getStudentMessages(userId: string, organizationId: string, otherUserId?: string) {
+        const teachers = await this.getStudentCommunicationTeachers(userId, organizationId);
+        if (!teachers) return null;
+        const teacherUserIds = teachers.map((teacher) => teacher.userId).filter((value): value is string => Boolean(value));
+        if (otherUserId && !teacherUserIds.includes(otherUserId)) throw new Error("Teacher is not assigned to your current section");
+
+        return prisma.message.findMany({
+            where: {
+                OR: [
+                    { senderId: userId, ...(otherUserId ? { receiverId: otherUserId } : {}) },
+                    { receiverId: userId, ...(otherUserId ? { senderId: otherUserId } : {}) }
+                ]
+            },
+            include: {
+                sender: { select: { id: true, name: true } },
+                receiver: { select: { id: true, name: true } }
+            },
+            orderBy: { createdAt: "asc" }
+        });
+    }
+
+    static async sendStudentMessage(userId: string, organizationId: string, receiverId: string, content: string) {
+        const teachers = await this.getStudentCommunicationTeachers(userId, organizationId);
+        if (!teachers) return null;
+        const assignedTeacher = teachers.some((teacher) => teacher.userId === receiverId);
+        if (!assignedTeacher) throw new Error("Teacher is not assigned to your current section");
+
+        return prisma.message.create({
+            data: { senderId: userId, receiverId, content },
+            include: {
+                sender: { select: { id: true, name: true } },
+                receiver: { select: { id: true, name: true } }
+            }
+        });
+    }
+
+    static async getStudentAssessments(userId: string, organizationId: string) {
+        const student = await this.getStudentByUserId(userId, organizationId);
+        const enrollment = student?.enrollments[0];
+        if (!student || !enrollment) return null;
+
+        return prisma.assessment.findMany({
+            where: {
+                organizationId,
+                academicYearId: enrollment.academicYearId,
+                teachingAssignment: {
+                    schoolGradeId: enrollment.schoolGradeId,
+                    sectionId: enrollment.sectionId
+                }
+            },
+            include: {
+                teachingAssignment: {
+                    include: { subject: true, teacher: true, schoolGrade: { include: { grade: true } }, section: true }
+                },
+                results: { where: { enrollmentId: enrollment.id } }
+            },
+            orderBy: [{ dueDate: "asc" }, { createdAt: "desc" }]
+        });
+    }
+
+    static async getStudentLearningActivities(userId: string, organizationId: string) {
+        const student = await this.getStudentByUserId(userId, organizationId);
+        const enrollment = student?.enrollments[0];
+        if (!student || !enrollment) return null;
+
+        return prisma.learningActivity.findMany({
+            where: {
+                organizationId,
+                academicYearId: enrollment.academicYearId,
+                teachingAssignment: {
+                    schoolGradeId: enrollment.schoolGradeId,
+                    sectionId: enrollment.sectionId
+                },
+                OR: [
+                    { supportCategory: null },
+                    {
+                        supportCategory: { in: ["RECOMMENDATION", "REMEDIAL", "ENRICHMENT"] },
+                        submissions: { some: { enrollmentId: enrollment.id } }
+                    }
+                ]
+            },
+            include: {
+                teachingAssignment: {
+                    include: {
+                        subject: true,
+                        teacher: true,
+                        schoolGrade: { include: { grade: true } },
+                        section: true
+                    }
+                },
+                submissions: {
+                    where: { enrollmentId: enrollment.id },
+                    include: { activity: true }
+                }
+            },
+            orderBy: [{ dueDate: "asc" }, { createdAt: "desc" }]
+        });
+    }
+
+    static async getStudentLearningSubmissions(userId: string, organizationId: string) {
+        const student = await this.getStudentByUserId(userId, organizationId);
+        const enrollment = student?.enrollments[0];
+        if (!student || !enrollment) return null;
+
+        return prisma.submission.findMany({
+            where: {
+                enrollmentId: enrollment.id,
+                activity: {
+                    organizationId,
+                    academicYearId: enrollment.academicYearId
+                }
+            },
+            include: {
+                activity: {
+                    include: {
+                        teachingAssignment: {
+                            include: {
+                                subject: true,
+                                teacher: true,
+                                schoolGrade: { include: { grade: true } },
+                                section: true
+                            }
+                        }
+                    }
+                }
+            },
+            orderBy: [{ submittedAt: "desc" }, { createdAt: "desc" }]
+        });
+    }
+
+    static async getStudentSupportActivities(userId: string, organizationId: string) {
+        const student = await this.getStudentByUserId(userId, organizationId);
+        const enrollment = student?.enrollments[0];
+        if (!student || !enrollment) return null;
+
+        const activities = await prisma.learningActivity.findMany({
+            where: {
+                organizationId,
+                academicYearId: enrollment.academicYearId,
+                supportCategory: { in: ["RECOMMENDATION", "REMEDIAL", "ENRICHMENT"] },
+                submissions: { some: { enrollmentId: enrollment.id } }
+            },
+            include: {
+                teachingAssignment: {
+                    include: { subject: true, teacher: true }
+                },
+                submissions: {
+                    where: { enrollmentId: enrollment.id },
+                    select: { status: true, submittedAt: true, grade: true, feedback: true }
+                }
+            },
+            orderBy: [{ dueDate: "asc" }, { createdAt: "desc" }]
+        });
+
+        const assignedActivities = activities.map(({ submissions, ...activity }) => ({
+            ...activity,
+            submission: submissions[0] ?? null
+        }));
+
+        const remedialAssignments = await prisma.remedialProgramAssignment.findMany({
+            where: {
+                enrollmentId: enrollment.id,
+                remedialProgram: { organizationId }
+            },
+            include: { remedialProgram: true },
+            orderBy: { assignedAt: "desc" }
+        });
+
+        const assignedPrograms = remedialAssignments.map(({ id, assignedAt, remedialProgram }) => {
+            const teacherName = remedialProgram.leadTeacher.trim().split(/\s+/);
+            return {
+                id: `remedial-${id}`,
+                title: remedialProgram.programTitle,
+                description: `Scheduled support: ${remedialProgram.scheduleTime}`,
+                type: "REMEDIAL_PROGRAM",
+                supportCategory: "REMEDIAL",
+                dueDate: null,
+                createdAt: assignedAt,
+                teachingAssignment: {
+                    subject: { name: remedialProgram.subjectName },
+                    teacher: { firstName: teacherName[0] || "", lastName: teacherName.slice(1).join(" ") }
+                },
+                submission: { status: "ASSIGNED", submittedAt: null, grade: null, feedback: null }
+            };
+        });
+
+        const visibleActivities = [...assignedActivities, ...assignedPrograms].sort((left, right) =>
+            new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime()
+        );
+
+        const [interventionPlans, interventionMonitoring, interventionOutcomes] = await Promise.all([
+            prisma.interventionPlan.findMany({
+                where: { organizationId, studentId: student.id },
+                select: { id: true, targetScore: true, counselorName: true, reviewDate: true, status: true, createdAt: true },
+                orderBy: { createdAt: "desc" }
+            }),
+            prisma.interventionMonitoring.findMany({
+                where: { organizationId, studentId: student.id },
+                select: { id: true, programName: true, attendanceRate: true, status: true, lastCheckInDate: true },
+                orderBy: { lastCheckInDate: "desc" }
+            }),
+            prisma.interventionOutcome.findMany({
+                where: { organizationId, studentId: student.id },
+                select: { id: true, initialScore: true, postScore: true, gain: true, status: true, createdAt: true },
+                orderBy: { createdAt: "desc" }
+            })
+        ]);
+
+        return { activities: visibleActivities, interventionPlans, interventionMonitoring, interventionOutcomes };
+    }
+
+    static async submitAttendanceExplanation(userId: string, organizationId: string, absenceDate: string, recipientTeacherId: string, description: string, attachmentData?: string, attachmentName?: string) {
+        const student = await this.getStudentByUserId(userId, organizationId);
+        const enrollment = student?.enrollments[0];
+        if (!student || !enrollment) return null;
+
+        const teacher = await prisma.teacher.findFirst({
+            where: {
+                id: recipientTeacherId,
+                organizationId,
+                assignments: {
+                    some: {
+                        academicYearId: enrollment.academicYearId,
+                        schoolGradeId: enrollment.schoolGradeId,
+                        sectionId: enrollment.sectionId
+                    }
+                }
+            }
+        });
+        if (!teacher) throw new Error("Selected teacher is not assigned to your section");
+
+        return prisma.supportFlag.create({
+            data: {
+                organizationId,
+                enrollmentId: enrollment.id,
+                type: "ATTENDANCE",
+                description,
+                absenceDate: new Date(absenceDate),
+                recipientTeacherId: teacher.id,
+                attachmentData: attachmentData || null,
+                attachmentName: attachmentName || null,
+                raisedById: userId
+            }
+        });
     }
 
     static async getTransfers(organizationId: string) {
