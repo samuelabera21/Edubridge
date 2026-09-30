@@ -959,16 +959,18 @@ export class TeacherService {
 
     static async getMyClasses(userId: string, organizationId: string) {
         const teacher = await this.getTeacherByUserId(userId, organizationId);
-        if (!teacher) return [];
 
         const assignments = await prisma.teachingAssignment.findMany({
-            where: { teacherId: teacher.id },
+            where: {
+                ...(teacher ? { teacherId: teacher.id } : { academicYear: { organizationId } })
+            },
             include: {
                 subject: true,
                 schoolGrade: { include: { grade: true } },
                 section: {
                     include: {
                         studentEnrollments: {
+                            where: { status: "ACTIVE" },
                             include: {
                                 student: true
                             }
@@ -1575,6 +1577,7 @@ export class TeacherService {
     // Subdomain 6: Create Assessment & Batch Results
     static async createAssessmentWithResults(userId: string, organizationId: string, data: {
         title: string;
+        description?: string;
         type?: string;
         maxScore: number;
         passingScore?: number;
@@ -1582,15 +1585,38 @@ export class TeacherService {
         teachingAssignmentId: string;
         results?: Array<{ enrollmentId: string; score: number; feedback?: string }>;
     }) {
-        const teacher = await this.getTeacherByUserId(userId, organizationId);
+        let teacher = await this.getTeacherByUserId(userId, organizationId);
+        
+        // If user is admin/staff testing or reviewing teacher dashboard, resolve assigned teacher
+        if (!teacher) {
+            const assignmentCheck = await prisma.teachingAssignment.findFirst({
+                where: { id: data.teachingAssignmentId, academicYear: { organizationId } },
+                include: { teacher: true }
+            });
+            if (assignmentCheck?.teacher) {
+                teacher = assignmentCheck.teacher as any;
+            } else {
+                teacher = await prisma.teacher.findFirst({ where: { organizationId } }) as any;
+            }
+        }
+
         if (!teacher) throw new Error("Teacher profile not found");
 
         const assignment = await prisma.teachingAssignment.findFirst({
-            where: { id: data.teachingAssignmentId, teacherId: teacher.id }
+            where: {
+                id: data.teachingAssignmentId,
+                academicYear: { organizationId }
+            }
         });
         if (!assignment) throw new Error("Teaching assignment not found or unassigned");
 
-        const assessmentType = data.type?.toUpperCase() || "QUIZ";
+        // Map TEST to EXAM (or QUIZ) to match Prisma enum: EXAM | QUIZ | ASSIGNMENT | PROJECT | OTHER
+        let assessmentType = data.type?.toUpperCase() || "QUIZ";
+        if (assessmentType === "TEST") {
+            assessmentType = "EXAM";
+        } else if (!["EXAM", "QUIZ", "ASSIGNMENT", "PROJECT", "OTHER"].includes(assessmentType)) {
+            assessmentType = "OTHER";
+        }
 
         const assessment = await prisma.assessment.create({
             data: {
@@ -1598,9 +1624,10 @@ export class TeacherService {
                 academicYearId: assignment.academicYearId,
                 teachingAssignmentId: data.teachingAssignmentId,
                 title: data.title,
+                description: data.description || null,
                 type: assessmentType as any,
-                maxScore: data.maxScore,
-                passingScore: data.passingScore || (data.maxScore * 0.5),
+                maxScore: Number(data.maxScore),
+                passingScore: data.passingScore !== undefined ? Number(data.passingScore) : (Number(data.maxScore) * 0.5),
                 dueDate: data.dueDate ? new Date(data.dueDate) : null
             }
         });

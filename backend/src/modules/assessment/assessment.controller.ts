@@ -61,6 +61,19 @@ export const getAssessmentWithResults = async (req: Request, res: Response) => {
     }
 };
 
+export const deleteAssessment = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        if (!organizationId) return res.status(403).json({ error: "Missing school scope" });
+
+        const { id } = req.params;
+        await AssessmentService.deleteAssessment(organizationId, id as string);
+        return res.json({ message: "Assessment deleted successfully" });
+    } catch (error: any) {
+        return res.status(400).json({ error: error.message || "Failed to delete assessment" });
+    }
+};
+
 export const recordResult = async (req: Request, res: Response) => {
     try {
         const organizationId = (req as any).accessScope?.id;
