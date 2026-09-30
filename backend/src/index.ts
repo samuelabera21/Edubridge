@@ -23,6 +23,8 @@ import improvementRoutes from "./modules/improvement/improvement.routes.js";
 import reportsRoutes from "./modules/reports/reports.routes.js";
 import aiLeadershipRoutes from "./modules/ai-leadership/ai-leadership.routes.js";
 import schoolSettingsRoutes from "./modules/school-settings/school-settings.routes.js";
+import hierarchyRoutes from "./modules/hierarchy/hierarchy.routes.js";
+import governanceRoutes from "./modules/governance/governance.routes.js";
 import storageRoutes from "./modules/storage/storage.routes.js";
 import { StorageService } from "./modules/storage/storage.service.js";
 import swaggerUi from "swagger-ui-express";
@@ -74,6 +76,8 @@ app.use("/api/improvement", improvementRoutes);
 app.use("/api/reports", reportsRoutes);
 app.use("/api/ai-leadership", aiLeadershipRoutes);
 app.use("/api/school-settings", schoolSettingsRoutes);
+app.use("/api/hierarchy", hierarchyRoutes);
+app.use("/api/governance", governanceRoutes);
 app.use("/api/storage", storageRoutes);
 
 app.get("/", (_req, res) => {

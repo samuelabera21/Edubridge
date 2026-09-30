@@ -133,18 +133,59 @@ async function main() {
 
     console.log(`✅ System permissions attached to ADMIN, SCHOOL_ADMIN, VICE_PRINCIPAL, and TEACHER roles (Academic write restricted from TEACHER).`);
 
-    // 4. Seed Default Organization Units & School Profile
+    // 4. Seed Default Organization Units & School Profile (H1 Canonical Hierarchy)
     let federalUnit = await prisma.organizationUnit.findFirst({ where: { type: "FEDERAL" } });
     if (!federalUnit) {
         federalUnit = await prisma.organizationUnit.create({
-            data: { name: "EduBridge Platform", type: "FEDERAL" }
+            data: { name: "EduBridge National Platform", type: "FEDERAL", parentId: null }
+        });
+    }
+
+    let regionUnit = await prisma.organizationUnit.findFirst({ where: { type: "REGION" } });
+    if (!regionUnit) {
+        regionUnit = await prisma.organizationUnit.create({
+            data: { name: "Addis Ababa Region", type: "REGION", parentId: federalUnit.id }
+        });
+    } else if (regionUnit.parentId !== federalUnit.id) {
+        regionUnit = await prisma.organizationUnit.update({
+            where: { id: regionUnit.id },
+            data: { parentId: federalUnit.id }
+        });
+    }
+
+    let zoneUnit = await prisma.organizationUnit.findFirst({ where: { type: "ZONE" } });
+    if (!zoneUnit) {
+        zoneUnit = await prisma.organizationUnit.create({
+            data: { name: "Central Zone", type: "ZONE", parentId: regionUnit.id }
+        });
+    } else if (zoneUnit.parentId !== regionUnit.id) {
+        zoneUnit = await prisma.organizationUnit.update({
+            where: { id: zoneUnit.id },
+            data: { parentId: regionUnit.id }
+        });
+    }
+
+    let woredaUnit = await prisma.organizationUnit.findFirst({ where: { type: "WOREDA" } });
+    if (!woredaUnit) {
+        woredaUnit = await prisma.organizationUnit.create({
+            data: { name: "Kirkos Woreda", type: "WOREDA", parentId: zoneUnit.id }
+        });
+    } else if (woredaUnit.parentId !== zoneUnit.id) {
+        woredaUnit = await prisma.organizationUnit.update({
+            where: { id: woredaUnit.id },
+            data: { parentId: zoneUnit.id }
         });
     }
 
     let schoolUnit = await prisma.organizationUnit.findFirst({ where: { type: "SCHOOL" } });
     if (!schoolUnit) {
         schoolUnit = await prisma.organizationUnit.create({
-            data: { name: "EduBridge Demo School", type: "SCHOOL" }
+            data: { name: "EduBridge Demo School", type: "SCHOOL", parentId: woredaUnit.id }
+        });
+    } else if (schoolUnit.parentId !== woredaUnit.id) {
+        schoolUnit = await prisma.organizationUnit.update({
+            where: { id: schoolUnit.id },
+            data: { parentId: woredaUnit.id }
         });
     }
 

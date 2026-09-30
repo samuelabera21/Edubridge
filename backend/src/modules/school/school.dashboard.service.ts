@@ -150,7 +150,7 @@ export class SchoolDashboardService {
                     id: org.id,
                     name: org.name,
                     type: org.type,
-                    status: org.status || "ACTIVE",
+                    status: (org as any).status || "ACTIVE",
                     lastUpdated: new Date().toISOString()
                 },
                 academicYear: null,
@@ -394,8 +394,8 @@ export class SchoolDashboardService {
                 if (!sectionDemandMap[a.sectionId]) {
                     sectionDemandMap[a.sectionId] = { required: 0, scheduled: 0 };
                 }
-                sectionDemandMap[a.sectionId].required += req;
-                sectionDemandMap[a.sectionId].scheduled += sched;
+                sectionDemandMap[a.sectionId]!.required += req;
+                sectionDemandMap[a.sectionId]!.scheduled += sched;
             }
         });
 
@@ -636,7 +636,7 @@ export class SchoolDashboardService {
                 id: org.id,
                 name: org.name,
                 type: org.type,
-                status: org.status || "ACTIVE",
+                status: (org as any).status || "ACTIVE",
                 lastUpdated: new Date().toISOString()
             },
             academicYear: {
