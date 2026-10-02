@@ -65,37 +65,113 @@ export default function AdministrativeNavigation({
         childUnitIcon = School;
     }
 
-    const navItems: NavItem[] = [
-        {
-            label: "Dashboard Overview",
-            href: basePath,
-            icon: LayoutDashboard,
-        },
-    ];
+    let navItems: NavItem[] = [];
 
-    if (currentTier !== "WOREDA") {
-        navItems.push({
-            label: childUnitName,
-            href: `${basePath}?tab=${childUnitName.toLowerCase()}`,
-            icon: childUnitIcon,
-            tab: childUnitName.toLowerCase(),
-        });
+    if (currentTier === "FEDERAL") {
+        navItems = [
+            {
+                label: "Dashboard Overview",
+                href: basePath,
+                icon: LayoutDashboard,
+            },
+            {
+                label: "Regions",
+                href: `${basePath}?tab=regions`,
+                icon: Layers,
+                tab: "regions",
+            },
+            {
+                label: "Regional Administrators",
+                href: `${basePath}?tab=administration`,
+                icon: Shield,
+                tab: "administration",
+            },
+            {
+                label: "Hierarchy Tree",
+                href: `${basePath}?tab=hierarchy`,
+                icon: Network,
+                tab: "hierarchy",
+            },
+        ];
+    } else if (currentTier === "REGION") {
+        navItems = [
+            {
+                label: "Dashboard Overview",
+                href: basePath,
+                icon: LayoutDashboard,
+            },
+            {
+                label: "Administrative Zones",
+                href: `${basePath}?tab=zones`,
+                icon: Building2,
+                tab: "zones",
+            },
+            {
+                label: "Zone Administrators",
+                href: `${basePath}?tab=administration`,
+                icon: Shield,
+                tab: "administration",
+            },
+            {
+                label: "Hierarchy Tree",
+                href: `${basePath}?tab=hierarchy`,
+                icon: Network,
+                tab: "hierarchy",
+            },
+        ];
+    } else if (currentTier === "ZONE") {
+        navItems = [
+            {
+                label: "Dashboard Overview",
+                href: basePath,
+                icon: LayoutDashboard,
+            },
+            {
+                label: "Woredas",
+                href: `${basePath}?tab=woredas`,
+                icon: MapPin,
+                tab: "woredas",
+            },
+            {
+                label: "Woreda Administrators",
+                href: `${basePath}?tab=administration`,
+                icon: Shield,
+                tab: "administration",
+            },
+            {
+                label: "Hierarchy Tree",
+                href: `${basePath}?tab=hierarchy`,
+                icon: Network,
+                tab: "hierarchy",
+            },
+        ];
+    } else {
+        navItems = [
+            {
+                label: "Dashboard Overview",
+                href: basePath,
+                icon: LayoutDashboard,
+            },
+            {
+                label: "Subordinate Schools",
+                href: `${basePath}?tab=schools`,
+                icon: School,
+                tab: "schools",
+            },
+            {
+                label: "School Principals",
+                href: `${basePath}?tab=administration`,
+                icon: Shield,
+                tab: "administration",
+            },
+            {
+                label: "Hierarchy Tree",
+                href: `${basePath}?tab=hierarchy`,
+                icon: Network,
+                tab: "hierarchy",
+            },
+        ];
     }
-
-    navItems.push(
-        {
-            label: "Subordinate Schools",
-            href: `${basePath}?tab=schools`,
-            icon: School,
-            tab: "schools",
-        },
-        {
-            label: "Governance Reports",
-            href: `${basePath}?tab=reports`,
-            icon: FileText,
-            tab: "reports",
-        }
-    );
 
     return (
         <aside
