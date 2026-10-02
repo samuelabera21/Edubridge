@@ -2,7 +2,7 @@
 
 import { useState, useEffect, Suspense } from "react";
 import { useAuth } from "../../hooks/useAuth";
-import { Loader2, BookOpen, LogOut, LayoutDashboard, Building, Search, Lock, ChevronDown, ChevronRight, Calendar, Users, GraduationCap, ClipboardCheck, FileText, Settings, User, Megaphone, Bell, MessageSquare, Package, AlertOctagon, TrendingUp, HeartHandshake, BarChart2, Sparkles, Menu, Brain, Landmark, Network } from "lucide-react";
+import { Loader2, BookOpen, LogOut, LayoutDashboard, Building, Search, Lock, ChevronDown, ChevronRight, Calendar, Users, GraduationCap, ClipboardCheck, FileText, Settings, User, Megaphone, Bell, MessageSquare, Package, AlertOctagon, TrendingUp, HeartHandshake, BarChart2, Sparkles, Menu, Brain, Landmark } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { fetchApi } from "../../lib/api";
@@ -605,14 +605,6 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
                                         >
                                             <Landmark className="w-4 h-4 text-[#184973]" />
                                             <span>{displayRoleTitle} Desk</span>
-                                        </Link>
-                                        <Link 
-                                            href={`${defaultHomeHref}?tab=hierarchy`} 
-                                            onClick={() => setShowProfileDropdown(false)}
-                                            className="flex items-center px-4 py-2 hover:bg-gray-50 text-gray-700 space-x-2 transition-colors"
-                                        >
-                                            <Network className="w-4 h-4 text-[#184973]" />
-                                            <span>Hierarchy & Placement</span>
                                         </Link>
                                     </div>
                                 )}
