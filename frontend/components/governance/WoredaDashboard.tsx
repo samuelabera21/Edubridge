@@ -13,12 +13,11 @@ import {
     Search,
     CheckCircle2,
     AlertCircle,
-    Clock,
-    Shield,
-    Send,
-    ArrowRight
+    UserCheck,
+    ArrowUpRight,
+    X,
+    ExternalLink
 } from "lucide-react";
-import HierarchyTreeViewer from "./HierarchyTreeViewer";
 
 export interface SchoolAdmin {
     id: string;
@@ -62,6 +61,12 @@ export default function WoredaDashboard() {
     const [error, setError] = useState<string | null>(null);
     const [searchQuery, setSearchQuery] = useState("");
 
+    // Selected / Hovered School on Map
+    const [hoveredSchool, setHoveredSchool] = useState<SchoolItem | null>(null);
+
+    // Drill-Down Modal state
+    const [selectedSchoolForDrilldown, setSelectedSchoolForDrilldown] = useState<SchoolItem | null>(null);
+
     // Modal State: Create School
     const [createSchoolOpen, setCreateSchoolOpen] = useState(false);
     const [newSchoolName, setNewSchoolName] = useState("");
@@ -98,6 +103,9 @@ export default function WoredaDashboard() {
             }
             const payload = await res.json();
             setData(payload.data);
+            if (payload.data?.schools && payload.data.schools.length > 0) {
+                setHoveredSchool(payload.data.schools[0]);
+            }
         } catch (err: any) {
             setError(err.message || "Failed to fetch Woreda dashboard data");
         } finally {
@@ -139,6 +147,41 @@ export default function WoredaDashboard() {
             }));
     }, [data?.schools]);
 
+    // Format number helper
+    const fmt = (num: number | undefined | null) => {
+        if (num === undefined || num === null) return "0";
+        return num.toLocaleString();
+    };
+
+    // Calculate real proportions for Card 1
+    const totalSchools = data?.counts?.totalSchools ?? 0;
+    const totalStudents = data?.counts?.totalStudents ?? 0;
+    const totalTeachers = data?.counts?.totalTeachers ?? 0;
+    const totalIndividuals = totalStudents + totalTeachers;
+    const studentsPercentage = totalIndividuals > 0 ? ((totalStudents / totalIndividuals) * 100).toFixed(1) : "100.0";
+    const teachersPercentage = totalIndividuals > 0 ? ((totalTeachers / totalIndividuals) * 100).toFixed(1) : "0.0";
+
+    const realSchools = data?.schools ?? [];
+    const maxStudentsCount = useMemo(() => {
+        if (realSchools.length === 0) return 10;
+        const max = Math.max(...realSchools.map(s => s.studentsCount));
+        return Math.max(max, 4);
+    }, [realSchools]);
+
+    // Generate clean step values for Y-axis
+    const yAxisSteps = useMemo(() => {
+        const top = Math.ceil(maxStudentsCount);
+        const step = Math.max(1, Math.ceil(top / 4));
+        const steps = [];
+        for (let i = top; i >= 0; i -= step) {
+            steps.push(i);
+        }
+        if (steps[steps.length - 1] !== 0) {
+            steps.push(0);
+        }
+        return steps;
+    }, [maxStudentsCount]);
+
     // Handle Create School Submit
     const handleCreateSchoolSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -149,6 +192,7 @@ export default function WoredaDashboard() {
         try {
             const res = await fetchApi("/hierarchy/schools/register", {
                 method: "POST",
+                headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     name: newSchoolName.trim(),
                     woredaId: data.woredaId,
@@ -157,29 +201,47 @@ export default function WoredaDashboard() {
                 })
             });
 
+            const resJson = await res.json();
             if (!res.ok) {
-                const errJson = await res.json().catch(() => ({}));
-                throw new Error(errJson.message || "Failed to register School.");
+                throw new Error(resJson.message || "Failed to register School");
             }
 
-            setCreateSchoolMessage({ type: "success", text: `School "${newSchoolName.trim()}" registered successfully.` });
-            setNewSchoolName("");
-            setNewSchoolCode("");
-            setNewSchoolAddress("");
-            setNewSchoolPhone("");
+            setCreateSchoolMessage({
+                type: "success",
+                text: `School "${newSchoolName.trim()}" registered successfully.`
+            });
+
             await loadWoredaData();
+
             setTimeout(() => {
                 setCreateSchoolOpen(false);
+                setNewSchoolName("");
+                setNewSchoolCode("");
+                setNewSchoolAddress("");
+                setNewSchoolPhone("");
                 setCreateSchoolMessage(null);
-            }, 1200);
+            }, 800);
         } catch (err: any) {
-            setCreateSchoolMessage({ type: "error", text: err.message || "Failed to register School." });
+            setCreateSchoolMessage({
+                type: "error",
+                text: err.message || "Could not register School"
+            });
         } finally {
             setCreatingSchool(false);
         }
     };
 
-    // Handle Assign School Principal Submit
+    // Open Assign Admin Modal
+    const openAssignAdmin = (school: SchoolItem) => {
+        setSelectedSchoolForAdmin(school);
+        setAdminFullName("");
+        setAdminEmail("");
+        setAdminPhone("");
+        setAssignAdminMessage(null);
+        setAssignAdminOpen(true);
+    };
+
+    // Handle Assign School Admin / Principal Submit
     const handleAssignAdminSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!selectedSchoolForAdmin || !adminFullName.trim() || !adminEmail.trim()) return;
@@ -187,8 +249,9 @@ export default function WoredaDashboard() {
         setAssigningAdmin(true);
         setAssignAdminMessage(null);
         try {
-            const res = await fetchApi(`/hierarchy/schools/${selectedSchoolForAdmin.id}/assign-admin`, {
+            const res = await fetchApi(`/hierarchy/schools/${selectedSchoolForAdmin.id}/assign-principal`, {
                 method: "POST",
+                headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     name: adminFullName.trim(),
                     email: adminEmail.trim(),
@@ -196,612 +259,769 @@ export default function WoredaDashboard() {
                 })
             });
 
+            const resJson = await res.json();
             if (!res.ok) {
-                const errJson = await res.json().catch(() => ({}));
-                throw new Error(errJson.message || "Failed to assign School Principal.");
+                throw new Error(resJson.message || "Failed to send invitation");
             }
 
             setAssignAdminMessage({
                 type: "success",
-                text: `Invitation email dispatched to ${adminEmail.trim()} with account activation instructions.`
+                text: `Invitation sent to ${adminEmail.trim()}.`
             });
-            setAdminFullName("");
-            setAdminEmail("");
-            setAdminPhone("");
+
             await loadWoredaData();
+
             setTimeout(() => {
                 setAssignAdminOpen(false);
                 setSelectedSchoolForAdmin(null);
+                setAdminFullName("");
+                setAdminEmail("");
+                setAdminPhone("");
                 setAssignAdminMessage(null);
-            }, 1500);
+            }, 1000);
         } catch (err: any) {
-            setAssignAdminMessage({ type: "error", text: err.message || "Failed to assign administrator." });
+            setAssignAdminMessage({
+                type: "error",
+                text: err.message || "Failed to send invitation"
+            });
         } finally {
             setAssigningAdmin(false);
         }
     };
 
     // Handle Resend Invitation
-    const handleResendInvitation = async (schoolId: string, schoolName: string) => {
+    const handleResendInvitation = async (schoolId: string) => {
         setActionLoadingId(schoolId);
         try {
             const res = await fetchApi(`/hierarchy/schools/${schoolId}/resend-invitation`, {
                 method: "POST"
             });
-            if (!res.ok) {
-                const errJson = await res.json().catch(() => ({}));
-                throw new Error(errJson.message || "Failed to resend invitation.");
-            }
-            showToast("success", `Invitation email resent to ${schoolName} Principal.`);
+            const resJson = await res.json();
+            if (!res.ok) throw new Error(resJson.message || "Failed to resend invitation");
+
+            showToast("success", resJson.message || "Invitation resent.");
             await loadWoredaData();
         } catch (err: any) {
-            showToast("error", err.message || "Failed to resend invitation.");
+            showToast("error", err.message || "Failed to resend invitation");
         } finally {
             setActionLoadingId(null);
         }
     };
 
     // Handle Cancel Invitation
-    const handleCancelInvitation = async (schoolId: string, schoolName: string) => {
-        if (!confirm(`Are you sure you want to cancel the administrator invitation for ${schoolName}?`)) {
-            return;
-        }
+    const handleCancelInvitation = async (schoolId: string) => {
+        if (!confirm("Are you sure you want to cancel this school principal invitation?")) return;
         setActionLoadingId(schoolId);
         try {
             const res = await fetchApi(`/hierarchy/schools/${schoolId}/cancel-invitation`, {
                 method: "DELETE"
             });
-            if (!res.ok) {
-                const errJson = await res.json().catch(() => ({}));
-                throw new Error(errJson.message || "Failed to cancel invitation.");
-            }
-            showToast("success", `Principal assignment cancelled for ${schoolName}.`);
+            const resJson = await res.json();
+            if (!res.ok) throw new Error(resJson.message || "Failed to cancel invitation");
+
+            showToast("success", "Invitation cancelled.");
             await loadWoredaData();
         } catch (err: any) {
-            showToast("error", err.message || "Failed to cancel invitation.");
+            showToast("error", err.message || "Failed to cancel invitation");
         } finally {
             setActionLoadingId(null);
         }
     };
 
-    const handleTabChange = (tabKey: string) => {
-        const targetParam = targetOrgId ? `&targetOrgId=${targetOrgId}` : "";
-        const url = tabKey === "overview" 
-            ? `/dashboard/woreda${targetOrgId ? `?targetOrgId=${targetOrgId}` : ""}` 
-            : `/dashboard/woreda?tab=${tabKey}${targetParam}`;
-        router.push(url);
-    };
-
-    if (loading && !data) {
-        return (
-            <div className="flex flex-col items-center justify-center min-h-[400px] text-gray-500 space-y-3">
-                <RefreshCw className="w-8 h-8 animate-spin text-[#184973]" />
-                <p className="text-sm font-medium">Loading Woreda Education Office Dashboard...</p>
-            </div>
-        );
-    }
-
-    if (error && !data) {
-        return (
-            <div className="p-8 max-w-2xl mx-auto">
-                <div className="bg-red-50 border border-red-200 rounded-xl p-6 text-center space-y-4">
-                    <AlertCircle className="w-10 h-10 text-red-600 mx-auto" />
-                    <h2 className="text-lg font-bold text-gray-900">Unable to Load Woreda Dashboard</h2>
-                    <p className="text-xs text-red-700">{error}</p>
-                    <button
-                        onClick={loadWoredaData}
-                        className="px-4 py-2 bg-[#184973] text-white text-xs font-semibold rounded-lg hover:bg-[#123655] transition-colors cursor-pointer"
-                    >
-                        Try Again
-                    </button>
-                </div>
-            </div>
-        );
-    }
+    const targetParam = targetOrgId ? `&targetOrgId=${targetOrgId}` : "";
+    const targetQueryOnly = targetOrgId ? `?targetOrgId=${targetOrgId}` : "";
 
     return (
-        <div className="space-y-6 max-w-7xl mx-auto pb-12">
-            {/* Toast Feedback */}
+        <div className="space-y-6">
+            {/* Toast Notification */}
             {toastMessage && (
                 <div
-                    className={`fixed bottom-6 right-6 z-50 px-4 py-3 rounded-xl shadow-lg text-xs font-semibold flex items-center space-x-2 animate-in fade-in slide-in-from-bottom-3 ${
+                    className={`fixed top-4 right-4 z-50 p-3.5 rounded-lg shadow-md border text-xs font-semibold flex items-center gap-2 ${
                         toastMessage.type === "success"
-                            ? "bg-emerald-800 text-white border border-emerald-700"
-                            : "bg-red-800 text-white border border-red-700"
+                            ? "bg-emerald-50 text-emerald-900 border-emerald-200"
+                            : "bg-rose-50 text-rose-900 border-rose-200"
                     }`}
                 >
                     {toastMessage.type === "success" ? (
-                        <CheckCircle2 className="w-4 h-4 text-emerald-300" />
+                        <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
                     ) : (
-                        <AlertCircle className="w-4 h-4 text-red-300" />
+                        <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
                     )}
                     <span>{toastMessage.text}</span>
                 </div>
             )}
 
-            {/* Header Banner - Clean Government Style */}
-            <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-xs">
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                    <div>
-                        <div className="flex items-center space-x-2 text-xs text-gray-500 mb-1.5 font-medium">
-                            <span>Federal Democratic Republic of Ethiopia</span>
-                            <span>•</span>
-                            <span>{data?.parentZoneName || "Zonal Education Department"}</span>
-                        </div>
-                        <div className="flex items-center space-x-3">
-                            <h1 className="text-2xl font-bold text-gray-900 tracking-tight">
-                                {data?.woredaName || "Woreda Education Office"}
-                            </h1>
-                            <span className="px-2.5 py-0.5 bg-blue-50 text-[#184973] border border-blue-200/80 rounded-md text-[11px] font-bold uppercase tracking-wider">
-                                WOREDA DESK
-                            </span>
-                        </div>
-                        <p className="text-xs text-gray-600 mt-1">
-                            District educational oversight, school registration, and institutional governance.
-                        </p>
-                    </div>
-
-                    <div className="flex items-center space-x-3 shrink-0">
-                        <button
-                            onClick={() => loadWoredaData()}
-                            disabled={loading}
-                            title="Refresh Data"
-                            className="p-2.5 border border-gray-200 hover:bg-gray-50 text-gray-700 rounded-xl transition-colors cursor-pointer"
-                        >
-                            <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin text-[#184973]" : ""}`} />
-                        </button>
-
-                        <button
-                            onClick={() => setCreateSchoolOpen(true)}
-                            className="px-4 py-2.5 bg-[#184973] hover:bg-[#123655] text-white text-xs font-semibold rounded-xl transition-all shadow-xs flex items-center space-x-2 cursor-pointer"
-                        >
-                            <Plus className="w-4 h-4" />
-                            <span>Add New School</span>
-                        </button>
-                    </div>
+            {/* Top Navigation Bar */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="flex items-center gap-6 border-b border-slate-200 w-full sm:w-auto">
+                    <button
+                        onClick={() => router.push(`/dashboard/woreda${targetQueryOnly}`)}
+                        className={`pb-3 text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5 ${
+                            currentTab === "overview"
+                                ? "text-blue-600 border-b-2 border-blue-600"
+                                : "text-slate-500 hover:text-slate-800"
+                        }`}
+                    >
+                        <span>Dashboard</span>
+                    </button>
+                    <button
+                        onClick={() => router.push(`/dashboard/woreda?tab=schools${targetParam}`)}
+                        className={`pb-3 text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5 ${
+                            currentTab === "schools"
+                                ? "text-blue-600 border-b-2 border-blue-600"
+                                : "text-slate-500 hover:text-slate-800"
+                        }`}
+                    >
+                        <School className="w-3.5 h-3.5" />
+                        <span>Schools ({data?.counts?.totalSchools ?? 0})</span>
+                    </button>
+                    <button
+                        onClick={() => router.push(`/dashboard/woreda?tab=administration${targetParam}`)}
+                        className={`pb-3 text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5 ${
+                            currentTab === "administration"
+                                ? "text-blue-600 border-b-2 border-blue-600"
+                                : "text-slate-500 hover:text-slate-800"
+                        }`}
+                    >
+                        <UserCheck className="w-3.5 h-3.5" />
+                        <span>Leadership ({assignedAdministrators.length})</span>
+                    </button>
                 </div>
 
-                {/* KPI Metrics Strip */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-6 pt-6 border-t border-gray-100">
-                    <div className="bg-gray-50/80 border border-gray-100 rounded-xl p-4">
-                        <div className="flex items-center justify-between text-gray-500 mb-1">
-                            <span className="text-xs font-medium uppercase tracking-wider">Monitored Schools</span>
-                            <School className="w-4 h-4 text-[#184973]" />
-                        </div>
-                        <p className="text-2xl font-bold text-gray-900">{data?.counts.totalSchools ?? 0}</p>
-                        <p className="text-[11px] text-gray-500 mt-0.5">Across authorized woreda</p>
-                    </div>
-
-                    <div className="bg-gray-50/80 border border-gray-100 rounded-xl p-4">
-                        <div className="flex items-center justify-between text-gray-500 mb-1">
-                            <span className="text-xs font-medium uppercase tracking-wider">Assigned Principals</span>
-                            <Shield className="w-4 h-4 text-amber-600" />
-                        </div>
-                        <p className="text-2xl font-bold text-gray-900">
-                            {data?.schools.filter(s => s.admin !== null).length ?? 0}
-                            <span className="text-xs text-gray-500 font-normal ml-1">/ {data?.schools.length ?? 0}</span>
-                        </p>
-                        <p className="text-[11px] text-gray-500 mt-0.5">School leadership designated</p>
-                    </div>
-
-                    <div className="bg-gray-50/80 border border-gray-100 rounded-xl p-4">
-                        <div className="flex items-center justify-between text-gray-500 mb-1">
-                            <span className="text-xs font-medium uppercase tracking-wider">Enrolled Students</span>
-                            <Users className="w-4 h-4 text-emerald-600" />
-                        </div>
-                        <p className="text-2xl font-bold text-gray-900">{data?.counts.totalStudents ?? 0}</p>
-                        <p className="text-[11px] text-gray-500 mt-0.5">Active registrations</p>
-                    </div>
-
-                    <div className="bg-gray-50/80 border border-gray-100 rounded-xl p-4">
-                        <div className="flex items-center justify-between text-gray-500 mb-1">
-                            <span className="text-xs font-medium uppercase tracking-wider">Active Teachers</span>
-                            <GraduationCap className="w-4 h-4 text-purple-600" />
-                        </div>
-                        <p className="text-2xl font-bold text-gray-900">{data?.counts.totalTeachers ?? 0}</p>
-                        <p className="text-[11px] text-gray-500 mt-0.5">Teaching faculty</p>
-                    </div>
+                <div className="flex items-center gap-2 self-end sm:self-auto shrink-0">
+                    <button
+                        onClick={() => {
+                            setNewSchoolName("");
+                            setNewSchoolCode("");
+                            setNewSchoolAddress("");
+                            setNewSchoolPhone("");
+                            setCreateSchoolMessage(null);
+                            setCreateSchoolOpen(true);
+                        }}
+                        className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-lg transition-colors flex items-center gap-1.5 shadow-xs cursor-pointer"
+                    >
+                        <Plus className="w-4 h-4" />
+                        <span>Add School</span>
+                    </button>
+                    <button
+                        onClick={loadWoredaData}
+                        className="p-1.5 border border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-50 rounded-lg transition-colors cursor-pointer"
+                        title="Refresh"
+                    >
+                        <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin text-blue-600" : ""}`} />
+                    </button>
                 </div>
             </div>
 
-            {/* Navigation Tabs */}
-            <div className="flex items-center border-b border-gray-200 bg-white px-4 rounded-xl shadow-xs">
-                <button
-                    onClick={() => handleTabChange("overview")}
-                    className={`px-4 py-3 text-xs font-bold border-b-2 transition-colors cursor-pointer ${
-                        currentTab === "overview"
-                            ? "border-[#184973] text-[#184973]"
-                            : "border-transparent text-gray-500 hover:text-gray-800"
-                    }`}
-                >
-                    Overview & Desks
-                </button>
-                <button
-                    onClick={() => handleTabChange("schools")}
-                    className={`px-4 py-3 text-xs font-bold border-b-2 transition-colors cursor-pointer ${
-                        currentTab === "schools"
-                            ? "border-[#184973] text-[#184973]"
-                            : "border-transparent text-gray-500 hover:text-gray-800"
-                    }`}
-                >
-                    Subordinate Schools ({data?.schools.length ?? 0})
-                </button>
-                <button
-                    onClick={() => handleTabChange("administration")}
-                    className={`px-4 py-3 text-xs font-bold border-b-2 transition-colors cursor-pointer ${
-                        currentTab === "administration"
-                            ? "border-[#184973] text-[#184973]"
-                            : "border-transparent text-gray-500 hover:text-gray-800"
-                    }`}
-                >
-                    School Principals ({assignedAdministrators.length})
-                </button>
-            </div>
-
-            {/* TAB CONTENT: Overview & Schools Table */}
-            {(currentTab === "overview" || currentTab === "schools") && (
-                <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-xs space-y-4">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-gray-100">
-                        <div>
-                            <h2 className="text-base font-bold text-gray-900">Registered Educational Institutions</h2>
-                            <p className="text-xs text-gray-500">
-                                Primary, secondary, and preparatory schools operating within {data?.woredaName || "the Woreda"}.
-                            </p>
-                        </div>
-
-                        {/* Search */}
-                        <div className="relative w-full sm:w-64">
-                            <Search className="w-3.5 h-3.5 absolute left-3 top-2.5 text-gray-400" />
-                            <input
-                                type="text"
-                                value={searchQuery}
-                                onChange={e => setSearchQuery(e.target.value)}
-                                placeholder="Filter schools or principals..."
-                                className="w-full pl-8 pr-3 py-1.5 text-xs bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#184973]"
-                            />
-                        </div>
+            {/* Error Banner */}
+            {error && (
+                <div className="p-4 bg-rose-50 border border-rose-200 rounded-lg text-rose-800 text-xs flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                        <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+                        <span>{error}</span>
                     </div>
-
-                    {filteredSchools.length === 0 ? (
-                        <div className="p-12 text-center border border-dashed border-gray-200 rounded-xl space-y-3">
-                            <School className="w-10 h-10 text-gray-300 mx-auto" />
-                            <p className="text-sm font-semibold text-gray-700">No Schools Registered</p>
-                            <p className="text-xs text-gray-500 max-w-sm mx-auto">
-                                {searchQuery
-                                    ? "No schools match your search query."
-                                    : "No schools have been registered under this Woreda yet. Click below to add the first School."}
-                            </p>
-                            {!searchQuery && (
-                                <button
-                                    onClick={() => setCreateSchoolOpen(true)}
-                                    className="mt-2 px-4 py-2 bg-[#184973] text-white text-xs font-semibold rounded-lg hover:bg-[#123655] transition-colors cursor-pointer"
-                                >
-                                    + Register First School
-                                </button>
-                            )}
-                        </div>
-                    ) : (
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-left text-xs text-gray-700">
-                                <thead className="bg-gray-50/80 text-gray-500 font-semibold uppercase text-[10px] tracking-wider border-y border-gray-200">
-                                    <tr>
-                                        <th className="py-3 px-4">School Name</th>
-                                        <th className="py-3 px-4">Students</th>
-                                        <th className="py-3 px-4">Teachers</th>
-                                        <th className="py-3 px-4">School Principal</th>
-                                        <th className="py-3 px-4">Status</th>
-                                        <th className="py-3 px-4 text-right">Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-gray-100 font-medium">
-                                    {filteredSchools.map(school => {
-                                        const hasAdmin = !!school.admin;
-                                        const isPending = school.admin?.status === "INVITATION_PENDING";
-                                        const isActive = school.admin?.status === "ACTIVE";
-
-                                        return (
-                                            <tr key={school.id} className="hover:bg-gray-50/60 transition-colors">
-                                                <td className="py-3.5 px-4 font-bold text-gray-900">
-                                                    <div className="flex items-center space-x-2">
-                                                        <School className="w-4 h-4 text-[#184973]" />
-                                                        <span>{school.name}</span>
-                                                    </div>
-                                                </td>
-                                                <td className="py-3.5 px-4">{school.studentsCount}</td>
-                                                <td className="py-3.5 px-4">{school.teachersCount}</td>
-                                                <td className="py-3.5 px-4">
-                                                    {hasAdmin ? (
-                                                        <div>
-                                                            <p className="font-semibold text-gray-900">{school.admin!.name}</p>
-                                                            <p className="text-[11px] text-gray-500">{school.admin!.email}</p>
-                                                        </div>
-                                                    ) : (
-                                                        <span className="text-gray-400 italic">No principal assigned</span>
-                                                    )}
-                                                </td>
-                                                <td className="py-3.5 px-4">
-                                                    {isActive && (
-                                                        <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                                                            <CheckCircle2 className="w-3 h-3 mr-1 text-emerald-600" />
-                                                            Active
-                                                        </span>
-                                                    )}
-                                                    {isPending && (
-                                                        <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
-                                                            <Clock className="w-3 h-3 mr-1 text-amber-600" />
-                                                            Invitation Pending
-                                                        </span>
-                                                    )}
-                                                    {!hasAdmin && (
-                                                        <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold bg-gray-100 text-gray-600">
-                                                            Unassigned
-                                                        </span>
-                                                    )}
-                                                </td>
-                                                <td className="py-3.5 px-4 text-right">
-                                                    <div className="flex items-center justify-end space-x-2">
-                                                        {!hasAdmin ? (
-                                                            <button
-                                                                onClick={() => {
-                                                                    setSelectedSchoolForAdmin(school);
-                                                                    setAssignAdminOpen(true);
-                                                                }}
-                                                                className="px-2.5 py-1.5 bg-[#184973] hover:bg-[#123655] text-white text-[11px] font-semibold rounded-lg transition-colors flex items-center space-x-1 cursor-pointer"
-                                                            >
-                                                                <UserPlus className="w-3 h-3" />
-                                                                <span>Assign Principal</span>
-                                                            </button>
-                                                        ) : (
-                                                            <>
-                                                                {isPending && (
-                                                                    <>
-                                                                        <button
-                                                                            onClick={() => handleResendInvitation(school.id, school.name)}
-                                                                            disabled={actionLoadingId === school.id}
-                                                                            className="px-2.5 py-1.5 border border-amber-300 hover:bg-amber-50 text-amber-800 text-[11px] font-semibold rounded-lg transition-colors flex items-center space-x-1 cursor-pointer disabled:opacity-50"
-                                                                            title="Resend Activation Email"
-                                                                        >
-                                                                            <Send className="w-3 h-3" />
-                                                                            <span>Resend</span>
-                                                                        </button>
-                                                                        <button
-                                                                            onClick={() => handleCancelInvitation(school.id, school.name)}
-                                                                            disabled={actionLoadingId === school.id}
-                                                                            className="px-2 py-1.5 text-red-600 hover:bg-red-50 text-[11px] font-semibold rounded-lg transition-colors cursor-pointer disabled:opacity-50"
-                                                                            title="Cancel Assignment"
-                                                                        >
-                                                                            Cancel
-                                                                        </button>
-                                                                    </>
-                                                                )}
-                                                            </>
-                                                        )}
-                                                        <button
-                                                            onClick={() => router.push(`/dashboard/school?targetOrgId=${school.id}`)}
-                                                            className="p-1.5 text-gray-500 hover:text-[#184973] hover:bg-gray-100 rounded-lg transition-colors cursor-pointer"
-                                                            title="Inspect School Desk"
-                                                        >
-                                                            <ArrowRight className="w-3.5 h-3.5" />
-                                                        </button>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        );
-                                    })}
-                                </tbody>
-                            </table>
-                        </div>
-                    )}
+                    <button
+                        onClick={loadWoredaData}
+                        className="px-3 py-1 bg-rose-600 text-white font-semibold rounded hover:bg-rose-700 cursor-pointer"
+                    >
+                        Retry
+                    </button>
                 </div>
             )}
 
-            {/* TAB CONTENT: School Principals Directory */}
-            {currentTab === "administration" && (
-                <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-xs space-y-4">
-                    <div className="pb-2 border-b border-gray-100">
-                        <h2 className="text-base font-bold text-gray-900">School Principals Directory</h2>
-                        <p className="text-xs text-gray-500">
-                            Authorized School Principals and Administrators holding leadership credentials within {data?.woredaName}.
-                        </p>
-                    </div>
+            {/* TAB 1: OVERVIEW */}
+            {currentTab === "overview" && (
+                <div className="space-y-6">
+                    {/* Top Row: 2 Cards */}
+                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                        
+                        {/* CARD 1 (Top-Left): Woreda Educational Proportion (Donut Chart) */}
+                        <div className="lg:col-span-4 bg-white p-6 rounded-2xl border border-slate-100 shadow-sm flex flex-col justify-between space-y-6">
+                            <div className="flex items-center gap-2">
+                                <h2 className="text-base font-bold text-slate-900 tracking-tight">
+                                    Woreda Educational Proportion
+                                </h2>
+                                <span className="w-4 h-4 rounded-full bg-slate-200 text-slate-600 flex items-center justify-center text-[10px] font-bold cursor-help" title="Student and teacher educational community ratio in this woreda">
+                                    i
+                                </span>
+                            </div>
 
-                    {assignedAdministrators.length === 0 ? (
-                        <div className="p-12 text-center border border-dashed border-gray-200 rounded-xl space-y-2">
-                            <Shield className="w-8 h-8 text-gray-300 mx-auto" />
-                            <p className="text-sm font-semibold text-gray-700">No Principals Assigned</p>
-                            <p className="text-xs text-gray-500">Assign a principal to any of your subordinate Schools above.</p>
+                            {/* Donut Chart with real database total in center */}
+                            <div className="flex flex-col items-center justify-center py-2 relative">
+                                <svg className="w-48 h-48 -rotate-90" viewBox="0 0 120 120">
+                                    {/* Background circle track */}
+                                    <circle
+                                        cx="60"
+                                        cy="60"
+                                        r="46"
+                                        stroke="#f1f5f9"
+                                        strokeWidth="16"
+                                        fill="transparent"
+                                    />
+                                    {/* Students Segment (Sky Blue #38bdf8) */}
+                                    <circle
+                                        cx="60"
+                                        cy="60"
+                                        r="46"
+                                        stroke="#38bdf8"
+                                        strokeWidth="16"
+                                        strokeDasharray={`${(parseFloat(studentsPercentage) / 100) * 289} 289`}
+                                        strokeLinecap="butt"
+                                        fill="transparent"
+                                        className="transition-all duration-700 ease-out"
+                                    />
+                                    {/* Teachers Segment (Deep Navy #0f172a) */}
+                                    <circle
+                                        cx="60"
+                                        cy="60"
+                                        r="46"
+                                        stroke="#0f172a"
+                                        strokeWidth="16"
+                                        strokeDasharray={`${(parseFloat(teachersPercentage) / 100) * 289} 289`}
+                                        strokeDashoffset={`-${(parseFloat(studentsPercentage) / 100) * 289}`}
+                                        strokeLinecap="butt"
+                                        fill="transparent"
+                                        className="transition-all duration-700 ease-out"
+                                    />
+                                </svg>
+                                <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                                    <span className="text-xl font-black text-slate-900 tracking-tight">
+                                        {fmt(totalSchools)}
+                                    </span>
+                                    <span className="text-[10px] font-bold text-slate-400 uppercase">Schools</span>
+                                </div>
+                            </div>
+
+                            {/* Legend Dot indicators */}
+                            <div className="flex items-center justify-center gap-6 text-xs text-slate-600">
+                                <div className="flex items-center gap-1.5">
+                                    <span className="w-2.5 h-2.5 rounded-full bg-[#38bdf8]" />
+                                    <span>Students ({totalStudents})</span>
+                                </div>
+                                <div className="flex items-center gap-1.5">
+                                    <span className="w-2.5 h-2.5 rounded-full bg-[#0f172a]" />
+                                    <span>Teachers ({totalTeachers})</span>
+                                </div>
+                            </div>
+
+                            {/* 2 Bottom Metric Boxes with Real Data */}
+                            <div className="grid grid-cols-2 gap-3 pt-2">
+                                <div className="p-3.5 rounded-xl bg-[#e0f2fe]/60 text-center space-y-0.5">
+                                    <span className="text-sm font-black text-[#0369a1]">
+                                        {fmt(totalStudents)}
+                                    </span>
+                                    <p className="text-[11px] font-bold text-[#0369a1]">Total Students</p>
+                                </div>
+                                <div className="p-3.5 rounded-xl bg-[#e0f2fe]/60 text-center space-y-0.5">
+                                    <span className="text-sm font-black text-[#0369a1]">
+                                        {fmt(totalTeachers)}
+                                    </span>
+                                    <p className="text-[11px] font-bold text-[#0369a1]">Total Teachers</p>
+                                </div>
+                            </div>
                         </div>
-                    ) : (
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-left text-xs text-gray-700">
-                                <thead className="bg-gray-50/80 text-gray-500 font-semibold uppercase text-[10px] tracking-wider border-y border-gray-200">
-                                    <tr>
-                                        <th className="py-3 px-4">Principal / Administrator</th>
-                                        <th className="py-3 px-4">Assigned School</th>
-                                        <th className="py-3 px-4">Authority Scope</th>
-                                        <th className="py-3 px-4">Account Status</th>
-                                        <th className="py-3 px-4 text-right">Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-gray-100 font-medium">
-                                    {assignedAdministrators.map(({ schoolId, schoolName, admin }) => (
-                                        <tr key={admin.id} className="hover:bg-gray-50/60 transition-colors">
-                                            <td className="py-3 px-4">
-                                                <div className="flex items-center space-x-2.5">
-                                                    <div className="w-7 h-7 rounded-full bg-[#184973] text-white flex items-center justify-center font-bold text-[10px]">
-                                                        {admin.name.slice(0, 2).toUpperCase()}
-                                                    </div>
-                                                    <div>
-                                                        <p className="font-bold text-gray-900">{admin.name}</p>
-                                                        <p className="text-[11px] text-gray-500">{admin.email}</p>
+
+                        {/* CARD 2 (Top-Right): School Institutional Distribution (Blue Circular Cards with Hover Tooltips) */}
+                        <div className="lg:col-span-8 bg-white p-6 rounded-2xl border border-slate-100 shadow-sm flex flex-col justify-between space-y-6">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                    <h2 className="text-base font-bold text-slate-900 tracking-tight">
+                                        School Institutional Distribution
+                                    </h2>
+                                    <span className="w-4 h-4 rounded-full bg-slate-200 text-slate-600 flex items-center justify-center text-[10px] font-bold cursor-help" title="Active school institutions registered in this woreda">
+                                        i
+                                    </span>
+                                </div>
+                                <span className="text-xs font-bold text-blue-600 bg-blue-50 px-2.5 py-1 rounded-lg">
+                                    {realSchools.length} Active {realSchools.length === 1 ? "School" : "Schools"}
+                                </span>
+                            </div>
+
+                            {/* Blue Circular Island Canvas */}
+                            <div className="relative w-full min-h-[240px] bg-slate-50/60 rounded-2xl flex items-center justify-center p-6 border border-slate-100 overflow-hidden">
+                                {realSchools.length === 0 ? (
+                                    <div className="text-center text-slate-400 text-xs py-8">
+                                        No schools registered yet. Click <strong>Add School</strong> to add an educational institution.
+                                    </div>
+                                ) : (
+                                    <div className="flex flex-wrap items-center justify-center gap-6 relative z-10">
+                                        {realSchools.map((school, idx) => {
+                                            const bgGradients = [
+                                                "bg-gradient-to-br from-[#0284c7] to-[#0369a1]",
+                                                "bg-gradient-to-br from-[#38bdf8] to-[#0284c7]",
+                                                "bg-gradient-to-br from-[#0369a1] to-[#0f172a]",
+                                                "bg-gradient-to-br from-[#7dd3fc] to-[#0284c7]"
+                                            ];
+                                            const bgClass = bgGradients[idx % bgGradients.length];
+
+                                            return (
+                                                <div
+                                                    key={school.id}
+                                                    onMouseEnter={() => setHoveredSchool(school)}
+                                                    onClick={() => setSelectedSchoolForDrilldown(school)}
+                                                    className={`w-40 h-40 ${bgClass} rounded-full shadow-lg shadow-blue-500/10 flex flex-col items-center justify-center text-white cursor-pointer transition-all duration-300 hover:scale-105 hover:shadow-xl p-4 text-center group relative`}
+                                                >
+                                                    {/* School Title in crisp white */}
+                                                    <span className="text-xs font-bold tracking-tight text-white line-clamp-2 drop-shadow-xs">
+                                                        {school.name}
+                                                    </span>
+
+                                                    {/* Short badge */}
+                                                    <span className="mt-1.5 px-2.5 py-0.5 rounded-full bg-white/20 text-white text-[10px] font-extrabold backdrop-blur-xs">
+                                                        {school.studentsCount} {school.studentsCount === 1 ? "Student" : "Students"}
+                                                    </span>
+
+                                                    {/* Floating White Tooltip on Hover matching template */}
+                                                    <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 bg-white px-3.5 py-1.5 rounded-xl shadow-lg border border-slate-200 opacity-0 group-hover:opacity-100 transition-all duration-200 pointer-events-none whitespace-nowrap z-20">
+                                                        <p className="text-[11px] font-bold text-slate-900">{school.name}</p>
+                                                        <p className="text-[10px] font-black text-blue-600">
+                                                            {school.studentsCount} Students • {school.teachersCount} Teachers
+                                                        </p>
                                                     </div>
                                                 </div>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Scale Legend */}
+                            <div className="flex flex-wrap items-center justify-center gap-4 text-[11px] text-slate-600 pt-2 border-t border-slate-100">
+                                <div className="flex items-center gap-1.5">
+                                    <span className="w-2.5 h-2.5 rounded-full bg-[#0369a1]" />
+                                    <span>High Enrollment</span>
+                                </div>
+                                <div className="flex items-center gap-1.5">
+                                    <span className="w-2.5 h-2.5 rounded-full bg-[#38bdf8]" />
+                                    <span>Standard Growth</span>
+                                </div>
+                                <div className="flex items-center gap-1.5">
+                                    <span className="w-2.5 h-2.5 rounded-full bg-[#7dd3fc]" />
+                                    <span>Developing</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Bottom Full-Width Card: Students & Teachers per School */}
+                    <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm space-y-6">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                            <div className="flex items-center gap-2">
+                                <h2 className="text-base font-bold text-slate-900 tracking-tight">
+                                    Students & Teachers per School
+                                </h2>
+                                <span className="w-4 h-4 rounded-full bg-slate-200 text-slate-600 flex items-center justify-center text-[10px] font-bold cursor-help" title="Comparative school telemetry showing students (left) and teachers (right)">
+                                    i
+                                </span>
+                            </div>
+                            <div className="flex items-center gap-4 text-xs font-semibold text-slate-500">
+                                <span className="flex items-center gap-1.5 text-slate-700">
+                                    <span className="w-2.5 h-2.5 rounded-full bg-[#0f172a]" /> Left: Students
+                                </span>
+                                <span className="flex items-center gap-1.5 text-[#0284c7]">
+                                    <span className="w-2.5 h-2.5 rounded-full bg-[#38bdf8]" /> Right: Teachers
+                                </span>
+                            </div>
+                        </div>
+
+                        {/* Chart Grid and Stacked Bars */}
+                        <div className="w-full overflow-x-auto pb-8 pt-2">
+                            <div className="min-w-[500px] h-72 flex flex-col justify-between relative pl-12 pr-12 pt-4">
+                                {/* Horizontal Grid Lines and Dual Y-Axis Labels (Left: Students, Right: Teachers) */}
+                                <div className="absolute inset-0 pl-12 pr-12 pointer-events-none flex flex-col justify-between">
+                                    {yAxisSteps.map(val => (
+                                        <div key={val} className="w-full flex items-center justify-between relative">
+                                            {/* Left Y-Axis: Students */}
+                                            <span className="absolute -left-12 text-[11px] font-bold text-slate-500 w-10 text-right">
+                                                {val}
+                                            </span>
+                                            {/* Horizontal Grid Line */}
+                                            <div className="w-full border-b border-dashed border-slate-200" />
+                                            {/* Right Y-Axis: Teachers */}
+                                            <span className="absolute -right-12 text-[11px] font-bold text-[#0284c7] w-10 text-left pl-2">
+                                                {val}
+                                            </span>
+                                        </div>
+                                    ))}
+                                </div>
+
+                                {/* Bars Container (Render ONLY real database schools) */}
+                                <div className="h-full flex items-end justify-around gap-8 relative z-10 pt-2 pb-14">
+                                    {realSchools.length === 0 ? (
+                                        <div className="w-full text-center text-slate-400 text-xs py-16">
+                                            No school data available. Register a school to view analytics.
+                                        </div>
+                                    ) : (
+                                        realSchools.map(school => {
+                                            const totalHeightVal = maxStudentsCount > 0 ? maxStudentsCount : 1;
+                                            const studentsHeight = Math.min(100, Math.max(12, (school.studentsCount / totalHeightVal) * 100));
+                                            const teachersHeight = Math.min(100, Math.max(12, (school.teachersCount / totalHeightVal) * 100));
+
+                                            return (
+                                                <div
+                                                    key={school.id}
+                                                    onClick={() => setSelectedSchoolForDrilldown(school)}
+                                                    className="flex flex-col items-center justify-end h-full group cursor-pointer relative min-w-[70px]"
+                                                >
+                                                    {/* Floating Tooltip with Full Real Numbers on Hover */}
+                                                    <div className="absolute -top-12 left-1/2 -translate-x-1/2 bg-slate-900 text-white px-3 py-1.5 rounded-xl shadow-xl border border-slate-700 opacity-0 group-hover:opacity-100 transition-all duration-200 pointer-events-none whitespace-nowrap z-30 text-center">
+                                                        <p className="text-[11px] font-bold text-white">{school.name}</p>
+                                                        <p className="text-[10px] text-sky-300 font-semibold">
+                                                            {school.studentsCount} Students • {school.teachersCount} Teachers
+                                                        </p>
+                                                    </div>
+
+                                                    {/* Dual / Stacked Bar Column */}
+                                                    <div className="flex items-end justify-center gap-1.5 h-full w-14">
+                                                        {/* Bar 1: Students (Deep Navy #0f172a) */}
+                                                        <div
+                                                            style={{ height: `${studentsHeight}%` }}
+                                                            className="flex-1 bg-[#0f172a] rounded-t-sm transition-all duration-300 group-hover:brightness-125 flex items-center justify-center text-[10px] font-bold text-white shadow-xs"
+                                                            title={`Students: ${school.studentsCount}`}
+                                                        >
+                                                            {school.studentsCount}
+                                                        </div>
+                                                        {/* Bar 2: Teachers (Sky Blue #38bdf8) */}
+                                                        <div
+                                                            style={{ height: `${teachersHeight}%` }}
+                                                            className="flex-1 bg-[#38bdf8] rounded-t-sm transition-all duration-300 group-hover:brightness-110 flex items-center justify-center text-[10px] font-bold text-white shadow-xs"
+                                                            title={`Teachers: ${school.teachersCount}`}
+                                                        >
+                                                            {school.teachersCount}
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Slanted / Diagonal Slash School Label matching template */}
+                                                    <div className="absolute -bottom-12 left-1/2 -translate-x-1/2 origin-top-left rotate-45 pointer-events-none whitespace-nowrap text-left pt-2">
+                                                        <span className="text-[11px] font-bold text-slate-800 block truncate max-w-[120px]">
+                                                            {school.name}
+                                                        </span>
+                                                        <span className="text-[10px] font-semibold text-slate-400 block -mt-0.5">
+                                                            {school.teachersCount} {school.teachersCount === 1 ? "Teacher" : "Teachers"}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Chart Legend */}
+                        <div className="flex items-center justify-center gap-6 text-xs text-slate-600 pt-6 border-t border-slate-100">
+                            <div className="flex items-center gap-1.5">
+                                <span className="w-2.5 h-2.5 rounded-full bg-[#0f172a]" />
+                                <span>Students (Left Axis)</span>
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                                <span className="w-2.5 h-2.5 rounded-full bg-[#38bdf8]" />
+                                <span>Teachers (Right Axis)</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* TAB 2: SCHOOLS DIRECTORY */}
+            {currentTab === "schools" && (
+                <div className="bg-white rounded-2xl border border-slate-100 shadow-sm space-y-4 p-6">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                        <div>
+                            <h2 className="text-base font-bold text-slate-900">Schools Directory</h2>
+                            <p className="text-xs text-slate-500">Operational educational institutions in this woreda</p>
+                        </div>
+
+                        <button
+                            onClick={() => {
+                                setNewSchoolName("");
+                                setNewSchoolCode("");
+                                setNewSchoolAddress("");
+                                setNewSchoolPhone("");
+                                setCreateSchoolMessage(null);
+                                setCreateSchoolOpen(true);
+                            }}
+                            className="px-3.5 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer shadow-xs"
+                        >
+                            <Plus className="w-4 h-4" />
+                            <span>Add School</span>
+                        </button>
+                    </div>
+
+                    {/* Search */}
+                    <div className="relative">
+                        <Search className="w-4 h-4 absolute left-3 top-2.5 text-slate-400" />
+                        <input
+                            type="text"
+                            placeholder="Search by school name, principal, or email..."
+                            value={searchQuery}
+                            onChange={e => setSearchQuery(e.target.value)}
+                            className="w-full pl-9 pr-4 py-2 border border-slate-200 rounded-lg text-xs focus:outline-hidden focus:border-blue-500 transition-colors"
+                        />
+                    </div>
+
+                    {/* Schools Table */}
+                    <div className="overflow-x-auto border border-slate-200 rounded-xl">
+                        <table className="w-full text-left text-xs">
+                            <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 font-semibold uppercase tracking-wider text-[10px]">
+                                <tr>
+                                    <th className="py-3 px-4">School Name</th>
+                                    <th className="py-3 px-4">Students</th>
+                                    <th className="py-3 px-4">Teachers</th>
+                                    <th className="py-3 px-4">Principal</th>
+                                    <th className="py-3 px-4">Status</th>
+                                    <th className="py-3 px-4 text-right">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100 text-slate-700 font-medium">
+                                {filteredSchools.length === 0 ? (
+                                    <tr>
+                                        <td colSpan={6} className="py-8 text-center text-slate-400">
+                                            No schools matching your search.
+                                        </td>
+                                    </tr>
+                                ) : (
+                                    filteredSchools.map(school => (
+                                        <tr key={school.id} className="hover:bg-slate-50/70 transition-colors">
+                                            <td className="py-3 px-4 font-bold text-slate-900">
+                                                <div className="flex items-center gap-2">
+                                                    <School className="w-4 h-4 text-blue-600 shrink-0" />
+                                                    <span>{school.name}</span>
+                                                </div>
                                             </td>
-                                            <td className="py-3 px-4 font-semibold text-gray-800">{schoolName}</td>
-                                            <td className="py-3 px-4">
-                                                <span className="px-2 py-0.5 bg-blue-50 text-[#184973] rounded font-bold text-[10px]">
-                                                    SCHOOL DESK
-                                                </span>
+                                            <td className="py-3 px-4 font-semibold text-slate-800">
+                                                {school.studentsCount}
+                                            </td>
+                                            <td className="py-3 px-4 font-semibold text-slate-800">
+                                                {school.teachersCount}
                                             </td>
                                             <td className="py-3 px-4">
-                                                {admin.status === "ACTIVE" ? (
-                                                    <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                                                        <CheckCircle2 className="w-3 h-3 mr-1 text-emerald-600" />
-                                                        Active
-                                                    </span>
+                                                {school.admin ? (
+                                                    <div>
+                                                        <p className="font-semibold text-slate-900">{school.admin.name}</p>
+                                                        <p className="text-[11px] text-slate-500">{school.admin.email}</p>
+                                                    </div>
                                                 ) : (
-                                                    <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
-                                                        <Clock className="w-3 h-3 mr-1 text-amber-600" />
-                                                        Invitation Pending
+                                                    <span className="text-slate-400 italic text-[11px]">Unassigned</span>
+                                                )}
+                                            </td>
+                                            <td className="py-3 px-4">
+                                                {school.admin ? (
+                                                    school.admin.status === "ACTIVE" ? (
+                                                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                                            <CheckCircle2 className="w-3 h-3" /> Active
+                                                        </span>
+                                                    ) : (
+                                                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
+                                                            Pending Invite
+                                                        </span>
+                                                    )
+                                                ) : (
+                                                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-600">
+                                                        Vacant
                                                     </span>
                                                 )}
                                             </td>
                                             <td className="py-3 px-4 text-right">
-                                                {admin.status === "INVITATION_PENDING" && (
-                                                    <div className="flex items-center justify-end space-x-2">
+                                                <div className="flex items-center justify-end gap-1.5">
+                                                    <button
+                                                        onClick={() => setSelectedSchoolForDrilldown(school)}
+                                                        className="px-2.5 py-1 text-slate-600 hover:text-slate-900 border border-slate-200 hover:bg-slate-100 rounded text-[11px] font-semibold transition-colors cursor-pointer"
+                                                    >
+                                                        Inspect
+                                                    </button>
+                                                    {!school.admin ? (
                                                         <button
-                                                            onClick={() => handleResendInvitation(schoolId, schoolName)}
-                                                            disabled={actionLoadingId === schoolId}
-                                                            className="px-2.5 py-1 text-[11px] font-semibold bg-amber-50 hover:bg-amber-100 text-amber-800 rounded-lg border border-amber-200 transition-colors cursor-pointer"
+                                                            onClick={() => openAssignAdmin(school)}
+                                                            className="px-2.5 py-1 bg-blue-50 text-blue-700 hover:bg-blue-100 rounded text-[11px] font-bold transition-colors flex items-center gap-1 cursor-pointer"
                                                         >
-                                                            Resend Email
+                                                            <UserPlus className="w-3 h-3" />
+                                                            <span>Assign Principal</span>
                                                         </button>
+                                                    ) : school.admin.status === "INVITATION_PENDING" ? (
                                                         <button
-                                                            onClick={() => handleCancelInvitation(schoolId, schoolName)}
-                                                            disabled={actionLoadingId === schoolId}
-                                                            className="px-2 py-1 text-[11px] font-semibold text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
+                                                            onClick={() => handleResendInvitation(school.id)}
+                                                            disabled={actionLoadingId === school.id}
+                                                            className="px-2.5 py-1 bg-amber-50 text-amber-700 hover:bg-amber-100 rounded text-[11px] font-bold transition-colors cursor-pointer"
                                                         >
-                                                            Cancel
+                                                            {actionLoadingId === school.id ? "Resending..." : "Resend Invite"}
                                                         </button>
-                                                    </div>
-                                                )}
+                                                    ) : null}
+                                                </div>
                                             </td>
                                         </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    )}
+                                    ))
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             )}
 
-            {/* MODAL: Register New School */}
+            {/* TAB 3: LEADERSHIP & ADMINISTRATION */}
+            {currentTab === "administration" && (
+                <div className="bg-white rounded-2xl border border-slate-100 shadow-sm space-y-4 p-6">
+                    <div>
+                        <h2 className="text-base font-bold text-slate-900">School Principals & Administrators</h2>
+                        <p className="text-xs text-slate-500">Designated heads of institutions governing woreda schools</p>
+                    </div>
+
+                    <div className="overflow-x-auto border border-slate-200 rounded-xl">
+                        <table className="w-full text-left text-xs">
+                            <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 font-semibold uppercase tracking-wider text-[10px]">
+                                <tr>
+                                    <th className="py-3 px-4">Principal / Admin</th>
+                                    <th className="py-3 px-4">School</th>
+                                    <th className="py-3 px-4">Email</th>
+                                    <th className="py-3 px-4">Status</th>
+                                    <th className="py-3 px-4 text-right">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100 text-slate-700 font-medium">
+                                {assignedAdministrators.length === 0 ? (
+                                    <tr>
+                                        <td colSpan={5} className="py-8 text-center text-slate-400">
+                                            No school principals appointed yet.
+                                        </td>
+                                    </tr>
+                                ) : (
+                                    assignedAdministrators.map(({ schoolId, schoolName, admin }) => (
+                                        <tr key={schoolId} className="hover:bg-slate-50/70 transition-colors">
+                                            <td className="py-3 px-4 font-bold text-slate-900">
+                                                {admin.name}
+                                            </td>
+                                            <td className="py-3 px-4 font-semibold text-slate-800">
+                                                {schoolName}
+                                            </td>
+                                            <td className="py-3 px-4 text-slate-600">
+                                                {admin.email}
+                                            </td>
+                                            <td className="py-3 px-4">
+                                                {admin.status === "ACTIVE" ? (
+                                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                                        <CheckCircle2 className="w-3 h-3" /> Active
+                                                    </span>
+                                                ) : (
+                                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
+                                                        Pending Invite
+                                                    </span>
+                                                )}
+                                            </td>
+                                            <td className="py-3 px-4 text-right">
+                                                <div className="flex items-center justify-end gap-2">
+                                                    {admin.status === "INVITATION_PENDING" && (
+                                                        <button
+                                                            onClick={() => handleResendInvitation(schoolId)}
+                                                            disabled={actionLoadingId === schoolId}
+                                                            className="px-2.5 py-1 bg-amber-50 text-amber-700 hover:bg-amber-100 rounded text-[11px] font-bold transition-colors cursor-pointer"
+                                                        >
+                                                            {actionLoadingId === schoolId ? "Resending..." : "Resend Invite"}
+                                                        </button>
+                                                    )}
+                                                    <button
+                                                        onClick={() => handleCancelInvitation(schoolId)}
+                                                        disabled={actionLoadingId === schoolId}
+                                                        className="px-2.5 py-1 text-rose-600 hover:text-rose-800 border border-rose-200 hover:bg-rose-50 rounded text-[11px] font-semibold transition-colors cursor-pointer"
+                                                    >
+                                                        Revoke
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            )}
+
+            {/* MODAL: REGISTER SCHOOL */}
             {createSchoolOpen && (
-                <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
-                    <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-gray-200 space-y-5 animate-in fade-in zoom-in-95 duration-150">
-                        <div className="flex items-center justify-between border-b border-gray-100 pb-3">
-                            <div className="flex items-center space-x-2">
-                                <School className="w-5 h-5 text-[#184973]" />
-                                <h3 className="text-base font-bold text-gray-900">Register New School</h3>
-                            </div>
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-xs p-4">
+                    <div className="bg-white rounded-2xl shadow-xl border border-slate-100 max-w-md w-full p-6 space-y-4 animate-in fade-in zoom-in-95">
+                        <div className="flex items-center justify-between">
+                            <h3 className="text-base font-bold text-slate-900">Register New School</h3>
                             <button
-                                onClick={() => {
-                                    setCreateSchoolOpen(false);
-                                    setCreateSchoolMessage(null);
-                                }}
-                                className="text-gray-400 hover:text-gray-600 text-lg leading-none cursor-pointer"
+                                onClick={() => setCreateSchoolOpen(false)}
+                                className="p-1 text-slate-400 hover:text-slate-600 rounded-lg"
                             >
-                                &times;
+                                <X className="w-5 h-5" />
                             </button>
                         </div>
 
                         {createSchoolMessage && (
                             <div
-                                className={`p-3 rounded-lg text-xs font-semibold ${
+                                className={`p-3 rounded-lg text-xs font-semibold flex items-center gap-2 ${
                                     createSchoolMessage.type === "success"
                                         ? "bg-emerald-50 text-emerald-800 border border-emerald-200"
-                                        : "bg-red-50 text-red-800 border border-red-200"
+                                        : "bg-rose-50 text-rose-800 border border-rose-200"
                                 }`}
                             >
-                                {createSchoolMessage.text}
+                                {createSchoolMessage.type === "success" ? (
+                                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                                ) : (
+                                    <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+                                )}
+                                <span>{createSchoolMessage.text}</span>
                             </div>
                         )}
 
                         <form onSubmit={handleCreateSchoolSubmit} className="space-y-4">
                             <div>
-                                <label className="block text-xs font-bold text-gray-700 mb-1">
-                                    Parent Woreda Office
-                                </label>
-                                <input
-                                    type="text"
-                                    value={data?.woredaName || "Woreda Education Office"}
-                                    disabled
-                                    className="w-full bg-gray-100 border border-gray-200 rounded-lg p-2 text-xs text-gray-600 font-medium"
-                                />
-                            </div>
-
-                            <div>
-                                <label className="block text-xs font-bold text-gray-700 mb-1">
-                                    School Name <span className="text-red-500">*</span>
+                                <label className="block text-xs font-bold text-slate-700 mb-1">
+                                    School Name <span className="text-rose-500">*</span>
                                 </label>
                                 <input
                                     type="text"
                                     required
+                                    placeholder="e.g., Fasiledes Secondary School"
                                     value={newSchoolName}
                                     onChange={e => setNewSchoolName(e.target.value)}
-                                    placeholder="e.g. Moretna Jiru Secondary School"
-                                    className="w-full border border-gray-300 rounded-lg p-2.5 text-xs focus:ring-2 focus:ring-[#184973] focus:border-[#184973] outline-none"
+                                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs focus:outline-hidden focus:border-blue-500"
                                 />
                             </div>
 
                             <div>
-                                <label className="block text-xs font-bold text-gray-700 mb-1">
-                                    School Address / Location (Optional)
+                                <label className="block text-xs font-bold text-slate-700 mb-1">
+                                    Physical Address / Location
                                 </label>
                                 <input
                                     type="text"
+                                    placeholder="e.g., Kebele 04, Main Campus"
                                     value={newSchoolAddress}
                                     onChange={e => setNewSchoolAddress(e.target.value)}
-                                    placeholder="e.g. Enwari Town, Kebele 01"
-                                    className="w-full border border-gray-300 rounded-lg p-2.5 text-xs focus:ring-2 focus:ring-[#184973] focus:border-[#184973] outline-none"
+                                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs focus:outline-hidden focus:border-blue-500"
                                 />
                             </div>
 
                             <div>
-                                <label className="block text-xs font-bold text-gray-700 mb-1">
-                                    Contact Phone Number (Optional)
+                                <label className="block text-xs font-bold text-slate-700 mb-1">
+                                    Official Contact Phone (Optional)
                                 </label>
                                 <input
                                     type="tel"
+                                    placeholder="e.g., +251 58 123 4567"
                                     value={newSchoolPhone}
                                     onChange={e => setNewSchoolPhone(e.target.value)}
-                                    placeholder="+251 11 234 5678"
-                                    className="w-full border border-gray-300 rounded-lg p-2.5 text-xs focus:ring-2 focus:ring-[#184973] focus:border-[#184973] outline-none"
+                                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs focus:outline-hidden focus:border-blue-500"
                                 />
                             </div>
 
-                            <p className="text-[11px] text-gray-500 italic">
-                                Note: Registering a School establishes an educational unit. You will be able to assign an authorized School Principal on the next step.
-                            </p>
-
-                            <div className="flex items-center justify-end space-x-3 pt-2">
+                            <div className="flex items-center justify-end gap-2 pt-2">
                                 <button
                                     type="button"
-                                    onClick={() => {
-                                        setCreateSchoolOpen(false);
-                                        setCreateSchoolMessage(null);
-                                    }}
-                                    disabled={creatingSchool}
-                                    className="px-4 py-2 border border-gray-300 text-gray-700 text-xs font-semibold rounded-lg hover:bg-gray-50 cursor-pointer"
+                                    onClick={() => setCreateSchoolOpen(false)}
+                                    className="px-4 py-2 border border-slate-200 text-slate-600 hover:bg-slate-50 text-xs font-bold rounded-lg cursor-pointer"
                                 >
                                     Cancel
                                 </button>
                                 <button
                                     type="submit"
                                     disabled={creatingSchool || !newSchoolName.trim()}
-                                    className="px-4 py-2 bg-[#184973] hover:bg-[#123655] text-white text-xs font-semibold rounded-lg transition-colors flex items-center space-x-1.5 disabled:opacity-50 cursor-pointer"
+                                    className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-lg transition-colors disabled:opacity-50 cursor-pointer"
                                 >
-                                    {creatingSchool ? (
-                                        <>
-                                            <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                                            <span>Registering...</span>
-                                        </>
-                                    ) : (
-                                        <>
-                                            <Plus className="w-3.5 h-3.5" />
-                                            <span>Register School</span>
-                                        </>
-                                    )}
+                                    {creatingSchool ? "Registering..." : "Register School"}
                                 </button>
                             </div>
                         </form>
@@ -809,132 +1029,166 @@ export default function WoredaDashboard() {
                 </div>
             )}
 
-            {/* MODAL: Assign School Principal */}
+            {/* MODAL: ASSIGN SCHOOL PRINCIPAL */}
             {assignAdminOpen && selectedSchoolForAdmin && (
-                <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
-                    <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-gray-200 space-y-5 animate-in fade-in zoom-in-95 duration-150">
-                        <div className="flex items-center justify-between border-b border-gray-100 pb-3">
-                            <div className="flex items-center space-x-2">
-                                <UserPlus className="w-5 h-5 text-[#184973]" />
-                                <div>
-                                    <h3 className="text-base font-bold text-gray-900">Assign School Principal</h3>
-                                    <p className="text-xs text-gray-500">{selectedSchoolForAdmin.name}</p>
-                                </div>
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-xs p-4">
+                    <div className="bg-white rounded-2xl shadow-xl border border-slate-100 max-w-md w-full p-6 space-y-4 animate-in fade-in zoom-in-95">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <h3 className="text-base font-bold text-slate-900">Assign School Principal</h3>
+                                <p className="text-xs text-slate-500">{selectedSchoolForAdmin.name}</p>
                             </div>
                             <button
-                                onClick={() => {
-                                    setAssignAdminOpen(false);
-                                    setSelectedSchoolForAdmin(null);
-                                    setAssignAdminMessage(null);
-                                }}
-                                className="text-gray-400 hover:text-gray-600 text-lg leading-none cursor-pointer"
+                                onClick={() => setAssignAdminOpen(false)}
+                                className="p-1 text-slate-400 hover:text-slate-600 rounded-lg"
                             >
-                                &times;
+                                <X className="w-5 h-5" />
                             </button>
                         </div>
 
                         {assignAdminMessage && (
                             <div
-                                className={`p-3 rounded-lg text-xs font-semibold ${
+                                className={`p-3 rounded-lg text-xs font-semibold flex items-center gap-2 ${
                                     assignAdminMessage.type === "success"
                                         ? "bg-emerald-50 text-emerald-800 border border-emerald-200"
-                                        : "bg-red-50 text-red-800 border border-red-200"
+                                        : "bg-rose-50 text-rose-800 border border-rose-200"
                                 }`}
                             >
-                                {assignAdminMessage.text}
+                                {assignAdminMessage.type === "success" ? (
+                                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                                ) : (
+                                    <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+                                )}
+                                <span>{assignAdminMessage.text}</span>
                             </div>
                         )}
 
                         <form onSubmit={handleAssignAdminSubmit} className="space-y-4">
                             <div>
-                                <label className="block text-xs font-bold text-gray-700 mb-1">
-                                    Target School Unit
-                                </label>
-                                <input
-                                    type="text"
-                                    value={selectedSchoolForAdmin.name}
-                                    disabled
-                                    className="w-full bg-gray-100 border border-gray-200 rounded-lg p-2 text-xs text-gray-600 font-medium"
-                                />
-                            </div>
-
-                            <div>
-                                <label className="block text-xs font-bold text-gray-700 mb-1">
-                                    Principal Full Name <span className="text-red-500">*</span>
+                                <label className="block text-xs font-bold text-slate-700 mb-1">
+                                    Full Name <span className="text-rose-500">*</span>
                                 </label>
                                 <input
                                     type="text"
                                     required
+                                    placeholder="e.g., Ato Girma Wolde"
                                     value={adminFullName}
                                     onChange={e => setAdminFullName(e.target.value)}
-                                    placeholder="e.g. Yohannes Haile"
-                                    className="w-full border border-gray-300 rounded-lg p-2.5 text-xs focus:ring-2 focus:ring-[#184973] focus:border-[#184973] outline-none"
+                                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs focus:outline-hidden focus:border-blue-500"
                                 />
                             </div>
 
                             <div>
-                                <label className="block text-xs font-bold text-gray-700 mb-1">
-                                    Official Email Address <span className="text-red-500">*</span>
+                                <label className="block text-xs font-bold text-slate-700 mb-1">
+                                    Official Email Address <span className="text-rose-500">*</span>
                                 </label>
                                 <input
                                     type="email"
                                     required
+                                    placeholder="e.g., principal@school.edu.et"
                                     value={adminEmail}
                                     onChange={e => setAdminEmail(e.target.value)}
-                                    placeholder="e.g. yohannes.haile@edubridge.gov.et"
-                                    className="w-full border border-gray-300 rounded-lg p-2.5 text-xs focus:ring-2 focus:ring-[#184973] focus:border-[#184973] outline-none"
+                                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs focus:outline-hidden focus:border-blue-500"
                                 />
                             </div>
 
                             <div>
-                                <label className="block text-xs font-bold text-gray-700 mb-1">
+                                <label className="block text-xs font-bold text-slate-700 mb-1">
                                     Phone Number (Optional)
                                 </label>
                                 <input
                                     type="tel"
+                                    placeholder="e.g., +251 91 345 6789"
                                     value={adminPhone}
                                     onChange={e => setAdminPhone(e.target.value)}
-                                    placeholder="+251 91 345 6789"
-                                    className="w-full border border-gray-300 rounded-lg p-2.5 text-xs focus:ring-2 focus:ring-[#184973] focus:border-[#184973] outline-none"
+                                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs focus:outline-hidden focus:border-blue-500"
                                 />
                             </div>
 
-                            <p className="text-[11px] text-gray-500 italic">
-                                An official account activation link will be dispatched to this email address automatically.
-                            </p>
-
-                            <div className="flex items-center justify-end space-x-3 pt-2">
+                            <div className="flex items-center justify-end gap-2 pt-2">
                                 <button
                                     type="button"
-                                    onClick={() => {
-                                        setAssignAdminOpen(false);
-                                        setSelectedSchoolForAdmin(null);
-                                        setAssignAdminMessage(null);
-                                    }}
-                                    disabled={assigningAdmin}
-                                    className="px-4 py-2 border border-gray-300 text-gray-700 text-xs font-semibold rounded-lg hover:bg-gray-50 cursor-pointer"
+                                    onClick={() => setAssignAdminOpen(false)}
+                                    className="px-4 py-2 border border-slate-200 text-slate-600 hover:bg-slate-50 text-xs font-bold rounded-lg cursor-pointer"
                                 >
                                     Cancel
                                 </button>
                                 <button
                                     type="submit"
                                     disabled={assigningAdmin || !adminFullName.trim() || !adminEmail.trim()}
-                                    className="px-4 py-2 bg-[#184973] hover:bg-[#123655] text-white text-xs font-semibold rounded-lg transition-colors flex items-center space-x-1.5 disabled:opacity-50 cursor-pointer"
+                                    className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-lg transition-colors disabled:opacity-50 cursor-pointer"
                                 >
-                                    {assigningAdmin ? (
-                                        <>
-                                            <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                                            <span>Sending Invitation...</span>
-                                        </>
-                                    ) : (
-                                        <>
-                                            <Send className="w-3.5 h-3.5" />
-                                            <span>Send Invitation</span>
-                                        </>
-                                    )}
+                                    {assigningAdmin ? "Sending Invitation..." : "Send Invitation"}
                                 </button>
                             </div>
                         </form>
+                    </div>
+                </div>
+            )}
+
+            {/* MODAL: SCHOOL DRILLDOWN DETAILS */}
+            {selectedSchoolForDrilldown && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-xs p-4">
+                    <div className="bg-white rounded-2xl shadow-xl border border-slate-100 max-w-lg w-full p-6 space-y-4 animate-in fade-in zoom-in-95">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                                <School className="w-5 h-5 text-blue-600" />
+                                <h3 className="text-base font-bold text-slate-900">
+                                    {selectedSchoolForDrilldown.name}
+                                </h3>
+                            </div>
+                            <button
+                                onClick={() => setSelectedSchoolForDrilldown(null)}
+                                className="p-1 text-slate-400 hover:text-slate-600 rounded-lg"
+                            >
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-3 py-2">
+                            <div className="p-3 bg-slate-50 rounded-xl">
+                                <span className="text-[11px] font-bold text-slate-500">Students Enrolled</span>
+                                <p className="text-xl font-black text-slate-900">
+                                    {selectedSchoolForDrilldown.studentsCount}
+                                </p>
+                            </div>
+                            <div className="p-3 bg-slate-50 rounded-xl">
+                                <span className="text-[11px] font-bold text-slate-500">Teachers Employed</span>
+                                <p className="text-xl font-black text-slate-900">
+                                    {selectedSchoolForDrilldown.teachersCount}
+                                </p>
+                            </div>
+                        </div>
+
+                        <div className="p-3.5 bg-slate-50 rounded-xl space-y-1">
+                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                                Appointed Principal
+                            </span>
+                            {selectedSchoolForDrilldown.admin ? (
+                                <div>
+                                    <p className="text-xs font-bold text-slate-900">{selectedSchoolForDrilldown.admin.name}</p>
+                                    <p className="text-[11px] text-slate-500">{selectedSchoolForDrilldown.admin.email}</p>
+                                    <span className={`inline-block mt-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                                        selectedSchoolForDrilldown.admin.status === "ACTIVE"
+                                            ? "bg-emerald-100 text-emerald-800"
+                                            : "bg-amber-100 text-amber-800"
+                                    }`}>
+                                        {selectedSchoolForDrilldown.admin.status === "ACTIVE" ? "Active" : "Invitation Pending"}
+                                    </span>
+                                </div>
+                            ) : (
+                                <p className="text-xs text-slate-400 italic">No principal assigned yet.</p>
+                            )}
+                        </div>
+
+                        <div className="flex items-center justify-end pt-2">
+                            <button
+                                onClick={() => setSelectedSchoolForDrilldown(null)}
+                                className="px-4 py-2 border border-slate-200 text-slate-600 hover:bg-slate-50 text-xs font-bold rounded-lg cursor-pointer"
+                            >
+                                Close
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}

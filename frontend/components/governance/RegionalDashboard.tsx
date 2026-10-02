@@ -4,8 +4,6 @@ import { useState, useEffect, useMemo } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { fetchApi } from "../../lib/api";
 import {
-    Landmark,
-    Layers,
     Building2,
     MapPin,
     School,
@@ -15,15 +13,11 @@ import {
     Search,
     CheckCircle2,
     AlertCircle,
-    Clock,
     UserCheck,
-    Send,
-    Eye,
-    Shield,
-    Network,
-    ArrowRight
+    ArrowUpRight,
+    X,
+    ExternalLink
 } from "lucide-react";
-import HierarchyTreeViewer from "./HierarchyTreeViewer";
 
 export interface ZoneAdmin {
     id: string;
@@ -60,11 +54,18 @@ export default function RegionalDashboard() {
     const searchParams = useSearchParams();
     const router = useRouter();
     const currentTab = searchParams?.get("tab") || "overview";
+    const targetOrgId = searchParams?.get("targetOrgId");
 
     const [data, setData] = useState<RegionOverviewData | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [searchQuery, setSearchQuery] = useState("");
+
+    // Selected / Hovered Zone on Map
+    const [hoveredZone, setHoveredZone] = useState<ZoneItem | null>(null);
+
+    // Drill-Down Modal state
+    const [selectedZoneForDrilldown, setSelectedZoneForDrilldown] = useState<ZoneItem | null>(null);
 
     // Modal State: Create Zone
     const [createZoneOpen, setCreateZoneOpen] = useState(false);
@@ -90,13 +91,19 @@ export default function RegionalDashboard() {
         setLoading(true);
         setError(null);
         try {
-            const res = await fetchApi("/hierarchy/region/overview");
+            const endpoint = targetOrgId
+                ? `/hierarchy/regions/${targetOrgId}/overview`
+                : `/hierarchy/region/overview`;
+            const res = await fetchApi(endpoint);
             if (!res.ok) {
                 const errJson = await res.json().catch(() => ({}));
                 throw new Error(errJson.message || "Failed to load Regional Overview");
             }
             const payload = await res.json();
             setData(payload.data);
+            if (payload.data?.zones && payload.data.zones.length > 0) {
+                setHoveredZone(payload.data.zones[0]);
+            }
         } catch (err: any) {
             setError(err.message || "Failed to fetch Regional dashboard data");
         } finally {
@@ -106,7 +113,7 @@ export default function RegionalDashboard() {
 
     useEffect(() => {
         loadRegionData();
-    }, []);
+    }, [targetOrgId]);
 
     const showToast = (type: "success" | "error", text: string) => {
         setToastMessage({ type, text });
@@ -138,6 +145,42 @@ export default function RegionalDashboard() {
             }));
     }, [data?.zones]);
 
+    // Format number helper
+    const fmt = (num: number | undefined | null) => {
+        if (num === undefined || num === null) return "0";
+        return num.toLocaleString();
+    };
+
+    // Calculate real proportions for Card 1
+    const totalSchools = data?.counts?.totalSchools ?? 0;
+    const totalWoredas = data?.counts?.totalWoredas ?? 0;
+    const totalZones = data?.counts?.totalZones ?? 0;
+    const totalSubordinateUnits = totalZones + totalWoredas;
+    const totalEntities = totalSchools + totalSubordinateUnits;
+    const schoolsPercentage = totalEntities > 0 ? ((totalSchools / totalEntities) * 100).toFixed(1) : "100.0";
+    const subUnitsPercentage = totalEntities > 0 ? ((totalSubordinateUnits / totalEntities) * 100).toFixed(1) : "0.0";
+
+    const realZones = data?.zones ?? [];
+    const maxSchoolsCount = useMemo(() => {
+        if (realZones.length === 0) return 5;
+        const max = Math.max(...realZones.map(z => z.schoolsCount));
+        return Math.max(max, 4);
+    }, [realZones]);
+
+    // Generate clean step values for Y-axis
+    const yAxisSteps = useMemo(() => {
+        const top = Math.ceil(maxSchoolsCount);
+        const step = Math.max(1, Math.ceil(top / 4));
+        const steps = [];
+        for (let i = top; i >= 0; i -= step) {
+            steps.push(i);
+        }
+        if (steps[steps.length - 1] !== 0) {
+            steps.push(0);
+        }
+        return steps;
+    }, [maxSchoolsCount]);
+
     // Handle Create Zone Submit
     const handleCreateZoneSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -148,6 +191,7 @@ export default function RegionalDashboard() {
         try {
             const res = await fetchApi("/hierarchy", {
                 method: "POST",
+                headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     name: newZoneName.trim(),
                     type: "ZONE",
@@ -156,27 +200,45 @@ export default function RegionalDashboard() {
                 })
             });
 
+            const resJson = await res.json();
             if (!res.ok) {
-                const errJson = await res.json().catch(() => ({}));
-                throw new Error(errJson.message || "Failed to create Zone.");
+                throw new Error(resJson.message || "Failed to create Zone");
             }
 
-            setCreateZoneMessage({ type: "success", text: `Zone "${newZoneName.trim()}" created successfully.` });
-            setNewZoneName("");
-            setNewZoneCode("");
+            setCreateZoneMessage({
+                type: "success",
+                text: `Zone "${newZoneName.trim()}" created successfully.`
+            });
+
             await loadRegionData();
+
             setTimeout(() => {
                 setCreateZoneOpen(false);
+                setNewZoneName("");
+                setNewZoneCode("");
                 setCreateZoneMessage(null);
-            }, 1200);
+            }, 800);
         } catch (err: any) {
-            setCreateZoneMessage({ type: "error", text: err.message || "Failed to create Zone." });
+            setCreateZoneMessage({
+                type: "error",
+                text: err.message || "Could not create Zone"
+            });
         } finally {
             setCreatingZone(false);
         }
     };
 
-    // Handle Assign Zone Administrator Submit
+    // Open Assign Admin Modal
+    const openAssignAdmin = (zone: ZoneItem) => {
+        setSelectedZoneForAdmin(zone);
+        setAdminFullName("");
+        setAdminEmail("");
+        setAdminPhone("");
+        setAssignAdminMessage(null);
+        setAssignAdminOpen(true);
+    };
+
+    // Handle Assign Zone Admin Submit
     const handleAssignAdminSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!selectedZoneForAdmin || !adminFullName.trim() || !adminEmail.trim()) return;
@@ -186,6 +248,7 @@ export default function RegionalDashboard() {
         try {
             const res = await fetchApi(`/hierarchy/zones/${selectedZoneForAdmin.id}/assign-admin`, {
                 method: "POST",
+                headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     name: adminFullName.trim(),
                     email: adminEmail.trim(),
@@ -193,587 +256,752 @@ export default function RegionalDashboard() {
                 })
             });
 
+            const resJson = await res.json();
             if (!res.ok) {
-                const errJson = await res.json().catch(() => ({}));
-                throw new Error(errJson.message || "Failed to assign Zone Administrator.");
+                throw new Error(resJson.message || "Failed to send invitation");
             }
 
             setAssignAdminMessage({
                 type: "success",
-                text: `Invitation email dispatched to ${adminEmail.trim()} with account activation instructions.`
+                text: `Invitation sent to ${adminEmail.trim()}.`
             });
-            setAdminFullName("");
-            setAdminEmail("");
-            setAdminPhone("");
+
             await loadRegionData();
+
             setTimeout(() => {
                 setAssignAdminOpen(false);
                 setSelectedZoneForAdmin(null);
+                setAdminFullName("");
+                setAdminEmail("");
+                setAdminPhone("");
                 setAssignAdminMessage(null);
-            }, 1500);
+            }, 1000);
         } catch (err: any) {
-            setAssignAdminMessage({ type: "error", text: err.message || "Failed to assign administrator." });
+            setAssignAdminMessage({
+                type: "error",
+                text: err.message || "Failed to send invitation"
+            });
         } finally {
             setAssigningAdmin(false);
         }
     };
 
     // Handle Resend Invitation
-    const handleResendInvitation = async (zoneId: string, zoneName: string) => {
+    const handleResendInvitation = async (zoneId: string) => {
         setActionLoadingId(zoneId);
         try {
             const res = await fetchApi(`/hierarchy/zones/${zoneId}/resend-invitation`, {
                 method: "POST"
             });
-            if (!res.ok) {
-                const errJson = await res.json().catch(() => ({}));
-                throw new Error(errJson.message || "Failed to resend invitation.");
-            }
-            showToast("success", `Invitation email resent to ${zoneName} Administrator.`);
+            const resJson = await res.json();
+            if (!res.ok) throw new Error(resJson.message || "Failed to resend invitation");
+
+            showToast("success", resJson.message || "Invitation resent.");
             await loadRegionData();
         } catch (err: any) {
-            showToast("error", err.message || "Failed to resend invitation.");
+            showToast("error", err.message || "Failed to resend invitation");
         } finally {
             setActionLoadingId(null);
         }
     };
 
     // Handle Cancel Invitation
-    const handleCancelInvitation = async (zoneId: string, zoneName: string) => {
-        if (!confirm(`Are you sure you want to cancel the administrator invitation for ${zoneName}?`)) {
-            return;
-        }
+    const handleCancelInvitation = async (zoneId: string) => {
+        if (!confirm("Are you sure you want to cancel this zone administrator invitation?")) return;
         setActionLoadingId(zoneId);
         try {
             const res = await fetchApi(`/hierarchy/zones/${zoneId}/cancel-invitation`, {
                 method: "DELETE"
             });
-            if (!res.ok) {
-                const errJson = await res.json().catch(() => ({}));
-                throw new Error(errJson.message || "Failed to cancel invitation.");
-            }
-            showToast("success", `Administrator assignment cancelled for ${zoneName}.`);
+            const resJson = await res.json();
+            if (!res.ok) throw new Error(resJson.message || "Failed to cancel invitation");
+
+            showToast("success", "Invitation cancelled.");
             await loadRegionData();
         } catch (err: any) {
-            showToast("error", err.message || "Failed to cancel invitation.");
+            showToast("error", err.message || "Failed to cancel invitation");
         } finally {
             setActionLoadingId(null);
         }
     };
 
-    const handleTabChange = (tabKey: string) => {
-        const url = tabKey === "overview" ? "/dashboard/region" : `/dashboard/region?tab=${tabKey}`;
-        router.push(url);
-    };
-
-    if (loading && !data) {
-        return (
-            <div className="flex flex-col items-center justify-center min-h-[400px] text-gray-500 space-y-3">
-                <RefreshCw className="w-8 h-8 animate-spin text-[#184973]" />
-                <p className="text-sm font-medium">Loading Regional Education Bureau Dashboard...</p>
-            </div>
-        );
-    }
-
-    if (error && !data) {
-        return (
-            <div className="p-8 max-w-2xl mx-auto">
-                <div className="bg-red-50 border border-red-200 rounded-xl p-6 text-center space-y-4">
-                    <AlertCircle className="w-10 h-10 text-red-600 mx-auto" />
-                    <h2 className="text-lg font-bold text-gray-900">Unable to Load Regional Dashboard</h2>
-                    <p className="text-xs text-red-700">{error}</p>
-                    <button
-                        onClick={loadRegionData}
-                        className="px-4 py-2 bg-[#184973] text-white text-xs font-semibold rounded-lg hover:bg-[#123655] transition-colors"
-                    >
-                        Try Again
-                    </button>
-                </div>
-            </div>
-        );
-    }
+    const targetParam = targetOrgId ? `&targetOrgId=${targetOrgId}` : "";
+    const targetQueryOnly = targetOrgId ? `?targetOrgId=${targetOrgId}` : "";
 
     return (
-        <div className="space-y-6 max-w-7xl mx-auto pb-12">
-            {/* Toast Feedback */}
+        <div className="space-y-6">
+            {/* Toast Notification */}
             {toastMessage && (
                 <div
-                    className={`fixed bottom-6 right-6 z-50 px-4 py-3 rounded-xl shadow-lg text-xs font-semibold flex items-center space-x-2 animate-in fade-in slide-in-from-bottom-3 ${
+                    className={`fixed top-4 right-4 z-50 p-3.5 rounded-lg shadow-md border text-xs font-semibold flex items-center gap-2 ${
                         toastMessage.type === "success"
-                            ? "bg-emerald-800 text-white border border-emerald-700"
-                            : "bg-red-800 text-white border border-red-700"
+                            ? "bg-emerald-50 text-emerald-900 border-emerald-200"
+                            : "bg-rose-50 text-rose-900 border-rose-200"
                     }`}
                 >
                     {toastMessage.type === "success" ? (
-                        <CheckCircle2 className="w-4 h-4 text-emerald-300" />
+                        <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
                     ) : (
-                        <AlertCircle className="w-4 h-4 text-red-300" />
+                        <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
                     )}
                     <span>{toastMessage.text}</span>
                 </div>
             )}
 
-            {/* Header Banner - Clean Government Style */}
-            <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-xs">
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                    <div>
-                        <div className="flex items-center space-x-2 text-xs text-gray-500 mb-1.5 font-medium">
-                            <span>Federal Democratic Republic of Ethiopia</span>
-                            <span>•</span>
-                            <span>{data?.parentFederalName || "Federal Ministry of Education"}</span>
-                        </div>
-                        <div className="flex items-center space-x-3">
-                            <h1 className="text-2xl font-bold text-gray-900 tracking-tight">
-                                {data?.regionName || "Regional Education Bureau"}
-                            </h1>
-                            <span className="px-2.5 py-0.5 bg-blue-50 text-[#184973] border border-blue-200/80 rounded-md text-[11px] font-bold uppercase tracking-wider">
-                                REGION DESK
-                            </span>
-                        </div>
-                        <p className="text-xs text-gray-600 mt-1">
-                            Administrative governance, zonal jurisdiction, and educational hierarchy monitoring.
-                        </p>
-                    </div>
-
-                    <div className="flex items-center space-x-3 shrink-0">
-                        <button
-                            onClick={() => loadRegionData()}
-                            disabled={loading}
-                            title="Refresh Data"
-                            className="p-2.5 border border-gray-200 hover:bg-gray-50 text-gray-700 rounded-xl transition-colors cursor-pointer"
-                        >
-                            <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin text-[#184973]" : ""}`} />
-                        </button>
-
-                        <button
-                            onClick={() => setCreateZoneOpen(true)}
-                            className="px-4 py-2.5 bg-[#184973] hover:bg-[#123655] text-white text-xs font-semibold rounded-xl transition-all shadow-xs flex items-center space-x-2 cursor-pointer"
-                        >
-                            <Plus className="w-4 h-4" />
-                            <span>Add New Zone</span>
-                        </button>
-                    </div>
+            {/* Top Navigation Bar */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="flex items-center gap-6 border-b border-slate-200 w-full sm:w-auto">
+                    <button
+                        onClick={() => router.push(`/dashboard/region${targetQueryOnly}`)}
+                        className={`pb-3 text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5 ${
+                            currentTab === "overview"
+                                ? "text-blue-600 border-b-2 border-blue-600"
+                                : "text-slate-500 hover:text-slate-800"
+                        }`}
+                    >
+                        <span>Dashboard</span>
+                    </button>
+                    <button
+                        onClick={() => router.push(`/dashboard/region?tab=zones${targetParam}`)}
+                        className={`pb-3 text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5 ${
+                            currentTab === "zones"
+                                ? "text-blue-600 border-b-2 border-blue-600"
+                                : "text-slate-500 hover:text-slate-800"
+                        }`}
+                    >
+                        <Building2 className="w-3.5 h-3.5" />
+                        <span>Zones ({data?.counts?.totalZones ?? 0})</span>
+                    </button>
+                    <button
+                        onClick={() => router.push(`/dashboard/region?tab=administration${targetParam}`)}
+                        className={`pb-3 text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5 ${
+                            currentTab === "administration"
+                                ? "text-blue-600 border-b-2 border-blue-600"
+                                : "text-slate-500 hover:text-slate-800"
+                        }`}
+                    >
+                        <UserCheck className="w-3.5 h-3.5" />
+                        <span>Leadership ({assignedAdministrators.length})</span>
+                    </button>
                 </div>
 
-                {/* KPI Metrics Strip */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-6 pt-6 border-t border-gray-100">
-                    <div className="bg-gray-50/80 border border-gray-100 rounded-xl p-4">
-                        <div className="flex items-center justify-between text-gray-500 mb-1">
-                            <span className="text-xs font-medium uppercase tracking-wider">Administrative Zones</span>
-                            <Building2 className="w-4 h-4 text-[#184973]" />
-                        </div>
-                        <p className="text-2xl font-bold text-gray-900">{data?.counts.totalZones ?? 0}</p>
-                        <p className="text-[11px] text-gray-500 mt-0.5">Under regional jurisdiction</p>
-                    </div>
-
-                    <div className="bg-gray-50/80 border border-gray-100 rounded-xl p-4">
-                        <div className="flex items-center justify-between text-gray-500 mb-1">
-                            <span className="text-xs font-medium uppercase tracking-wider">Total Woredas</span>
-                            <MapPin className="w-4 h-4 text-emerald-600" />
-                        </div>
-                        <p className="text-2xl font-bold text-gray-900">{data?.counts.totalWoredas ?? 0}</p>
-                        <p className="text-[11px] text-gray-500 mt-0.5">Across all regional zones</p>
-                    </div>
-
-                    <div className="bg-gray-50/80 border border-gray-100 rounded-xl p-4">
-                        <div className="flex items-center justify-between text-gray-500 mb-1">
-                            <span className="text-xs font-medium uppercase tracking-wider">Registered Schools</span>
-                            <School className="w-4 h-4 text-purple-600" />
-                        </div>
-                        <p className="text-2xl font-bold text-gray-900">{data?.counts.totalSchools ?? 0}</p>
-                        <p className="text-[11px] text-gray-500 mt-0.5">Operational institutional units</p>
-                    </div>
-
-                    <div className="bg-gray-50/80 border border-gray-100 rounded-xl p-4">
-                        <div className="flex items-center justify-between text-gray-500 mb-1">
-                            <span className="text-xs font-medium uppercase tracking-wider">Assigned Admins</span>
-                            <Shield className="w-4 h-4 text-amber-600" />
-                        </div>
-                        <p className="text-2xl font-bold text-gray-900">
-                            {data?.zones.filter(z => z.admin !== null).length ?? 0}
-                            <span className="text-xs text-gray-500 font-normal ml-1">/ {data?.zones.length ?? 0}</span>
-                        </p>
-                        <p className="text-[11px] text-gray-500 mt-0.5">Zonal administrators designated</p>
-                    </div>
+                <div className="flex items-center gap-2 self-end sm:self-auto shrink-0">
+                    <button
+                        onClick={() => {
+                            setNewZoneName("");
+                            setNewZoneCode("");
+                            setCreateZoneMessage(null);
+                            setCreateZoneOpen(true);
+                        }}
+                        className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-lg transition-colors flex items-center gap-1.5 shadow-xs cursor-pointer"
+                    >
+                        <Plus className="w-4 h-4" />
+                        <span>Add Zone</span>
+                    </button>
+                    <button
+                        onClick={loadRegionData}
+                        className="p-1.5 border border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-50 rounded-lg transition-colors cursor-pointer"
+                        title="Refresh"
+                    >
+                        <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin text-blue-600" : ""}`} />
+                    </button>
                 </div>
             </div>
 
-            {/* Navigation Tabs */}
-            <div className="flex items-center border-b border-gray-200 bg-white px-4 rounded-xl shadow-xs">
-                <button
-                    onClick={() => handleTabChange("overview")}
-                    className={`px-4 py-3 text-xs font-bold border-b-2 transition-colors cursor-pointer ${
-                        currentTab === "overview"
-                            ? "border-[#184973] text-[#184973]"
-                            : "border-transparent text-gray-500 hover:text-gray-800"
-                    }`}
-                >
-                    Overview & Desks
-                </button>
-                <button
-                    onClick={() => handleTabChange("zones")}
-                    className={`px-4 py-3 text-xs font-bold border-b-2 transition-colors cursor-pointer ${
-                        currentTab === "zones"
-                            ? "border-[#184973] text-[#184973]"
-                            : "border-transparent text-gray-500 hover:text-gray-800"
-                    }`}
-                >
-                    Administrative Zones ({data?.zones.length ?? 0})
-                </button>
-                <button
-                    onClick={() => handleTabChange("administration")}
-                    className={`px-4 py-3 text-xs font-bold border-b-2 transition-colors cursor-pointer ${
-                        currentTab === "administration"
-                            ? "border-[#184973] text-[#184973]"
-                            : "border-transparent text-gray-500 hover:text-gray-800"
-                    }`}
-                >
-                    Zone Administrators ({assignedAdministrators.length})
-                </button>
-            </div>
-
-            {/* TAB CONTENT: Overview & Zones Table */}
-            {(currentTab === "overview" || currentTab === "zones") && (
-                <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-xs space-y-4">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-gray-100">
-                        <div>
-                            <h2 className="text-base font-bold text-gray-900">Subordinate Administrative Zones</h2>
-                            <p className="text-xs text-gray-500">
-                                Designated Zonal Education Departments under {data?.regionName || "the Region"}.
-                            </p>
-                        </div>
-
-                        {/* Search */}
-                        <div className="relative w-full sm:w-64">
-                            <Search className="w-3.5 h-3.5 absolute left-3 top-2.5 text-gray-400" />
-                            <input
-                                type="text"
-                                value={searchQuery}
-                                onChange={e => setSearchQuery(e.target.value)}
-                                placeholder="Filter zones or administrators..."
-                                className="w-full pl-8 pr-3 py-1.5 text-xs bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#184973]"
-                            />
-                        </div>
+            {/* Error Banner */}
+            {error && (
+                <div className="p-4 bg-rose-50 border border-rose-200 rounded-lg text-rose-800 text-xs flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                        <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+                        <span>{error}</span>
                     </div>
-
-                    {filteredZones.length === 0 ? (
-                        <div className="p-12 text-center border border-dashed border-gray-200 rounded-xl space-y-3">
-                            <Building2 className="w-10 h-10 text-gray-300 mx-auto" />
-                            <p className="text-sm font-semibold text-gray-700">No Administrative Zones Found</p>
-                            <p className="text-xs text-gray-500 max-w-sm mx-auto">
-                                {searchQuery
-                                    ? "No zones match your search query."
-                                    : "No Zones have been established under this Region yet. Click below to add the first Zone."}
-                            </p>
-                            {!searchQuery && (
-                                <button
-                                    onClick={() => setCreateZoneOpen(true)}
-                                    className="mt-2 px-4 py-2 bg-[#184973] text-white text-xs font-semibold rounded-lg hover:bg-[#123655] transition-colors"
-                                >
-                                    + Add First Zone
-                                </button>
-                            )}
-                        </div>
-                    ) : (
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-left text-xs text-gray-700">
-                                <thead className="bg-gray-50/80 text-gray-500 font-semibold uppercase text-[10px] tracking-wider border-y border-gray-200">
-                                    <tr>
-                                        <th className="py-3 px-4">Zone Name</th>
-                                        <th className="py-3 px-4">Woredas</th>
-                                        <th className="py-3 px-4">Schools</th>
-                                        <th className="py-3 px-4">Designated Administrator</th>
-                                        <th className="py-3 px-4">Status</th>
-                                        <th className="py-3 px-4 text-right">Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-gray-100 font-medium">
-                                    {filteredZones.map(zone => {
-                                        const hasAdmin = !!zone.admin;
-                                        const isPending = zone.admin?.status === "INVITATION_PENDING";
-                                        const isActive = zone.admin?.status === "ACTIVE";
-
-                                        return (
-                                            <tr key={zone.id} className="hover:bg-gray-50/60 transition-colors">
-                                                <td className="py-3.5 px-4 font-bold text-gray-900">
-                                                    <div className="flex items-center space-x-2">
-                                                        <Building2 className="w-4 h-4 text-[#184973]" />
-                                                        <span>{zone.name}</span>
-                                                    </div>
-                                                </td>
-                                                <td className="py-3.5 px-4">{zone.woredasCount}</td>
-                                                <td className="py-3.5 px-4">{zone.schoolsCount}</td>
-                                                <td className="py-3.5 px-4">
-                                                    {hasAdmin ? (
-                                                        <div>
-                                                            <p className="font-semibold text-gray-900">{zone.admin!.name}</p>
-                                                            <p className="text-[11px] text-gray-500">{zone.admin!.email}</p>
-                                                        </div>
-                                                    ) : (
-                                                        <span className="text-gray-400 italic">No admin assigned</span>
-                                                    )}
-                                                </td>
-                                                <td className="py-3.5 px-4">
-                                                    {isActive && (
-                                                        <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                                                            <CheckCircle2 className="w-3 h-3 mr-1 text-emerald-600" />
-                                                            Active
-                                                        </span>
-                                                    )}
-                                                    {isPending && (
-                                                        <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
-                                                            <Clock className="w-3 h-3 mr-1 text-amber-600" />
-                                                            Invitation Pending
-                                                        </span>
-                                                    )}
-                                                    {!hasAdmin && (
-                                                        <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold bg-gray-100 text-gray-600">
-                                                            Unassigned
-                                                        </span>
-                                                    )}
-                                                </td>
-                                                <td className="py-3.5 px-4 text-right">
-                                                    <div className="flex items-center justify-end space-x-2">
-                                                        {!hasAdmin ? (
-                                                            <button
-                                                                onClick={() => {
-                                                                    setSelectedZoneForAdmin(zone);
-                                                                    setAssignAdminOpen(true);
-                                                                }}
-                                                                className="px-2.5 py-1.5 bg-[#184973] hover:bg-[#123655] text-white text-[11px] font-semibold rounded-lg transition-colors flex items-center space-x-1 cursor-pointer"
-                                                            >
-                                                                <UserPlus className="w-3 h-3" />
-                                                                <span>Assign Admin</span>
-                                                            </button>
-                                                        ) : (
-                                                            <>
-                                                                {isPending && (
-                                                                    <>
-                                                                        <button
-                                                                            onClick={() => handleResendInvitation(zone.id, zone.name)}
-                                                                            disabled={actionLoadingId === zone.id}
-                                                                            className="px-2.5 py-1.5 border border-amber-300 hover:bg-amber-50 text-amber-800 text-[11px] font-semibold rounded-lg transition-colors flex items-center space-x-1 cursor-pointer disabled:opacity-50"
-                                                                            title="Resend Activation Email"
-                                                                        >
-                                                                            <Send className="w-3 h-3" />
-                                                                            <span>Resend</span>
-                                                                        </button>
-                                                                        <button
-                                                                            onClick={() => handleCancelInvitation(zone.id, zone.name)}
-                                                                            disabled={actionLoadingId === zone.id}
-                                                                            className="px-2 py-1.5 text-red-600 hover:bg-red-50 text-[11px] font-semibold rounded-lg transition-colors cursor-pointer disabled:opacity-50"
-                                                                            title="Cancel Assignment"
-                                                                        >
-                                                                            Cancel
-                                                                        </button>
-                                                                    </>
-                                                                )}
-                                                            </>
-                                                        )}
-                                                        <button
-                                                            onClick={() => router.push(`/dashboard/zone?targetOrgId=${zone.id}`)}
-                                                            className="p-1.5 text-gray-500 hover:text-[#184973] hover:bg-gray-100 rounded-lg transition-colors"
-                                                            title="Inspect Zone Desk"
-                                                        >
-                                                            <ArrowRight className="w-3.5 h-3.5" />
-                                                        </button>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        );
-                                    })}
-                                </tbody>
-                            </table>
-                        </div>
-                    )}
+                    <button
+                        onClick={loadRegionData}
+                        className="px-3 py-1 bg-rose-600 text-white font-semibold rounded hover:bg-rose-700 cursor-pointer"
+                    >
+                        Retry
+                    </button>
                 </div>
             )}
 
-            {/* TAB CONTENT: Zone Administrators Directory */}
-            {currentTab === "administration" && (
-                <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-xs space-y-4">
-                    <div className="pb-2 border-b border-gray-100">
-                        <h2 className="text-base font-bold text-gray-900">Zone Administrators Directory</h2>
-                        <p className="text-xs text-gray-500">
-                            Authorized Zonal Administrators holding governance credentials within {data?.regionName}.
-                        </p>
-                    </div>
+            {/* TAB 1: OVERVIEW */}
+            {currentTab === "overview" && (
+                <div className="space-y-6">
+                    {/* Top Row: 2 Cards */}
+                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                        
+                        {/* CARD 1 (Top-Left): Regional Institutional Proportion (Donut Chart) */}
+                        <div className="lg:col-span-4 bg-white p-6 rounded-2xl border border-slate-100 shadow-sm flex flex-col justify-between space-y-6">
+                            <div className="flex items-center gap-2">
+                                <h2 className="text-base font-bold text-slate-900 tracking-tight">
+                                    Regional Educational Proportion
+                                </h2>
+                                <span className="w-4 h-4 rounded-full bg-slate-200 text-slate-600 flex items-center justify-center text-[10px] font-bold cursor-help" title="Ratio of registered schools to subordinate administrative offices">
+                                    i
+                                </span>
+                            </div>
 
-                    {assignedAdministrators.length === 0 ? (
-                        <div className="p-12 text-center border border-dashed border-gray-200 rounded-xl space-y-2">
-                            <Shield className="w-8 h-8 text-gray-300 mx-auto" />
-                            <p className="text-sm font-semibold text-gray-700">No Administrators Assigned</p>
-                            <p className="text-xs text-gray-500">Assign an administrator to any of your subordinate Zones above.</p>
+                            {/* Donut Chart with real database total in center */}
+                            <div className="flex flex-col items-center justify-center py-2 relative">
+                                <svg className="w-48 h-48 -rotate-90" viewBox="0 0 120 120">
+                                    {/* Background circle track */}
+                                    <circle
+                                        cx="60"
+                                        cy="60"
+                                        r="46"
+                                        stroke="#f1f5f9"
+                                        strokeWidth="16"
+                                        fill="transparent"
+                                    />
+                                    {/* Registered Schools Segment (Sky Blue #38bdf8) */}
+                                    <circle
+                                        cx="60"
+                                        cy="60"
+                                        r="46"
+                                        stroke="#38bdf8"
+                                        strokeWidth="16"
+                                        strokeDasharray={`${(parseFloat(schoolsPercentage) / 100) * 289} 289`}
+                                        strokeLinecap="butt"
+                                        fill="transparent"
+                                        className="transition-all duration-700 ease-out"
+                                    />
+                                    {/* Subordinate Offices Segment (Deep Navy #0f172a) */}
+                                    <circle
+                                        cx="60"
+                                        cy="60"
+                                        r="46"
+                                        stroke="#0f172a"
+                                        strokeWidth="16"
+                                        strokeDasharray={`${(parseFloat(subUnitsPercentage) / 100) * 289} 289`}
+                                        strokeDashoffset={`-${(parseFloat(schoolsPercentage) / 100) * 289}`}
+                                        strokeLinecap="butt"
+                                        fill="transparent"
+                                        className="transition-all duration-700 ease-out"
+                                    />
+                                </svg>
+                                <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                                    <span className="text-xl font-black text-slate-900 tracking-tight">
+                                        {fmt(totalSchools)}
+                                    </span>
+                                    <span className="text-[10px] font-bold text-slate-400 uppercase">Schools</span>
+                                </div>
+                            </div>
+
+                            {/* Legend Dot indicators */}
+                            <div className="flex items-center justify-center gap-6 text-xs text-slate-600">
+                                <div className="flex items-center gap-1.5">
+                                    <span className="w-2.5 h-2.5 rounded-full bg-[#38bdf8]" />
+                                    <span>Schools ({totalSchools})</span>
+                                </div>
+                                <div className="flex items-center gap-1.5">
+                                    <span className="w-2.5 h-2.5 rounded-full bg-[#0f172a]" />
+                                    <span>Offices ({totalSubordinateUnits})</span>
+                                </div>
+                            </div>
+
+                            {/* 2 Bottom Metric Boxes with Real Data */}
+                            <div className="grid grid-cols-2 gap-3 pt-2">
+                                <div className="p-3.5 rounded-xl bg-[#e0f2fe]/60 text-center space-y-0.5">
+                                    <span className="text-sm font-black text-[#0369a1]">
+                                        {schoolsPercentage}%
+                                    </span>
+                                    <p className="text-[11px] font-bold text-[#0369a1]">Schools Ratio</p>
+                                </div>
+                                <div className="p-3.5 rounded-xl bg-[#e0f2fe]/60 text-center space-y-0.5">
+                                    <span className="text-sm font-black text-[#0369a1]">
+                                        {fmt(data?.counts?.totalZones)}
+                                    </span>
+                                    <p className="text-[11px] font-bold text-[#0369a1]">Active Zones</p>
+                                </div>
+                            </div>
                         </div>
-                    ) : (
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-left text-xs text-gray-700">
-                                <thead className="bg-gray-50/80 text-gray-500 font-semibold uppercase text-[10px] tracking-wider border-y border-gray-200">
-                                    <tr>
-                                        <th className="py-3 px-4">Administrator</th>
-                                        <th className="py-3 px-4">Assigned Zone</th>
-                                        <th className="py-3 px-4">Authority Scope</th>
-                                        <th className="py-3 px-4">Account Status</th>
-                                        <th className="py-3 px-4 text-right">Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-gray-100 font-medium">
-                                    {assignedAdministrators.map(({ zoneId, zoneName, admin }) => (
-                                        <tr key={admin.id} className="hover:bg-gray-50/60 transition-colors">
-                                            <td className="py-3 px-4">
-                                                <div className="flex items-center space-x-2.5">
-                                                    <div className="w-7 h-7 rounded-full bg-[#184973] text-white flex items-center justify-center font-bold text-[10px]">
-                                                        {admin.name.slice(0, 2).toUpperCase()}
-                                                    </div>
-                                                    <div>
-                                                        <p className="font-bold text-gray-900">{admin.name}</p>
-                                                        <p className="text-[11px] text-gray-500">{admin.email}</p>
+
+                        {/* CARD 2 (Top-Right): Zonal Educational Distribution (Blue Circular Cards with Hover Tooltips) */}
+                        <div className="lg:col-span-8 bg-white p-6 rounded-2xl border border-slate-100 shadow-sm flex flex-col justify-between space-y-6">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                    <h2 className="text-base font-bold text-slate-900 tracking-tight">
+                                        Zonal Educational Distribution
+                                    </h2>
+                                    <span className="w-4 h-4 rounded-full bg-slate-200 text-slate-600 flex items-center justify-center text-[10px] font-bold cursor-help" title="Active zonal administrative distribution in this region">
+                                        i
+                                    </span>
+                                </div>
+                                <span className="text-xs font-bold text-blue-600 bg-blue-50 px-2.5 py-1 rounded-lg">
+                                    {realZones.length} Active {realZones.length === 1 ? "Zone" : "Zones"}
+                                </span>
+                            </div>
+
+                            {/* Blue Circular Island Canvas */}
+                            <div className="relative w-full min-h-[240px] bg-slate-50/60 rounded-2xl flex items-center justify-center p-6 border border-slate-100 overflow-hidden">
+                                {realZones.length === 0 ? (
+                                    <div className="text-center text-slate-400 text-xs py-8">
+                                        No zones registered yet. Click <strong>Add Zone</strong> to add a zonal education desk.
+                                    </div>
+                                ) : (
+                                    <div className="flex flex-wrap items-center justify-center gap-6 relative z-10">
+                                        {realZones.map((zone, idx) => {
+                                            const bgGradients = [
+                                                "bg-gradient-to-br from-[#0284c7] to-[#0369a1]",
+                                                "bg-gradient-to-br from-[#38bdf8] to-[#0284c7]",
+                                                "bg-gradient-to-br from-[#0369a1] to-[#0f172a]",
+                                                "bg-gradient-to-br from-[#7dd3fc] to-[#0284c7]"
+                                            ];
+                                            const bgClass = bgGradients[idx % bgGradients.length];
+
+                                            return (
+                                                <div
+                                                    key={zone.id}
+                                                    onMouseEnter={() => setHoveredZone(zone)}
+                                                    onClick={() => setSelectedZoneForDrilldown(zone)}
+                                                    className={`w-40 h-40 ${bgClass} rounded-full shadow-lg shadow-blue-500/10 flex flex-col items-center justify-center text-white cursor-pointer transition-all duration-300 hover:scale-105 hover:shadow-xl p-4 text-center group relative`}
+                                                >
+                                                    {/* Zone Title in crisp white */}
+                                                    <span className="text-xs font-bold tracking-tight text-white line-clamp-2 drop-shadow-xs">
+                                                        {zone.name}
+                                                    </span>
+
+                                                    {/* Short badge */}
+                                                    <span className="mt-1.5 px-2.5 py-0.5 rounded-full bg-white/20 text-white text-[10px] font-extrabold backdrop-blur-xs">
+                                                        {zone.schoolsCount} {zone.schoolsCount === 1 ? "School" : "Schools"}
+                                                    </span>
+
+                                                    {/* Floating White Tooltip on Hover matching template */}
+                                                    <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 bg-white px-3.5 py-1.5 rounded-xl shadow-lg border border-slate-200 opacity-0 group-hover:opacity-100 transition-all duration-200 pointer-events-none whitespace-nowrap z-20">
+                                                        <p className="text-[11px] font-bold text-slate-900">{zone.name}</p>
+                                                        <p className="text-[10px] font-black text-blue-600">
+                                                            {zone.schoolsCount} Schools • {zone.woredasCount} Woredas
+                                                        </p>
                                                     </div>
                                                 </div>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Scale Legend */}
+                            <div className="flex flex-wrap items-center justify-center gap-4 text-[11px] text-slate-600 pt-2 border-t border-slate-100">
+                                <div className="flex items-center gap-1.5">
+                                    <span className="w-2.5 h-2.5 rounded-full bg-[#0369a1]" />
+                                    <span>High Capacity</span>
+                                </div>
+                                <div className="flex items-center gap-1.5">
+                                    <span className="w-2.5 h-2.5 rounded-full bg-[#38bdf8]" />
+                                    <span>Standard Growth</span>
+                                </div>
+                                <div className="flex items-center gap-1.5">
+                                    <span className="w-2.5 h-2.5 rounded-full bg-[#7dd3fc]" />
+                                    <span>Developing</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Bottom Full-Width Card: Schools & Administrative Units per Zone */}
+                    <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm space-y-6">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                            <div className="flex items-center gap-2">
+                                <h2 className="text-base font-bold text-slate-900 tracking-tight">
+                                    Schools & Administrative Units per Zone
+                                </h2>
+                                <span className="w-4 h-4 rounded-full bg-slate-200 text-slate-600 flex items-center justify-center text-[10px] font-bold cursor-help" title="Comparative zonal telemetry showing schools (left) and woredas (right)">
+                                    i
+                                </span>
+                            </div>
+                            <div className="flex items-center gap-4 text-xs font-semibold text-slate-500">
+                                <span className="flex items-center gap-1.5 text-slate-700">
+                                    <span className="w-2.5 h-2.5 rounded-full bg-[#0f172a]" /> Left: Schools
+                                </span>
+                                <span className="flex items-center gap-1.5 text-[#0284c7]">
+                                    <span className="w-2.5 h-2.5 rounded-full bg-[#38bdf8]" /> Right: Woredas
+                                </span>
+                            </div>
+                        </div>
+
+                        {/* Chart Grid and Stacked Bars */}
+                        <div className="w-full overflow-x-auto pb-8 pt-2">
+                            <div className="min-w-[500px] h-72 flex flex-col justify-between relative pl-12 pr-12 pt-4">
+                                {/* Horizontal Grid Lines and Dual Y-Axis Labels (Left: Schools, Right: Woredas) */}
+                                <div className="absolute inset-0 pl-12 pr-12 pointer-events-none flex flex-col justify-between">
+                                    {yAxisSteps.map(val => (
+                                        <div key={val} className="w-full flex items-center justify-between relative">
+                                            {/* Left Y-Axis: Schools */}
+                                            <span className="absolute -left-12 text-[11px] font-bold text-slate-500 w-10 text-right">
+                                                {val}
+                                            </span>
+                                            {/* Horizontal Grid Line */}
+                                            <div className="w-full border-b border-dashed border-slate-200" />
+                                            {/* Right Y-Axis: Woredas */}
+                                            <span className="absolute -right-12 text-[11px] font-bold text-[#0284c7] w-10 text-left pl-2">
+                                                {val}
+                                            </span>
+                                        </div>
+                                    ))}
+                                </div>
+
+                                {/* Bars Container (Render ONLY real database zones) */}
+                                <div className="h-full flex items-end justify-around gap-8 relative z-10 pt-2 pb-14">
+                                    {realZones.length === 0 ? (
+                                        <div className="w-full text-center text-slate-400 text-xs py-16">
+                                            No zonal data available. Register a zone to view analytics.
+                                        </div>
+                                    ) : (
+                                        realZones.map(zone => {
+                                            const totalHeightVal = maxSchoolsCount > 0 ? maxSchoolsCount : 1;
+                                            const schoolsHeight = Math.min(100, Math.max(12, (zone.schoolsCount / totalHeightVal) * 100));
+                                            const subUnitsHeight = Math.min(100, Math.max(12, (zone.woredasCount / totalHeightVal) * 100));
+
+                                            return (
+                                                <div
+                                                    key={zone.id}
+                                                    onClick={() => setSelectedZoneForDrilldown(zone)}
+                                                    className="flex flex-col items-center justify-end h-full group cursor-pointer relative min-w-[70px]"
+                                                >
+                                                    {/* Floating Tooltip with Full Real Numbers on Hover */}
+                                                    <div className="absolute -top-12 left-1/2 -translate-x-1/2 bg-slate-900 text-white px-3 py-1.5 rounded-xl shadow-xl border border-slate-700 opacity-0 group-hover:opacity-100 transition-all duration-200 pointer-events-none whitespace-nowrap z-30 text-center">
+                                                        <p className="text-[11px] font-bold text-white">{zone.name}</p>
+                                                        <p className="text-[10px] text-sky-300 font-semibold">
+                                                            {zone.schoolsCount} Schools • {zone.woredasCount} Woredas
+                                                        </p>
+                                                    </div>
+
+                                                    {/* Dual / Stacked Bar Column */}
+                                                    <div className="flex items-end justify-center gap-1.5 h-full w-14">
+                                                        {/* Bar 1: Schools (Deep Navy #0f172a) */}
+                                                        <div
+                                                             style={{ height: `${schoolsHeight}%` }}
+                                                            className="flex-1 bg-[#0f172a] rounded-t-sm transition-all duration-300 group-hover:brightness-125 flex items-center justify-center text-[10px] font-bold text-white shadow-xs"
+                                                            title={`Schools: ${zone.schoolsCount}`}
+                                                        >
+                                                            {zone.schoolsCount}
+                                                        </div>
+                                                        {/* Bar 2: Woredas (Sky Blue #38bdf8) */}
+                                                        <div
+                                                            style={{ height: `${subUnitsHeight}%` }}
+                                                            className="flex-1 bg-[#38bdf8] rounded-t-sm transition-all duration-300 group-hover:brightness-110 flex items-center justify-center text-[10px] font-bold text-white shadow-xs"
+                                                            title={`Woredas: ${zone.woredasCount}`}
+                                                        >
+                                                            {zone.woredasCount}
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Slanted / Diagonal Slash Zone Label matching template */}
+                                                    <div className="absolute -bottom-12 left-1/2 -translate-x-1/2 origin-top-left rotate-45 pointer-events-none whitespace-nowrap text-left pt-2">
+                                                        <span className="text-[11px] font-bold text-slate-800 block truncate max-w-[120px]">
+                                                            {zone.name}
+                                                        </span>
+                                                        <span className="text-[10px] font-semibold text-slate-400 block -mt-0.5">
+                                                            {zone.woredasCount} {zone.woredasCount === 1 ? "Woreda" : "Woredas"}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Chart Legend */}
+                        <div className="flex items-center justify-center gap-6 text-xs text-slate-600 pt-6 border-t border-slate-100">
+                            <div className="flex items-center gap-1.5">
+                                <span className="w-2.5 h-2.5 rounded-full bg-[#0f172a]" />
+                                <span>Schools (Left Axis)</span>
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                                <span className="w-2.5 h-2.5 rounded-full bg-[#38bdf8]" />
+                                <span>Woredas (Right Axis)</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* TAB 2: ZONES DIRECTORY */}
+            {currentTab === "zones" && (
+                <div className="bg-white rounded-2xl border border-slate-100 shadow-sm space-y-4 p-6">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                        <div>
+                            <h2 className="text-base font-bold text-slate-900">Zones Directory</h2>
+                            <p className="text-xs text-slate-500">Subordinate zonal education departments</p>
+                        </div>
+
+                        <button
+                            onClick={() => {
+                                setNewZoneName("");
+                                setNewZoneCode("");
+                                setCreateZoneMessage(null);
+                                setCreateZoneOpen(true);
+                            }}
+                            className="px-3.5 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer shadow-xs"
+                        >
+                            <Plus className="w-4 h-4" />
+                            <span>Add Zone</span>
+                        </button>
+                    </div>
+
+                    {/* Search */}
+                    <div className="relative">
+                        <Search className="w-4 h-4 absolute left-3 top-2.5 text-slate-400" />
+                        <input
+                            type="text"
+                            placeholder="Search by zone name, administrator, or email..."
+                            value={searchQuery}
+                            onChange={e => setSearchQuery(e.target.value)}
+                            className="w-full pl-9 pr-4 py-2 border border-slate-200 rounded-lg text-xs focus:outline-hidden focus:border-blue-500 transition-colors"
+                        />
+                    </div>
+
+                    {/* Zones Table */}
+                    <div className="overflow-x-auto border border-slate-200 rounded-xl">
+                        <table className="w-full text-left text-xs">
+                            <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 font-semibold uppercase tracking-wider text-[10px]">
+                                <tr>
+                                    <th className="py-3 px-4">Zone Name</th>
+                                    <th className="py-3 px-4">Woredas</th>
+                                    <th className="py-3 px-4">Schools</th>
+                                    <th className="py-3 px-4">Administrator</th>
+                                    <th className="py-3 px-4">Status</th>
+                                    <th className="py-3 px-4 text-right">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100 text-slate-700 font-medium">
+                                {filteredZones.length === 0 ? (
+                                    <tr>
+                                        <td colSpan={6} className="py-8 text-center text-slate-400">
+                                            No zones matching your search.
+                                        </td>
+                                    </tr>
+                                ) : (
+                                    filteredZones.map(zone => (
+                                        <tr key={zone.id} className="hover:bg-slate-50/70 transition-colors">
+                                            <td className="py-3 px-4 font-bold text-slate-900">
+                                                <div className="flex items-center gap-2">
+                                                    <Building2 className="w-4 h-4 text-blue-600 shrink-0" />
+                                                    <span>{zone.name}</span>
+                                                </div>
                                             </td>
-                                            <td className="py-3 px-4 font-semibold text-gray-800">{zoneName}</td>
-                                            <td className="py-3 px-4">
-                                                <span className="px-2 py-0.5 bg-blue-50 text-[#184973] rounded font-bold text-[10px]">
-                                                    ZONAL DESK
-                                                </span>
+                                            <td className="py-3 px-4 font-semibold text-slate-800">
+                                                {zone.woredasCount}
+                                            </td>
+                                            <td className="py-3 px-4 font-semibold text-slate-800">
+                                                {zone.schoolsCount}
                                             </td>
                                             <td className="py-3 px-4">
-                                                {admin.status === "ACTIVE" ? (
-                                                    <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                                                        <CheckCircle2 className="w-3 h-3 mr-1 text-emerald-600" />
-                                                        Active
-                                                    </span>
+                                                {zone.admin ? (
+                                                    <div>
+                                                        <p className="font-semibold text-slate-900">{zone.admin.name}</p>
+                                                        <p className="text-[11px] text-slate-500">{zone.admin.email}</p>
+                                                    </div>
                                                 ) : (
-                                                    <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
-                                                        <Clock className="w-3 h-3 mr-1 text-amber-600" />
-                                                        Invitation Pending
+                                                    <span className="text-slate-400 italic text-[11px]">Unassigned</span>
+                                                )}
+                                            </td>
+                                            <td className="py-3 px-4">
+                                                {zone.admin ? (
+                                                    zone.admin.status === "ACTIVE" ? (
+                                                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                                            <CheckCircle2 className="w-3 h-3" /> Active
+                                                        </span>
+                                                    ) : (
+                                                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
+                                                            Pending Invite
+                                                        </span>
+                                                    )
+                                                ) : (
+                                                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-600">
+                                                        Vacant
                                                     </span>
                                                 )}
                                             </td>
                                             <td className="py-3 px-4 text-right">
-                                                {admin.status === "INVITATION_PENDING" && (
-                                                    <div className="flex items-center justify-end space-x-2">
+                                                <div className="flex items-center justify-end gap-1.5">
+                                                    <button
+                                                        onClick={() => setSelectedZoneForDrilldown(zone)}
+                                                        className="px-2.5 py-1 text-slate-600 hover:text-slate-900 border border-slate-200 hover:bg-slate-100 rounded text-[11px] font-semibold transition-colors cursor-pointer"
+                                                    >
+                                                        Inspect
+                                                    </button>
+                                                    {!zone.admin ? (
                                                         <button
-                                                            onClick={() => handleResendInvitation(zoneId, zoneName)}
-                                                            disabled={actionLoadingId === zoneId}
-                                                            className="px-2.5 py-1 text-[11px] font-semibold bg-amber-50 hover:bg-amber-100 text-amber-800 rounded-lg border border-amber-200 transition-colors"
+                                                            onClick={() => openAssignAdmin(zone)}
+                                                            className="px-2.5 py-1 bg-blue-50 text-blue-700 hover:bg-blue-100 rounded text-[11px] font-bold transition-colors flex items-center gap-1 cursor-pointer"
                                                         >
-                                                            Resend Email
+                                                            <UserPlus className="w-3 h-3" />
+                                                            <span>Assign Admin</span>
                                                         </button>
+                                                    ) : zone.admin.status === "INVITATION_PENDING" ? (
                                                         <button
-                                                            onClick={() => handleCancelInvitation(zoneId, zoneName)}
-                                                            disabled={actionLoadingId === zoneId}
-                                                            className="px-2 py-1 text-[11px] font-semibold text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                                            onClick={() => handleResendInvitation(zone.id)}
+                                                            disabled={actionLoadingId === zone.id}
+                                                            className="px-2.5 py-1 bg-amber-50 text-amber-700 hover:bg-amber-100 rounded text-[11px] font-bold transition-colors cursor-pointer"
                                                         >
-                                                            Cancel
+                                                            {actionLoadingId === zone.id ? "Resending..." : "Resend Invite"}
                                                         </button>
-                                                    </div>
-                                                )}
+                                                    ) : null}
+                                                </div>
                                             </td>
                                         </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    )}
+                                    ))
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             )}
 
-            {/* MODAL: Create New Zone */}
+            {/* TAB 3: LEADERSHIP & ADMINISTRATION */}
+            {currentTab === "administration" && (
+                <div className="bg-white rounded-2xl border border-slate-100 shadow-sm space-y-4 p-6">
+                    <div>
+                        <h2 className="text-base font-bold text-slate-900">Zonal Leadership & Administrators</h2>
+                        <p className="text-xs text-slate-500">Designated administrators governing regional zones</p>
+                    </div>
+
+                    <div className="overflow-x-auto border border-slate-200 rounded-xl">
+                        <table className="w-full text-left text-xs">
+                            <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 font-semibold uppercase tracking-wider text-[10px]">
+                                <tr>
+                                    <th className="py-3 px-4">Administrator</th>
+                                    <th className="py-3 px-4">Jurisdiction</th>
+                                    <th className="py-3 px-4">Email</th>
+                                    <th className="py-3 px-4">Status</th>
+                                    <th className="py-3 px-4 text-right">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100 text-slate-700 font-medium">
+                                {assignedAdministrators.length === 0 ? (
+                                    <tr>
+                                        <td colSpan={5} className="py-8 text-center text-slate-400">
+                                            No zonal administrators appointed yet.
+                                        </td>
+                                    </tr>
+                                ) : (
+                                    assignedAdministrators.map(({ zoneId, zoneName, admin }) => (
+                                        <tr key={zoneId} className="hover:bg-slate-50/70 transition-colors">
+                                            <td className="py-3 px-4 font-bold text-slate-900">
+                                                {admin.name}
+                                            </td>
+                                            <td className="py-3 px-4 font-semibold text-slate-800">
+                                                {zoneName}
+                                            </td>
+                                            <td className="py-3 px-4 text-slate-600">
+                                                {admin.email}
+                                            </td>
+                                            <td className="py-3 px-4">
+                                                {admin.status === "ACTIVE" ? (
+                                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                                        <CheckCircle2 className="w-3 h-3" /> Active
+                                                    </span>
+                                                ) : (
+                                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
+                                                        Pending Invite
+                                                    </span>
+                                                )}
+                                            </td>
+                                            <td className="py-3 px-4 text-right">
+                                                <div className="flex items-center justify-end gap-2">
+                                                    {admin.status === "INVITATION_PENDING" && (
+                                                        <button
+                                                            onClick={() => handleResendInvitation(zoneId)}
+                                                            disabled={actionLoadingId === zoneId}
+                                                            className="px-2.5 py-1 bg-amber-50 text-amber-700 hover:bg-amber-100 rounded text-[11px] font-bold transition-colors cursor-pointer"
+                                                        >
+                                                            {actionLoadingId === zoneId ? "Resending..." : "Resend Invite"}
+                                                        </button>
+                                                    )}
+                                                    <button
+                                                        onClick={() => handleCancelInvitation(zoneId)}
+                                                        disabled={actionLoadingId === zoneId}
+                                                        className="px-2.5 py-1 text-rose-600 hover:text-rose-800 border border-rose-200 hover:bg-rose-50 rounded text-[11px] font-semibold transition-colors cursor-pointer"
+                                                    >
+                                                        Revoke
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            )}
+
+            {/* MODAL: CREATE ZONE */}
             {createZoneOpen && (
-                <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
-                    <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-gray-200 space-y-5 animate-in fade-in zoom-in-95 duration-150">
-                        <div className="flex items-center justify-between border-b border-gray-100 pb-3">
-                            <div className="flex items-center space-x-2">
-                                <Building2 className="w-5 h-5 text-[#184973]" />
-                                <h3 className="text-base font-bold text-gray-900">Create New Zone</h3>
-                            </div>
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-xs p-4">
+                    <div className="bg-white rounded-2xl shadow-xl border border-slate-100 max-w-md w-full p-6 space-y-4 animate-in fade-in zoom-in-95">
+                        <div className="flex items-center justify-between">
+                            <h3 className="text-base font-bold text-slate-900">Add New Zone</h3>
                             <button
-                                onClick={() => {
-                                    setCreateZoneOpen(false);
-                                    setCreateZoneMessage(null);
-                                }}
-                                className="text-gray-400 hover:text-gray-600 text-lg leading-none cursor-pointer"
+                                onClick={() => setCreateZoneOpen(false)}
+                                className="p-1 text-slate-400 hover:text-slate-600 rounded-lg"
                             >
-                                &times;
+                                <X className="w-5 h-5" />
                             </button>
                         </div>
 
                         {createZoneMessage && (
                             <div
-                                className={`p-3 rounded-lg text-xs font-semibold ${
+                                className={`p-3 rounded-lg text-xs font-semibold flex items-center gap-2 ${
                                     createZoneMessage.type === "success"
                                         ? "bg-emerald-50 text-emerald-800 border border-emerald-200"
-                                        : "bg-red-50 text-red-800 border border-red-200"
+                                        : "bg-rose-50 text-rose-800 border border-rose-200"
                                 }`}
                             >
-                                {createZoneMessage.text}
+                                {createZoneMessage.type === "success" ? (
+                                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                                ) : (
+                                    <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+                                )}
+                                <span>{createZoneMessage.text}</span>
                             </div>
                         )}
 
                         <form onSubmit={handleCreateZoneSubmit} className="space-y-4">
                             <div>
-                                <label className="block text-xs font-bold text-gray-700 mb-1">
-                                    Parent Regional Bureau
-                                </label>
-                                <input
-                                    type="text"
-                                    value={data?.regionName || "Amhara Region"}
-                                    disabled
-                                    className="w-full bg-gray-100 border border-gray-200 rounded-lg p-2 text-xs text-gray-600 font-medium"
-                                />
-                            </div>
-
-                            <div>
-                                <label className="block text-xs font-bold text-gray-700 mb-1">
-                                    Zone Name <span className="text-red-500">*</span>
+                                <label className="block text-xs font-bold text-slate-700 mb-1">
+                                    Zone Name <span className="text-rose-500">*</span>
                                 </label>
                                 <input
                                     type="text"
                                     required
+                                    placeholder="e.g., North Gondar Zone"
                                     value={newZoneName}
                                     onChange={e => setNewZoneName(e.target.value)}
-                                    placeholder="e.g. North Gondar Zone"
-                                    className="w-full border border-gray-300 rounded-lg p-2.5 text-xs focus:ring-2 focus:ring-[#184973] focus:border-[#184973] outline-none"
+                                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs focus:outline-hidden focus:border-blue-500"
                                 />
                             </div>
 
                             <div>
-                                <label className="block text-xs font-bold text-gray-700 mb-1">
-                                    Zone Identifier / Code (Optional)
+                                <label className="block text-xs font-bold text-slate-700 mb-1">
+                                    Zone Code / Acronym (Optional)
                                 </label>
                                 <input
                                     type="text"
+                                    placeholder="e.g., NGZ"
                                     value={newZoneCode}
                                     onChange={e => setNewZoneCode(e.target.value)}
-                                    placeholder="e.g. ZN-NG"
-                                    className="w-full border border-gray-300 rounded-lg p-2.5 text-xs focus:ring-2 focus:ring-[#184973] focus:border-[#184973] outline-none"
+                                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs focus:outline-hidden focus:border-blue-500"
                                 />
                             </div>
 
-                            <p className="text-[11px] text-gray-500 italic">
-                                Note: Creating a Zone establishes an organizational unit. You will be able to assign an authorized Zone Administrator on the next step.
-                            </p>
-
-                            <div className="flex items-center justify-end space-x-3 pt-2">
+                            <div className="flex items-center justify-end gap-2 pt-2">
                                 <button
                                     type="button"
-                                    onClick={() => {
-                                        setCreateZoneOpen(false);
-                                        setCreateZoneMessage(null);
-                                    }}
-                                    disabled={creatingZone}
-                                    className="px-4 py-2 border border-gray-300 text-gray-700 text-xs font-semibold rounded-lg hover:bg-gray-50 cursor-pointer"
+                                    onClick={() => setCreateZoneOpen(false)}
+                                    className="px-4 py-2 border border-slate-200 text-slate-600 hover:bg-slate-50 text-xs font-bold rounded-lg cursor-pointer"
                                 >
                                     Cancel
                                 </button>
                                 <button
                                     type="submit"
                                     disabled={creatingZone || !newZoneName.trim()}
-                                    className="px-5 py-2 bg-[#184973] hover:bg-[#123655] text-white text-xs font-semibold rounded-lg transition-colors cursor-pointer disabled:opacity-50 flex items-center space-x-1.5"
+                                    className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-lg transition-colors disabled:opacity-50 cursor-pointer"
                                 >
-                                    {creatingZone && <RefreshCw className="w-3.5 h-3.5 animate-spin" />}
-                                    <span>{creatingZone ? "Creating Zone..." : "Create Zone"}</span>
+                                    {creatingZone ? "Creating..." : "Create Zone"}
                                 </button>
                             </div>
                         </form>
@@ -781,116 +1009,175 @@ export default function RegionalDashboard() {
                 </div>
             )}
 
-            {/* MODAL: Assign Zone Administrator */}
+            {/* MODAL: ASSIGN ZONE ADMINISTRATOR */}
             {assignAdminOpen && selectedZoneForAdmin && (
-                <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
-                    <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-gray-200 space-y-5 animate-in fade-in zoom-in-95 duration-150">
-                        <div className="flex items-center justify-between border-b border-gray-100 pb-3">
-                            <div className="flex items-center space-x-2">
-                                <UserPlus className="w-5 h-5 text-[#184973]" />
-                                <h3 className="text-base font-bold text-gray-900">Assign Zone Administrator</h3>
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-xs p-4">
+                    <div className="bg-white rounded-2xl shadow-xl border border-slate-100 max-w-md w-full p-6 space-y-4 animate-in fade-in zoom-in-95">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <h3 className="text-base font-bold text-slate-900">Assign Zone Administrator</h3>
+                                <p className="text-xs text-slate-500">{selectedZoneForAdmin.name}</p>
                             </div>
                             <button
-                                onClick={() => {
-                                    setAssignAdminOpen(false);
-                                    setSelectedZoneForAdmin(null);
-                                    setAssignAdminMessage(null);
-                                }}
-                                className="text-gray-400 hover:text-gray-600 text-lg leading-none cursor-pointer"
+                                onClick={() => setAssignAdminOpen(false)}
+                                className="p-1 text-slate-400 hover:text-slate-600 rounded-lg"
                             >
-                                &times;
+                                <X className="w-5 h-5" />
                             </button>
                         </div>
 
                         {assignAdminMessage && (
                             <div
-                                className={`p-3 rounded-lg text-xs font-semibold ${
+                                className={`p-3 rounded-lg text-xs font-semibold flex items-center gap-2 ${
                                     assignAdminMessage.type === "success"
                                         ? "bg-emerald-50 text-emerald-800 border border-emerald-200"
-                                        : "bg-red-50 text-red-800 border border-red-200"
+                                        : "bg-rose-50 text-rose-800 border border-rose-200"
                                 }`}
                             >
-                                {assignAdminMessage.text}
+                                {assignAdminMessage.type === "success" ? (
+                                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                                ) : (
+                                    <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+                                )}
+                                <span>{assignAdminMessage.text}</span>
                             </div>
                         )}
 
-                        <div className="bg-blue-50/70 border border-blue-100 rounded-xl p-3.5 space-y-1">
-                            <p className="text-[11px] font-bold text-[#184973] uppercase tracking-wider">Designated Administrative Unit</p>
-                            <p className="text-sm font-bold text-gray-900">{selectedZoneForAdmin.name} (Zone)</p>
-                            <p className="text-xs text-gray-600">
-                                Region: <span className="font-semibold text-gray-800">{data?.regionName}</span>
-                            </p>
-                        </div>
-
                         <form onSubmit={handleAssignAdminSubmit} className="space-y-4">
                             <div>
-                                <label className="block text-xs font-bold text-gray-700 mb-1">
-                                    Administrator Full Name <span className="text-red-500">*</span>
+                                <label className="block text-xs font-bold text-slate-700 mb-1">
+                                    Full Name <span className="text-rose-500">*</span>
                                 </label>
                                 <input
                                     type="text"
                                     required
+                                    placeholder="e.g., Dr. Abebe Bikila"
                                     value={adminFullName}
                                     onChange={e => setAdminFullName(e.target.value)}
-                                    placeholder="e.g. Abebe Bekele"
-                                    className="w-full border border-gray-300 rounded-lg p-2.5 text-xs focus:ring-2 focus:ring-[#184973] focus:border-[#184973] outline-none"
+                                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs focus:outline-hidden focus:border-blue-500"
                                 />
                             </div>
 
                             <div>
-                                <label className="block text-xs font-bold text-gray-700 mb-1">
-                                    Official Email Address <span className="text-red-500">*</span>
+                                <label className="block text-xs font-bold text-slate-700 mb-1">
+                                    Official Email Address <span className="text-rose-500">*</span>
                                 </label>
                                 <input
                                     type="email"
                                     required
+                                    placeholder="e.g., zone.admin@moe.edu.et"
                                     value={adminEmail}
                                     onChange={e => setAdminEmail(e.target.value)}
-                                    placeholder="e.g. abebe.bekele@edubridge.gov.et"
-                                    className="w-full border border-gray-300 rounded-lg p-2.5 text-xs focus:ring-2 focus:ring-[#184973] focus:border-[#184973] outline-none"
+                                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs focus:outline-hidden focus:border-blue-500"
                                 />
                             </div>
 
                             <div>
-                                <label className="block text-xs font-bold text-gray-700 mb-1">
+                                <label className="block text-xs font-bold text-slate-700 mb-1">
                                     Phone Number (Optional)
                                 </label>
                                 <input
                                     type="tel"
+                                    placeholder="e.g., +251 91 234 5678"
                                     value={adminPhone}
                                     onChange={e => setAdminPhone(e.target.value)}
-                                    placeholder="e.g. +251 911 000 000"
-                                    className="w-full border border-gray-300 rounded-lg p-2.5 text-xs focus:ring-2 focus:ring-[#184973] focus:border-[#184973] outline-none"
+                                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs focus:outline-hidden focus:border-blue-500"
                                 />
                             </div>
 
-                            <div className="p-3 bg-amber-50/80 border border-amber-200 rounded-xl text-[11px] text-amber-900 leading-relaxed">
-                                <strong>Official Invitation Notice:</strong> EduBridge will dispatch a formal notification from the <strong>{data?.regionName} Regional Education Bureau</strong> containing a secure activation token. The designated administrator will set their own password upon first sign-in.
-                            </div>
-
-                            <div className="flex items-center justify-end space-x-3 pt-2">
+                            <div className="flex items-center justify-end gap-2 pt-2">
                                 <button
                                     type="button"
-                                    onClick={() => {
-                                        setAssignAdminOpen(false);
-                                        setSelectedZoneForAdmin(null);
-                                        setAssignAdminMessage(null);
-                                    }}
-                                    disabled={assigningAdmin}
-                                    className="px-4 py-2 border border-gray-300 text-gray-700 text-xs font-semibold rounded-lg hover:bg-gray-50 cursor-pointer"
+                                    onClick={() => setAssignAdminOpen(false)}
+                                    className="px-4 py-2 border border-slate-200 text-slate-600 hover:bg-slate-50 text-xs font-bold rounded-lg cursor-pointer"
                                 >
                                     Cancel
                                 </button>
                                 <button
                                     type="submit"
                                     disabled={assigningAdmin || !adminFullName.trim() || !adminEmail.trim()}
-                                    className="px-5 py-2 bg-[#184973] hover:bg-[#123655] text-white text-xs font-semibold rounded-lg transition-colors cursor-pointer disabled:opacity-50 flex items-center space-x-1.5"
+                                    className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-lg transition-colors disabled:opacity-50 cursor-pointer"
                                 >
-                                    {assigningAdmin && <RefreshCw className="w-3.5 h-3.5 animate-spin" />}
-                                    <span>{assigningAdmin ? "Sending Official Invitation..." : "Send Invitation"}</span>
+                                    {assigningAdmin ? "Sending Invitation..." : "Send Invitation"}
                                 </button>
                             </div>
                         </form>
+                    </div>
+                </div>
+            )}
+
+            {/* MODAL: ZONE DRILLDOWN DETAILS */}
+            {selectedZoneForDrilldown && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-xs p-4">
+                    <div className="bg-white rounded-2xl shadow-xl border border-slate-100 max-w-lg w-full p-6 space-y-4 animate-in fade-in zoom-in-95">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                                <Building2 className="w-5 h-5 text-blue-600" />
+                                <h3 className="text-base font-bold text-slate-900">
+                                    {selectedZoneForDrilldown.name}
+                                </h3>
+                            </div>
+                            <button
+                                onClick={() => setSelectedZoneForDrilldown(null)}
+                                className="p-1 text-slate-400 hover:text-slate-600 rounded-lg"
+                            >
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-3 py-2">
+                            <div className="p-3 bg-slate-50 rounded-xl">
+                                <span className="text-[11px] font-bold text-slate-500">Woredas</span>
+                                <p className="text-xl font-black text-slate-900">
+                                    {selectedZoneForDrilldown.woredasCount}
+                                </p>
+                            </div>
+                            <div className="p-3 bg-slate-50 rounded-xl">
+                                <span className="text-[11px] font-bold text-slate-500">Schools</span>
+                                <p className="text-xl font-black text-slate-900">
+                                    {selectedZoneForDrilldown.schoolsCount}
+                                </p>
+                            </div>
+                        </div>
+
+                        <div className="p-3.5 bg-slate-50 rounded-xl space-y-1">
+                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                                Appointed Administrator
+                            </span>
+                            {selectedZoneForDrilldown.admin ? (
+                                <div>
+                                    <p className="text-xs font-bold text-slate-900">{selectedZoneForDrilldown.admin.name}</p>
+                                    <p className="text-[11px] text-slate-500">{selectedZoneForDrilldown.admin.email}</p>
+                                    <span className={`inline-block mt-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                                        selectedZoneForDrilldown.admin.status === "ACTIVE"
+                                            ? "bg-emerald-100 text-emerald-800"
+                                            : "bg-amber-100 text-amber-800"
+                                    }`}>
+                                        {selectedZoneForDrilldown.admin.status === "ACTIVE" ? "Active" : "Invitation Pending"}
+                                    </span>
+                                </div>
+                            ) : (
+                                <p className="text-xs text-slate-400 italic">No administrator assigned yet.</p>
+                            )}
+                        </div>
+
+                        <div className="flex items-center justify-between pt-2">
+                            <button
+                                onClick={() => {
+                                    router.push(`/dashboard/zone?targetOrgId=${selectedZoneForDrilldown.id}`);
+                                }}
+                                className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer shadow-xs"
+                            >
+                                <span>Switch to Zone View</span>
+                                <ExternalLink className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                                onClick={() => setSelectedZoneForDrilldown(null)}
+                                className="px-4 py-2 border border-slate-200 text-slate-600 hover:bg-slate-50 text-xs font-bold rounded-lg cursor-pointer"
+                            >
+                                Close
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}
