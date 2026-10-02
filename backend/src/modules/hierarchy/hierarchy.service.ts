@@ -371,11 +371,13 @@ export class HierarchyService {
      * Retrieves Federal overview metrics and regions list with administrator status.
      */
     static async getFederalOverview() {
-        const [totalRegions, totalZones, totalWoredas, totalSchools] = await Promise.all([
+        const [totalRegions, totalZones, totalWoredas, totalSchools, totalStudents, totalTeachers] = await Promise.all([
             prisma.organizationUnit.count({ where: { type: "REGION" } }),
             prisma.organizationUnit.count({ where: { type: "ZONE" } }),
             prisma.organizationUnit.count({ where: { type: "WOREDA" } }),
-            prisma.organizationUnit.count({ where: { type: "SCHOOL" } })
+            prisma.organizationUnit.count({ where: { type: "SCHOOL" } }),
+            prisma.student.count().catch(() => 0),
+            prisma.teacher.count().catch(() => 0)
         ]);
 
         const federalUnit = await prisma.organizationUnit.findFirst({
@@ -391,6 +393,12 @@ export class HierarchyService {
                             include: {
                                 children: true
                             }
+                        },
+                        assignments: {
+                            include: {
+                                user: true,
+                                role: true
+                            }
                         }
                     }
                 },
@@ -404,10 +412,40 @@ export class HierarchyService {
             orderBy: { name: "asc" }
         });
 
+        const alerts: Array<{
+            id: string;
+            type: "UNASSIGNED_ADMIN";
+            severity: "WARNING";
+            title: string;
+            description: string;
+            sourceUnit: string;
+            timestamp: string;
+        }> = [];
+
         const formattedRegions = regions.map(r => {
             const zonesCount = r.children.length;
             let woredasCount = 0;
             let schoolsCount = 0;
+
+            const zonesBreakdown = r.children.map(zone => {
+                const zoneWoredasCount = zone.children.length;
+                let zoneSchoolsCount = 0;
+                for (const woreda of zone.children) {
+                    zoneSchoolsCount += woreda.children.length;
+                }
+
+                const zoneAdminAssignment = zone.assignments?.find(
+                    a => a.role.name === "ADMIN" || a.role.name === "ZONE_ADMIN"
+                );
+
+                return {
+                    id: zone.id,
+                    name: zone.name,
+                    woredasCount: zoneWoredasCount,
+                    schoolsCount: zoneSchoolsCount,
+                    adminName: zoneAdminAssignment?.user?.name || null
+                };
+            });
 
             for (const zone of r.children) {
                 woredasCount += zone.children.length;
@@ -427,10 +465,20 @@ export class HierarchyService {
                     id: u.id,
                     name: u.name,
                     email: u.email,
-                    status: u.emailVerified ? "ACTIVE" : "INVITATION_PENDING",
+                    status: u.emailVerified ? "ACTIVE" as const : "INVITATION_PENDING" as const,
                     invitedAt: adminAssignment.createdAt,
                     roleName: "Regional Administrator"
                 };
+            } else {
+                alerts.push({
+                    id: `alert-region-${r.id}`,
+                    type: "UNASSIGNED_ADMIN",
+                    severity: "WARNING",
+                    title: "Regional Administrator Unassigned",
+                    description: `Region "${r.name}" has no appointed administrator.`,
+                    sourceUnit: r.name,
+                    timestamp: new Date().toISOString()
+                });
             }
 
             return {
@@ -441,7 +489,8 @@ export class HierarchyService {
                 zonesCount,
                 woredasCount,
                 schoolsCount,
-                admin
+                admin,
+                zones: zonesBreakdown
             };
         });
 
@@ -452,9 +501,12 @@ export class HierarchyService {
                 totalRegions,
                 totalZones,
                 totalWoredas,
-                totalSchools
+                totalSchools,
+                totalStudents,
+                totalTeachers
             },
-            regions: formattedRegions
+            regions: formattedRegions,
+            alerts
         };
     }
 
