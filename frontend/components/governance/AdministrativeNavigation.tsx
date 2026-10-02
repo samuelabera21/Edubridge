@@ -86,12 +86,6 @@ export default function AdministrativeNavigation({
                 icon: Shield,
                 tab: "administration",
             },
-            {
-                label: "Hierarchy Tree",
-                href: `${basePath}?tab=hierarchy`,
-                icon: Network,
-                tab: "hierarchy",
-            },
         ];
     } else if (currentTier === "REGION") {
         navItems = [
@@ -111,12 +105,6 @@ export default function AdministrativeNavigation({
                 href: `${basePath}?tab=administration`,
                 icon: Shield,
                 tab: "administration",
-            },
-            {
-                label: "Hierarchy Tree",
-                href: `${basePath}?tab=hierarchy`,
-                icon: Network,
-                tab: "hierarchy",
             },
         ];
     } else if (currentTier === "ZONE") {
@@ -138,12 +126,6 @@ export default function AdministrativeNavigation({
                 icon: Shield,
                 tab: "administration",
             },
-            {
-                label: "Hierarchy Tree",
-                href: `${basePath}?tab=hierarchy`,
-                icon: Network,
-                tab: "hierarchy",
-            },
         ];
     } else {
         navItems = [
@@ -163,12 +145,6 @@ export default function AdministrativeNavigation({
                 href: `${basePath}?tab=administration`,
                 icon: Shield,
                 tab: "administration",
-            },
-            {
-                label: "Hierarchy Tree",
-                href: `${basePath}?tab=hierarchy`,
-                icon: Network,
-                tab: "hierarchy",
             },
         ];
     }

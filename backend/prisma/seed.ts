@@ -1,24 +1,20 @@
 import { prisma } from "../src/infrastructure/prisma/client.js";
-import { auth } from "../src/modules/authentication/auth.js";
-import { assignRoleToUser, assignPermissionToRole } from "../src/modules/authentication/authorization.service.js";
+import { assignPermissionToRole } from "../src/modules/authentication/authorization.service.js";
+import { hashPassword } from "better-auth/crypto";
+
+const FEDERAL_ADMIN_EMAIL = process.env.FEDERAL_ADMIN_EMAIL || "federal.admin@edubridge.gov.et";
+const FEDERAL_ADMIN_PASSWORD = process.env.FEDERAL_ADMIN_PASSWORD || "Federal@2026!";
+const FEDERAL_ADMIN_NAME = process.env.FEDERAL_ADMIN_NAME || "Federal System Administrator";
 
 async function main() {
     console.log("=========================================");
-    console.log("🌱 Starting EduBridge Idempotent Seed Process...");
+    console.log("🌱 Starting EduBridge Official Seed Process...");
     console.log("=========================================");
 
-    // 1. Environmental Credentials (Development defaults with production overrides)
-    const adminEmail = process.env.ADMIN_EMAIL || "admin@edubridge.local";
-    const adminPassword = process.env.ADMIN_PASSWORD || process.env.DEFAULT_INITIAL_PASSWORD || "Admin@1234";
-    if (!adminPassword) {
-        throw new Error("ADMIN_PASSWORD or DEFAULT_INITIAL_PASSWORD must be set before seeding");
-    }
-    const adminName = process.env.ADMIN_NAME || "System Administrator";
-
-    // 2. Seed Default System Roles
+    // 1. Seed Default System Roles
     const defaultRoles = [
         { name: "ADMIN", desc: "System Super Administrator" },
-        { name: "SCHOOL_ADMIN", desc: "School Administrator" },
+        { name: "SCHOOL_ADMIN", desc: "School Administrator / Principal" },
         { name: "TEACHER", desc: "Teaching Faculty Member" },
         { name: "STUDENT", desc: "Enrolled Student" },
         { name: "PARENT", desc: "Parent / Guardian" },
@@ -32,9 +28,9 @@ async function main() {
             create: { name: r.name, description: r.desc }
         });
     }
-    console.log(`✅ Roles verified/created: ${defaultRoles.map(r => r.name).join(", ")}`);
+    console.log(`✅ System roles verified: ${defaultRoles.map(r => r.name).join(", ")}`);
 
-    // 3. Seed System Administrative Permissions
+    // 2. Seed System Administrative Permissions
     const permissions = [
         { name: "ACADEMIC:VIEW", desc: "View Academic Years, Grades, Sections" },
         { name: "ACADEMIC:CREATE", desc: "Create Academic Years, Grades, Sections" },
@@ -115,162 +111,91 @@ async function main() {
         }
     }
 
-    // Explicitly clean up any historical ACADEMIC:CREATE / ACADEMIC:UPDATE permissions attached to TEACHER
-    const teacherRole = await prisma.role.findUnique({ where: { name: "TEACHER" } });
-    if (teacherRole) {
-        const writePerms = await prisma.permission.findMany({
-            where: { name: { in: ["ACADEMIC:CREATE", "ACADEMIC:UPDATE", "ACADEMIC:MANAGE"] } }
-        });
-        if (writePerms.length > 0) {
-            await prisma.rolePermission.deleteMany({
-                where: {
-                    roleId: teacherRole.id,
-                    permissionId: { in: writePerms.map(p => p.id) }
-                }
-            });
-        }
-    }
+    console.log(`✅ System permissions mapped and synchronized.`);
 
-    console.log(`✅ System permissions attached to ADMIN, SCHOOL_ADMIN, VICE_PRINCIPAL, and TEACHER roles (Academic write restricted from TEACHER).`);
-
-    // 4. Seed Default Organization Units & School Profile (H1 Canonical Hierarchy)
+    // 3. Ensure Root Federal Organization Unit Exists
     let federalUnit = await prisma.organizationUnit.findFirst({ where: { type: "FEDERAL" } });
     if (!federalUnit) {
         federalUnit = await prisma.organizationUnit.create({
-            data: { name: "EduBridge National Platform", type: "FEDERAL", parentId: null }
+            data: { name: "Federal Ministry of Education", type: "FEDERAL", parentId: null }
         });
+        console.log(`✅ Created root Federal Organization Unit: ${federalUnit.name}`);
+    } else {
+        console.log(`✅ Root Federal Organization Unit verified: ${federalUnit.name}`);
     }
 
-    let regionUnit = await prisma.organizationUnit.findFirst({ where: { type: "REGION" } });
-    if (!regionUnit) {
-        regionUnit = await prisma.organizationUnit.create({
-            data: { name: "Addis Ababa Region", type: "REGION", parentId: federalUnit.id }
-        });
-    } else if (regionUnit.parentId !== federalUnit.id) {
-        regionUnit = await prisma.organizationUnit.update({
-            where: { id: regionUnit.id },
-            data: { parentId: federalUnit.id }
-        });
+    // 4. Ensure ADMIN Role Exists for Assignment
+    const adminRole = await prisma.role.findFirst({ where: { name: "ADMIN" } });
+    if (!adminRole) {
+        throw new Error("ADMIN role not found.");
     }
 
-    let zoneUnit = await prisma.organizationUnit.findFirst({ where: { type: "ZONE" } });
-    if (!zoneUnit) {
-        zoneUnit = await prisma.organizationUnit.create({
-            data: { name: "Central Zone", type: "ZONE", parentId: regionUnit.id }
-        });
-    } else if (zoneUnit.parentId !== regionUnit.id) {
-        zoneUnit = await prisma.organizationUnit.update({
-            where: { id: zoneUnit.id },
-            data: { parentId: regionUnit.id }
-        });
-    }
+    // 5. Seed / Verify Official Federal Administrator Account
+    let fedUser = await prisma.user.findUnique({ where: { email: FEDERAL_ADMIN_EMAIL } });
 
-    let woredaUnit = await prisma.organizationUnit.findFirst({ where: { type: "WOREDA" } });
-    if (!woredaUnit) {
-        woredaUnit = await prisma.organizationUnit.create({
-            data: { name: "Kirkos Woreda", type: "WOREDA", parentId: zoneUnit.id }
-        });
-    } else if (woredaUnit.parentId !== zoneUnit.id) {
-        woredaUnit = await prisma.organizationUnit.update({
-            where: { id: woredaUnit.id },
-            data: { parentId: zoneUnit.id }
-        });
-    }
+    if (!fedUser) {
+        console.log(`🛠️ Creating Federal Admin account (${FEDERAL_ADMIN_EMAIL})...`);
+        const hashedPassword = await hashPassword(FEDERAL_ADMIN_PASSWORD);
+        const userId = "fed_admin_" + Date.now().toString(36);
 
-    let schoolUnit = await prisma.organizationUnit.findFirst({ where: { type: "SCHOOL" } });
-    if (!schoolUnit) {
-        schoolUnit = await prisma.organizationUnit.create({
-            data: { name: "EduBridge Demo School", type: "SCHOOL", parentId: woredaUnit.id }
-        });
-    } else if (schoolUnit.parentId !== woredaUnit.id) {
-        schoolUnit = await prisma.organizationUnit.update({
-            where: { id: schoolUnit.id },
-            data: { parentId: woredaUnit.id }
-        });
-    }
-
-    await prisma.schoolProfile.upsert({
-        where: { organizationId: schoolUnit.id },
-        update: {},
-        create: {
-            organizationId: schoolUnit.id,
-            contactEmail: "info@edubridge.edu.et",
-            phoneNumber: "+251 911 000 000",
-            address: "Addis Ababa, Ethiopia",
-            status: "ACTIVE"
-        }
-    });
-
-    let activeAcademicYear = await prisma.academicYear.findFirst({ where: { status: "ACTIVE" } });
-    if (!activeAcademicYear) {
-        activeAcademicYear = await prisma.academicYear.create({
+        fedUser = await prisma.user.create({
             data: {
-                organizationId: schoolUnit.id,
-                name: "2025/2026 Academic Year",
-                startDate: new Date("2025-09-01"),
-                endDate: new Date("2026-06-30"),
-                status: "ACTIVE"
-            }
-        });
-    }
-    console.log(`✅ Organization Units, School Profile & Active Academic Year verified.`);
-
-    // 5. Seed Idempotent Development Admin Account
-    let adminUser = await prisma.user.findUnique({ where: { email: adminEmail } });
-
-    if (!adminUser) {
-        console.log(`🛠️ Creating Development Admin account (${adminEmail})...`);
-        const signUpRes = await auth.api.signUpEmail({
-            body: {
-                email: adminEmail,
-                password: adminPassword,
-                name: adminName
+                id: userId,
+                name: FEDERAL_ADMIN_NAME,
+                email: FEDERAL_ADMIN_EMAIL,
+                emailVerified: true,
+                isActive: true,
+                requiresPasswordChange: false
             }
         });
 
-        if (signUpRes?.user) {
-            adminUser = await prisma.user.update({
-                where: { id: signUpRes.user.id },
+        await prisma.account.create({
+            data: {
+                id: "acc_fed_" + Date.now().toString(36),
+                userId: fedUser.id,
+                accountId: fedUser.id,
+                providerId: "credential",
+                password: hashedPassword,
+                createdAt: new Date(),
+                updatedAt: new Date()
+            }
+        });
+
+        await prisma.roleAssignment.create({
+            data: {
+                userId: fedUser.id,
+                roleId: adminRole.id,
+                scopeId: federalUnit.id
+            }
+        });
+
+        console.log(`✅ Federal Administrator account created with full national governance scope.`);
+    } else {
+        // Ensure role assignment exists at Federal scope
+        const existingAssignment = await prisma.roleAssignment.findFirst({
+            where: {
+                userId: fedUser.id,
+                roleId: adminRole.id,
+                scopeId: federalUnit.id
+            }
+        });
+
+        if (!existingAssignment) {
+            await prisma.roleAssignment.create({
                 data: {
-                    requiresPasswordChange: true,
-                    isActive: true
+                    userId: fedUser.id,
+                    roleId: adminRole.id,
+                    scopeId: federalUnit.id
                 }
             });
-            console.log(`✅ Admin account created with ID: ${adminUser.id}`);
         }
-    } else if (process.env.FORCE_RESET_ADMIN === "true") {
-        console.log(`⚠️ FORCE_RESET_ADMIN is active. Resetting temporary password to ${adminPassword}...`);
-        try {
-            const ctx = await auth.$context;
-            const hashedPassword = await ctx.password.hash(adminPassword);
-            await prisma.account.updateMany({
-                where: { userId: adminUser.id },
-                data: { password: hashedPassword }
-            });
-            await prisma.user.update({
-                where: { id: adminUser.id },
-                data: { requiresPasswordChange: true, isActive: true }
-            });
-            console.log(`✅ Admin password reset to: ${adminPassword}`);
-        } catch (e) {
-            console.log(`ℹ️ User password verified.`);
-        }
-    } else {
-        console.log(`ℹ️ Admin user (${adminEmail}) already exists. Retaining existing user credentials.`);
-    }
-
-    if (adminUser) {
-        // Assign ADMIN role at FEDERAL scope
-        await assignRoleToUser(adminUser.id, "ADMIN", federalUnit.name, "FEDERAL");
-        // Assign SCHOOL_ADMIN role at SCHOOL scope
-        await assignRoleToUser(adminUser.id, "SCHOOL_ADMIN", schoolUnit.name, "SCHOOL");
-        console.log(`✅ Admin roles attached for user: ${adminEmail}`);
+        console.log(`ℹ️ Federal Administrator (${FEDERAL_ADMIN_EMAIL}) verified.`);
     }
 
     console.log("=========================================");
     console.log("🎉 SEED COMPLETED SUCCESSFULLY!");
-    console.log(`👤 Admin Username / Email : admin OR ${adminEmail}`);
-    console.log(`🔑 Default Temporary Password : ${adminPassword}`);
+    console.log(`👤 Official Federal Admin : ${FEDERAL_ADMIN_EMAIL}`);
+    console.log(`🔑 Initial Password       : ${FEDERAL_ADMIN_PASSWORD}`);
     console.log("=========================================");
 }
 
@@ -279,4 +204,4 @@ main()
         console.error("❌ Error during seed process:", err);
         process.exit(1);
     })
-    .finally(() => prisma.$disconnect());
+    .finally(() => prisma.$disconnect());

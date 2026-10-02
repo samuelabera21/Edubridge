@@ -369,16 +369,6 @@ export default function FederalDashboard() {
                     <UserCheck className="w-3.5 h-3.5" />
                     <span>Regional Administrators ({assignedAdministrators.length})</span>
                 </button>
-                <button
-                    onClick={() => router.push("/dashboard/federal?tab=hierarchy")}
-                    className={`pb-3 transition-colors cursor-pointer ${
-                        currentTab === "hierarchy"
-                            ? "text-slate-900 border-b-2 border-slate-900 font-bold"
-                            : "text-slate-500 hover:text-slate-800"
-                    }`}
-                >
-                    National Hierarchy
-                </button>
             </div>
 
             {/* Error Banner */}
@@ -746,11 +736,6 @@ export default function FederalDashboard() {
                         </table>
                     </div>
                 </div>
-            )}
-
-            {/* TAB 4: HIERARCHY TREE */}
-            {currentTab === "hierarchy" && (
-                <HierarchyTreeViewer rootOrgId={data?.federalId || undefined} userTier="FEDERAL" />
             )}
 
             {/* MODAL 1: CREATE REGION */}
