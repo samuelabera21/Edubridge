@@ -368,11 +368,10 @@ export class HierarchyService {
     }
 
     /**
-     * Retrieves Federal overview metrics and regions list with administrator status,
-     * national enrollment, attendance, assessment summaries, regional drilldown, and alerts.
+     * Retrieves Federal overview metrics and regions list with administrator status.
      */
     static async getFederalOverview() {
-        const [totalRegions, totalZones, totalWoredas, totalSchools, totalStudentsCount, totalTeachersCount] = await Promise.all([
+        const [totalRegions, totalZones, totalWoredas, totalSchools, totalStudents, totalTeachers] = await Promise.all([
             prisma.organizationUnit.count({ where: { type: "REGION" } }),
             prisma.organizationUnit.count({ where: { type: "ZONE" } }),
             prisma.organizationUnit.count({ where: { type: "WOREDA" } }),
@@ -413,17 +412,17 @@ export class HierarchyService {
             orderBy: { name: "asc" }
         });
 
-        const generatedAlerts: Array<{
+        const alerts: Array<{
             id: string;
-            type: "DELAYED_REPORT" | "MISSING_ATTENDANCE" | "UNASSIGNED_ADMIN" | "ASSESSMENT_OVERDUE";
-            severity: "CRITICAL" | "WARNING" | "INFO";
+            type: "UNASSIGNED_ADMIN";
+            severity: "WARNING";
             title: string;
             description: string;
             sourceUnit: string;
             timestamp: string;
         }> = [];
 
-        const formattedRegions = regions.map((r, idx) => {
+        const formattedRegions = regions.map(r => {
             const zonesCount = r.children.length;
             let woredasCount = 0;
             let schoolsCount = 0;
@@ -438,18 +437,6 @@ export class HierarchyService {
                 const zoneAdminAssignment = zone.assignments?.find(
                     a => a.role.name === "ADMIN" || a.role.name === "ZONE_ADMIN"
                 );
-
-                if (!zoneAdminAssignment) {
-                    generatedAlerts.push({
-                        id: `alert-zone-unassigned-${zone.id}`,
-                        type: "UNASSIGNED_ADMIN",
-                        severity: "INFO",
-                        title: "Zonal Administrator Unassigned",
-                        description: `Zone "${zone.name}" in ${r.name} has no designated administrator.`,
-                        sourceUnit: zone.name,
-                        timestamp: new Date().toISOString()
-                    });
-                }
 
                 return {
                     id: zone.id,
@@ -483,35 +470,14 @@ export class HierarchyService {
                     roleName: "Regional Administrator"
                 };
             } else {
-                generatedAlerts.push({
-                    id: `alert-region-unassigned-${r.id}`,
+                alerts.push({
+                    id: `alert-region-${r.id}`,
                     type: "UNASSIGNED_ADMIN",
                     severity: "WARNING",
-                    title: "Regional Administrator Missing",
-                    description: `Region "${r.name}" has no appointed Regional Administrator.`,
+                    title: "Regional Administrator Unassigned",
+                    description: `Region "${r.name}" has no appointed administrator.`,
                     sourceUnit: r.name,
                     timestamp: new Date().toISOString()
-                });
-            }
-
-            // Estimate metrics per region based on school density or actual counts
-            const baseStudents = schoolsCount > 0 ? schoolsCount * 420 : (idx % 2 === 0 ? 1250 : 850);
-            const baseTeachers = schoolsCount > 0 ? Math.round(schoolsCount * 18) : (idx % 2 === 0 ? 54 : 36);
-            const attendanceRate = Number((92.5 + ((idx * 1.7) % 5.5)).toFixed(1));
-            const assessmentAvg = Number((74.0 + ((idx * 2.3) % 16)).toFixed(1));
-            const reportingStatus = admin?.status === "ACTIVE"
-                ? (idx % 3 === 0 ? "ON_TIME" : "ON_TIME")
-                : (admin?.status === "INVITATION_PENDING" ? "DELAYED" : "NEEDS_ATTENTION");
-
-            if (reportingStatus === "DELAYED") {
-                generatedAlerts.push({
-                    id: `alert-delayed-${r.id}`,
-                    type: "DELAYED_REPORT",
-                    severity: "WARNING",
-                    title: `Delayed Monthly Report: ${r.name}`,
-                    description: `Monthly enrollment and attendance sync from ${r.name} is overdue by 3 days.`,
-                    sourceUnit: r.name,
-                    timestamp: new Date(Date.now() - 3600000 * 36).toISOString()
                 });
             }
 
@@ -523,36 +489,10 @@ export class HierarchyService {
                 zonesCount,
                 woredasCount,
                 schoolsCount,
-                studentsCount: baseStudents,
-                teachersCount: baseTeachers,
-                attendanceRate,
-                assessmentAverage: assessmentAvg,
-                reportingStatus,
                 admin,
                 zones: zonesBreakdown
             };
         });
-
-        // Add a default compliance alert if none exists so Federal admin always has visibility
-        if (generatedAlerts.length === 0) {
-            generatedAlerts.push({
-                id: "alert-default-system",
-                type: "MISSING_ATTENDANCE",
-                severity: "INFO",
-                title: "National Reporting Cycle Active",
-                description: "Quarter 1 educational compliance and school census reports are currently open for submission.",
-                sourceUnit: "Federal MoE Operations",
-                timestamp: new Date().toISOString()
-            });
-        }
-
-        const calculatedStudents = totalStudentsCount > 0
-            ? totalStudentsCount
-            : formattedRegions.reduce((sum, r) => sum + r.studentsCount, 0);
-
-        const calculatedTeachers = totalTeachersCount > 0
-            ? totalTeachersCount
-            : formattedRegions.reduce((sum, r) => sum + r.teachersCount, 0);
 
         return {
             federalId: federalUnit?.id || null,
@@ -562,37 +502,11 @@ export class HierarchyService {
                 totalZones,
                 totalWoredas,
                 totalSchools,
-                totalStudents: calculatedStudents,
-                totalTeachers: calculatedTeachers
-            },
-            nationalMetrics: {
-                enrollment: {
-                    totalEnrolled: calculatedStudents,
-                    malePercentage: 51.4,
-                    femalePercentage: 48.6,
-                    retentionRate: 94.8,
-                    dropoutRate: 5.2,
-                    growthRate: "+4.3%"
-                },
-                attendance: {
-                    overallRate: 94.6,
-                    presentRatio: 94.6,
-                    absentRatio: 5.4,
-                    teacherAttendanceRate: 97.2,
-                    trend: "+1.2% vs previous term"
-                },
-                assessment: {
-                    nationalAverageScore: 78.5,
-                    passingRate: 86.4,
-                    completedAssessmentsCount: totalSchools > 0 ? totalSchools * 14 : 1420
-                },
-                compliance: {
-                    onTimeReportingRate: 91.8,
-                    pendingReportsCount: generatedAlerts.filter(a => a.severity === "WARNING" || a.severity === "CRITICAL").length
-                }
+                totalStudents,
+                totalTeachers
             },
             regions: formattedRegions,
-            alerts: generatedAlerts
+            alerts
         };
     }
 
