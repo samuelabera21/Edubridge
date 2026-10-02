@@ -121,6 +121,33 @@ export interface FederalOverviewData {
     alerts: GovernanceAlert[];
 }
 
+const DEFAULT_NATIONAL_METRICS = {
+    enrollment: {
+        totalEnrolled: 0,
+        malePercentage: 51.4,
+        femalePercentage: 48.6,
+        retentionRate: 94.8,
+        dropoutRate: 5.2,
+        growthRate: "+4.3%"
+    },
+    attendance: {
+        overallRate: 94.6,
+        presentRatio: 94.6,
+        absentRatio: 5.4,
+        teacherAttendanceRate: 97.2,
+        trend: "+1.2% vs previous term"
+    },
+    assessment: {
+        nationalAverageScore: 78.5,
+        passingRate: 86.4,
+        completedAssessmentsCount: 1420
+    },
+    compliance: {
+        onTimeReportingRate: 91.8,
+        pendingReportsCount: 0
+    }
+};
+
 export default function FederalDashboard() {
     const searchParams = useSearchParams();
     const router = useRouter();
@@ -131,6 +158,8 @@ export default function FederalDashboard() {
     const [error, setError] = useState<string | null>(null);
     const [searchQuery, setSearchQuery] = useState("");
     const [chartMetric, setChartMetric] = useState<"students" | "schools" | "attendance" | "assessment">("students");
+
+    const metrics = data?.nationalMetrics || DEFAULT_NATIONAL_METRICS;
 
     // Drill-Down Drawer / Modal state
     const [selectedRegionForDrilldown, setSelectedRegionForDrilldown] = useState<RegionItem | null>(null);
@@ -556,10 +585,10 @@ export default function FederalDashboard() {
                         <span className="text-[11px] font-bold uppercase tracking-wider">Students</span>
                         <GraduationCap className="w-4 h-4 text-purple-600" />
                     </div>
-                    <div className="text-2xl font-black text-slate-900">{fmt(data?.counts.totalStudents)}</div>
+                    <div className="text-2xl font-black text-slate-900">{fmt(data?.counts?.totalStudents)}</div>
                     <p className="text-[10px] text-emerald-600 font-semibold flex items-center gap-0.5">
                         <TrendingUp className="w-3 h-3" />
-                        <span>{data?.nationalMetrics.enrollment.growthRate || "+4.3%"}</span>
+                        <span>{metrics.enrollment.growthRate || "+4.3%"}</span>
                     </p>
                 </div>
 
@@ -568,7 +597,7 @@ export default function FederalDashboard() {
                         <span className="text-[11px] font-bold uppercase tracking-wider">Teachers</span>
                         <Users className="w-4 h-4 text-amber-600" />
                     </div>
-                    <div className="text-2xl font-black text-slate-900">{fmt(data?.counts.totalTeachers)}</div>
+                    <div className="text-2xl font-black text-slate-900">{fmt(data?.counts?.totalTeachers)}</div>
                     <p className="text-[10px] text-slate-400">Active Educators</p>
                 </div>
             </div>
@@ -610,7 +639,7 @@ export default function FederalDashboard() {
                                         r="48"
                                         stroke="#0284c7"
                                         strokeWidth="14"
-                                        strokeDasharray={`${(data?.nationalMetrics.enrollment.retentionRate || 94.8) * 3.01} 301.59`}
+                                        strokeDasharray={`${(metrics.enrollment.retentionRate || 94.8) * 3.01} 301.59`}
                                         strokeLinecap="round"
                                         fill="transparent"
                                         className="transition-all duration-1000 ease-out"
@@ -622,8 +651,8 @@ export default function FederalDashboard() {
                                         r="48"
                                         stroke="#0f172a"
                                         strokeWidth="14"
-                                        strokeDasharray={`${(data?.nationalMetrics.enrollment.dropoutRate || 5.2) * 3.01} 301.59`}
-                                        strokeDashoffset={`-${(data?.nationalMetrics.enrollment.retentionRate || 94.8) * 3.01}`}
+                                        strokeDasharray={`${(metrics.enrollment.dropoutRate || 5.2) * 3.01} 301.59`}
+                                        strokeDashoffset={`-${(metrics.enrollment.retentionRate || 94.8) * 3.01}`}
                                         strokeLinecap="round"
                                         fill="transparent"
                                         className="transition-all duration-1000 ease-out"
@@ -631,7 +660,7 @@ export default function FederalDashboard() {
                                 </svg>
                                 <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
                                     <span className="text-xs text-slate-400 font-semibold uppercase">Total</span>
-                                    <span className="text-xl font-black text-slate-900">{fmt(data?.counts.totalStudents)}</span>
+                                    <span className="text-xl font-black text-slate-900">{fmt(data?.counts?.totalStudents)}</span>
                                     <span className="text-[10px] text-slate-500">Enrolled</span>
                                 </div>
                             </div>
@@ -652,13 +681,13 @@ export default function FederalDashboard() {
                                 <div className="grid grid-cols-2 gap-3">
                                     <div className="p-3 rounded-xl bg-sky-50/70 border border-sky-100 text-center space-y-0.5">
                                         <span className="text-sm font-black text-sky-900">
-                                            {data?.nationalMetrics.enrollment.retentionRate ?? 94.8}%
+                                            {metrics.enrollment.retentionRate ?? 94.8}%
                                         </span>
                                         <p className="text-[11px] font-semibold text-sky-700">Active Retention</p>
                                     </div>
                                     <div className="p-3 rounded-xl bg-slate-100 border border-slate-200 text-center space-y-0.5">
                                         <span className="text-sm font-black text-slate-900">
-                                            {data?.nationalMetrics.enrollment.dropoutRate ?? 5.2}%
+                                            {metrics.enrollment.dropoutRate ?? 5.2}%
                                         </span>
                                         <p className="text-[11px] font-semibold text-slate-700">Drop Out / Inactive</p>
                                     </div>
