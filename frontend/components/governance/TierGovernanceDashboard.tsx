@@ -13,9 +13,11 @@ import {
     Landmark,
     School,
     ShieldAlert,
-    RefreshCw
+    RefreshCw,
+    Network
 } from "lucide-react";
 import Link from "next/link";
+import HierarchyTreeViewer from "./HierarchyTreeViewer";
 
 export type HierarchyTier = "FEDERAL" | "REGION" | "ZONE" | "WOREDA";
 
@@ -247,6 +249,8 @@ export function TierGovernanceDashboardContent({ tier, apiEndpoint }: { tier: Hi
         return `/dashboard/${child.type.toLowerCase()}?targetOrgId=${child.id}`;
     };
 
+    const currentTab = searchParams?.get("tab") || "overview";
+
     return (
         <div className="space-y-6 pb-12">
             {/* Header with Lineage & Context */}
@@ -310,6 +314,38 @@ export function TierGovernanceDashboardContent({ tier, apiEndpoint }: { tier: Hi
                     </div>
 
                     <div className="flex items-center gap-3">
+                        <div className="flex items-center bg-gray-100 p-1 rounded-xl">
+                            <button
+                                onClick={() => {
+                                    const base = `/dashboard/${tier.toLowerCase()}`;
+                                    const q = targetOrgId ? `?targetOrgId=${targetOrgId}` : "";
+                                    router.push(`${base}${q}`);
+                                }}
+                                className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
+                                    currentTab !== "hierarchy"
+                                        ? "bg-white text-gray-900 shadow-xs"
+                                        : "text-gray-600 hover:text-gray-900"
+                                }`}
+                            >
+                                Overview
+                            </button>
+                            <button
+                                onClick={() => {
+                                    const base = `/dashboard/${tier.toLowerCase()}`;
+                                    const q = targetOrgId ? `?targetOrgId=${targetOrgId}&tab=hierarchy` : `?tab=hierarchy`;
+                                    router.push(`${base}${q}`);
+                                }}
+                                className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
+                                    currentTab === "hierarchy"
+                                        ? "bg-white text-blue-700 shadow-xs"
+                                        : "text-gray-600 hover:text-gray-900"
+                                }`}
+                            >
+                                <Network className="w-3.5 h-3.5" />
+                                <span>Hierarchy Tree</span>
+                            </button>
+                        </div>
+
                         {context?.isDrillDown && (
                             <button
                                 onClick={() => router.push(`/dashboard/${tier.toLowerCase()}`)}
@@ -329,21 +365,26 @@ export function TierGovernanceDashboardContent({ tier, apiEndpoint }: { tier: Hi
                 </div>
             </div>
 
-            {/* Top KPI Cards Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                {/* Total Schools */}
-                <div className="bg-white p-5 rounded-2xl border border-gray-200 shadow-xs space-y-2">
-                    <div className="flex items-center justify-between">
-                        <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Schools Monitored</span>
-                        <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
-                            <School className="w-4 h-4" />
+            {/* Hierarchy Tree Tab View */}
+            {currentTab === "hierarchy" ? (
+                <HierarchyTreeViewer rootOrgId={targetOrgId || context?.organizationId} userTier={tier} />
+            ) : (
+                <>
+                    {/* Top KPI Cards Grid */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                        {/* Total Schools */}
+                        <div className="bg-white p-5 rounded-2xl border border-gray-200 shadow-xs space-y-2">
+                            <div className="flex items-center justify-between">
+                                <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Schools Monitored</span>
+                                <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
+                                    <School className="w-4 h-4" />
+                                </div>
+                            </div>
+                            <div className="text-2xl font-bold text-gray-900">{(kpis?.totalSchools ?? 0).toLocaleString()}</div>
+                            <p className="text-[11px] text-gray-500">Across authorized {tier.toLowerCase()} boundaries</p>
                         </div>
-                    </div>
-                    <div className="text-2xl font-bold text-gray-900">{(kpis?.totalSchools ?? 0).toLocaleString()}</div>
-                    <p className="text-[11px] text-gray-500">Across authorized {tier.toLowerCase()} boundaries</p>
-                </div>
 
-                {/* Total Students */}
+                        {/* Total Students */}
                 <div className="bg-white p-5 rounded-2xl border border-gray-200 shadow-xs space-y-2">
                     <div className="flex items-center justify-between">
                         <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Total Enrolled Students</span>
@@ -543,6 +584,8 @@ export function TierGovernanceDashboardContent({ tier, apiEndpoint }: { tier: Hi
                     </div>
                 )}
             </div>
+                </>
+            )}
         </div>
     );
 }
