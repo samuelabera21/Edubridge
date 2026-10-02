@@ -49,7 +49,7 @@ export class HierarchyScopeService {
         }
 
         // Single query to load all hierarchy units for efficient in-memory traversal
-        const allUnits = await prisma.organizationUnit.findMany({
+        const rawUnits = await prisma.organizationUnit.findMany({
             select: {
                 id: true,
                 name: true,
@@ -57,6 +57,7 @@ export class HierarchyScopeService {
                 parentId: true,
             },
         });
+        const allUnits = rawUnits || [];
 
         const target = allUnits.find((u) => u.id === organizationId);
         if (!target) {
@@ -109,7 +110,7 @@ export class HierarchyScopeService {
     ): Promise<string[]> {
         if (!organizationId) return [];
 
-        const allUnits = await prisma.organizationUnit.findMany({
+        const rawUnits = await prisma.organizationUnit.findMany({
             select: {
                 id: true,
                 name: true,
@@ -117,6 +118,7 @@ export class HierarchyScopeService {
                 parentId: true,
             },
         });
+        const allUnits = rawUnits || [];
 
         const target = allUnits.find((u) => u.id === organizationId);
         if (!target) {
@@ -159,7 +161,7 @@ export class HierarchyScopeService {
     static async getLineage(organizationId: string): Promise<MinimalOrganizationUnit[]> {
         if (!organizationId) return [];
 
-        const allUnits = await prisma.organizationUnit.findMany({
+        const rawUnits = await prisma.organizationUnit.findMany({
             select: {
                 id: true,
                 name: true,
@@ -167,6 +169,7 @@ export class HierarchyScopeService {
                 parentId: true,
             },
         });
+        const allUnits = rawUnits || [];
 
         const unitMap = new Map<string, MinimalOrganizationUnit>();
         for (const u of allUnits) {
@@ -320,6 +323,32 @@ export class HierarchyScopeService {
         if (actorOrgId === targetOrgId) return true;
 
         const accessibleIds = await this.getAccessibleOrganizationIds(actorOrgId, true);
-        return accessibleIds.includes(targetOrgId);
+        if (accessibleIds.includes(targetOrgId)) {
+            return true;
+        }
+
+        // Fallback: check ancestor chain of targetOrgId upwards to actorOrgId
+        try {
+            let currentId: string | null = targetOrgId;
+            const visited = new Set<string>();
+            while (currentId) {
+                if (visited.has(currentId)) break;
+                visited.add(currentId);
+
+                if (currentId === actorOrgId) return true;
+
+                const unit: { parentId: string | null } | null = await prisma.organizationUnit.findUnique({
+                    where: { id: currentId },
+                    select: { parentId: true }
+                });
+                if (!unit || !unit.parentId) break;
+                currentId = unit.parentId;
+                if (currentId === actorOrgId) return true;
+            }
+        } catch {
+            // Ignore fallback error
+        }
+
+        return false;
     }
 }
