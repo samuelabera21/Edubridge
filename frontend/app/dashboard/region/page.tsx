@@ -1,7 +1,12 @@
 "use client";
 
-import TierGovernanceDashboard from "../../../components/governance/TierGovernanceDashboard";
+import { Suspense } from "react";
+import RegionalDashboard from "../../../components/governance/RegionalDashboard";
 
 export default function RegionDashboardPage() {
-    return <TierGovernanceDashboard tier="REGION" apiEndpoint="/governance/region/dashboard" />;
+    return (
+        <Suspense fallback={<div className="p-8 text-xs text-gray-500">Loading Regional Dashboard...</div>}>
+            <RegionalDashboard />
+        </Suspense>
+    );
 }
