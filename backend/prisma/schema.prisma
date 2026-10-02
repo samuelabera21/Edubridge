@@ -48,6 +48,10 @@ model User {
   verifiedTeacherQualifications TeacherQualification[] @relation("VerifiedTeacherQualifications")
   uploadedTeacherDocuments      TeacherDocument[]      @relation("UploadedTeacherDocuments")
   verifiedTeacherDocuments      TeacherDocument[]      @relation("VerifiedTeacherDocuments")
+  verifiedStudentDocuments      StudentDocument[]      @relation("VerifiedStudentDocuments")
+  requestedCorrections          AttendanceCorrection[] @relation("RequestedCorrections")
+  reviewedCorrections           AttendanceCorrection[] @relation("ReviewedCorrections")
+  importantNotices              ImportantNotice[]      @relation("AuthoredImportantNotices")
 
   @@unique([email])
   @@map("user")
@@ -194,6 +198,10 @@ model OrganizationUnit {
   issues             Issue[]
   improvementPlans   ImprovementPlan[]
   timetableConfigs   TimetableConfig[]
+  attendanceCorrections AttendanceCorrection[]
+  notifications         Notification[]
+  messages              Message[]
+  importantNotices      ImportantNotice[]
 
   @@index([parentId])
   @@index([type])
@@ -264,6 +272,7 @@ model AcademicYear {
   assessments         Assessment[]
   learningActivities  LearningActivity[]
   timetableConfigs    TimetableConfig[]
+  attendanceCorrections AttendanceCorrection[]
 
   @@unique([organizationId, name])
   @@map("academic_year")
@@ -568,9 +577,10 @@ model Student {
   emergencyContactRelation String?
   emergencyContactPhone    String?
 
-  user        User?                @relation(fields: [userId], references: [id], onDelete: SetNull)
-  enrollments StudentEnrollment[]
-  parents     ParentStudent[]
+  user             User?                @relation(fields: [userId], references: [id], onDelete: SetNull)
+  enrollments      StudentEnrollment[]
+  parents          ParentStudent[]
+  studentDocuments StudentDocument[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -585,6 +595,7 @@ model StudentEnrollment {
   academicYearId String
   schoolGradeId  String
   sectionId      String?
+  enrollmentType EnrollmentType   @default(NEW)
   status         EnrollmentStatus @default(ENROLLED)
   enrollmentDate DateTime         @default(now())
 
@@ -594,10 +605,12 @@ model StudentEnrollment {
   schoolGrade   SchoolGrade            @relation(fields: [schoolGradeId], references: [id], onDelete: Cascade)
   section       Section?               @relation(fields: [sectionId], references: [id], onDelete: SetNull)
   statusHistory StudentStatusHistory[]
+  documents     StudentDocument[]
   attendances   StudentAttendance[]
   results       StudentResult[]
   submissions   Submission[]
   supportFlags  SupportFlag[]
+  attendanceCorrections AttendanceCorrection[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -606,6 +619,46 @@ model StudentEnrollment {
   @@index([organizationId])
   @@index([schoolGradeId])
   @@map("student_enrollment")
+}
+
+model StudentDocument {
+  id                 String                     @id @default(cuid())
+  studentId          String
+  enrollmentId       String?
+  documentType       String                     // BIRTH_CERTIFICATE, PREVIOUS_TRANSCRIPT, PARENT_ID, TRANSFER_CLEARANCE, OTHER
+  title              String
+  fileUrl            String
+  fileSize           Int?
+  mimeType           String?
+  verificationStatus DocumentVerificationStatus @default(PENDING)
+  verificationNotes  String?
+  verifiedAt         DateTime?
+  verifiedById       String?
+
+  student            Student                    @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  enrollment         StudentEnrollment?         @relation(fields: [enrollmentId], references: [id], onDelete: SetNull)
+  verifiedBy         User?                      @relation("VerifiedStudentDocuments", fields: [verifiedById], references: [id], onDelete: SetNull)
+
+  createdAt          DateTime                   @default(now())
+  updatedAt          DateTime                   @updatedAt
+
+  @@index([studentId])
+  @@index([enrollmentId])
+  @@map("student_document")
+}
+
+enum DocumentVerificationStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+  EXEMPT
+}
+
+enum EnrollmentType {
+  NEW
+  RETURNING
+  TRANSFER_IN
+  RE_ENTRY
 }
 
 model StudentStatusHistory {
@@ -930,6 +983,7 @@ model ClassPeriod {
   organization       OrganizationUnit    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   timetables         Timetable[]
   studentAttendances StudentAttendance[]
+  attendanceCorrections AttendanceCorrection[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1018,6 +1072,46 @@ model TeacherAttendance {
   @@unique([teacherId, date])
   @@index([organizationId, date])
   @@map("teacher_attendance")
+}
+
+enum AttendanceCorrectionStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model AttendanceCorrection {
+  id                  String                     @id @default(cuid())
+  organizationId      String
+  academicYearId      String
+  attendanceId        String?
+  enrollmentId        String
+  date                DateTime                   @db.Date
+  classPeriodId       String?
+  originalStatus      AttendanceStatus
+  requestedStatus     AttendanceStatus
+  reasonCategory      String
+  justification       String
+  evidenceDocumentUrl String?
+  status              AttendanceCorrectionStatus @default(PENDING)
+  requestedById       String
+  reviewedById        String?
+  reviewedAt          DateTime?
+  rejectionReason     String?
+  createdAt           DateTime                   @default(now())
+  updatedAt           DateTime                   @updatedAt
+
+  organization OrganizationUnit  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  academicYear AcademicYear      @relation(fields: [academicYearId], references: [id], onDelete: Cascade)
+  enrollment   StudentEnrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+  classPeriod  ClassPeriod?      @relation(fields: [classPeriodId], references: [id], onDelete: SetNull)
+  requestedBy  User              @relation("RequestedCorrections", fields: [requestedById], references: [id], onDelete: Cascade)
+  reviewedBy   User?             @relation("ReviewedCorrections", fields: [reviewedById], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, status])
+  @@index([enrollmentId])
+  @@index([academicYearId])
+  @@map("attendance_correction")
 }
 
 // ============================================================
@@ -1203,35 +1297,41 @@ model Announcement {
 }
 
 model Notification {
-  id      String  @id @default(cuid())
-  userId  String
-  title   String
-  content String
-  isRead  Boolean @default(false)
-  link    String?
+  id             String  @id @default(cuid())
+  userId         String
+  organizationId String
+  title          String
+  content        String
+  isRead         Boolean @default(false)
+  link           String?
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user         User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization OrganizationUnit @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([userId])
+  @@index([organizationId])
   @@map("notification")
 }
 
 model Message {
-  id         String  @id @default(cuid())
-  senderId   String
-  receiverId String
-  content    String
-  isRead     Boolean @default(false)
+  id             String  @id @default(cuid())
+  organizationId String
+  senderId       String
+  receiverId     String
+  content        String
+  isRead         Boolean @default(false)
 
-  sender   User @relation("SentMessages", fields: [senderId], references: [id], onDelete: Cascade)
-  receiver User @relation("ReceivedMessages", fields: [receiverId], references: [id], onDelete: Cascade)
+  organization OrganizationUnit @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  sender       User             @relation("SentMessages", fields: [senderId], references: [id], onDelete: Cascade)
+  receiver     User             @relation("ReceivedMessages", fields: [receiverId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@index([organizationId])
   @@index([senderId])
   @@index([receiverId])
   @@map("message")
@@ -1543,15 +1643,19 @@ model ParentParticipation {
 model ImportantNotice {
   id             String   @id @default(cuid())
   organizationId String
+  authorId       String
   title          String
   content        String
   noticeType     String   @default("EMERGENCY") // EMERGENCY, COMPLIANCE, SAFETY, DIRECTIVE
   isPinned       Boolean  @default(true)
-  authorName     String   @default("School Principal")
+
+  organization OrganizationUnit @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  author       User             @relation("AuthoredImportantNotices", fields: [authorId], references: [id], onDelete: Cascade)
 
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
+  @@index([organizationId])
   @@map("important_notice")
 }
 

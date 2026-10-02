@@ -129,7 +129,7 @@ describe("Step 3A: Production Teacher Registration & Credential Workflow", () =>
                     fieldOfStudy: "Physics",
                     institution: "Addis Ababa University",
                     graduationYear: 2014,
-                    credentialNumber: "AAU-BSC-2014-9912",
+                    credentialNumber: "CRED-AAU-2014",
                     country: "Ethiopia",
                     isHighest: true
                 }
@@ -145,29 +145,29 @@ describe("Step 3A: Production Teacher Registration & Credential Workflow", () =>
         });
 
         expect(teacher).toBeDefined();
-        expect(teacher.id).toBeDefined();
-        createdTeacherId = teacher.id;
+        expect(teacher!.id).toBeDefined();
+        createdTeacherId = teacher!.id;
 
-        expect(teacher.firstName).toBe("Abebe");
-        expect(teacher.fatherName).toBe("Tadesse");
-        expect(teacher.lastName).toBe("Kebede");
-        expect(teacher.gender).toBe("MALE");
-        expect(teacher.employeeId).toBe("ETH-STAFF-001");
-        expect(teacher.staffIdCode).toBe("TCH-001");
-        expect(teacher.employmentType).toBe("PERMANENT");
-        expect(teacher.employmentStatus).toBe("ACTIVE");
+        expect(teacher!.firstName).toBe("Abebe");
+        expect(teacher!.fatherName).toBe("Tadesse");
+        expect(teacher!.lastName).toBe("Kebede");
+        expect(teacher!.gender).toBe("MALE");
+        expect(teacher!.employeeId).toBe("ETH-STAFF-001");
+        expect(teacher!.staffIdCode).toBe("TCH-001");
+        expect(teacher!.employmentType).toBe("PERMANENT");
+        expect(teacher!.employmentStatus).toBe("ACTIVE");
 
         // Verify qualifications were persisted with PENDING verification status
-        expect(teacher.qualifications).toHaveLength(1);
-        const q = teacher.qualifications[0];
+        expect(teacher!.qualifications).toHaveLength(1);
+        const q = teacher!.qualifications[0]!;
         expect(q.qualificationLevel).toBe("BACHELORS");
         expect(q.institution).toBe("Addis Ababa University");
         expect(q.verificationStatus).toBe("PENDING");
 
         // Verify specialization was created with verified: false
-        expect(teacher.specializations).toHaveLength(1);
-        expect(teacher.specializations[0].subjectId).toBe(physicsSubjectId);
-        expect(teacher.specializations[0].verified).toBe(false);
+        expect(teacher!.specializations).toHaveLength(1);
+        expect(teacher!.specializations![0]!.subjectId).toBe(physicsSubjectId);
+        expect(teacher!.specializations![0]!.verified).toBe(false);
     });
 
     it("2. Rejects registration when required identity data is missing", async () => {
@@ -223,7 +223,7 @@ describe("Step 3A: Production Teacher Registration & Credential Workflow", () =>
                 fieldOfStudy: "Educational Pedagogy",
                 institution: "Kotebe University of Education",
                 graduationYear: 2020,
-                credentialNumber: "KUE-MED-2020-041",
+                credentialNumber: "CRED-KUE-2020",
                 country: "Ethiopia",
                 isHighest: true
             },

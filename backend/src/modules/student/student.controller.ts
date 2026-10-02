@@ -1,8 +1,42 @@
 import { Request, Response } from "express";
 import { StudentService } from "./student.service.js";
-import { EnrollmentStatus } from "../../generated/prisma/enums.js";
+import { EnrollmentStatus, DocumentVerificationStatus } from "../../generated/prisma/enums.js";
 
-// Create a global student identity
+// Step 4: Atomic Student Registration & Intake Handler
+export const registerStudentIntake = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        if (!organizationId) {
+            return res.status(403).json({ error: "Missing school scope" });
+        }
+
+        const result = await StudentService.registerStudentIntake(organizationId, req.body, req.user?.id);
+        return res.status(201).json(result);
+    } catch (error: any) {
+        console.error("Student intake error:", error);
+        return res.status(400).json({ error: error.message || "Failed to register student" });
+    }
+};
+
+// Step 4: Existing Student Search (Duplicate Detection & Returning Lookup)
+export const searchStudents = async (req: Request, res: Response) => {
+    try {
+        const { search, studentId, firstName, fatherName, dateOfBirth } = req.query;
+        const results = await StudentService.searchExistingStudents({
+            search: search as string,
+            studentId: studentId as string,
+            firstName: firstName as string,
+            fatherName: fatherName as string,
+            dateOfBirth: dateOfBirth as string
+        });
+        return res.json(results);
+    } catch (error) {
+        console.error("Student search error:", error);
+        return res.status(500).json({ error: "Internal server error during student search" });
+    }
+};
+
+// Create a global student identity (legacy endpoint preserved)
 export const createStudent = async (req: Request, res: Response) => {
     try {
         const { firstName, lastName } = req.body;
@@ -13,10 +47,7 @@ export const createStudent = async (req: Request, res: Response) => {
         }
 
         if (!studentId) {
-            // Auto-generate a Student ID (e.g., STU-YYYYMM-XXXX)
-            const randomCode = Math.floor(1000 + Math.random() * 9000);
-            const dateStr = new Date().toISOString().slice(2, 7).replace("-", ""); // YYMM
-            studentId = `STU-${dateStr}-${randomCode}`;
+            studentId = await StudentService.generateStudentId();
         }
 
         const student = await StudentService.createStudent({
@@ -26,13 +57,30 @@ export const createStudent = async (req: Request, res: Response) => {
         });
         
         return res.status(201).json(student);
-    } catch (error) {
-        return res.status(400).json({ error: "Failed to create student. Student ID might already exist." });
+    } catch (error: any) {
+        return res.status(400).json({ error: error.message || "Failed to create student. Student ID might already exist." });
     }
 };
 
+// Get students directory (Tenant-isolated when school scope is attached)
 export const getStudents = async (req: Request, res: Response) => {
     try {
+        const organizationId = (req as any).accessScope?.id;
+        if (organizationId) {
+            const { search, gender, schoolGradeId, status, page, limit, sortBy, sortOrder } = req.query;
+            const result = await StudentService.getSchoolStudents(organizationId, {
+                search: search as string,
+                gender: gender as string,
+                schoolGradeId: schoolGradeId as string,
+                status: status as EnrollmentStatus,
+                page: page ? Number(page) : undefined,
+                limit: limit ? Number(limit) : undefined,
+                sortBy: sortBy as string,
+                sortOrder: sortOrder as "asc" | "desc"
+            });
+            return res.json(result);
+        }
+
         const students = await StudentService.getStudents();
         return res.json(students);
     } catch (error) {
@@ -58,12 +106,19 @@ export const enrollStudent = async (req: Request, res: Response) => {
         const organizationId = (req as any).accessScope?.id;
         if (!organizationId) return res.status(403).json({ error: "Missing school scope" });
 
-        const { studentId, academicYearId, schoolGradeId, sectionId } = req.body;
+        const { studentId, academicYearId, schoolGradeId, sectionId, enrollmentType } = req.body;
         if (!studentId || !academicYearId || !schoolGradeId) {
             return res.status(400).json({ error: "studentId, academicYearId, and schoolGradeId are required" });
         }
 
-        const enrollment = await StudentService.enrollStudent(organizationId, studentId, academicYearId, schoolGradeId, sectionId);
+        const enrollment = await StudentService.enrollStudent(
+            organizationId, 
+            studentId, 
+            academicYearId, 
+            schoolGradeId, 
+            sectionId, 
+            enrollmentType
+        );
         return res.status(201).json(enrollment);
     } catch (error: any) {
         return res.status(400).json({ error: error.message || "Failed to enroll student" });
@@ -121,6 +176,32 @@ export const updateStudentStatus = async (req: Request, res: Response) => {
         return res.json(updated);
     } catch (error: any) {
         return res.status(400).json({ error: error.message || "Failed to update student status" });
+    }
+};
+
+// Verify Document
+export const verifyDocumentHandler = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        if (!organizationId) return res.status(403).json({ error: "Missing school scope" });
+
+        const { id: documentId } = req.params;
+        const { verificationStatus, notes } = req.body;
+
+        if (!verificationStatus) {
+            return res.status(400).json({ error: "verificationStatus is required" });
+        }
+
+        const updated = await StudentService.verifyDocument(
+            organizationId, 
+            documentId as string, 
+            verificationStatus as DocumentVerificationStatus, 
+            notes, 
+            req.user?.id
+        );
+        return res.json(updated);
+    } catch (error: any) {
+        return res.status(400).json({ error: error.message || "Failed to verify document" });
     }
 };
 
@@ -202,4 +283,3 @@ export const createApprovalHandler = async (req: Request, res: Response) => {
         return res.status(500).json({ error: "Internal server error" });
     }
 };
-

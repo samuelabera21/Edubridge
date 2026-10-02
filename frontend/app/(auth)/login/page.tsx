@@ -88,7 +88,29 @@ export default function LoginPage() {
                     return;
                 }
 
-                const roleName = meData.access?.[0]?.role?.name;
+                const primaryAccess = meData.access?.[0];
+                const roleName = primaryAccess?.role?.name;
+                const scopeType = primaryAccess?.scope?.type;
+
+                // 1. Hierarchy / Administrative scopes
+                if (scopeType === "FEDERAL") {
+                    router.push("/dashboard/federal");
+                    return;
+                }
+                if (scopeType === "REGION") {
+                    router.push("/dashboard/region");
+                    return;
+                }
+                if (scopeType === "ZONE") {
+                    router.push("/dashboard/zone");
+                    return;
+                }
+                if (scopeType === "WOREDA") {
+                    router.push("/dashboard/woreda");
+                    return;
+                }
+
+                // 2. School-level roles
                 switch (roleName) {
                     case "ADMIN":
                     case "SCHOOL_ADMIN":
@@ -108,12 +130,12 @@ export default function LoginPage() {
                         router.push("/dashboard/vice-principal");
                         return;
                     default:
-                        router.push("/dashboard/admin");
+                        router.push("/dashboard/federal");
                         return;
                 }
             }
 
-            router.push("/dashboard/admin");
+            router.push("/dashboard/federal");
         } catch (err) {
             console.error(err);
             setError("A network error occurred. Please try again.");

@@ -422,18 +422,41 @@ export async function getTeacherSupportOverview(organizationId: string) {
 }
 
 export async function getCommunicationOverview(organizationId: string) {
-    // Mock data for Academic Announcements and Messages
-    const announcements = [
-        { id: "1", title: "End of Term Examinations", date: "2026-08-20", target: "All Staff", priority: "HIGH" },
-        { id: "2", title: "New Grading Policy", date: "2026-08-15", target: "Teachers", priority: "NORMAL" }
-    ];
+    const [announcements, recentMessages] = await Promise.all([
+        prisma.announcement.findMany({
+            where: { organizationId },
+            include: { author: { select: { id: true, name: true } } },
+            orderBy: { createdAt: "desc" },
+            take: 5
+        }),
+        prisma.message.findMany({
+            where: { organizationId },
+            include: {
+                sender: { select: { id: true, name: true } },
+                receiver: { select: { id: true, name: true } }
+            },
+            orderBy: { createdAt: "desc" },
+            take: 5
+        })
+    ]);
 
-    const recentMessages = [
-        { id: "1", from: "John Doe (Teacher)", subject: "Clarification on Syllabus", date: "Today", isRead: false },
-        { id: "2", from: "Jane Smith (Parent)", subject: "Attendance Alert Dispute", date: "Yesterday", isRead: true }
-    ];
-
-    return { announcements, recentMessages };
+    return {
+        announcements: announcements.map(a => ({
+            id: a.id,
+            title: a.title,
+            date: a.createdAt.toISOString().split("T")[0],
+            target: a.target,
+            authorName: a.author.name
+        })),
+        recentMessages: recentMessages.map(m => ({
+            id: m.id,
+            from: m.sender.name,
+            to: m.receiver.name,
+            preview: m.content.slice(0, 100),
+            date: m.createdAt.toISOString().split("T")[0],
+            isRead: m.isRead
+        }))
+    };
 }
 
 export async function getAiInsights(organizationId: string) {

@@ -25,10 +25,12 @@ import {
     List, 
     CalendarDays, 
     BarChart2, 
-    Info, 
     Check, 
     X,
-    Bell
+    Building2,
+    CalendarCheck,
+    Layers,
+    ShieldCheck
 } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -147,16 +149,25 @@ export default function AcademicCalendarPage() {
     const [loadingSuggestions, setLoadingSuggestions] = useState(false);
     const [confirmingHolidayIndex, setConfirmingHolidayIndex] = useState<number | null>(null);
 
+    // Pagination for Agenda view
+    const [currentPage, setCurrentPage] = useState(1);
+    const [pageSize, setPageSize] = useState(10);
+
+    // Reset pagination when filters or year change
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [categoryFilter, periodFilter, selectedYearId, pageSize]);
+
     // Permissions
-    const hasManagePermission = authData?.access.some(acc =>
+    const hasManagePermission = authData?.access?.some(acc =>
         ["ADMIN", "SCHOOL_ADMIN", "VICE_PRINCIPAL"].includes(acc.role.name) ||
         acc.role.permissions.some((p: any) => ["ACADEMIC:CREATE", "ACADEMIC:UPDATE", "ACADEMIC:MANAGE"].includes(p.permission?.name))
-    );
+    ) ?? true;
 
-    const isPrincipalOrAdmin = authData?.access.some(acc =>
+    const isPrincipalOrAdmin = authData?.access?.some(acc =>
         ["ADMIN", "SCHOOL_ADMIN"].includes(acc.role.name) ||
         acc.role.permissions.some((p: any) => ["ACADEMIC:MANAGE"].includes(p.permission?.name))
-    );
+    ) ?? true;
 
     const selectedYear = years.find(y => y.id === selectedYearId) || null;
 
@@ -173,7 +184,6 @@ export default function AcademicCalendarPage() {
                 const active = data.find(y => y.status === "ACTIVE");
                 const initialYear = active || data[0];
                 setSelectedYearId(initialYear.id);
-                // Synchronize month view to start of academic year
                 if (initialYear.startDate) {
                     setCurrentMonthDate(new Date(initialYear.startDate));
                 }
@@ -276,7 +286,7 @@ export default function AcademicCalendarPage() {
                 throw new Error(err.error || "Failed to publish calendar");
             }
             await loadCalendar(selectedYearId);
-            alert("✅ Academic calendar officially published! All terms, holidays, and examination schedules are now active.");
+            alert("Official academic calendar successfully published. All terms, examinations, and holidays are now authoritative.");
         } catch (err: any) {
             alert(err.message);
         } finally {
@@ -448,11 +458,10 @@ export default function AcademicCalendarPage() {
             await loadCalendar(selectedYearId);
             await loadHolidaySuggestions();
 
-            // If there are warnings, keep modal open to notify user, otherwise close
             if (!data.warnings || data.warnings.length === 0) {
                 setIsEventModalOpen(false);
             } else {
-                alert(`Event saved successfully with notices:\n\n${data.warnings.join("\n")}`);
+                alert(`Event saved with notices:\n\n${data.warnings.join("\n")}`);
                 setIsEventModalOpen(false);
             }
         } catch (err: any) {
@@ -540,6 +549,13 @@ export default function AcademicCalendarPage() {
         }).sort((a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime());
     }, [calendar?.events, calendar?.periods, categoryFilter, periodFilter]);
 
+    // Paginated events for Agenda view
+    const totalPages = Math.max(1, Math.ceil(filteredEvents.length / pageSize));
+    const paginatedEvents = useMemo(() => {
+        const start = (currentPage - 1) * pageSize;
+        return filteredEvents.slice(start, start + pageSize);
+    }, [filteredEvents, currentPage, pageSize]);
+
     // Current month events count based on active filters
     const currentMonthEventsCount = useMemo(() => {
         const year = currentMonthDate.getFullYear();
@@ -558,44 +574,55 @@ export default function AcademicCalendarPage() {
         return suggestedHolidays.filter(s => !s.isAdded).length;
     }, [suggestedHolidays]);
 
+    // Summary counts
+    const examCount = useMemo(() => {
+        return calendar?.events?.filter(e => e.category === "EXAMINATION").length || 0;
+    }, [calendar?.events]);
+
+    const holidayCount = useMemo(() => {
+        return calendar?.events?.filter(e => e.category === "HOLIDAY_BREAK").length || 0;
+    }, [calendar?.events]);
+
+    const closureCount = useMemo(() => {
+        return calendar?.events?.filter(e => e.isSchoolClosed).length || 0;
+    }, [calendar?.events]);
+
+    const formatEventType = (type: string) => {
+        if (!type) return "Event";
+        return type.split("_").map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(" ");
+    };
+
     // Helpers for event styling & badges
-    const getEventBadge = (category: string, type: string, isClosed: boolean) => {
-        if (isClosed) {
-            return {
-                bg: "bg-amber-100 text-amber-900 border-amber-300",
-                dot: "bg-amber-600",
-                icon: <Coffee className="w-3 h-3 text-amber-700" />,
-                label: "School Closed"
-            };
-        }
+    const getEventBadge = (category: string, type: string) => {
+        const formattedType = formatEventType(type);
         switch (category) {
             case "EXAMINATION":
                 return {
-                    bg: "bg-indigo-100 text-indigo-900 border-indigo-300",
-                    dot: "bg-indigo-600",
-                    icon: <Award className="w-3 h-3 text-indigo-700" />,
-                    label: type.replace("_", " ")
+                    bg: "bg-indigo-50 text-indigo-900 border-indigo-200 hover:bg-indigo-100",
+                    dot: "bg-indigo-500",
+                    badgeBg: "bg-indigo-50 text-indigo-800 border-indigo-200",
+                    label: formattedType
                 };
             case "HOLIDAY_BREAK":
                 return {
-                    bg: "bg-sky-100 text-sky-900 border-sky-300",
-                    dot: "bg-sky-600",
-                    icon: <Flag className="w-3 h-3 text-sky-700" />,
-                    label: type.replace("_", " ")
+                    bg: "bg-amber-50 text-amber-900 border-amber-200 hover:bg-amber-100",
+                    dot: "bg-amber-500",
+                    badgeBg: "bg-slate-100 text-slate-800 border-slate-200",
+                    label: formattedType
                 };
             case "SCHOOL_EVENT":
                 return {
-                    bg: "bg-emerald-100 text-emerald-900 border-emerald-300",
-                    dot: "bg-emerald-600",
-                    icon: <BookOpen className="w-3 h-3 text-emerald-700" />,
-                    label: type.replace("_", " ")
+                    bg: "bg-emerald-50 text-emerald-900 border-emerald-200 hover:bg-emerald-100",
+                    dot: "bg-emerald-500",
+                    badgeBg: "bg-emerald-50 text-emerald-800 border-emerald-200",
+                    label: formattedType
                 };
             default:
                 return {
-                    bg: "bg-gray-100 text-gray-800 border-gray-300",
-                    dot: "bg-gray-600",
-                    icon: <CalendarIcon className="w-3 h-3 text-gray-600" />,
-                    label: "Event"
+                    bg: "bg-slate-50 text-slate-900 border-slate-200 hover:bg-slate-100",
+                    dot: "bg-slate-400",
+                    badgeBg: "bg-slate-100 text-slate-700 border-slate-200",
+                    label: formattedType || "Event"
                 };
         }
     };
@@ -649,7 +676,7 @@ export default function AcademicCalendarPage() {
             });
         }
 
-        // Next month padding to fill complete grid of 35 or 42
+        // Next month padding to fill complete grid
         const remaining = (7 - (days.length % 7)) % 7;
         for (let i = 1; i <= remaining; i++) {
             const d = new Date(year, month + 1, i);
@@ -687,68 +714,78 @@ export default function AcademicCalendarPage() {
     }
 
     return (
-        <div className="space-y-6 max-w-7xl mx-auto pb-16">
-            {/* Header & Academic Year Selector */}
-            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-gray-200 pb-5">
-                <div>
-                    <div className="flex items-center space-x-3">
-                        <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-[#006b3f] to-emerald-500 flex items-center justify-center text-white shadow-sm">
-                            <CalendarIcon className="w-6 h-6" />
-                        </div>
-                        <div>
-                            <h1 className="text-2xl font-bold text-gray-900 tracking-tight flex items-center gap-2">
-                                Ethiopian School Academic Calendar
-                                {calendar?.status && (
-                                    <span className={`text-xs px-2.5 py-1 rounded-full font-semibold border ${
-                                        calendar.status === "PUBLISHED" 
-                                            ? "bg-emerald-50 text-emerald-800 border-emerald-300"
-                                            : calendar.status === "REVIEW"
-                                            ? "bg-blue-50 text-blue-800 border-blue-300"
-                                            : "bg-amber-50 text-amber-800 border-amber-300"
-                                    }`}>
-                                        {calendar.status === "PUBLISHED" ? "🔒 Official Published" : `State: ${calendar.status}`}
-                                    </span>
-                                )}
+        <div className="space-y-6 max-w-7xl mx-auto pb-16 text-slate-800">
+            {/* Clean Official Header */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white border border-slate-200 rounded-xl px-5 py-4 shadow-xs">
+                <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-[#4085b3]/10 text-[#4085b3] border border-[#4085b3]/20 flex items-center justify-center shrink-0">
+                        <CalendarIcon className="w-5 h-5" />
+                    </div>
+                    <div>
+                        <div className="flex items-center gap-2.5">
+                            <h1 className="text-xl font-bold text-slate-900 tracking-tight">
+                                Academic Calendar
                             </h1>
-                            <p className="text-xs text-gray-500 mt-0.5">
-                                Institutional semesters, examination windows, national Ethiopian holidays, and instructional breaks.
-                            </p>
+                            {calendar?.status && (
+                                <span className={`inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full font-semibold border ${
+                                    calendar.status === "PUBLISHED" 
+                                        ? "bg-emerald-50 text-emerald-800 border-emerald-300"
+                                        : calendar.status === "REVIEW"
+                                        ? "bg-sky-50 text-sky-800 border-sky-300"
+                                        : "bg-slate-100 text-slate-700 border-slate-300"
+                                }`}>
+                                    {calendar.status === "PUBLISHED" ? (
+                                        <>
+                                            <ShieldCheck className="w-3 h-3 text-emerald-700" />
+                                            <span>Published</span>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Clock className="w-3 h-3 text-slate-500" />
+                                            <span>{calendar.status}</span>
+                                        </>
+                                    )}
+                                </span>
+                            )}
                         </div>
+                        {selectedYear && (
+                            <p className="text-xs text-slate-500 font-mono mt-0.5">
+                                {selectedYear.name} ({selectedYear.startDate.slice(0, 10)} to {selectedYear.endDate.slice(0, 10)})
+                            </p>
+                        )}
                     </div>
                 </div>
 
-                <div className="flex flex-wrap items-center gap-3">
+                {/* Header Actions */}
+                <div className="flex flex-wrap items-center gap-2">
+                    {/* Academic Year Switcher */}
+                    <select
+                        value={selectedYearId}
+                        onChange={(e) => setSelectedYearId(e.target.value)}
+                        className="bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 text-xs text-slate-900 font-semibold focus:outline-none focus:ring-1 focus:ring-[#4085b3] cursor-pointer"
+                    >
+                        {years.map(y => (
+                            <option key={y.id} value={y.id}>
+                                Year: {y.name} ({y.status})
+                            </option>
+                        ))}
+                    </select>
+
                     {/* Ethiopian Holiday Suggestions Trigger */}
                     {calendar && (
                         <button
                             onClick={() => setIsHolidaySuggestionsOpen(true)}
-                            className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold bg-gradient-to-r from-amber-50 to-amber-100 hover:from-amber-100 hover:to-amber-200 text-amber-900 border border-amber-300 shadow-sm transition-all"
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-white text-slate-700 border border-slate-300 hover:bg-slate-50 transition-colors shadow-xs"
                         >
-                            <Sparkles className="w-4 h-4 text-amber-600" />
-                            Ethiopian Holiday Suggestions
+                            <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+                            <span>Holidays</span>
                             {pendingHolidayCount > 0 && (
-                                <span className="bg-amber-600 text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold">
+                                <span className="bg-amber-600 text-white text-[10px] px-1.5 py-0.2 rounded-full font-bold">
                                     {pendingHolidayCount}
                                 </span>
                             )}
                         </button>
                     )}
-
-                    {/* Academic Year Switcher */}
-                    <div className="flex items-center space-x-2 bg-white px-3 py-1.5 rounded-lg border border-gray-200 shadow-sm text-xs">
-                        <span className="font-semibold text-gray-500 uppercase tracking-wider">Year:</span>
-                        <select
-                            value={selectedYearId}
-                            onChange={(e) => setSelectedYearId(e.target.value)}
-                            className="bg-transparent text-gray-900 font-bold focus:outline-none cursor-pointer"
-                        >
-                            {years.map(y => (
-                                <option key={y.id} value={y.id}>
-                                    {y.name} ({y.status})
-                                </option>
-                            ))}
-                        </select>
-                    </div>
 
                     {/* Publish / Unpublish Action Button */}
                     {calendar && isPrincipalOrAdmin && (
@@ -756,18 +793,18 @@ export default function AcademicCalendarPage() {
                             <Button 
                                 variant="secondary" 
                                 size="sm" 
-                                leftIcon={<Unlock className="w-3.5 h-3.5 text-gray-600" />}
+                                leftIcon={<Unlock className="w-3.5 h-3.5 text-slate-600" />}
                                 onClick={handleUnpublishCalendar}
-                                className="text-xs border border-gray-300"
+                                className="text-xs border-slate-300 h-8"
                             >
-                                Reopen for Review
+                                Reopen
                             </Button>
                         ) : (
                             <Button 
                                 size="sm" 
                                 leftIcon={<Lock className="w-3.5 h-3.5" />}
                                 onClick={handlePublishCalendar}
-                                className="text-xs bg-[#006b3f] hover:bg-[#005230] text-white shadow"
+                                className="text-xs bg-[#4085b3] hover:bg-[#32698e] text-white h-8"
                             >
                                 Publish Calendar
                             </Button>
@@ -776,197 +813,161 @@ export default function AcademicCalendarPage() {
                 </div>
             </div>
 
-            {/* Calendar Structure Initializer if none exists */}
+            {/* Calendar Initializer state */}
             {calendarLoading ? (
                 <LoadingState message="Loading calendar structure & schedules..." />
             ) : !calendar ? (
-                <Card className="border-dashed border-2 border-emerald-300 bg-emerald-50/20 text-center py-14 shadow-none">
+                <Card className="border-dashed border-2 border-slate-300 bg-white text-center py-14 shadow-none">
                     <CardContent className="space-y-4 max-w-md mx-auto">
-                        <div className="w-14 h-14 rounded-2xl bg-emerald-100 text-[#006b3f] flex items-center justify-center mx-auto shadow-sm">
-                            <CalendarIcon className="w-7 h-7" />
+                        <div className="w-12 h-12 rounded-xl bg-slate-100 text-[#4085b3] flex items-center justify-center mx-auto border border-slate-200">
+                            <CalendarIcon className="w-6 h-6" />
                         </div>
                         <div>
-                            <h3 className="text-lg font-bold text-gray-900">Academic Calendar Not Initialized</h3>
-                            <p className="text-xs text-gray-600 mt-1 leading-relaxed">
-                                Establish the authoritative operational calendar for <strong>{selectedYear?.name}</strong> to configure semesters, schedule examinations, and confirm Ethiopian holidays.
+                            <h3 className="text-base font-bold text-slate-900">Academic Calendar Not Initialized</h3>
+                            <p className="text-xs text-slate-600 mt-1 leading-relaxed">
+                                Establish the authoritative operational calendar for <strong>{selectedYear?.name}</strong> to configure semesters, schedule examinations, and adopt national Ethiopian holidays.
                             </p>
                         </div>
                         {hasManagePermission && (
-                            <Button onClick={handleCreateCalendar} leftIcon={<Plus className="w-4 h-4" />}>
+                            <Button onClick={handleCreateCalendar} leftIcon={<Plus className="w-4 h-4" />} className="bg-[#4085b3] hover:bg-[#32698e] text-white">
                                 Initialize {selectedYear?.name} Calendar
                             </Button>
                         )}
                     </CardContent>
                 </Card>
             ) : (
-                <div className="space-y-6">
-                    {/* Top Operational Banner */}
-                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 p-4 rounded-xl border bg-white shadow-sm">
-                        <div className="flex items-center space-x-3">
-                            <div className={`p-2 rounded-lg ${
-                                calendar.status === "PUBLISHED" ? "bg-emerald-100 text-emerald-800" : "bg-blue-100 text-blue-800"
-                            }`}>
-                                {calendar.status === "PUBLISHED" ? <Lock className="w-5 h-5" /> : <Clock className="w-5 h-5" />}
-                            </div>
-                            <div>
-                                <div className="flex items-center space-x-2">
-                                    <span className="font-bold text-sm text-gray-900">
-                                        {selectedYear?.name} Academic Calendar
-                                    </span>
-                                    <span className="text-xs text-gray-500 font-mono">
-                                        ({selectedYear?.startDate.slice(0, 10)} to {selectedYear?.endDate.slice(0, 10)})
-                                    </span>
-                                </div>
-                                <p className="text-xs text-gray-500 mt-0.5">
-                                    {calendar.periods.length} Semesters configured • {calendar.events.length} Events & Holidays recorded
-                                    {calendar.publishedAt && ` • Published ${new Date(calendar.publishedAt).toLocaleDateString()}`}
-                                </p>
-                            </div>
-                        </div>
-
-                        {/* Quick Action Buttons */}
-                        {hasManagePermission && (
-                            <div className="flex items-center gap-2">
-                                <Button 
-                                    size="sm" 
-                                    variant="secondary"
-                                    leftIcon={<Plus className="w-3.5 h-3.5" />} 
-                                    onClick={() => setIsPeriodModalOpen(true)}
-                                    className="text-xs"
-                                >
-                                    Add Semester
-                                </Button>
-                                <Button 
-                                    size="sm" 
-                                    leftIcon={<Plus className="w-3.5 h-3.5" />} 
-                                    onClick={() => openCreateEventModal()}
-                                    className="text-xs"
-                                >
-                                    Add Event / Exam
-                                </Button>
-                            </div>
-                        )}
-                    </div>
-
-                    {/* View Mode Toolbar & Filters */}
-                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 bg-gray-50 p-2.5 rounded-xl border border-gray-200">
-                        {/* View Switcher */}
-                        <div className="flex items-center bg-white rounded-lg p-1 border border-gray-200 shadow-xs">
+                <div className="space-y-4">
+                    {/* Unified Navigation, Filter & Action Toolbar */}
+                    <div className="bg-white p-3 rounded-xl border border-slate-200 flex flex-col md:flex-row md:items-center justify-between gap-3 shadow-xs">
+                        {/* Left: View Switcher */}
+                        <div className="inline-flex items-center bg-slate-100 rounded-lg p-1 border border-slate-200/80 shrink-0">
                             <button
                                 onClick={() => setViewMode("month")}
                                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
-                                    viewMode === "month" ? "bg-[#006b3f] text-white shadow-xs" : "text-gray-600 hover:text-gray-900"
+                                    viewMode === "month" ? "bg-white text-slate-900 shadow-xs border border-slate-200" : "text-slate-600 hover:text-slate-900"
                                 }`}
                             >
-                                <CalendarDays className="w-3.5 h-3.5" />
+                                <CalendarDays className="w-3.5 h-3.5 text-[#4085b3]" />
                                 Month View
                             </button>
                             <button
                                 onClick={() => setViewMode("agenda")}
                                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
-                                    viewMode === "agenda" ? "bg-[#006b3f] text-white shadow-xs" : "text-gray-600 hover:text-gray-900"
+                                    viewMode === "agenda" ? "bg-white text-slate-900 shadow-xs border border-slate-200" : "text-slate-600 hover:text-slate-900"
                                 }`}
                             >
-                                <List className="w-3.5 h-3.5" />
-                                List / Agenda
+                                <List className="w-3.5 h-3.5 text-[#4085b3]" />
+                                Agenda
                             </button>
                             <button
                                 onClick={() => setViewMode("timeline")}
                                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
-                                    viewMode === "timeline" ? "bg-[#006b3f] text-white shadow-xs" : "text-gray-600 hover:text-gray-900"
+                                    viewMode === "timeline" ? "bg-white text-slate-900 shadow-xs border border-slate-200" : "text-slate-600 hover:text-slate-900"
                                 }`}
                             >
-                                <BarChart2 className="w-3.5 h-3.5" />
-                                Year Timeline
+                                <BarChart2 className="w-3.5 h-3.5 text-[#4085b3]" />
+                                Semesters
                             </button>
                         </div>
 
-                        {/* Filter Selectors */}
-                        <div className="flex flex-wrap items-center gap-3">
-                            <div className="flex items-center space-x-1.5 text-xs text-gray-500">
-                                <Filter className="w-3.5 h-3.5 text-gray-400" />
-                                <span className="font-semibold">Category:</span>
-                                <select
-                                    value={categoryFilter}
-                                    onChange={(e) => setCategoryFilter(e.target.value)}
-                                    className="bg-white border border-gray-200 rounded-md px-2 py-1 text-xs text-gray-800 font-medium shadow-xs"
-                                >
-                                    <option value="ALL">All Categories</option>
-                                    <option value="EXAMINATION">Examinations</option>
-                                    <option value="HOLIDAY_BREAK">Holidays & Breaks</option>
-                                    <option value="CLOSURES">School Closures Only</option>
-                                    <option value="SCHOOL_EVENT">School Events</option>
-                                </select>
+                        {/* Middle & Right: Filters & Creation Actions */}
+                        <div className="flex flex-wrap items-center justify-between md:justify-end gap-2.5 flex-1">
+                            {/* Filter Selectors */}
+                            <div className="flex items-center gap-2">
+                                <div className="flex items-center space-x-1 text-xs">
+                                    <Filter className="w-3 h-3 text-slate-400" />
+                                    <select
+                                        value={categoryFilter}
+                                        onChange={(e) => setCategoryFilter(e.target.value)}
+                                        className="bg-slate-50 border border-slate-200 rounded-md px-2 py-1 text-xs text-slate-800 font-medium focus:outline-none focus:ring-1 focus:ring-[#4085b3]"
+                                    >
+                                        <option value="ALL">All Categories</option>
+                                        <option value="EXAMINATION">Examinations</option>
+                                        <option value="HOLIDAY_BREAK">Holidays & Breaks</option>
+                                        <option value="CLOSURES">School Closures</option>
+                                        <option value="SCHOOL_EVENT">Events</option>
+                                    </select>
+                                </div>
+
+                                <div className="flex items-center space-x-1 text-xs">
+                                    <select
+                                        value={periodFilter}
+                                        onChange={(e) => setPeriodFilter(e.target.value)}
+                                        className="bg-slate-50 border border-slate-200 rounded-md px-2 py-1 text-xs text-slate-800 font-medium focus:outline-none focus:ring-1 focus:ring-[#4085b3]"
+                                    >
+                                        <option value="ALL">All Semesters</option>
+                                        {calendar.periods.map(p => (
+                                             <option key={p.id} value={p.id}>{p.name}</option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                {(categoryFilter !== "ALL" || periodFilter !== "ALL") && (
+                                    <button
+                                        onClick={() => { setCategoryFilter("ALL"); setPeriodFilter("ALL"); }}
+                                        className="text-xs text-red-600 hover:text-red-800 font-medium px-1.5 py-0.5 rounded bg-red-50 border border-red-200 transition-colors"
+                                        title="Clear filters"
+                                    >
+                                        <X className="w-3 h-3" />
+                                    </button>
+                                )}
                             </div>
 
-                            <div className="flex items-center space-x-1.5 text-xs text-gray-500">
-                                <span className="font-semibold">Semester:</span>
-                                <select
-                                    value={periodFilter}
-                                    onChange={(e) => setPeriodFilter(e.target.value)}
-                                    className="bg-white border border-gray-200 rounded-md px-2 py-1 text-xs text-gray-800 font-medium shadow-xs"
-                                >
-                                    <option value="ALL">All Semesters</option>
-                                    {calendar.periods.map(p => (
-                                        <option key={p.id} value={p.id}>{p.name}</option>
-                                    ))}
-                                </select>
-                            </div>
-
-                            {(categoryFilter !== "ALL" || periodFilter !== "ALL") && (
-                                <button
-                                    onClick={() => { setCategoryFilter("ALL"); setPeriodFilter("ALL"); }}
-                                    className="text-xs text-red-600 hover:text-red-800 font-medium px-2 py-1 rounded hover:bg-red-50 border border-transparent hover:border-red-200 transition-colors flex items-center gap-1"
-                                >
-                                    <X className="w-3 h-3" />
-                                    Clear Filters
-                                </button>
+                            {/* Management Actions */}
+                            {hasManagePermission && (
+                                <div className="flex items-center gap-2">
+                                    <Button 
+                                        size="sm" 
+                                        variant="secondary"
+                                        leftIcon={<Plus className="w-3.5 h-3.5" />} 
+                                        onClick={() => setIsPeriodModalOpen(true)}
+                                        className="text-xs border-slate-300 h-8"
+                                    >
+                                        Add Semester
+                                    </Button>
+                                    <Button 
+                                        size="sm" 
+                                        leftIcon={<Plus className="w-3.5 h-3.5" />} 
+                                        onClick={() => openCreateEventModal()}
+                                        className="text-xs bg-[#4085b3] hover:bg-[#32698e] text-white h-8"
+                                    >
+                                        Add Event / Exam
+                                    </Button>
+                                </div>
                             )}
                         </div>
                     </div>
 
                     {/* MAIN VIEW: Month View */}
                     {viewMode === "month" && (
-                        <Card className="shadow-sm border border-gray-200 overflow-hidden">
+                        <Card className="shadow-xs border border-slate-200 overflow-hidden bg-white">
                             {/* Month Navigation Header */}
-                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-6 py-4 bg-white border-b border-gray-100">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-5 py-3.5 bg-white border-b border-slate-200">
                                 <div className="flex flex-wrap items-center gap-2.5">
-                                    <h2 className="text-lg font-bold text-gray-900">
+                                    <h2 className="text-base font-bold text-slate-900 tracking-tight">
                                         {currentMonthDate.toLocaleString("default", { month: "long" })} {currentMonthDate.getFullYear()}
                                     </h2>
-                                    <span className="text-xs px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 font-semibold">
-                                        {currentMonthEventsCount} event{currentMonthEventsCount === 1 ? "" : "s"}
+                                    <span className="text-[11px] px-2 py-0.5 rounded bg-slate-100 text-slate-700 border border-slate-200 font-medium">
+                                        {currentMonthEventsCount} scheduled
                                     </span>
-                                    {(categoryFilter !== "ALL" || periodFilter !== "ALL") && (
-                                        <span className="text-xs px-2 py-0.5 rounded-md bg-amber-50 text-amber-900 border border-amber-200 font-medium flex items-center gap-1.5">
-                                            <span>Filtered: {categoryFilter === "CLOSURES" ? "Closures" : categoryFilter.replace("_", " ")}</span>
-                                            <button
-                                                onClick={() => { setCategoryFilter("ALL"); setPeriodFilter("ALL"); }}
-                                                className="text-amber-900 hover:text-red-700 font-bold hover:underline"
-                                                title="Reset filters"
-                                            >
-                                                ✕
-                                            </button>
-                                        </span>
-                                    )}
                                 </div>
-                                <div className="flex items-center space-x-2">
+                                <div className="flex items-center space-x-1.5">
                                     <button
                                         onClick={handlePrevMonth}
-                                        className="p-1.5 rounded-lg border border-gray-200 hover:bg-gray-50 text-gray-600 transition-colors"
+                                        className="p-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-700 transition-colors"
                                         title="Previous Month"
                                     >
                                         <ChevronLeft className="w-4 h-4" />
                                     </button>
                                     <button
                                         onClick={() => setCurrentMonthDate(new Date())}
-                                        className="px-2.5 py-1 text-xs font-semibold rounded-lg border border-gray-200 hover:bg-gray-50 text-gray-700 transition-colors"
+                                        className="px-2.5 py-1 text-xs font-semibold rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-700 transition-colors"
                                     >
                                         Today
                                     </button>
                                     <button
                                         onClick={handleNextMonth}
-                                        className="p-1.5 rounded-lg border border-gray-200 hover:bg-gray-50 text-gray-600 transition-colors"
+                                        className="p-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-700 transition-colors"
                                         title="Next Month"
                                     >
                                         <ChevronRight className="w-4 h-4" />
@@ -975,7 +976,7 @@ export default function AcademicCalendarPage() {
                             </div>
 
                             {/* 7 Days of Week Header */}
-                            <div className="grid grid-cols-7 border-b border-gray-200 bg-gray-50 text-center py-2 text-xs font-bold text-gray-500 uppercase">
+                            <div className="grid grid-cols-7 border-b border-slate-200 bg-slate-50 text-center py-2 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
                                 <div>Sun</div>
                                 <div>Mon</div>
                                 <div>Tue</div>
@@ -986,21 +987,21 @@ export default function AcademicCalendarPage() {
                             </div>
 
                             {/* 35/42 Days Grid */}
-                            <div className="grid grid-cols-7 divide-x divide-y divide-gray-100 bg-gray-100">
+                            <div className="grid grid-cols-7 divide-x divide-y divide-slate-200 bg-slate-200">
                                 {monthCalendarGrid.map((day, idx) => {
                                     const isToday = day.dateStr === new Date().toISOString().slice(0, 10);
                                     return (
                                         <div
                                             key={idx}
-                                            className={`min-h-[110px] p-1.5 flex flex-col justify-between transition-colors ${
-                                                day.isCurrentMonth ? "bg-white" : "bg-gray-50/60 text-gray-400"
+                                            className={`min-h-[115px] p-2 flex flex-col justify-between transition-colors ${
+                                                day.isCurrentMonth ? "bg-white" : "bg-slate-50/70 text-slate-400"
                                             }`}
                                         >
-                                            <div className="flex items-center justify-between mb-1">
-                                                <span className={`text-xs font-semibold inline-flex items-center justify-center w-6 h-6 rounded-full ${
+                                            <div className="flex items-center justify-between mb-1.5">
+                                                <span className={`text-xs font-bold inline-flex items-center justify-center w-6 h-6 rounded-full ${
                                                     isToday 
-                                                        ? "bg-[#006b3f] text-white" 
-                                                        : day.isCurrentMonth ? "text-gray-800" : "text-gray-400"
+                                                        ? "bg-[#4085b3] text-white" 
+                                                        : day.isCurrentMonth ? "text-slate-800" : "text-slate-400"
                                                 }`}>
                                                     {day.date.getDate()}
                                                 </span>
@@ -1008,32 +1009,32 @@ export default function AcademicCalendarPage() {
                                                 {hasManagePermission && day.isCurrentMonth && (
                                                     <button
                                                         onClick={() => openCreateEventModal(day.dateStr)}
-                                                        className="text-gray-300 hover:text-emerald-700 p-0.5 rounded opacity-0 hover:opacity-100 transition-opacity"
-                                                        title="Add event on this date"
+                                                        className="text-slate-300 hover:text-[#4085b3] hover:bg-slate-100 p-0.5 rounded transition-all"
+                                                        title="Schedule event on this date"
                                                     >
                                                         <Plus className="w-3.5 h-3.5" />
                                                     </button>
                                                 )}
                                             </div>
 
-                                            {/* Event Pills */}
-                                            <div className="space-y-1 flex-1 overflow-y-auto max-h-[80px]">
+                                            {/* Event Chips */}
+                                            <div className="space-y-1 flex-1 overflow-y-auto max-h-[85px] pr-0.5">
                                                 {day.events.slice(0, 3).map(ev => {
-                                                    const badge = getEventBadge(ev.category, ev.type, ev.isSchoolClosed);
+                                                    const badge = getEventBadge(ev.category, ev.type);
                                                     return (
                                                         <button
                                                             key={ev.id}
                                                             onClick={() => setSelectedEventDetails(ev)}
-                                                            className={`w-full text-left px-1.5 py-0.5 rounded text-[11px] font-medium truncate flex items-center gap-1 border ${badge.bg}`}
+                                                            className={`w-full text-left px-1.5 py-0.5 rounded text-[11px] font-medium truncate flex items-center gap-1.5 border transition-all ${badge.bg}`}
                                                             title={`${ev.title} (${badge.label})`}
                                                         >
                                                             <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${badge.dot}`} />
-                                                            <span className="truncate">{ev.title}</span>
+                                                            <span className="truncate leading-none">{ev.title}</span>
                                                         </button>
                                                     );
                                                 })}
                                                 {day.events.length > 3 && (
-                                                    <div className="text-[10px] text-gray-500 font-semibold px-1">
+                                                    <div className="text-[10px] text-slate-500 font-semibold px-1 pt-0.5">
                                                         +{day.events.length - 3} more
                                                     </div>
                                                 )}
@@ -1047,211 +1048,335 @@ export default function AcademicCalendarPage() {
 
                     {/* MAIN VIEW: Agenda / List View */}
                     {viewMode === "agenda" && (
-                        <Card className="shadow-sm">
-                            <CardHeader className="py-4 border-b border-gray-100 flex flex-row items-center justify-between">
+                        <Card className="shadow-xs border border-slate-200 bg-white">
+                            <CardHeader className="py-3.5 px-5 border-b border-slate-200 flex flex-row items-center justify-between">
                                 <div>
-                                    <CardTitle className="text-base font-bold text-gray-900">Academic Schedule Agenda</CardTitle>
-                                    <p className="text-xs text-gray-500 mt-0.5">
-                                        Chronological sequence of instructional terms, examination windows, and holidays.
+                                    <CardTitle className="text-sm font-bold text-slate-900">Academic Schedule Agenda</CardTitle>
+                                    <p className="text-xs text-slate-500 mt-0.5">
+                                        Chronological ledger of instructional terms, examination windows, and official holidays.
                                     </p>
                                 </div>
-                                <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200">
-                                    {filteredEvents.length} items listed
+                                <span className="text-[11px] font-semibold px-2.5 py-1 rounded-md bg-slate-100 text-slate-700 border border-slate-200">
+                                    {filteredEvents.length} items recorded
                                 </span>
                             </CardHeader>
                             <CardContent className="p-0">
                                 {filteredEvents.length === 0 ? (
-                                    <div className="p-12 text-center text-gray-500">
-                                        <CalendarIcon className="w-10 h-10 mx-auto text-gray-300 mb-3" />
-                                        <p className="font-semibold text-sm">No events match the selected filters.</p>
-                                        <p className="text-xs text-gray-400 mt-1">Add events or review suggested Ethiopian holidays to populate the agenda.</p>
+                                    <div className="p-12 text-center text-slate-500">
+                                        <CalendarIcon className="w-10 h-10 mx-auto text-slate-300 mb-3" />
+                                        <p className="font-semibold text-sm text-slate-800">No events match the selected filters.</p>
+                                        <p className="text-xs text-slate-500 mt-1">Add events or review suggested Ethiopian holidays to populate the agenda.</p>
                                     </div>
                                 ) : (
-                                    <div className="overflow-x-auto">
-                                        <table className="w-full text-sm text-left">
-                                            <thead className="text-xs text-gray-500 uppercase bg-gray-50 border-b border-gray-200">
-                                                <tr>
-                                                    <th className="px-6 py-3.5 font-semibold">Event / Term Title</th>
-                                                    <th className="px-6 py-3.5 font-semibold">Category & Type</th>
-                                                    <th className="px-6 py-3.5 font-semibold">Dates</th>
-                                                    <th className="px-6 py-3.5 font-semibold">School Session</th>
-                                                    <th className="px-6 py-3.5 font-semibold">Semester</th>
-                                                    <th className="px-6 py-3.5 font-semibold text-right">Actions</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody className="divide-y divide-gray-100">
-                                                {filteredEvents.map(ev => {
-                                                    const badge = getEventBadge(ev.category, ev.type, ev.isSchoolClosed);
-                                                    return (
-                                                        <tr key={ev.id} className="hover:bg-gray-50/70 transition-colors">
-                                                            <td className="px-6 py-3.5 font-bold text-gray-900">
-                                                                <button
-                                                                    onClick={() => setSelectedEventDetails(ev)}
-                                                                    className="hover:underline flex items-center gap-2 text-left"
-                                                                >
-                                                                    {badge.icon}
-                                                                    {ev.title}
-                                                                </button>
-                                                                {ev.description && (
-                                                                    <p className="text-xs text-gray-500 font-normal mt-0.5 line-clamp-1">
-                                                                        {ev.description}
-                                                                    </p>
-                                                                )}
-                                                            </td>
-                                                            <td className="px-6 py-3.5">
-                                                                <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold border ${badge.bg}`}>
-                                                                    <span className={`w-1.5 h-1.5 rounded-full ${badge.dot}`} />
-                                                                    {ev.type.replace("_", " ")}
-                                                                </span>
-                                                            </td>
-                                                            <td className="px-6 py-3.5 text-xs text-gray-700 font-medium">
-                                                                {ev.startDate.slice(0, 10)}
-                                                                {ev.startDate.slice(0, 10) !== ev.endDate.slice(0, 10) && ` to ${ev.endDate.slice(0, 10)}`}
-                                                            </td>
-                                                            <td className="px-6 py-3.5">
-                                                                {ev.isSchoolClosed ? (
-                                                                    <span className="inline-flex items-center text-xs font-semibold text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
-                                                                        School Closed
+                                    <div>
+                                        <div className="overflow-x-auto">
+                                            <table className="w-full text-xs text-left">
+                                                <thead className="text-[11px] text-slate-500 uppercase bg-slate-50 border-b border-slate-200">
+                                                    <tr>
+                                                        <th className="px-5 py-3 font-semibold tracking-wider">Event / Activity Title</th>
+                                                        <th className="px-5 py-3 font-semibold tracking-wider">Category & Type</th>
+                                                        <th className="px-5 py-3 font-semibold tracking-wider">Scheduled Dates</th>
+                                                        <th className="px-5 py-3 font-semibold tracking-wider">Attendance Status</th>
+                                                        <th className="px-5 py-3 font-semibold tracking-wider">Semester</th>
+                                                        <th className="px-5 py-3 font-semibold tracking-wider text-right">Actions</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody className="divide-y divide-slate-100">
+                                                    {paginatedEvents.map(ev => {
+                                                        const badge = getEventBadge(ev.category, ev.type);
+                                                        return (
+                                                            <tr key={ev.id} className="hover:bg-slate-50/80 transition-colors">
+                                                                <td className="px-5 py-3.5 text-slate-900">
+                                                                    <button
+                                                                        onClick={() => setSelectedEventDetails(ev)}
+                                                                        className="hover:underline font-semibold text-slate-900 text-xs text-left block"
+                                                                    >
+                                                                        {ev.title}
+                                                                    </button>
+                                                                    {ev.description && (
+                                                                        <p className="text-[11px] text-slate-500 font-normal mt-0.5 line-clamp-1">
+                                                                            {ev.description}
+                                                                        </p>
+                                                                    )}
+                                                                </td>
+                                                                <td className="px-5 py-3.5">
+                                                                    <span className="inline-flex items-center gap-1.5 text-xs text-slate-700 font-medium">
+                                                                        <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${badge.dot}`} />
+                                                                        <span>{badge.label}</span>
                                                                     </span>
-                                                                ) : (
-                                                                    <span className="text-xs text-gray-600">Regular Session</span>
-                                                                )}
-                                                            </td>
-                                                            <td className="px-6 py-3.5 text-xs text-gray-600">
-                                                                {ev.academicPeriod?.name || "Calendar-wide"}
-                                                            </td>
-                                                            <td className="px-6 py-3.5 text-right space-x-1">
+                                                                </td>
+                                                                <td className="px-5 py-3.5 text-slate-800 font-mono font-medium">
+                                                                    {ev.startDate.slice(0, 10)}
+                                                                    {ev.startDate.slice(0, 10) !== ev.endDate.slice(0, 10) && ` → ${ev.endDate.slice(0, 10)}`}
+                                                                </td>
+                                                                <td className="px-5 py-3.5">
+                                                                    {ev.isSchoolClosed ? (
+                                                                        <span className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-700">
+                                                                            <span className="w-1.5 h-1.5 rounded-full bg-rose-500 shrink-0" />
+                                                                            <span>School Closed</span>
+                                                                        </span>
+                                                                    ) : (
+                                                                        <span className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-600">
+                                                                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
+                                                                            <span>In Session</span>
+                                                                        </span>
+                                                                    )}
+                                                                </td>
+                                                                <td className="px-5 py-3.5 text-slate-600">
+                                                                    {ev.academicPeriod?.name || "Calendar-wide"}
+                                                                </td>
+                                                                <td className="px-5 py-3.5 text-right">
+                                                                    <div className="flex items-center justify-end gap-1">
+                                                                        <button
+                                                                            onClick={() => setSelectedEventDetails(ev)}
+                                                                            className="p-1.5 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-md transition-colors"
+                                                                            title="View Details"
+                                                                        >
+                                                                            <Eye className="w-3.5 h-3.5" />
+                                                                        </button>
+                                                                        {hasManagePermission && (
+                                                                            <>
+                                                                                <button
+                                                                                    onClick={() => openEditEventModal(ev)}
+                                                                                    className="p-1.5 text-slate-500 hover:text-[#4085b3] hover:bg-sky-50 rounded-md transition-colors"
+                                                                                    title="Edit Event"
+                                                                                >
+                                                                                    <Edit3 className="w-3.5 h-3.5" />
+                                                                                </button>
+                                                                                <button
+                                                                                    onClick={() => handleDeleteEvent(ev.id)}
+                                                                                    className="p-1.5 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors"
+                                                                                    title="Delete Event"
+                                                                                >
+                                                                                    <Trash2 className="w-3.5 h-3.5" />
+                                                                                </button>
+                                                                            </>
+                                                                        )}
+                                                                    </div>
+                                                                </td>
+                                                            </tr>
+                                                        );
+                                                    })}
+                                                </tbody>
+                                            </table>
+                                        </div>
+
+                                        {/* Pagination Controls */}
+                                        <div className="px-5 py-3 bg-slate-50/70 border-t border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-slate-600">
+                                            <div className="flex items-center gap-3">
+                                                <span>
+                                                    Showing <strong className="text-slate-900 font-semibold">{Math.min((currentPage - 1) * pageSize + 1, filteredEvents.length)}</strong> to <strong className="text-slate-900 font-semibold">{Math.min(currentPage * pageSize, filteredEvents.length)}</strong> of <strong className="text-slate-900 font-semibold">{filteredEvents.length}</strong> entries
+                                                </span>
+                                                <div className="flex items-center space-x-1.5 pl-3 border-l border-slate-200">
+                                                    <span className="text-[11px] text-slate-500">Rows:</span>
+                                                    <select
+                                                        value={pageSize}
+                                                        onChange={(e) => setPageSize(Number(e.target.value))}
+                                                        className="bg-white border border-slate-200 rounded px-1.5 py-0.5 text-xs text-slate-800 font-medium focus:outline-none focus:ring-1 focus:ring-[#4085b3]"
+                                                    >
+                                                        <option value={5}>5</option>
+                                                        <option value={10}>10</option>
+                                                        <option value={20}>20</option>
+                                                        <option value={50}>50</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+
+                                            <div className="flex items-center space-x-1">
+                                                <button
+                                                    onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                                                    disabled={currentPage === 1}
+                                                    className="p-1.5 rounded border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                                                    title="Previous Page"
+                                                >
+                                                    <ChevronLeft className="w-3.5 h-3.5" />
+                                                </button>
+
+                                                {Array.from({ length: totalPages }, (_, i) => i + 1)
+                                                    .filter(p => p === 1 || p === totalPages || Math.abs(p - currentPage) <= 1)
+                                                    .map((pageNum, idx, arr) => {
+                                                        const prev = arr[idx - 1];
+                                                        const showEllipsis = prev && pageNum - prev > 1;
+                                                        return (
+                                                            <div key={pageNum} className="flex items-center">
+                                                                {showEllipsis && <span className="px-1 text-slate-400">...</span>}
                                                                 <button
-                                                                    onClick={() => setSelectedEventDetails(ev)}
-                                                                    className="p-1.5 text-gray-500 hover:text-gray-800 rounded hover:bg-gray-100"
-                                                                    title="View Details"
+                                                                    onClick={() => setCurrentPage(pageNum)}
+                                                                    className={`min-w-[28px] h-7 px-2 text-xs font-semibold rounded transition-colors ${
+                                                                        currentPage === pageNum
+                                                                            ? "bg-[#4085b3] text-white"
+                                                                            : "border border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+                                                                    }`}
                                                                 >
-                                                                    <Eye className="w-4 h-4" />
+                                                                    {pageNum}
                                                                 </button>
-                                                                {hasManagePermission && (
-                                                                    <>
-                                                                        <button
-                                                                            onClick={() => openEditEventModal(ev)}
-                                                                            className="p-1.5 text-blue-600 hover:text-blue-800 rounded hover:bg-blue-50"
-                                                                            title="Edit Event"
-                                                                        >
-                                                                            <Edit3 className="w-4 h-4" />
-                                                                        </button>
-                                                                        <button
-                                                                            onClick={() => handleDeleteEvent(ev.id)}
-                                                                            className="p-1.5 text-red-600 hover:text-red-800 rounded hover:bg-red-50"
-                                                                            title="Delete Event"
-                                                                        >
-                                                                            <Trash2 className="w-4 h-4" />
-                                                                        </button>
-                                                                    </>
-                                                                )}
-                                                            </td>
-                                                        </tr>
-                                                    );
-                                                })}
-                                            </tbody>
-                                        </table>
+                                                            </div>
+                                                        );
+                                                    })}
+
+                                                <button
+                                                    onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                                                    disabled={currentPage === totalPages}
+                                                    className="p-1.5 rounded border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                                                    title="Next Page"
+                                                >
+                                                    <ChevronRight className="w-3.5 h-3.5" />
+                                                </button>
+                                            </div>
+                                        </div>
                                     </div>
                                 )}
                             </CardContent>
                         </Card>
                     )}
 
-                    {/* MAIN VIEW: Year Timeline */}
+                    {/* MAIN VIEW: Semester Terms */}
                     {viewMode === "timeline" && (
                         <div className="space-y-6">
                             {/* Academic Periods Breakdown */}
-                            <Card className="shadow-sm">
-                                <CardHeader className="py-4 border-b border-gray-100 flex flex-row items-center justify-between">
+                            <Card className="shadow-xs border border-slate-200 bg-white">
+                                <CardHeader className="py-4 px-6 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                                     <div>
-                                        <CardTitle className="text-base font-bold text-gray-900">Academic Semesters & Term Bounds</CardTitle>
-                                        <p className="text-xs text-gray-500 mt-0.5">
-                                            Macro instruction terms. Ethiopian General Education standard mandates Semester 1 and Semester 2.
+                                        <CardTitle className="text-sm font-bold text-slate-900">Academic Semesters & Terms</CardTitle>
+                                        <p className="text-xs text-slate-500 mt-0.5">
+                                            Instructional terms and institutional scheduling windows according to national curriculum standards.
                                         </p>
                                     </div>
                                     {hasManagePermission && (
-                                        <Button size="sm" leftIcon={<Plus className="w-3.5 h-3.5" />} onClick={() => setIsPeriodModalOpen(true)}>
+                                        <Button 
+                                            size="sm" 
+                                            leftIcon={<Plus className="w-3.5 h-3.5" />} 
+                                            onClick={() => setIsPeriodModalOpen(true)} 
+                                            className="text-xs bg-[#4085b3] hover:bg-[#32698e] text-white shadow-xs font-medium"
+                                        >
                                             Add Semester
                                         </Button>
                                     )}
                                 </CardHeader>
                                 <CardContent className="p-0">
-                                    <div className="divide-y divide-gray-100">
-                                        {calendar.periods.map((p, idx) => {
-                                            const pStart = new Date(p.startDate);
-                                            const pEnd = new Date(p.endDate);
-                                            const diffWeeks = Math.max(1, Math.round((pEnd.getTime() - pStart.getTime()) / (1000 * 60 * 60 * 24 * 7)));
-                                            const childEvents = calendar.events.filter(ev => ev.academicPeriodId === p.id);
+                                    {calendar.periods.length === 0 ? (
+                                        <div className="p-12 text-center text-slate-500">
+                                            <Layers className="w-10 h-10 mx-auto text-slate-300 mb-3" />
+                                            <p className="font-semibold text-sm text-slate-800">No semesters configured yet.</p>
+                                            <p className="text-xs text-slate-500 mt-1">
+                                                Add Semester 1 and Semester 2 to establish instructional periods and exam windows.
+                                            </p>
+                                        </div>
+                                    ) : (
+                                        <div className="divide-y divide-slate-100">
+                                            {calendar.periods.map((p, idx) => {
+                                                const pStart = new Date(p.startDate);
+                                                const pEnd = new Date(p.endDate);
+                                                const diffWeeks = Math.max(1, Math.round((pEnd.getTime() - pStart.getTime()) / (1000 * 60 * 60 * 24 * 7)));
+                                                const childEvents = calendar.events.filter(ev => ev.academicPeriodId === p.id);
 
-                                            return (
-                                                <div key={p.id} className="p-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
-                                                    <div className="flex items-start space-x-3">
-                                                        <div className="w-8 h-8 rounded-lg bg-emerald-100 text-[#006b3f] flex items-center justify-center font-bold text-sm shrink-0">
-                                                            S{idx + 1}
+                                                return (
+                                                    <div key={p.id} className="p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 hover:bg-slate-50/50 transition-colors">
+                                                        <div className="flex items-start space-x-3.5">
+                                                            <div className="w-9 h-9 rounded-lg bg-sky-50 text-[#4085b3] border border-sky-200/80 flex items-center justify-center font-bold text-xs shrink-0">
+                                                                S{idx + 1}
+                                                            </div>
+                                                            <div className="space-y-1">
+                                                                <div className="flex items-center space-x-2">
+                                                                    <h4 className="font-bold text-slate-900 text-sm">{p.name}</h4>
+                                                                    <span className="text-[10px] px-2 py-0.5 rounded font-medium bg-slate-100 text-slate-700 border border-slate-200">
+                                                                        {p.type}
+                                                                    </span>
+                                                                </div>
+                                                                <p className="text-xs text-slate-700">
+                                                                    <span className="font-mono font-medium text-slate-900">{p.startDate.slice(0, 10)}</span>
+                                                                    <span className="text-slate-400 mx-1.5">to</span>
+                                                                    <span className="font-mono font-medium text-slate-900">{p.endDate.slice(0, 10)}</span>
+                                                                </p>
+                                                            </div>
                                                         </div>
-                                                        <div>
-                                                            <div className="flex items-center space-x-2">
-                                                                <h4 className="font-bold text-gray-900 text-sm">{p.name}</h4>
-                                                                <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200">
-                                                                    {p.type}
+
+                                                        <div className="flex items-center gap-3 self-end md:self-center">
+                                                            <div className="flex items-center gap-2 text-xs">
+                                                                <span className="inline-flex items-center gap-1 text-slate-600 bg-slate-50 px-2.5 py-1 rounded-md border border-slate-200/80 text-[11px] font-medium">
+                                                                    <Clock className="w-3 h-3 text-slate-400" />
+                                                                    {diffWeeks} Weeks
+                                                                </span>
+                                                                <span className="inline-flex items-center gap-1 text-slate-600 bg-slate-50 px-2.5 py-1 rounded-md border border-slate-200/80 text-[11px] font-medium">
+                                                                    <BookOpen className="w-3 h-3 text-slate-400" />
+                                                                    {childEvents.length} Activities & Exams
                                                                 </span>
                                                             </div>
-                                                            <p className="text-xs text-gray-500 mt-1">
-                                                                {p.startDate.slice(0, 10)} to {p.endDate.slice(0, 10)} (~{diffWeeks} instructional weeks)
-                                                            </p>
-                                                            <p className="text-xs text-gray-400 mt-0.5">
-                                                                {childEvents.length} scheduled exam(s) and term event(s) attached
-                                                            </p>
+
+                                                            {hasManagePermission && (
+                                                                <Button
+                                                                    size="sm"
+                                                                    variant="secondary"
+                                                                    onClick={() => handleDeletePeriod(p.id)}
+                                                                    leftIcon={<Trash2 className="w-3.5 h-3.5" />}
+                                                                    className="text-xs text-red-600 border-red-200 hover:bg-red-50 hover:border-red-300"
+                                                                >
+                                                                    Remove
+                                                                </Button>
+                                                            )}
                                                         </div>
                                                     </div>
-
-                                                    <div className="flex items-center space-x-2">
-                                                        {hasManagePermission && (
-                                                            <button
-                                                                onClick={() => handleDeletePeriod(p.id)}
-                                                                className="text-xs text-red-600 hover:text-red-800 px-2.5 py-1.5 rounded-md hover:bg-red-50 border border-transparent hover:border-red-200 transition-colors"
-                                                            >
-                                                                Remove Period
-                                                            </button>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    )}
                                 </CardContent>
                             </Card>
 
-                            {/* Readiness Checklist */}
-                            <Card className="bg-gray-50/70 border border-gray-200">
-                                <CardHeader className="py-3">
-                                    <CardTitle className="text-sm font-bold text-gray-800">Academic Structure Readiness</CardTitle>
+                            {/* Readiness & Compliance Checklist */}
+                            <Card className="shadow-xs border border-slate-200 bg-white">
+                                <CardHeader className="py-4 px-6 border-b border-slate-200 flex flex-row items-center gap-2">
+                                    <ShieldCheck className="w-4 h-4 text-[#4085b3]" />
+                                    <div>
+                                        <CardTitle className="text-sm font-bold text-slate-900">Academic Structure & Regulatory Compliance</CardTitle>
+                                        <p className="text-xs text-slate-500 mt-0.5">
+                                            National curriculum alignment and schedule validation checks.
+                                        </p>
+                                    </div>
                                 </CardHeader>
-                                <CardContent className="space-y-2 text-xs">
-                                    <div className="flex items-center space-x-2">
-                                        {calendar.periods.length >= 2 ? (
-                                            <CheckCircle2 className="w-4 h-4 text-[#006b3f]" />
-                                        ) : (
-                                            <AlertTriangle className="w-4 h-4 text-amber-500" />
-                                        )}
-                                        <span className={calendar.periods.length >= 2 ? "text-gray-700 font-medium" : "text-amber-800 font-medium"}>
-                                            {calendar.periods.length >= 2
-                                                ? "Academic periods properly scheduled (2+ semesters configured)."
-                                                : "Recommended: Ethiopian schools require at least 2 Semesters configured."}
-                                        </span>
+                                <CardContent className="p-5 space-y-3 text-xs">
+                                    {calendar.periods.length >= 2 ? (
+                                        <div className="flex items-start gap-3 p-3 rounded-lg bg-sky-50/50 border border-sky-200/60">
+                                            <CheckCircle2 className="w-4 h-4 text-[#4085b3] shrink-0 mt-0.5" />
+                                            <div>
+                                                <p className="text-xs font-semibold text-slate-900">Academic Terms Configured</p>
+                                                <p className="text-[11px] text-slate-600 mt-0.5">
+                                                    Complies with the 2-semester national general education standard ({calendar.periods.length} semesters defined).
+                                                </p>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div className="flex items-start gap-3 p-3 rounded-lg bg-amber-50/70 border border-amber-200">
+                                            <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                                            <div>
+                                                <p className="text-xs font-semibold text-amber-900">Semester Structure Notice</p>
+                                                <p className="text-[11px] text-amber-700 mt-0.5">
+                                                    Ethiopian General Education standard requires 2 distinct semesters (Semester 1 & Semester 2) to be configured.
+                                                </p>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    <div className="flex items-start gap-3 p-3 rounded-lg bg-slate-50/60 border border-slate-200/80">
+                                        <CheckCircle2 className="w-4 h-4 text-[#4085b3] shrink-0 mt-0.5" />
+                                        <div>
+                                            <p className="text-xs font-semibold text-slate-900">Academic Year Boundary Conformity</p>
+                                            <p className="text-[11px] text-slate-600 mt-0.5">
+                                                All configured instructional semesters and examination windows fall strictly within the active academic year.
+                                            </p>
+                                        </div>
                                     </div>
-                                    <div className="flex items-center space-x-2">
-                                        <CheckCircle2 className="w-4 h-4 text-[#006b3f]" />
-                                        <span className="text-gray-700">Strict backend boundaries: All period and exam dates validated within academic year limits.</span>
-                                    </div>
-                                    <div className="flex items-center space-x-2">
-                                        <CheckCircle2 className="w-4 h-4 text-[#006b3f]" />
-                                        <span className="text-gray-700">
-                                            {calendar.status === "PUBLISHED"
-                                                ? "Official calendar is PUBLISHED and authoritative."
-                                                : "Calendar is in draft/review mode and ready to be published when finalized."}
-                                        </span>
+
+                                    <div className="flex items-start gap-3 p-3 rounded-lg bg-slate-50/60 border border-slate-200/80">
+                                        <CheckCircle2 className="w-4 h-4 text-[#4085b3] shrink-0 mt-0.5" />
+                                        <div>
+                                            <p className="text-xs font-semibold text-slate-900">Institutional Calendar Authority</p>
+                                            <p className="text-[11px] text-slate-600 mt-0.5">
+                                                {calendar.status === "PUBLISHED"
+                                                    ? "This official academic calendar is PUBLISHED and authoritative across student, staff, and parent portals."
+                                                    : "Calendar is in review draft mode and awaiting formal administrative publication."}
+                                            </p>
+                                        </div>
                                     </div>
                                 </CardContent>
                             </Card>
@@ -1264,12 +1389,12 @@ export default function AcademicCalendarPage() {
             <Modal
                 isOpen={isHolidaySuggestionsOpen}
                 onClose={() => setIsHolidaySuggestionsOpen(false)}
-                title="✨ Ethiopian Holiday Suggestions Engine"
+                title="Ethiopian National & Religious Holidays"
+                maxWidth="xl"
             >
                 <div className="space-y-4 max-h-[75vh] overflow-y-auto pr-1">
-                    <p className="text-xs text-gray-600 leading-relaxed">
-                        The suggested holidays below follow Ethiopian national and religious calendars (Enkutatash, Meskel, Genna, Timket, Adwa, Siklet, Fasika, and Eid). 
-                        <strong>Administrators review and confirm dates</strong>. Confirmed holidays are marked with customized closure policies.
+                    <p className="text-xs text-slate-600 leading-relaxed bg-slate-50 p-3 rounded-lg border border-slate-200">
+                        Official national and religious holidays according to the Ethiopian educational standards (Enkutatash, Meskel, Mawlid, Genna, Timket, Adwa, Siklet, Fasika, Eid). Review and adopt holidays into this calendar.
                     </p>
 
                     {loadingSuggestions ? (
@@ -1279,48 +1404,50 @@ export default function AcademicCalendarPage() {
                             {suggestedHolidays.map((sug, idx) => (
                                 <div
                                     key={idx}
-                                    className={`p-3.5 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
+                                    className={`p-3.5 rounded-lg border flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
                                         sug.isAdded 
-                                            ? "bg-gray-50/80 border-gray-200 opacity-80"
-                                            : "bg-white border-amber-200 shadow-xs hover:border-amber-400"
+                                            ? "bg-slate-50 border-slate-200 opacity-80"
+                                            : "bg-white border-slate-200 hover:border-slate-300 shadow-xs"
                                     }`}
                                 >
                                     <div className="space-y-1">
                                         <div className="flex items-center space-x-2">
-                                            <span className="font-bold text-sm text-gray-900">{sug.title}</span>
-                                            <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold bg-amber-50 text-amber-900 border border-amber-200">
+                                            <span className="font-bold text-xs text-slate-900">{sug.title}</span>
+                                            <span className="text-[10px] px-2 py-0.2 rounded font-semibold bg-slate-100 text-slate-700 border border-slate-200">
                                                 {sug.religiousOrNationalContext}
                                             </span>
                                         </div>
-                                        <div className="flex items-center space-x-2 text-xs text-gray-600">
-                                            <span className="font-semibold text-gray-800">
-                                                Suggested: {sug.suggestedStartDate}
-                                                {sug.suggestedStartDate !== sug.suggestedEndDate && ` to ${sug.suggestedEndDate}`}
+                                        <div className="flex items-center space-x-2 text-xs text-slate-600 font-mono">
+                                            <span>
+                                                {sug.suggestedStartDate}
+                                                {sug.suggestedStartDate !== sug.suggestedEndDate && ` → ${sug.suggestedEndDate}`}
                                             </span>
-                                            <span>•</span>
-                                            <span>{sug.isSchoolClosedDefault ? "School Closed" : "Regular Session"}</span>
+                                            <span className="font-sans text-slate-400">•</span>
+                                            <span className="font-sans text-slate-600">
+                                                {sug.isSchoolClosedDefault ? "School Closed" : "Regular Session"}
+                                            </span>
                                         </div>
-                                        <p className="text-xs text-gray-500">{sug.description}</p>
+                                        <p className="text-[11px] text-slate-500">{sug.description}</p>
                                     </div>
 
                                     <div>
                                         {sug.isAdded ? (
-                                            <span className="inline-flex items-center text-xs font-semibold text-emerald-800 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200">
-                                                <Check className="w-3.5 h-3.5 mr-1 text-[#006b3f]" />
-                                                Added
-                                            </span>
+                                             <span className="inline-flex items-center text-xs font-semibold text-[#4085b3] bg-sky-50 px-2.5 py-1 rounded border border-sky-200">
+                                                 <Check className="w-3.5 h-3.5 mr-1 text-[#4085b3]" />
+                                                 Adopted
+                                             </span>
                                         ) : hasManagePermission ? (
-                                            <Button
-                                                size="sm"
-                                                onClick={() => handleConfirmHoliday(sug, idx)}
-                                                isLoading={confirmingHolidayIndex === idx}
-                                                leftIcon={<Plus className="w-3.5 h-3.5" />}
-                                                className="text-xs bg-amber-600 hover:bg-amber-700 text-white"
-                                            >
-                                                Confirm & Add
-                                            </Button>
+                                             <Button
+                                                 size="sm"
+                                                 onClick={() => handleConfirmHoliday(sug, idx)}
+                                                 isLoading={confirmingHolidayIndex === idx}
+                                                 leftIcon={<Plus className="w-3.5 h-3.5" />}
+                                                 className="text-xs bg-[#4085b3] hover:bg-[#32698e] text-white"
+                                             >
+                                                 Adopt Holiday
+                                             </Button>
                                         ) : (
-                                            <span className="text-xs text-gray-400 italic">Unadded</span>
+                                             <span className="text-xs text-slate-400 italic">Unadopted</span>
                                         )}
                                     </div>
                                 </div>
@@ -1328,7 +1455,7 @@ export default function AcademicCalendarPage() {
                         </div>
                     )}
 
-                    <div className="flex justify-end pt-4 border-t">
+                    <div className="flex justify-end pt-4 border-t border-slate-200">
                         <Button variant="ghost" onClick={() => setIsHolidaySuggestionsOpen(false)}>
                             Close
                         </Button>
@@ -1340,42 +1467,46 @@ export default function AcademicCalendarPage() {
             <Modal
                 isOpen={isEventModalOpen}
                 onClose={() => setIsEventModalOpen(false)}
-                title={editingEventId ? "Edit Calendar Event" : "Schedule New Academic Calendar Event"}
+                title={editingEventId ? "Edit Calendar Event / Activity" : "Schedule New Calendar Event / Exam"}
+                maxWidth="xl"
             >
                 <form onSubmit={handleSaveEvent} className="space-y-4">
                     {eventError && (
-                        <div className="p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-xs">
-                            {eventError}
+                        <div className="p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-xs flex items-center gap-2">
+                            <AlertTriangle className="w-4 h-4 text-red-600 shrink-0" />
+                            <span>{eventError}</span>
                         </div>
                     )}
 
                     {eventWarnings.length > 0 && (
                         <div className="p-3 bg-amber-50 border border-amber-300 text-amber-800 rounded-lg text-xs space-y-1">
-                            <div className="font-bold flex items-center gap-1">
+                            <div className="font-bold flex items-center gap-1.5">
                                 <AlertTriangle className="w-3.5 h-3.5 text-amber-600" />
-                                Conflict Notices:
+                                <span>Conflict Notices:</span>
                             </div>
                             {eventWarnings.map((w, i) => (
-                                <p key={i}>• {w}</p>
+                                <p key={i} className="pl-5 text-amber-700">• {w}</p>
                             ))}
                         </div>
                     )}
 
                     <div>
-                        <label className="block text-xs font-semibold text-gray-700 mb-1">Event Title</label>
+                        <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                            Event / Examination Title <span className="text-red-500">*</span>
+                        </label>
                         <input
                             type="text"
                             required
-                            placeholder="e.g. Semester 1 Final Examinations, Adwa Victory Day"
+                            placeholder="e.g. Semester 1 Midterm Examinations, Adwa Victory Day"
                             value={eventForm.title}
                             onChange={(e) => setEventForm(prev => ({ ...prev, title: e.target.value }))}
-                            className="w-full p-2 border rounded-lg text-sm bg-white text-gray-900 focus:ring-2 focus:ring-[#006b3f]"
+                            className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs bg-slate-50/50 text-slate-900 placeholder:text-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#4085b3]/20 focus:border-[#4085b3] transition-all"
                         />
                     </div>
 
                     <div className="grid grid-cols-2 gap-3">
                         <div>
-                            <label className="block text-xs font-semibold text-gray-700 mb-1">Category</label>
+                            <label className="block text-xs font-semibold text-slate-700 mb-1.5">Category</label>
                             <select
                                 value={eventForm.category}
                                 onChange={(e) => {
@@ -1386,7 +1517,7 @@ export default function AcademicCalendarPage() {
                                         type: cat === "EXAMINATION" ? "MIDTERM_EXAM" : cat === "HOLIDAY_BREAK" ? "PUBLIC_HOLIDAY" : "SCHOOL_EVENT"
                                     }));
                                 }}
-                                className="w-full p-2 border rounded-lg text-sm bg-white text-gray-900 focus:ring-2 focus:ring-[#006b3f]"
+                                className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs bg-slate-50/50 text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#4085b3]/20 focus:border-[#4085b3] transition-all"
                             >
                                 <option value="EXAMINATION">Examination</option>
                                 <option value="HOLIDAY_BREAK">Holiday / Break</option>
@@ -1395,11 +1526,11 @@ export default function AcademicCalendarPage() {
                         </div>
 
                         <div>
-                            <label className="block text-xs font-semibold text-gray-700 mb-1">Event Type</label>
+                            <label className="block text-xs font-semibold text-slate-700 mb-1.5">Event Type</label>
                             <select
                                 value={eventForm.type}
                                 onChange={(e) => setEventForm(prev => ({ ...prev, type: e.target.value }))}
-                                className="w-full p-2 border rounded-lg text-sm bg-white text-gray-900 focus:ring-2 focus:ring-[#006b3f]"
+                                className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs bg-slate-50/50 text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#4085b3]/20 focus:border-[#4085b3] transition-all"
                             >
                                 {eventForm.category === "EXAMINATION" && (
                                     <>
@@ -1434,77 +1565,104 @@ export default function AcademicCalendarPage() {
 
                     <div className="grid grid-cols-2 gap-3">
                         <div>
-                            <label className="block text-xs font-semibold text-gray-700 mb-1">Start Date</label>
+                            <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                                Start Date <span className="text-red-500">*</span>
+                            </label>
                             <input
                                 type="date"
                                 required
                                 value={eventForm.startDate}
                                 onChange={(e) => setEventForm(prev => ({ ...prev, startDate: e.target.value }))}
-                                className="w-full p-2 border rounded-lg text-sm bg-white text-gray-900 focus:ring-2 focus:ring-[#006b3f]"
+                                className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs bg-slate-50/50 text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#4085b3]/20 focus:border-[#4085b3] transition-all font-mono"
                             />
                         </div>
                         <div>
-                            <label className="block text-xs font-semibold text-gray-700 mb-1">End Date</label>
+                            <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                                End Date <span className="text-red-500">*</span>
+                            </label>
                             <input
                                 type="date"
                                 required
                                 value={eventForm.endDate}
                                 onChange={(e) => setEventForm(prev => ({ ...prev, endDate: e.target.value }))}
-                                className="w-full p-2 border rounded-lg text-sm bg-white text-gray-900 focus:ring-2 focus:ring-[#006b3f]"
+                                className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs bg-slate-50/50 text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#4085b3]/20 focus:border-[#4085b3] transition-all font-mono"
                             />
                         </div>
                     </div>
 
                     <div>
-                        <label className="block text-xs font-semibold text-gray-700 mb-1">
-                            Parent Academic Period / Semester (Optional)
+                        <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                            Associated Academic Semester (Optional)
                         </label>
                         <select
                             value={eventForm.academicPeriodId}
                             onChange={(e) => setEventForm(prev => ({ ...prev, academicPeriodId: e.target.value }))}
-                            className="w-full p-2 border rounded-lg text-sm bg-white text-gray-900 focus:ring-2 focus:ring-[#006b3f]"
+                            className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs bg-slate-50/50 text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#4085b3]/20 focus:border-[#4085b3] transition-all"
                         >
-                            <option value="">None (Calendar-wide)</option>
+                            <option value="">None (Institutional / Calendar-wide)</option>
                             {calendar?.periods.map(p => (
                                 <option key={p.id} value={p.id}>
                                     {p.name} ({p.startDate.slice(0, 10)} to {p.endDate.slice(0, 10)})
                                 </option>
                             ))}
                         </select>
-                        <p className="text-[11px] text-gray-500 mt-1">
-                            Notice: Exams must fall within the date boundaries of the selected semester.
+                        <p className="text-[11px] text-slate-500 mt-1">
+                            Examinations must fall strictly within the date bounds of the associated semester.
                         </p>
                     </div>
 
-                    <div className="flex items-center space-x-2 pt-1">
+                    <label 
+                        htmlFor="isSchoolClosed" 
+                        className={`flex items-start gap-3 p-3 rounded-lg border transition-all cursor-pointer ${
+                            eventForm.isSchoolClosed 
+                                ? "bg-rose-50/60 border-rose-200" 
+                                : "bg-slate-50/60 border-slate-200 hover:border-slate-300"
+                        }`}
+                    >
                         <input
                             type="checkbox"
                             id="isSchoolClosed"
                             checked={eventForm.isSchoolClosed}
                             onChange={(e) => setEventForm(prev => ({ ...prev, isSchoolClosed: e.target.checked }))}
-                            className="w-4 h-4 text-[#006b3f] rounded focus:ring-[#006b3f]"
+                            className="mt-0.5 w-4 h-4 rounded text-[#4085b3] focus:ring-[#4085b3] accent-[#4085b3]"
                         />
-                        <label htmlFor="isSchoolClosed" className="text-xs font-semibold text-gray-700 cursor-pointer">
-                            School Closed (Instruction Suspended on these dates)
-                        </label>
-                    </div>
+                        <div>
+                            <span className="block text-xs font-semibold text-slate-900">
+                                School Closure (Regular instruction suspended)
+                            </span>
+                            <span className="block text-[11px] text-slate-500 mt-0.5 leading-normal">
+                                Flag this date range as a school holiday or exam closure where standard student attendance is suspended.
+                            </span>
+                        </div>
+                    </label>
 
                     <div>
-                        <label className="block text-xs font-semibold text-gray-700 mb-1">Description / Notes</label>
+                        <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                            Operational Description / Notes
+                        </label>
                         <textarea
-                            rows={2}
-                            placeholder="Optional operational or academic notes..."
+                            rows={3}
+                            placeholder="Optional administrative guidelines or parent instructions..."
                             value={eventForm.description}
                             onChange={(e) => setEventForm(prev => ({ ...prev, description: e.target.value }))}
-                            className="w-full p-2 border rounded-lg text-sm bg-white text-gray-900 focus:ring-2 focus:ring-[#006b3f]"
+                            className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs bg-slate-50/50 text-slate-900 placeholder:text-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#4085b3]/20 focus:border-[#4085b3] transition-all resize-none"
                         />
                     </div>
 
-                    <div className="flex justify-end gap-3 pt-4 border-t">
-                        <Button type="button" variant="ghost" onClick={() => setIsEventModalOpen(false)}>
+                    <div className="flex justify-end gap-2.5 pt-4 border-t border-slate-200">
+                        <Button 
+                            type="button" 
+                            variant="secondary" 
+                            onClick={() => setIsEventModalOpen(false)}
+                            className="text-xs border-slate-300 hover:bg-slate-50 text-slate-700"
+                        >
                             Cancel
                         </Button>
-                        <Button type="submit" isLoading={submittingEvent}>
+                        <Button 
+                            type="submit" 
+                            isLoading={submittingEvent} 
+                            className="text-xs bg-[#4085b3] hover:bg-[#32698e] text-white shadow-xs font-medium"
+                        >
                             {editingEventId ? "Update Event" : "Save Event"}
                         </Button>
                     </div>
@@ -1512,127 +1670,154 @@ export default function AcademicCalendarPage() {
             </Modal>
 
             {/* MODAL: Event Details Inspector */}
-            {selectedEventDetails && (
-                <Modal
-                    isOpen={!!selectedEventDetails}
-                    onClose={() => setSelectedEventDetails(null)}
-                    title="Calendar Event Details"
-                >
-                    <div className="space-y-4">
-                        <div className="flex items-start justify-between">
-                            <div>
-                                <h3 className="text-lg font-bold text-gray-900">{selectedEventDetails.title}</h3>
-                                <div className="flex items-center gap-2 mt-1">
-                                    <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-gray-100 text-gray-700">
-                                        {selectedEventDetails.type.replace("_", " ")}
+            {selectedEventDetails && (() => {
+                const badge = getEventBadge(selectedEventDetails.category, selectedEventDetails.type);
+                return (
+                    <Modal
+                        isOpen={!!selectedEventDetails}
+                        onClose={() => setSelectedEventDetails(null)}
+                        title="Calendar Event Details"
+                    >
+                        <div className="space-y-4">
+                            {/* Header / Event Title and Badges */}
+                            <div className="pb-3 border-b border-slate-100">
+                                <h3 className="text-base font-bold text-slate-900 leading-snug">
+                                    {selectedEventDetails.title}
+                                </h3>
+                                <div className="flex flex-wrap items-center gap-2 mt-2">
+                                    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-700 border border-slate-200">
+                                        <span className={`w-1.5 h-1.5 rounded-full ${badge.dot}`} />
+                                        <span>{badge.label}</span>
                                     </span>
-                                    {selectedEventDetails.isSchoolClosed && (
-                                        <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800">
+                                    {selectedEventDetails.isSchoolClosed ? (
+                                        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded text-xs font-medium bg-rose-50 text-rose-700 border border-rose-200">
+                                            <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
                                             School Closed
+                                        </span>
+                                    ) : (
+                                        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                                            In Session
                                         </span>
                                     )}
                                 </div>
                             </div>
-                        </div>
 
-                        <div className="grid grid-cols-2 gap-3 text-xs bg-gray-50 p-3 rounded-lg border">
-                            <div>
-                                <span className="font-semibold text-gray-500">Date Range:</span>
-                                <p className="text-gray-900 font-medium mt-0.5">
-                                    {selectedEventDetails.startDate.slice(0, 10)} to {selectedEventDetails.endDate.slice(0, 10)}
-                                </p>
-                            </div>
-                            <div>
-                                <span className="font-semibold text-gray-500">Parent Semester:</span>
-                                <p className="text-gray-900 font-medium mt-0.5">
-                                    {selectedEventDetails.academicPeriod?.name || "Calendar-wide"}
-                                </p>
-                            </div>
-                            <div>
-                                <span className="font-semibold text-gray-500">Source:</span>
-                                <p className="text-gray-900 font-medium mt-0.5">
-                                    {selectedEventDetails.source === "IMPORTED" ? "Ethiopian Holiday Engine" : selectedEventDetails.source}
-                                </p>
-                            </div>
-                            <div>
-                                <span className="font-semibold text-gray-500">Audit Status:</span>
-                                <p className="text-gray-900 font-medium mt-0.5">
-                                    {calendar?.status === "PUBLISHED" ? "Audited & Authoritative" : "Draft / Unaudited"}
-                                </p>
-                            </div>
-                        </div>
-
-                        {selectedEventDetails.description && (
-                            <div>
-                                <h5 className="text-xs font-semibold text-gray-700 mb-1">Description:</h5>
-                                <p className="text-xs text-gray-600 bg-white p-3 rounded-lg border leading-relaxed">
-                                    {selectedEventDetails.description}
-                                </p>
-                            </div>
-                        )}
-
-                        <div className="flex justify-between items-center pt-4 border-t">
-                            {hasManagePermission ? (
-                                <div className="space-x-2">
-                                    <Button
-                                        size="sm"
-                                        variant="secondary"
-                                        onClick={() => {
-                                            const ev = selectedEventDetails;
-                                            setSelectedEventDetails(null);
-                                            openEditEventModal(ev);
-                                        }}
-                                        leftIcon={<Edit3 className="w-3.5 h-3.5" />}
-                                    >
-                                        Edit
-                                    </Button>
-                                    <Button
-                                        size="sm"
-                                        variant="secondary"
-                                        className="text-red-600 border-red-200 hover:bg-red-50"
-                                        onClick={() => handleDeleteEvent(selectedEventDetails.id)}
-                                        leftIcon={<Trash2 className="w-3.5 h-3.5" />}
-                                    >
-                                        Delete
-                                    </Button>
+                            {/* Structured Key-Value Properties */}
+                            <div className="bg-slate-50/80 rounded-lg border border-slate-200/80 divide-y divide-slate-200/60 text-xs">
+                                <div className="flex items-center justify-between p-3">
+                                    <span className="text-slate-500 font-medium">Scheduled Dates</span>
+                                    <span className="text-slate-900 font-mono font-medium">
+                                        {selectedEventDetails.startDate.slice(0, 10)}
+                                        {selectedEventDetails.startDate.slice(0, 10) !== selectedEventDetails.endDate.slice(0, 10) && (
+                                            <> <span className="text-slate-400 font-sans">to</span> {selectedEventDetails.endDate.slice(0, 10)}</>
+                                        )}
+                                    </span>
                                 </div>
-                            ) : <div />}
+                                <div className="flex items-center justify-between p-3">
+                                    <span className="text-slate-500 font-medium">Academic Semester</span>
+                                    <span className="text-slate-900 font-medium">
+                                        {selectedEventDetails.academicPeriod?.name || "Institutional / Calendar-wide"}
+                                    </span>
+                                </div>
+                                <div className="flex items-center justify-between p-3">
+                                    <span className="text-slate-500 font-medium">Event Source</span>
+                                    <span className="text-slate-900 font-medium">
+                                        {selectedEventDetails.source === "IMPORTED" ? "Ethiopian National Calendar" : "School Institutional"}
+                                    </span>
+                                </div>
+                                <div className="flex items-center justify-between p-3">
+                                    <span className="text-slate-500 font-medium">Calendar Status</span>
+                                    <span className="text-slate-900 font-medium">
+                                        {calendar?.status === "PUBLISHED" ? "Authoritative (Published)" : "Draft / In Review"}
+                                    </span>
+                                </div>
+                            </div>
 
-                            <Button variant="ghost" onClick={() => setSelectedEventDetails(null)}>
-                                Close
-                            </Button>
+                            {/* Operational Notes / Description */}
+                            {selectedEventDetails.description && (
+                                <div className="rounded-lg bg-slate-50 border border-slate-200 p-3">
+                                    <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block mb-1">
+                                        Operational Notes
+                                    </span>
+                                    <p className="text-xs text-slate-700 leading-relaxed whitespace-pre-wrap">
+                                        {selectedEventDetails.description}
+                                    </p>
+                                </div>
+                            )}
+
+                            {/* Action Footer */}
+                            <div className="flex justify-between items-center pt-3 border-t border-slate-200">
+                                {hasManagePermission ? (
+                                    <div className="flex items-center gap-2">
+                                        <Button
+                                            size="sm"
+                                            variant="secondary"
+                                            onClick={() => {
+                                                const ev = selectedEventDetails;
+                                                setSelectedEventDetails(null);
+                                                openEditEventModal(ev);
+                                            }}
+                                            leftIcon={<Edit3 className="w-3.5 h-3.5" />}
+                                            className="text-xs border-slate-300 hover:bg-slate-50 text-slate-700"
+                                        >
+                                            Edit
+                                        </Button>
+                                        <Button
+                                            size="sm"
+                                            variant="secondary"
+                                            className="text-red-600 border-red-200 hover:bg-red-50 text-xs"
+                                            onClick={() => handleDeleteEvent(selectedEventDetails.id)}
+                                            leftIcon={<Trash2 className="w-3.5 h-3.5" />}
+                                        >
+                                            Delete
+                                        </Button>
+                                    </div>
+                                ) : <div />}
+
+                                <Button 
+                                    variant="secondary" 
+                                    onClick={() => setSelectedEventDetails(null)} 
+                                    className="text-xs border-slate-300 hover:bg-slate-50 text-slate-700"
+                                >
+                                    Close
+                                </Button>
+                            </div>
                         </div>
-                    </div>
-                </Modal>
-            )}
+                    </Modal>
+                );
+            })()}
 
             {/* MODAL: Add Academic Period */}
-            <Modal isOpen={isPeriodModalOpen} onClose={() => setIsPeriodModalOpen(false)} title="Add Academic Period / Semester">
+            <Modal isOpen={isPeriodModalOpen} onClose={() => setIsPeriodModalOpen(false)} title="Configure Academic Semester / Term">
                 <form onSubmit={handleCreatePeriod} className="space-y-4">
                     {periodError && (
-                        <div className="p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-xs">
-                            {periodError}
+                        <div className="p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-xs flex items-center gap-2">
+                            <AlertTriangle className="w-4 h-4 text-red-600 shrink-0" />
+                            <span>{periodError}</span>
                         </div>
                     )}
 
                     <div>
-                        <label className="block text-xs font-semibold text-gray-700 mb-1">Period Name</label>
+                        <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                            Period / Semester Name <span className="text-red-500">*</span>
+                        </label>
                         <input
                             type="text"
                             required
                             placeholder="e.g. Semester 1, Semester 2"
                             value={periodForm.name}
                             onChange={(e) => setPeriodForm(prev => ({ ...prev, name: e.target.value }))}
-                            className="w-full p-2 border rounded-lg text-sm bg-white text-gray-900 focus:ring-2 focus:ring-[#006b3f]"
+                            className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs bg-slate-50/50 text-slate-900 placeholder:text-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#4085b3]/20 focus:border-[#4085b3] transition-all"
                         />
                     </div>
 
                     <div>
-                        <label className="block text-xs font-semibold text-gray-700 mb-1">Period Type</label>
+                        <label className="block text-xs font-semibold text-slate-700 mb-1.5">Period Type</label>
                         <select
                             value={periodForm.type}
                             onChange={(e) => setPeriodForm(prev => ({ ...prev, type: e.target.value }))}
-                            className="w-full p-2 border rounded-lg text-sm bg-white text-gray-900 focus:ring-2 focus:ring-[#006b3f]"
+                            className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs bg-slate-50/50 text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#4085b3]/20 focus:border-[#4085b3] transition-all"
                         >
                             <option value="SEMESTER">Semester</option>
                             <option value="TERM">Term</option>
@@ -1642,39 +1827,52 @@ export default function AcademicCalendarPage() {
 
                     <div className="grid grid-cols-2 gap-3">
                         <div>
-                            <label className="block text-xs font-semibold text-gray-700 mb-1">Start Date</label>
+                            <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                                Start Date <span className="text-red-500">*</span>
+                            </label>
                             <input
                                 type="date"
                                 required
                                 value={periodForm.startDate}
                                 onChange={(e) => setPeriodForm(prev => ({ ...prev, startDate: e.target.value }))}
-                                className="w-full p-2 border rounded-lg text-sm bg-white text-gray-900 focus:ring-2 focus:ring-[#006b3f]"
+                                className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs bg-slate-50/50 text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#4085b3]/20 focus:border-[#4085b3] transition-all font-mono"
                             />
                         </div>
                         <div>
-                            <label className="block text-xs font-semibold text-gray-700 mb-1">End Date</label>
+                            <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                                End Date <span className="text-red-500">*</span>
+                            </label>
                             <input
                                 type="date"
                                 required
                                 value={periodForm.endDate}
                                 onChange={(e) => setPeriodForm(prev => ({ ...prev, endDate: e.target.value }))}
-                                className="w-full p-2 border rounded-lg text-sm bg-white text-gray-900 focus:ring-2 focus:ring-[#006b3f]"
+                                className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs bg-slate-50/50 text-slate-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#4085b3]/20 focus:border-[#4085b3] transition-all font-mono"
                             />
                         </div>
                     </div>
 
                     {selectedYear && (
-                        <p className="text-xs text-gray-500 bg-gray-50 p-2 rounded-lg border">
-                            Year Bounds: <strong>{selectedYear.startDate.slice(0, 10)}</strong> to <strong>{selectedYear.endDate.slice(0, 10)}</strong>. Periods must fall strictly within this range and cannot overlap with other periods.
+                        <p className="text-xs text-slate-600 bg-slate-50/80 p-3 rounded-lg border border-slate-200/80">
+                            Academic Year Boundaries: <strong className="text-slate-800">{selectedYear.startDate.slice(0, 10)}</strong> to <strong className="text-slate-800">{selectedYear.endDate.slice(0, 10)}</strong>. Periods must fall strictly within this window.
                         </p>
                     )}
 
-                    <div className="flex justify-end gap-3 pt-4 border-t">
-                        <Button type="button" variant="ghost" onClick={() => setIsPeriodModalOpen(false)}>
+                    <div className="flex justify-end gap-2.5 pt-4 border-t border-slate-200">
+                        <Button 
+                            type="button" 
+                            variant="secondary" 
+                            onClick={() => setIsPeriodModalOpen(false)}
+                            className="text-xs border-slate-300 hover:bg-slate-50 text-slate-700"
+                        >
                             Cancel
                         </Button>
-                        <Button type="submit" isLoading={submittingPeriod}>
-                            Add Period
+                        <Button 
+                            type="submit" 
+                            isLoading={submittingPeriod} 
+                            className="text-xs bg-[#4085b3] hover:bg-[#32698e] text-white shadow-xs font-medium"
+                        >
+                            Configure Period
                         </Button>
                     </div>
                 </form>

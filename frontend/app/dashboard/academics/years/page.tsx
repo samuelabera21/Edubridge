@@ -163,7 +163,7 @@ export default function AcademicYearsPage() {
 
                 <div className="flex items-baseline space-x-2">
                     <span className="text-gray-500 font-medium text-xs">Active Session:</span>
-                    <span className="font-bold text-emerald-700 text-sm font-mono">{activeYear ? activeYear.name : "None"}</span>
+                    <span className="font-bold text-[#4085b3] text-sm font-mono">{activeYear ? activeYear.name : "None"}</span>
                 </div>
 
                 <span className="text-gray-300 select-none hidden sm:inline">|</span>

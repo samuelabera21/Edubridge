@@ -1,13 +1,20 @@
 import { Router } from "express";
 import { 
+    getSectionWorkspace,
     createClassPeriod, 
+    deleteClassPeriod,
     getClassPeriods,
+    generateDefaultPeriods,
     assignTimetable,
+    reassignSlot,
+    deleteTimetable,
+    publishTimetable,
+    unpublishTimetable,
+    getMyTimetable,
     getTimetableForSection,
     getTimetableForTeacher,
     getTimetableForRoom,
     updateTeacherAvailability,
-    deleteTimetable,
     getTimetableConfig,
     saveTimetableConfig,
     updateRoomAvailability,
@@ -22,15 +29,32 @@ router.use(requireScope("SCHOOL"));
 
 /**
  * @openapi
+ * /api/timetable/workspace:
+ *   get:
+ *     tags: [Timetable]
+ *     summary: Get section-oriented timetable workspace data
+ */
+router.get("/workspace", requirePermission("ACADEMIC:VIEW"), getSectionWorkspace);
+
+/**
+ * @openapi
+ * /api/timetable/my:
+ *   get:
+ *     tags: [Timetable]
+ *     summary: Get personal timetable for authenticated student or teacher
+ */
+router.get("/my", getMyTimetable);
+
+/**
+ * @openapi
  * /api/timetable/periods:
  *   post:
  *     tags: [Timetable]
  *     summary: Create a class period for the school
- *     security:
- *       - bearerAuth: []
- *       - cookieAuth: []
  */
 router.post("/periods", requirePermission("ACADEMIC:CREATE"), createClassPeriod);
+router.delete("/periods/:id", requirePermission("ACADEMIC:MANAGE"), deleteClassPeriod);
+router.post("/periods/default", requirePermission("ACADEMIC:CREATE"), generateDefaultPeriods);
 
 /**
  * @openapi
@@ -38,9 +62,6 @@ router.post("/periods", requirePermission("ACADEMIC:CREATE"), createClassPeriod)
  *   get:
  *     tags: [Timetable]
  *     summary: Get all class periods for the school
- *     security:
- *       - bearerAuth: []
- *       - cookieAuth: []
  */
 router.get("/periods", requirePermission("ACADEMIC:VIEW"), getClassPeriods);
 
@@ -50,11 +71,36 @@ router.get("/periods", requirePermission("ACADEMIC:VIEW"), getClassPeriods);
  *   post:
  *     tags: [Timetable]
  *     summary: Assign a teaching assignment to a specific period and day
- *     security:
- *       - bearerAuth: []
- *       - cookieAuth: []
  */
 router.post("/", requirePermission("ACADEMIC:CREATE"), assignTimetable);
+router.post("/assign", requirePermission("ACADEMIC:CREATE"), assignTimetable);
+
+/**
+ * @openapi
+ * /api/timetable/reassign:
+ *   post:
+ *     tags: [Timetable]
+ *     summary: Reassign an existing timetable slot
+ */
+router.post("/reassign", requirePermission("ACADEMIC:UPDATE"), reassignSlot);
+
+/**
+ * @openapi
+ * /api/timetable/publish:
+ *   post:
+ *     tags: [Timetable]
+ *     summary: Publish the timetable for the academic year
+ */
+router.post("/publish", requirePermission("ACADEMIC:CREATE"), publishTimetable);
+
+/**
+ * @openapi
+ * /api/timetable/unpublish:
+ *   post:
+ *     tags: [Timetable]
+ *     summary: Unpublish timetable back to draft
+ */
+router.post("/unpublish", requirePermission("ACADEMIC:CREATE"), unpublishTimetable);
 
 /**
  * @openapi
@@ -62,9 +108,6 @@ router.post("/", requirePermission("ACADEMIC:CREATE"), assignTimetable);
  *   get:
  *     tags: [Timetable]
  *     summary: Get the weekly timetable for a specific section
- *     security:
- *       - bearerAuth: []
- *       - cookieAuth: []
  */
 router.get("/section/:sectionId", requirePermission("ACADEMIC:VIEW"), getTimetableForSection);
 
@@ -74,9 +117,6 @@ router.get("/section/:sectionId", requirePermission("ACADEMIC:VIEW"), getTimetab
  *   get:
  *     tags: [Timetable]
  *     summary: Get the weekly timetable for a specific teacher
- *     security:
- *       - bearerAuth: []
- *       - cookieAuth: []
  */
 router.get("/teacher/:teacherId", requirePermission("ACADEMIC:VIEW"), getTimetableForTeacher);
 
@@ -86,9 +126,6 @@ router.get("/teacher/:teacherId", requirePermission("ACADEMIC:VIEW"), getTimetab
  *   get:
  *     tags: [Timetable]
  *     summary: Get the weekly timetable for a specific room
- *     security:
- *       - bearerAuth: []
- *       - cookieAuth: []
  */
 router.get("/room/:roomId", requirePermission("ACADEMIC:VIEW"), getTimetableForRoom);
 
@@ -98,9 +135,6 @@ router.get("/room/:roomId", requirePermission("ACADEMIC:VIEW"), getTimetableForR
  *   put:
  *     tags: [Timetable]
  *     summary: Update teacher availability slots
- *     security:
- *       - bearerAuth: []
- *       - cookieAuth: []
  */
 router.put("/teacher/:teacherId/availability", requirePermission("ACADEMIC:CREATE"), updateTeacherAvailability);
 
@@ -110,11 +144,9 @@ router.put("/teacher/:teacherId/availability", requirePermission("ACADEMIC:CREAT
  *   delete:
  *     tags: [Timetable]
  *     summary: Delete a timetable entry
- *     security:
- *       - bearerAuth: []
- *       - cookieAuth: []
  */
-router.delete("/:id", requirePermission("ACADEMIC:DELETE"), deleteTimetable);
+router.delete("/slots/:id", requirePermission("ACADEMIC:MANAGE"), deleteTimetable);
+router.delete("/:id", requirePermission("ACADEMIC:MANAGE"), deleteTimetable);
 
 /**
  * @openapi
@@ -122,9 +154,6 @@ router.delete("/:id", requirePermission("ACADEMIC:DELETE"), deleteTimetable);
  *   get:
  *     tags: [Timetable]
  *     summary: Get timetable config for an academic year
- *     security:
- *       - bearerAuth: []
- *       - cookieAuth: []
  */
 router.get("/config/:academicYearId", requirePermission("ACADEMIC:VIEW"), getTimetableConfig);
 
@@ -134,9 +163,6 @@ router.get("/config/:academicYearId", requirePermission("ACADEMIC:VIEW"), getTim
  *   post:
  *     tags: [Timetable]
  *     summary: Create or update timetable config and auto-generate class periods
- *     security:
- *       - bearerAuth: []
- *       - cookieAuth: []
  */
 router.post("/config", requirePermission("ACADEMIC:CREATE"), saveTimetableConfig);
 
@@ -146,9 +172,6 @@ router.post("/config", requirePermission("ACADEMIC:CREATE"), saveTimetableConfig
  *   post:
  *     tags: [Timetable]
  *     summary: Auto-generates the timetable grid
- *     security:
- *       - bearerAuth: []
- *       - cookieAuth: []
  */
 router.post("/auto-generate", requirePermission("ACADEMIC:CREATE"), autoGenerateTimetable);
 
@@ -158,9 +181,6 @@ router.post("/auto-generate", requirePermission("ACADEMIC:CREATE"), autoGenerate
  *   put:
  *     tags: [Timetable]
  *     summary: Update room availability slots
- *     security:
- *       - bearerAuth: []
- *       - cookieAuth: []
  */
 router.put("/room/:roomId/availability", requirePermission("ACADEMIC:CREATE"), updateRoomAvailability);
 

@@ -26,8 +26,8 @@ const studentNavGroups: StudentNavGroup[] = [
         label: "My Profile",
         icon: User,
         links: [
-            { label: "Student Information", href: "/dashboard/student/profile" },
-            { label: "School and Enrollment", href: "/dashboard/student/profile" },
+            { label: "Student Information", href: "/dashboard/student/profile/information" },
+            { label: "School and Enrollment", href: "/dashboard/student/profile/enrollment" },
         ],
     },
     {
@@ -35,9 +35,9 @@ const studentNavGroups: StudentNavGroup[] = [
         label: "My Classes",
         icon: BookOpen,
         links: [
-            { label: "Subjects and Teachers", href: "/dashboard/student/classes" },
-            { label: "Class Schedule", href: "/dashboard/student/classes" },
-            { label: "Learning Resources", href: "/dashboard/student/classes" },
+            { label: "Subjects and Teachers", href: "/dashboard/student/classes/subjects" },
+            { label: "Class Schedule", href: "/dashboard/student/classes/schedule" },
+            { label: "Learning Resources", href: "/dashboard/student/classes/resources" },
         ],
     },
     {

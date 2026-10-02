@@ -103,7 +103,7 @@ export class AttendanceService {
 
         // Fetch all enrollments in section
         const enrollments = await prisma.studentEnrollment.findMany({
-            where: { sectionId },
+            where: { sectionId, organizationId },
             include: { student: true }
         });
 

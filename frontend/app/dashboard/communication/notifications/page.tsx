@@ -1,63 +1,137 @@
 "use client";
 
-import { useState } from "react";
-import { Bell, Filter, Calendar } from "lucide-react";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/Card";
+import { useEffect, useState } from "react";
+import { fetchApi } from "@/lib/api";
+import { Bell, CheckCheck } from "lucide-react";
 import { Button } from "@/components/ui/Button";
-import { EmptyState } from "@/components/ui/EmptyState";
+import { LoadingState } from "@/components/ui/LoadingState";
+
+interface Notification {
+    id: string;
+    title: string;
+    content: string;
+    isRead: boolean;
+    link?: string;
+    createdAt: string;
+}
 
 export default function NotificationsPage() {
-    const [notifications] = useState<any[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+    const [notifications, setNotifications] = useState<Notification[]>([]);
+
+    const loadNotifications = async () => {
+        try {
+            setLoading(true);
+            setError(null);
+            const res = await fetchApi("/communication/notifications");
+            if (!res.ok) throw new Error("Failed to load notifications");
+            const data = await res.json();
+            setNotifications(Array.isArray(data) ? data : []);
+        } catch (err: any) {
+            setError(err.message || "Failed to load notifications");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        loadNotifications();
+    }, []);
+
+    const handleMarkRead = async (id: string) => {
+        try {
+            const res = await fetchApi(`/communication/notifications/${id}/read`, { method: "PATCH" });
+            if (res.ok) {
+                setNotifications(prev =>
+                    prev.map(n => n.id === id ? { ...n, isRead: true } : n)
+                );
+            }
+        } catch (_) {}
+    };
+
+    const handleMarkAllRead = async () => {
+        const unread = notifications.filter(n => !n.isRead);
+        for (const n of unread) {
+            await handleMarkRead(n.id);
+        }
+    };
+
+    if (loading) return <LoadingState message="Loading notifications..." />;
+
+    if (error) {
+        return (
+            <div className="text-center py-12">
+                <p className="text-red-600 text-sm">{error}</p>
+                <Button onClick={loadNotifications} className="mt-4">Retry</Button>
+            </div>
+        );
+    }
+
+    const unreadCount = notifications.filter(n => !n.isRead).length;
 
     return (
-        <div className="space-y-6">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div>
-                    <h1 className="text-xl font-bold text-gray-900 flex items-center">
-                        <Bell className="w-6 h-6 mr-2 text-[#006b3f]" />
-                        System Notifications
-                    </h1>
-                    <p className="text-sm text-gray-500 mt-1">Review your automated system alerts and personal notifications.</p>
-                </div>
-                <div className="flex space-x-2">
-                    <Button variant="ghost" size="sm">Mark All as Read</Button>
-                </div>
+        <div className="space-y-4 text-black">
+            <div className="flex items-center justify-between">
+                <h1 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+                    <Bell className="w-5 h-5 text-[#006b3f]" />
+                    Notifications
+                    {unreadCount > 0 && (
+                        <span className="bg-[#006b3f] text-white text-xs font-semibold px-2 py-0.5 rounded-full">
+                            {unreadCount}
+                        </span>
+                    )}
+                </h1>
+                {unreadCount > 0 && (
+                    <Button
+                        variant="outline"
+                        onClick={handleMarkAllRead}
+                        className="text-sm"
+                    >
+                        <CheckCheck className="w-4 h-4 mr-1.5" />
+                        Mark all read
+                    </Button>
+                )}
             </div>
 
-            {notifications.length === 0 ? (
-                <EmptyState 
-                    title="You're all caught up!" 
-                    message="There are no new notifications to display at this time." 
-                />
-            ) : (
-                <Card>
-                    <CardHeader className="bg-gray-50/50 flex flex-row items-center justify-between py-4">
-                        <CardTitle>Recent Alerts</CardTitle>
-                        <div className="flex space-x-2">
-                            <Button variant="ghost" size="sm" leftIcon={<Filter className="w-4 h-4" />}>Filter</Button>
-                        </div>
-                    </CardHeader>
-                    <CardContent className="p-0">
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-sm text-left">
-                                <tbody className="divide-y divide-gray-100">
-                                    {notifications.map((item) => (
-                                        <tr key={item.id} className="hover:bg-gray-50/50 transition-colors">
-                                            <td className="px-6 py-4 font-medium text-gray-900">
-                                                {item.message}
-                                            </td>
-                                            <td className="px-6 py-4 text-gray-600 text-right flex justify-end items-center">
-                                                <Calendar className="w-4 h-4 mr-2 text-gray-400" />
-                                                {item.createdAt}
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    </CardContent>
-                </Card>
-            )}
+            <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+                {notifications.length === 0 ? (
+                    <div className="py-16 text-center">
+                        <Bell className="w-10 h-10 mx-auto text-gray-300 mb-3" />
+                        <p className="text-sm text-gray-500">No notifications.</p>
+                    </div>
+                ) : (
+                    <ul className="divide-y divide-gray-100">
+                        {notifications.map(notif => (
+                            <li
+                                key={notif.id}
+                                className={`px-5 py-4 flex items-start gap-3 hover:bg-gray-50 transition-colors ${!notif.isRead ? "bg-emerald-50/40" : ""}`}
+                            >
+                                <div className="mt-0.5 flex-shrink-0">
+                                    <div className={`w-2 h-2 rounded-full mt-1.5 ${notif.isRead ? "bg-transparent" : "bg-[#006b3f]"}`} />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <p className={`text-sm ${notif.isRead ? "text-gray-700" : "font-semibold text-gray-900"}`}>
+                                        {notif.title}
+                                    </p>
+                                    <p className="text-xs text-gray-500 mt-0.5">{notif.content}</p>
+                                    <p className="text-xs text-gray-400 mt-1">
+                                        {new Date(notif.createdAt).toLocaleString()}
+                                    </p>
+                                </div>
+                                {!notif.isRead && (
+                                    <button
+                                        onClick={() => handleMarkRead(notif.id)}
+                                        className="text-xs text-[#006b3f] hover:underline flex-shrink-0 mt-1"
+                                    >
+                                        Mark read
+                                    </button>
+                                )}
+                            </li>
+                        ))}
+                    </ul>
+                )}
+            </div>
         </div>
     );
 }

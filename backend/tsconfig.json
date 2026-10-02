@@ -13,10 +13,7 @@
     "declaration": true,
     "declarationMap": true,
     "noUncheckedIndexedAccess": true,
-    "exactOptionalPropertyTypes": false,
-    "types": [
-      "node"
-    ]
+    "exactOptionalPropertyTypes": false
   },
   "include": [
     "src/**/*.ts"

@@ -53,8 +53,9 @@ export default function GradeDetailsPage() {
         loading: false,
     });
 
-    const hasManagePermission = authData?.permissions?.some((p: string) => 
-        ["ACADEMIC:MANAGE", "ACADEMIC:CREATE", "ACADEMIC:UPDATE"].includes(p)
+    const hasManagePermission = authData?.access?.some(acc =>
+        ["ADMIN", "SCHOOL_ADMIN", "VICE_PRINCIPAL"].includes(acc.role.name) ||
+        acc.role.permissions.some((p: any) => ["ACADEMIC:CREATE", "ACADEMIC:UPDATE", "ACADEMIC:MANAGE"].includes(p.permission?.name))
     ) ?? true;
 
     const loadDetails = async () => {
