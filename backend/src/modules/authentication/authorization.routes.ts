@@ -905,4 +905,172 @@ router.post("/assign-permission", async (req, res) => {
     }
 });
 
+// ============================================================================
+// ACTIVATE INVITATION — Public endpoint (no session required)
+// Validates invitation token, sets password, marks account active
+// ============================================================================
+router.post("/activate-invitation", async (req, res) => {
+    try {
+        const { token, password, confirmPassword } = req.body;
+
+        if (!token || !password) {
+            return res.status(400).json({ message: "Invitation token and new password are required." });
+        }
+
+        if (password !== confirmPassword) {
+            return res.status(400).json({ message: "Passwords do not match." });
+        }
+
+        const strength = validatePasswordStrength(password);
+        if (!strength.valid) {
+            return res.status(400).json({ message: strength.message });
+        }
+
+        // 1. Find verification record by token value
+        const verification = await prisma.verification.findFirst({
+            where: {
+                value: token,
+                identifier: { startsWith: "invitation:" }
+            }
+        });
+
+        if (!verification) {
+            return res.status(400).json({ message: "Invalid or expired invitation link. Please contact your administrator." });
+        }
+
+        if (verification.expiresAt < new Date()) {
+            return res.status(400).json({ message: "This invitation link has expired. Please request a new invitation." });
+        }
+
+        // 2. Parse identifier: "invitation:{userId}:{regionId}"
+        const parts = verification.identifier.split(":");
+        if (parts.length < 3) {
+            return res.status(400).json({ message: "Malformed invitation token." });
+        }
+        const userId = parts[1] as string;
+
+        // 3. Find user
+        const user = await prisma.user.findUnique({ where: { id: userId } });
+        if (!user) {
+            return res.status(404).json({ message: "User account not found." });
+        }
+
+        // 4. Set the user's password via Better Auth
+        const hashedPassword = await hashPassword(password);
+
+        // Check if account record exists
+        const existingAccount = await prisma.account.findFirst({
+            where: { userId, providerId: "credential" }
+        });
+
+        if (existingAccount) {
+            await prisma.account.update({
+                where: { id: existingAccount.id },
+                data: { password: hashedPassword }
+            });
+        } else {
+            await prisma.account.create({
+                data: {
+                    id: "acc_" + Date.now() + "_" + Math.random().toString(36).substring(2, 7),
+                    userId,
+                    accountId: userId,
+                    providerId: "credential",
+                    password: hashedPassword,
+                    createdAt: new Date(),
+                    updatedAt: new Date()
+                }
+            });
+        }
+
+        // 5. Mark email verified, clear requiresPasswordChange, activate
+        await prisma.user.update({
+            where: { id: userId },
+            data: {
+                emailVerified: true,
+                requiresPasswordChange: false,
+                isActive: true
+            }
+        });
+
+        // 6. Consume (delete) the invitation token
+        await prisma.verification.delete({ where: { id: verification.id } });
+
+        // 7. Audit log
+        try {
+            await prisma.auditLog.create({
+                data: {
+                    userId,
+                    action: "ACCOUNT_ACTIVATED",
+                    resource: "User",
+                    resourceId: userId,
+                    newValue: { activatedViaInvitation: true }
+                }
+            });
+        } catch (e) {}
+
+        return res.json({
+            success: true,
+            message: "Account activated successfully. You may now sign in.",
+            email: user.email
+        });
+
+    } catch (error: any) {
+        console.error("[ActivateInvitation] Error:", error);
+        return res.status(500).json({ message: error.message || "Failed to activate account." });
+    }
+});
+
+// Validate invitation token (public — called on page load)
+router.get("/validate-invitation", async (req, res) => {
+    try {
+        const { token } = req.query;
+        if (!token || typeof token !== "string") {
+            return res.status(400).json({ valid: false, message: "Token is required." });
+        }
+
+        const verification = await prisma.verification.findFirst({
+            where: {
+                value: token,
+                identifier: { startsWith: "invitation:" }
+            }
+        });
+
+        if (!verification) {
+            return res.json({ valid: false, message: "Invalid invitation link." });
+        }
+
+        if (verification.expiresAt < new Date()) {
+            return res.json({ valid: false, message: "This invitation has expired." });
+        }
+
+        const parts = verification.identifier.split(":");
+        const userId = parts[1];
+        const scopeId = parts[2];
+
+        const [user, scope] = await Promise.all([
+            prisma.user.findUnique({ where: { id: userId }, select: { name: true, email: true, emailVerified: true } }),
+            scopeId ? prisma.organizationUnit.findUnique({ where: { id: scopeId }, select: { name: true, type: true } }) : null
+        ]);
+
+        if (!user) {
+            return res.json({ valid: false, message: "User account not found." });
+        }
+
+        if (user.emailVerified) {
+            return res.json({ valid: false, alreadyActivated: true, message: "This account has already been activated." });
+        }
+
+        return res.json({
+            valid: true,
+            name: user.name,
+            email: user.email,
+            organizationName: scope?.name || null,
+            organizationType: scope?.type || null
+        });
+
+    } catch (error: any) {
+        return res.status(500).json({ valid: false, message: "Failed to validate invitation." });
+    }
+});
+
 export default router;
