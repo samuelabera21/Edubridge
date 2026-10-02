@@ -80,10 +80,12 @@ export class GovernanceDashboardService {
      * Primary governance aggregation engine.
      * Computes hierarchical metrics for the authenticated user (or authorized target drill-down)
      * strictly across descendant schools in the active academic year context.
+     * Validates administrative tier boundaries (FEDERAL, REGION, ZONE, WOREDA).
      */
     static async getGovernanceDashboard(
         userId: string,
-        targetOrgId?: string
+        targetOrgId?: string,
+        requiredTier?: OrganizationUnitType
     ): Promise<GovernanceDashboardData> {
         if (!userId) {
             throw new Error("User ID is required to access governance dashboard");
@@ -92,10 +94,22 @@ export class GovernanceDashboardService {
         // 1. Resolve caller's authorized scope via H2
         const userScope = await HierarchyScopeService.getAccessibleOrganizationScope(userId);
 
+        if (userScope.currentOrganizationType === "SCHOOL") {
+            throw new Error("Forbidden: School level users cannot access administrative hierarchy dashboards. Use /dashboard instead.");
+        }
+
+        const TIER_ORDER: Record<OrganizationUnitType, number> = {
+            FEDERAL: 4,
+            REGION: 3,
+            ZONE: 2,
+            WOREDA: 1,
+            SCHOOL: 0,
+        };
+
         // 2. Resolve Effective Unit & Lineage
         let effectiveOrgId = userScope.currentOrganizationId;
         let effectiveOrgName = userScope.currentOrganization.name;
-        let effectiveOrgType = userScope.currentOrganizationType;
+        let effectiveOrgType: OrganizationUnitType = userScope.currentOrganizationType;
         let effectiveLineage = userScope.lineage;
         let isDrillDown = false;
 
@@ -113,11 +127,48 @@ export class GovernanceDashboardService {
                 throw new Error(`Target organization unit '${targetOrgId}' not found`);
             }
 
+            if (requiredTier && targetUnit.type !== requiredTier) {
+                throw new Error(`Forbidden: Target organization tier '${targetUnit.type}' is not authorized for ${requiredTier} dashboard`);
+            }
+
             effectiveOrgId = targetUnit.id;
             effectiveOrgName = targetUnit.name;
             effectiveOrgType = targetUnit.type;
             effectiveLineage = await HierarchyScopeService.getLineage(targetOrgId);
             isDrillDown = true;
+        } else if (requiredTier) {
+            // No specific targetOrgId provided: validate tier compatibility
+            const callerTierRank = TIER_ORDER[userScope.currentOrganizationType] ?? 0;
+            const requiredTierRank = TIER_ORDER[requiredTier] ?? 0;
+
+            if (callerTierRank < requiredTierRank) {
+                // Subordinate tier trying to access superior dashboard (e.g. Region trying to access Federal)
+                throw new Error(`Forbidden: Organization tier '${userScope.currentOrganizationType}' is not authorized for ${requiredTier} dashboard`);
+            } else if (callerTierRank > requiredTierRank) {
+                // Superior tier accessing subordinate dashboard directly without targetOrgId (e.g. Federal accessing Region/Zone/Woreda)
+                // Find first descendant organization matching requiredTier within authorized scope
+                const descendantOfTier = await prisma.organizationUnit.findFirst({
+                    where: {
+                        id: { in: userScope.accessibleOrganizationIds },
+                        type: requiredTier,
+                    },
+                    select: { id: true, name: true, type: true, parentId: true },
+                    orderBy: { name: "asc" },
+                });
+
+                if (descendantOfTier) {
+                    effectiveOrgId = descendantOfTier.id;
+                    effectiveOrgName = descendantOfTier.name;
+                    effectiveOrgType = descendantOfTier.type;
+                    effectiveLineage = await HierarchyScopeService.getLineage(descendantOfTier.id);
+                    isDrillDown = true;
+                }
+            }
+        }
+
+        // Enforce final sanity check on effectiveOrgType
+        if (requiredTier && effectiveOrgType !== requiredTier) {
+            throw new Error(`Forbidden: Organization tier '${effectiveOrgType}' is not authorized for ${requiredTier} dashboard`);
         }
 
         // 3. Load all hierarchy units once for in-memory child mapping & descendant resolution
@@ -247,7 +298,7 @@ export class GovernanceDashboardService {
                     id: true,
                     organizationId: true,
                     schoolGradeId: true,
-                    schoolGrade: { select: { id: true, name: true, level: true } },
+                    schoolGrade: { select: { id: true, grade: { select: { id: true, name: true, level: true } } } },
                     student: { select: { gender: true } },
                 },
             }),
@@ -309,15 +360,18 @@ export class GovernanceDashboardService {
             else if (gender === "FEMALE") femaleCount++;
             else otherCount++;
 
-            if (e.schoolGrade) {
-                const g = gradeMap.get(e.schoolGrade.id) || {
-                    gradeId: e.schoolGrade.id,
-                    gradeName: e.schoolGrade.name,
-                    level: e.schoolGrade.level,
+            if (e.schoolGrade?.grade) {
+                const gradeId = e.schoolGrade.grade.id || e.schoolGrade.id;
+                const gradeName = e.schoolGrade.grade.name || "Unknown Grade";
+                const gradeLevel = e.schoolGrade.grade.level ?? 0;
+                const g = gradeMap.get(gradeId) || {
+                    gradeId,
+                    gradeName,
+                    level: gradeLevel,
                     count: 0,
                 };
                 g.count++;
-                gradeMap.set(e.schoolGrade.id, g);
+                gradeMap.set(gradeId, g);
             }
         }
 

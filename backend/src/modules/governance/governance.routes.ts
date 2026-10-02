@@ -1,6 +1,12 @@
 import { Router } from "express";
 import { requireAuth, requireHierarchicalScope } from "../authentication/authorization.middleware.js";
-import { getGovernanceDashboardHandler } from "./governance.controller.js";
+import { 
+    getFederalDashboardHandler,
+    getRegionDashboardHandler,
+    getZoneDashboardHandler,
+    getWoredaDashboardHandler,
+    getGovernanceDashboardHandler
+} from "./governance.controller.js";
 
 const router = Router();
 
@@ -8,7 +14,14 @@ const router = Router();
 router.use(requireAuth());
 router.use(requireHierarchicalScope("targetOrgId"));
 
-// Unified Governance Dashboard endpoint (supports optional ?targetOrgId=... for drill-down)
+// Tier-specific Administrative Hierarchy Dashboard endpoints
+router.get("/federal/dashboard", getFederalDashboardHandler);
+router.get("/region/dashboard", getRegionDashboardHandler);
+router.get("/zone/dashboard", getZoneDashboardHandler);
+router.get("/woreda/dashboard", getWoredaDashboardHandler);
+
+// Generic fallback endpoint (supports optional ?targetOrgId=... for drill-down)
 router.get("/dashboard", getGovernanceDashboardHandler);
 
 export default router;
+
