@@ -340,6 +340,27 @@ export async function getFederalOverviewHandler(req: Request, res: Response) {
     }
 }
 
+export async function getHierarchyDrilldownHandler(req: Request, res: Response) {
+    try {
+        const unitId = req.params.unitId ? String(req.params.unitId) : (req.query.unitId ? String(req.query.unitId) : undefined);
+        const actorScope = await resolveActorScope(req);
+        const data = await HierarchyService.getHierarchyDrilldown(unitId, actorScope);
+        return res.status(200).json({
+            success: true,
+            data
+        });
+    } catch (error: any) {
+        console.error("Error in getHierarchyDrilldownHandler:", error);
+        const isNotFound = error.message?.includes("not found");
+        const isForbidden = error.message?.includes("Forbidden");
+        const status = isForbidden ? 403 : isNotFound ? 404 : 500;
+        return res.status(status).json({
+            success: false,
+            message: error.message || "Failed to fetch hierarchy drill-down data"
+        });
+    }
+}
+
 export async function assignRegionalAdminHandler(req: Request, res: Response) {
     try {
         const regionId = String(req.params.regionId);

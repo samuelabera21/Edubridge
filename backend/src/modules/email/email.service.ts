@@ -1,7 +1,9 @@
 import nodemailer from "nodemailer";
 import { Resend } from "resend";
 
-const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
+const resend = (process.env.RESEND_API_KEY && process.env.RESEND_API_KEY !== "re_dummy_fallback_key")
+    ? new Resend(process.env.RESEND_API_KEY)
+    : null;
 
 const APP_URL = process.env.FRONTEND_URL || "http://localhost:3001";
 
@@ -204,6 +206,10 @@ export async function sendAdminInvitationEmail(payload: InvitationEmailPayload):
     console.log(`🏛️  Role/Org  : ${assignedRole} - ${organizationName} (${issuingAuthority})`);
     console.log(`🔗 Link      : ${activationUrl}`);
     console.log(`======================================================\n`);
+
+    if (process.env.NODE_ENV === "test") {
+        return;
+    }
 
     const transporter = getSmtpTransporter();
     const fromAddress = process.env.EMAIL_FROM || (process.env.SMTP_USER ? `EduBridge <${process.env.SMTP_USER}>` : "EduBridge <onboarding@resend.dev>");
