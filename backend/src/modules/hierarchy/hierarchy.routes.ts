@@ -9,6 +9,7 @@ import {
     getAccessibleScopeHandler,
     getDescendantSchoolsHandler,
     getFederalOverviewHandler,
+    getHierarchyDrilldownHandler,
     getRegionOverviewHandler,
     getZoneOverviewHandler,
     getWoredaOverviewHandler,
@@ -44,6 +45,8 @@ router.get("/zone/overview", getZoneOverviewHandler);
 router.get("/zones/:zoneId/overview", getZoneOverviewHandler);
 router.get("/woreda/overview", getWoredaOverviewHandler);
 router.get("/woredas/:woredaId/overview", getWoredaOverviewHandler);
+router.get("/drilldown", getHierarchyDrilldownHandler);
+router.get("/drilldown/:unitId", getHierarchyDrilldownHandler);
 router.get("/tree", getHierarchyTreeHandler);
 router.get("/scope", getAccessibleScopeHandler);
 router.get("/:id", getOrganizationUnitHandler);

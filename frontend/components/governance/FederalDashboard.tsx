@@ -16,10 +16,16 @@ import {
     AlertCircle,
     UserCheck,
     ArrowUpRight,
+    ArrowLeft,
     X,
     Info,
     ChevronRight,
-    ExternalLink
+    Users,
+    GraduationCap,
+    Phone,
+    Mail,
+    Calendar,
+    Shield
 } from "lucide-react";
 
 export interface RegionAdmin {
@@ -47,6 +53,8 @@ export interface RegionItem {
     zonesCount: number;
     woredasCount: number;
     schoolsCount: number;
+    studentsCount?: number;
+    teachersCount?: number;
     admin: RegionAdmin | null;
     zones?: ZoneBreakdown[];
 }
@@ -65,21 +73,92 @@ export interface FederalOverviewData {
     regions: RegionItem[];
 }
 
+export interface DrilldownBreadcrumb {
+    id: string;
+    name: string;
+    type: "FEDERAL" | "REGION" | "ZONE" | "WOREDA" | "SCHOOL";
+}
+
+export interface DrilldownChildItem {
+    id: string;
+    name: string;
+    type: "REGION" | "ZONE" | "WOREDA" | "SCHOOL";
+    parentId: string | null;
+    zonesCount?: number;
+    woredasCount?: number;
+    schoolsCount?: number;
+    studentsCount: number;
+    teachersCount: number;
+    admin: {
+        id: string;
+        name: string;
+        email: string;
+        status: "ACTIVE" | "INVITATION_PENDING";
+        roleName: string;
+    } | null;
+    schoolProfile?: {
+        address: string | null;
+        phoneNumber: string | null;
+        contactEmail: string | null;
+        establishedYear: number | null;
+        status: string;
+    } | null;
+}
+
+export interface DrilldownData {
+    node: {
+        id: string;
+        name: string;
+        type: "FEDERAL" | "REGION" | "ZONE" | "WOREDA" | "SCHOOL";
+        parentId: string | null;
+        parentName: string | null;
+    };
+    counts: {
+        totalRegions?: number;
+        zonesCount?: number;
+        woredasCount?: number;
+        schoolsCount?: number;
+        studentsCount: number;
+        teachersCount: number;
+    };
+    admin: {
+        id: string;
+        name: string;
+        email: string;
+        status: "ACTIVE" | "INVITATION_PENDING";
+        invitedAt?: string;
+        roleName: string;
+    } | null;
+    schoolProfile?: {
+        address: string | null;
+        phoneNumber: string | null;
+        contactEmail: string | null;
+        establishedYear: number | null;
+        status: string;
+    } | null;
+    breadcrumbs: DrilldownBreadcrumb[];
+    children: DrilldownChildItem[];
+}
+
 export default function FederalDashboard() {
     const searchParams = useSearchParams();
     const router = useRouter();
     const currentTab = searchParams?.get("tab") || "overview";
+    const unitIdParam = searchParams?.get("unitId") || null;
 
     const [data, setData] = useState<FederalOverviewData | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [searchQuery, setSearchQuery] = useState("");
 
+    // Drilldown specific state
+    const [drilldownData, setDrilldownData] = useState<DrilldownData | null>(null);
+    const [drilldownLoading, setDrilldownLoading] = useState(false);
+    const [drilldownError, setDrilldownError] = useState<string | null>(null);
+    const [drilldownSearch, setDrilldownSearch] = useState("");
+
     // Selected / Hovered Region on Map
     const [hoveredRegion, setHoveredRegion] = useState<RegionItem | null>(null);
-
-    // Drill-Down Modal state
-    const [selectedRegionForDrilldown, setSelectedRegionForDrilldown] = useState<RegionItem | null>(null);
 
     // Modal State: Create Region
     const [createRegionOpen, setCreateRegionOpen] = useState(false);
@@ -122,13 +201,61 @@ export default function FederalDashboard() {
         }
     };
 
+    const loadDrilldownData = async (targetId?: string | null) => {
+        setDrilldownLoading(true);
+        setDrilldownError(null);
+        try {
+            const endpoint = targetId ? `/hierarchy/drilldown/${targetId}` : `/hierarchy/drilldown`;
+            const res = await fetchApi(endpoint);
+            if (!res.ok) {
+                const errJson = await res.json().catch(() => ({}));
+                throw new Error(errJson.message || "Failed to load hierarchy drill-down");
+            }
+            const payload = await res.json();
+            setDrilldownData(payload.data);
+        } catch (err: any) {
+            setDrilldownError(err.message || "Failed to load hierarchy drill-down data");
+        } finally {
+            setDrilldownLoading(false);
+        }
+    };
+
     useEffect(() => {
         loadFederalData();
     }, []);
 
+    useEffect(() => {
+        if (currentTab === "regions" || unitIdParam) {
+            loadDrilldownData(unitIdParam);
+        }
+    }, [currentTab, unitIdParam]);
+
     const showToast = (type: "success" | "error", text: string) => {
         setToastMessage({ type, text });
         setTimeout(() => setToastMessage(null), 3500);
+    };
+
+    // Navigation inside federal dashboard for hierarchy drill-down
+    const navigateToUnit = (unitId?: string | null) => {
+        setDrilldownSearch("");
+        if (unitId) {
+            router.push(`/dashboard/federal?tab=regions&unitId=${unitId}`);
+        } else {
+            router.push(`/dashboard/federal?tab=regions`);
+        }
+    };
+
+    const navigateBack = () => {
+        if (!drilldownData || drilldownData.breadcrumbs.length <= 1) {
+            navigateToUnit(null);
+            return;
+        }
+        const parentCrumb = drilldownData.breadcrumbs[drilldownData.breadcrumbs.length - 2];
+        if (parentCrumb.type === "FEDERAL") {
+            navigateToUnit(null);
+        } else {
+            navigateToUnit(parentCrumb.id);
+        }
     };
 
     // Filter regions by search query
@@ -143,6 +270,20 @@ export default function FederalDashboard() {
                 (r.admin?.email && r.admin.email.toLowerCase().includes(q))
         );
     }, [data?.regions, searchQuery]);
+
+    // Filter drilldown children by search query
+    const filteredChildren = useMemo(() => {
+        if (!drilldownData?.children) return [];
+        if (!drilldownSearch.trim()) return drilldownData.children;
+        const q = drilldownSearch.toLowerCase();
+        return drilldownData.children.filter(
+            c =>
+                c.name.toLowerCase().includes(q) ||
+                (c.admin?.name && c.admin.name.toLowerCase().includes(q)) ||
+                (c.admin?.email && c.admin.email.toLowerCase().includes(q)) ||
+                (c.schoolProfile?.address && c.schoolProfile.address.toLowerCase().includes(q))
+        );
+    }, [drilldownData?.children, drilldownSearch]);
 
     // Extract all administrators for Administration tab
     const assignedAdministrators = useMemo(() => {
@@ -220,6 +361,9 @@ export default function FederalDashboard() {
             });
 
             await loadFederalData();
+            if (currentTab === "regions") {
+                await loadDrilldownData(unitIdParam);
+            }
 
             setTimeout(() => {
                 setCreateRegionOpen(false);
@@ -238,8 +382,8 @@ export default function FederalDashboard() {
     };
 
     // Open Assign Admin Modal
-    const openAssignAdmin = (region: RegionItem) => {
-        setSelectedRegionForAdmin(region);
+    const openAssignAdmin = (region: RegionItem | DrilldownChildItem) => {
+        setSelectedRegionForAdmin(region as any);
         setAdminFullName("");
         setAdminEmail("");
         setAdminPhone("");
@@ -276,6 +420,9 @@ export default function FederalDashboard() {
             });
 
             await loadFederalData();
+            if (currentTab === "regions") {
+                await loadDrilldownData(unitIdParam);
+            }
 
             setTimeout(() => {
                 setAssignAdminOpen(false);
@@ -307,6 +454,9 @@ export default function FederalDashboard() {
 
             showToast("success", resJson.message || "Invitation resent.");
             await loadFederalData();
+            if (currentTab === "regions") {
+                await loadDrilldownData(unitIdParam);
+            }
         } catch (err: any) {
             showToast("error", err.message || "Failed to resend invitation");
         } finally {
@@ -327,6 +477,9 @@ export default function FederalDashboard() {
 
             showToast("success", "Invitation cancelled.");
             await loadFederalData();
+            if (currentTab === "regions") {
+                await loadDrilldownData(unitIdParam);
+            }
         } catch (err: any) {
             showToast("error", err.message || "Failed to cancel invitation");
         } finally {
@@ -376,7 +529,7 @@ export default function FederalDashboard() {
                         }`}
                     >
                         <Layers className="w-3.5 h-3.5" />
-                        <span>Regions ({data?.counts?.totalRegions ?? 0})</span>
+                        <span>Regions & Hierarchy ({data?.counts?.totalRegions ?? 0})</span>
                     </button>
                     <button
                         onClick={() => router.push("/dashboard/federal?tab=administration")}
@@ -405,11 +558,14 @@ export default function FederalDashboard() {
                         <span>Add Region</span>
                     </button>
                     <button
-                        onClick={loadFederalData}
+                        onClick={() => {
+                            loadFederalData();
+                            if (currentTab === "regions") loadDrilldownData(unitIdParam);
+                        }}
                         className="p-1.5 border border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-50 rounded-lg transition-colors cursor-pointer"
                         title="Refresh"
                     >
-                        <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin text-blue-600" : ""}`} />
+                        <RefreshCw className={`w-4 h-4 ${loading || drilldownLoading ? "animate-spin text-blue-600" : ""}`} />
                     </button>
                 </div>
             </div>
@@ -559,7 +715,7 @@ export default function FederalDashboard() {
                                                 <div
                                                     key={reg.id}
                                                     onMouseEnter={() => setHoveredRegion(reg)}
-                                                    onClick={() => setSelectedRegionForDrilldown(reg)}
+                                                    onClick={() => navigateToUnit(reg.id)}
                                                     className={`w-40 h-40 ${bgClass} rounded-full shadow-lg shadow-blue-500/10 flex flex-col items-center justify-center text-white cursor-pointer transition-all duration-300 hover:scale-105 hover:shadow-xl p-4 text-center group relative`}
                                                 >
                                                     {/* Region Title in crisp white */}
@@ -661,7 +817,7 @@ export default function FederalDashboard() {
                                             return (
                                                 <div
                                                     key={reg.id}
-                                                    onClick={() => setSelectedRegionForDrilldown(reg)}
+                                                    onClick={() => navigateToUnit(reg.id)}
                                                     className="flex flex-col items-center justify-end h-full group cursor-pointer relative min-w-[70px]"
                                                 >
                                                     {/* Floating Tooltip with Full Real Numbers on Hover */}
@@ -724,145 +880,337 @@ export default function FederalDashboard() {
                 </div>
             )}
 
-            {/* TAB 2: REGIONS DIRECTORY */}
+            {/* TAB 2: REGIONS & HIERARCHY DRILL-DOWN */}
             {currentTab === "regions" && (
-                <div className="bg-white rounded-2xl border border-slate-100 shadow-sm space-y-4 p-6">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                        <div>
-                            <h2 className="text-base font-bold text-slate-900">Regions Directory</h2>
-                            <p className="text-xs text-slate-500">Autonomous regional educational bureaus</p>
+                <div className="space-y-4">
+                    {/* Breadcrumbs Navigation Bar */}
+                    <div className="bg-white rounded-2xl border border-slate-100 shadow-xs p-4 flex flex-col md:flex-row md:items-center justify-between gap-3">
+                        <div className="flex flex-wrap items-center gap-2 text-xs font-semibold text-slate-600">
+                            {drilldownData?.breadcrumbs && drilldownData.breadcrumbs.length > 0 ? (
+                                drilldownData.breadcrumbs.map((crumb, idx) => {
+                                    const isLast = idx === drilldownData.breadcrumbs.length - 1;
+                                    return (
+                                        <div key={crumb.id} className="flex items-center gap-2">
+                                            {idx > 0 && <ChevronRight className="w-3.5 h-3.5 text-slate-400 shrink-0" />}
+                                            <button
+                                                onClick={() => {
+                                                    if (crumb.type === "FEDERAL") {
+                                                        navigateToUnit(null);
+                                                    } else {
+                                                        navigateToUnit(crumb.id);
+                                                    }
+                                                }}
+                                                className={`transition-colors cursor-pointer flex items-center gap-1 ${
+                                                    isLast
+                                                        ? "text-blue-700 font-bold bg-blue-50 px-2.5 py-1 rounded-lg border border-blue-100"
+                                                        : "text-slate-600 hover:text-blue-600 hover:underline"
+                                                }`}
+                                            >
+                                                {crumb.type === "FEDERAL" && <Layers className="w-3.5 h-3.5 text-blue-600" />}
+                                                {crumb.type === "REGION" && <Building2 className="w-3.5 h-3.5 text-blue-600" />}
+                                                {crumb.type === "ZONE" && <MapPin className="w-3.5 h-3.5 text-indigo-600" />}
+                                                {crumb.type === "WOREDA" && <MapPin className="w-3.5 h-3.5 text-emerald-600" />}
+                                                {crumb.type === "SCHOOL" && <School className="w-3.5 h-3.5 text-purple-600" />}
+                                                <span>{crumb.name}</span>
+                                            </button>
+                                        </div>
+                                    );
+                                })
+                            ) : (
+                                <div className="flex items-center gap-1.5 text-blue-700 font-bold bg-blue-50 px-2.5 py-1 rounded-lg border border-blue-100">
+                                    <Layers className="w-3.5 h-3.5" />
+                                    <span>Federal Ministry of Education</span>
+                                </div>
+                            )}
                         </div>
 
-                        <button
-                            onClick={() => {
-                                setNewRegionName("");
-                                setNewRegionCode("");
-                                setCreateRegionMessage(null);
-                                setCreateRegionOpen(true);
-                            }}
-                            className="px-3.5 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer shadow-xs"
-                        >
-                            <Plus className="w-4 h-4" />
-                            <span>Add Region</span>
-                        </button>
+                        {/* Back Button if not on Federal Root */}
+                        {unitIdParam && (
+                            <button
+                                onClick={navigateBack}
+                                className="self-start md:self-auto px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                            >
+                                <ArrowLeft className="w-3.5 h-3.5" />
+                                <span>Back One Level</span>
+                            </button>
+                        )}
                     </div>
 
-                    {/* Search */}
-                    <div className="relative">
-                        <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                        <input
-                            type="text"
-                            placeholder="Search regions..."
-                            value={searchQuery}
-                            onChange={e => setSearchQuery(e.target.value)}
-                            className="w-full pl-9 pr-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:bg-white focus:border-blue-500 outline-none"
-                        />
-                    </div>
+                    {drilldownLoading ? (
+                        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-12 text-center text-slate-500 space-y-3">
+                            <RefreshCw className="w-8 h-8 animate-spin text-blue-600 mx-auto" />
+                            <p className="text-xs font-semibold">Loading hierarchy node details...</p>
+                        </div>
+                    ) : drilldownError ? (
+                        <div className="bg-rose-50 border border-rose-200 rounded-2xl p-6 text-center space-y-3 text-rose-800 text-xs font-semibold">
+                            <AlertCircle className="w-6 h-6 text-rose-600 mx-auto" />
+                            <p>{drilldownError}</p>
+                            <button
+                                onClick={() => loadDrilldownData(unitIdParam)}
+                                className="px-3 py-1 bg-rose-600 text-white rounded hover:bg-rose-700 cursor-pointer"
+                            >
+                                Retry
+                            </button>
+                        </div>
+                    ) : drilldownData ? (
+                        <div className="space-y-4">
+                            {/* Current Node Overview Header Card */}
+                            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 space-y-4">
+                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
+                                    <div>
+                                        <div className="flex items-center gap-2">
+                                            <span className="px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider bg-blue-50 text-blue-700 border border-blue-100">
+                                                {drilldownData.node.type} LEVEL
+                                            </span>
+                                            {drilldownData.node.parentName && (
+                                                <span className="text-[11px] text-slate-400 font-medium">
+                                                    under {drilldownData.node.parentName}
+                                                </span>
+                                            )}
+                                        </div>
+                                        <h2 className="text-xl font-black text-slate-900 tracking-tight mt-1">
+                                            {drilldownData.node.name}
+                                        </h2>
+                                    </div>
 
-                    <div className="overflow-x-auto border border-slate-200 rounded-lg">
-                        <table className="w-full text-left border-collapse text-xs">
-                            <thead>
-                                <tr className="border-b border-slate-200 bg-slate-50 text-slate-600 font-semibold">
-                                    <th className="p-3">Region</th>
-                                    <th className="p-3">Subordinate Units</th>
-                                    <th className="p-3">Administrator</th>
-                                    <th className="p-3 text-right">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-100">
-                                {filteredRegions.length === 0 ? (
-                                    <tr>
-                                        <td colSpan={4} className="p-8 text-center text-slate-500">
-                                            No regions registered. Click <strong>Add Region</strong> to create a region.
-                                        </td>
-                                    </tr>
-                                ) : (
-                                    filteredRegions.map(region => (
-                                        <tr key={region.id} className="hover:bg-slate-50/60">
-                                            <td className="p-3 font-semibold text-slate-900 align-top">
-                                                {region.name}
-                                            </td>
-                                            <td className="p-3 text-slate-600 align-top">
-                                                <div className="space-y-0.5">
-                                                    <p>{region.zonesCount} Zones</p>
-                                                    <p>{region.woredasCount} Woredas</p>
-                                                    <p>{region.schoolsCount} Schools</p>
-                                                </div>
-                                            </td>
-                                            <td className="p-3 align-top">
-                                                {region.admin ? (
-                                                    region.admin.status === "ACTIVE" ? (
-                                                        <div className="space-y-1">
-                                                            <span className="inline-block px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800">
-                                                                Active
-                                                            </span>
-                                                            <p className="font-semibold text-slate-900 text-xs">{region.admin.name}</p>
-                                                            <p className="text-[11px] text-slate-500">{region.admin.email}</p>
-                                                        </div>
-                                                    ) : (
-                                                        <div className="space-y-1">
-                                                            <span className="inline-block px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800">
-                                                                Invitation Pending
-                                                            </span>
-                                                            <p className="font-medium text-slate-900">{region.admin.name}</p>
-                                                            <p className="text-[11px] text-slate-600">{region.admin.email}</p>
-                                                            <div className="flex items-center gap-2 pt-1">
-                                                                <button
-                                                                    onClick={() => handleResendInvitation(region.id)}
-                                                                    disabled={actionLoadingId === region.id}
-                                                                    className="text-[11px] font-semibold text-blue-700 hover:underline cursor-pointer disabled:opacity-50"
-                                                                >
-                                                                    Resend
-                                                                </button>
-                                                                <span className="text-slate-300">•</span>
-                                                                <button
-                                                                    onClick={() => handleCancelInvitation(region.id)}
-                                                                    disabled={actionLoadingId === region.id}
-                                                                    className="text-[11px] font-semibold text-rose-700 hover:underline cursor-pointer disabled:opacity-50"
-                                                                >
-                                                                    Cancel
-                                                                </button>
-                                                            </div>
-                                                        </div>
-                                                    )
-                                                ) : (
-                                                    <div className="space-y-2">
-                                                        <span className="inline-block px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-600">
-                                                            Not Assigned
-                                                        </span>
-                                                        <div>
-                                                            <button
-                                                                onClick={() => openAssignAdmin(region)}
-                                                                className="px-2.5 py-1 text-[11px] font-semibold text-white bg-blue-600 hover:bg-blue-500 rounded transition-colors cursor-pointer"
-                                                            >
-                                                                Assign Administrator
-                                                            </button>
-                                                        </div>
-                                                    </div>
-                                                )}
-                                            </td>
-                                            <td className="p-3 text-right align-top">
-                                                <div className="flex items-center justify-end gap-2">
-                                                    <button
-                                                        onClick={() => setSelectedRegionForDrilldown(region)}
-                                                        className="px-2.5 py-1 text-[11px] font-semibold text-slate-700 hover:bg-slate-100 border border-slate-300 rounded transition-colors cursor-pointer"
-                                                    >
-                                                        Details
-                                                    </button>
-                                                    <button
-                                                        onClick={() => router.push(`/dashboard/region?targetOrgId=${region.id}`)}
-                                                        className="px-2.5 py-1 text-[11px] font-semibold text-blue-600 hover:bg-blue-50 border border-blue-200 rounded transition-colors cursor-pointer"
-                                                    >
-                                                        View Region
-                                                    </button>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    ))
+                                    {/* Action button if at Federal root */}
+                                    {drilldownData.node.type === "FEDERAL" && (
+                                        <button
+                                            onClick={() => {
+                                                setNewRegionName("");
+                                                setNewRegionCode("");
+                                                setCreateRegionMessage(null);
+                                                setCreateRegionOpen(true);
+                                            }}
+                                            className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer shadow-xs self-start sm:self-auto"
+                                        >
+                                            <Plus className="w-4 h-4" />
+                                            <span>Add Region</span>
+                                        </button>
+                                    )}
+                                </div>
+
+                                {/* Metric Strip based on node type */}
+                                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 pt-1">
+                                    {drilldownData.node.type === "FEDERAL" && (
+                                        <div className="p-3 bg-slate-50/80 rounded-xl border border-slate-100">
+                                            <span className="text-[10px] font-bold text-slate-400 uppercase">Regions</span>
+                                            <p className="text-lg font-black text-slate-900">{fmt(drilldownData.counts.totalRegions)}</p>
+                                        </div>
+                                    )}
+                                    {(drilldownData.node.type === "FEDERAL" || drilldownData.node.type === "REGION") && (
+                                        <div className="p-3 bg-slate-50/80 rounded-xl border border-slate-100">
+                                            <span className="text-[10px] font-bold text-slate-400 uppercase">Zones</span>
+                                            <p className="text-lg font-black text-slate-900">{fmt(drilldownData.counts.zonesCount)}</p>
+                                        </div>
+                                    )}
+                                    {(drilldownData.node.type === "FEDERAL" || drilldownData.node.type === "REGION" || drilldownData.node.type === "ZONE") && (
+                                        <div className="p-3 bg-slate-50/80 rounded-xl border border-slate-100">
+                                            <span className="text-[10px] font-bold text-slate-400 uppercase">Woredas</span>
+                                            <p className="text-lg font-black text-slate-900">{fmt(drilldownData.counts.woredasCount)}</p>
+                                        </div>
+                                    )}
+                                    {drilldownData.node.type !== "SCHOOL" && (
+                                        <div className="p-3 bg-slate-50/80 rounded-xl border border-slate-100">
+                                            <span className="text-[10px] font-bold text-slate-400 uppercase">Schools</span>
+                                            <p className="text-lg font-black text-slate-900">{fmt(drilldownData.counts.schoolsCount)}</p>
+                                        </div>
+                                    )}
+                                    <div className="p-3 bg-blue-50/60 rounded-xl border border-blue-100">
+                                        <span className="text-[10px] font-bold text-blue-600 uppercase">Students</span>
+                                        <p className="text-lg font-black text-blue-950">{fmt(drilldownData.counts.studentsCount)}</p>
+                                    </div>
+                                    <div className="p-3 bg-blue-50/60 rounded-xl border border-blue-100">
+                                        <span className="text-[10px] font-bold text-blue-600 uppercase">Teachers</span>
+                                        <p className="text-lg font-black text-blue-950">{fmt(drilldownData.counts.teachersCount)}</p>
+                                    </div>
+                                </div>
+
+                                {/* Administrator Info Card if assigned */}
+                                {drilldownData.admin && (
+                                    <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+                                        <div className="flex items-center gap-2.5">
+                                            <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-800 flex items-center justify-center font-bold text-xs">
+                                                {drilldownData.admin.name.charAt(0)}
+                                            </div>
+                                            <div>
+                                                <p className="font-bold text-slate-900">{drilldownData.admin.name}</p>
+                                                <p className="text-[11px] text-slate-500">{drilldownData.admin.email} • {drilldownData.admin.roleName}</p>
+                                            </div>
+                                        </div>
+                                        <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold self-start sm:self-auto ${
+                                            drilldownData.admin.status === "ACTIVE"
+                                                ? "bg-emerald-100 text-emerald-800"
+                                                : "bg-amber-100 text-amber-800"
+                                        }`}>
+                                            {drilldownData.admin.status === "ACTIVE" ? "Active Leadership" : "Invitation Pending"}
+                                        </span>
+                                    </div>
                                 )}
-                            </tbody>
-                        </table>
-                    </div>
+                            </div>
+
+                            {/* SCHOOL LEAF NODE SUMMARY DETAILS */}
+                            {drilldownData.node.type === "SCHOOL" && drilldownData.schoolProfile && (
+                                <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 space-y-4">
+                                    <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                                        <School className="w-4 h-4 text-purple-600" />
+                                        <span>School Information & Profile</span>
+                                    </h3>
+
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                                        <div className="p-4 bg-slate-50/80 rounded-xl space-y-2 border border-slate-100">
+                                            <div className="flex items-center gap-2 text-slate-600">
+                                                <MapPin className="w-4 h-4 text-slate-400 shrink-0" />
+                                                <span className="font-bold text-slate-800">Physical Location:</span>
+                                                <span>{drilldownData.schoolProfile.address || "Unspecified"}</span>
+                                            </div>
+                                            <div className="flex items-center gap-2 text-slate-600">
+                                                <Phone className="w-4 h-4 text-slate-400 shrink-0" />
+                                                <span className="font-bold text-slate-800">Official Contact:</span>
+                                                <span>{drilldownData.schoolProfile.phoneNumber || "Not provided"}</span>
+                                            </div>
+                                            <div className="flex items-center gap-2 text-slate-600">
+                                                <Mail className="w-4 h-4 text-slate-400 shrink-0" />
+                                                <span className="font-bold text-slate-800">Email:</span>
+                                                <span>{drilldownData.schoolProfile.contactEmail || "Not provided"}</span>
+                                            </div>
+                                        </div>
+
+                                        <div className="p-4 bg-slate-50/80 rounded-xl space-y-2 border border-slate-100">
+                                            <div className="flex items-center gap-2 text-slate-600">
+                                                <Calendar className="w-4 h-4 text-slate-400 shrink-0" />
+                                                <span className="font-bold text-slate-800">Established Year:</span>
+                                                <span>{drilldownData.schoolProfile.establishedYear || "N/A"}</span>
+                                            </div>
+                                            <div className="flex items-center gap-2 text-slate-600">
+                                                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                                                <span className="font-bold text-slate-800">Institutional Status:</span>
+                                                <span className="capitalize">{drilldownData.schoolProfile.status || "Active"}</span>
+                                            </div>
+                                            <div className="flex items-center gap-2 text-slate-600">
+                                                <Shield className="w-4 h-4 text-blue-600 shrink-0" />
+                                                <span className="font-bold text-slate-800">Appointed Principal:</span>
+                                                <span>{drilldownData.admin ? drilldownData.admin.name : "Not assigned"}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* SUBORDINATE CHILD UNITS LIST (Regions, Zones, Woredas, or Schools) */}
+                            {drilldownData.node.type !== "SCHOOL" && (
+                                <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 space-y-4">
+                                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                                        <div>
+                                            <h3 className="text-base font-bold text-slate-900">
+                                                {drilldownData.node.type === "FEDERAL" && "Autonomous Regions"}
+                                                {drilldownData.node.type === "REGION" && `Administrative Zones under ${drilldownData.node.name}`}
+                                                {drilldownData.node.type === "ZONE" && `District Woredas under ${drilldownData.node.name}`}
+                                                {drilldownData.node.type === "WOREDA" && `Registered Schools under ${drilldownData.node.name}`}
+                                            </h3>
+                                            <p className="text-xs text-slate-500">
+                                                Click any unit to drill down into its subordinate educational hierarchy
+                                            </p>
+                                        </div>
+
+                                        {/* Search Filter */}
+                                        <div className="relative w-full sm:w-64">
+                                            <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                                            <input
+                                                type="text"
+                                                placeholder="Filter units..."
+                                                value={drilldownSearch}
+                                                onChange={e => setDrilldownSearch(e.target.value)}
+                                                className="w-full pl-9 pr-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:bg-white focus:border-blue-500 outline-none"
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div className="overflow-x-auto border border-slate-200 rounded-xl">
+                                        <table className="w-full text-left text-xs border-collapse">
+                                            <thead>
+                                                <tr className="border-b border-slate-200 bg-slate-50 text-slate-600 font-semibold">
+                                                    <th className="p-3">Unit Name</th>
+                                                    {drilldownData.node.type === "FEDERAL" && <th className="p-3">Zones</th>}
+                                                    {(drilldownData.node.type === "FEDERAL" || drilldownData.node.type === "REGION") && <th className="p-3">Woredas</th>}
+                                                    {drilldownData.node.type !== "WOREDA" && <th className="p-3">Schools</th>}
+                                                    <th className="p-3">Students</th>
+                                                    <th className="p-3">Teachers</th>
+                                                    <th className="p-3">Administrator</th>
+                                                    <th className="p-3 text-right">Drill-Down</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-slate-100 font-medium">
+                                                {filteredChildren.length === 0 ? (
+                                                    <tr>
+                                                        <td colSpan={8} className="p-8 text-center text-slate-400">
+                                                            No child units found under this level.
+                                                        </td>
+                                                    </tr>
+                                                ) : (
+                                                    filteredChildren.map(child => (
+                                                        <tr
+                                                            key={child.id}
+                                                            onClick={() => navigateToUnit(child.id)}
+                                                            className="hover:bg-blue-50/50 cursor-pointer transition-colors group"
+                                                        >
+                                                            <td className="p-3 font-bold text-slate-900 group-hover:text-blue-600">
+                                                                <div className="flex items-center gap-2">
+                                                                    {child.type === "REGION" && <Building2 className="w-4 h-4 text-blue-600 shrink-0" />}
+                                                                    {child.type === "ZONE" && <MapPin className="w-4 h-4 text-indigo-600 shrink-0" />}
+                                                                    {child.type === "WOREDA" && <MapPin className="w-4 h-4 text-emerald-600 shrink-0" />}
+                                                                    {child.type === "SCHOOL" && <School className="w-4 h-4 text-purple-600 shrink-0" />}
+                                                                    <span>{child.name}</span>
+                                                                </div>
+                                                                {child.schoolProfile?.address && (
+                                                                    <p className="text-[10px] text-slate-400 font-normal pl-6">
+                                                                        {child.schoolProfile.address}
+                                                                    </p>
+                                                                )}
+                                                            </td>
+                                                            {drilldownData.node.type === "FEDERAL" && (
+                                                                <td className="p-3 text-slate-700 font-semibold">{fmt(child.zonesCount)}</td>
+                                                            )}
+                                                            {(drilldownData.node.type === "FEDERAL" || drilldownData.node.type === "REGION") && (
+                                                                <td className="p-3 text-slate-700 font-semibold">{fmt(child.woredasCount)}</td>
+                                                            )}
+                                                            {drilldownData.node.type !== "WOREDA" && (
+                                                                <td className="p-3 text-slate-700 font-semibold">{fmt(child.schoolsCount)}</td>
+                                                            )}
+                                                            <td className="p-3 text-blue-900 font-bold">{fmt(child.studentsCount)}</td>
+                                                            <td className="p-3 text-slate-700 font-semibold">{fmt(child.teachersCount)}</td>
+                                                            <td className="p-3">
+                                                                {child.admin ? (
+                                                                    <div>
+                                                                        <p className="font-bold text-slate-900">{child.admin.name}</p>
+                                                                        <p className="text-[10px] text-slate-400">{child.admin.email}</p>
+                                                                    </div>
+                                                                ) : (
+                                                                    <span className="text-slate-400 italic text-[11px]">Unassigned</span>
+                                                                )}
+                                                            </td>
+                                                            <td className="p-3 text-right">
+                                                                <button
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        navigateToUnit(child.id);
+                                                                    }}
+                                                                    className="px-2.5 py-1 text-[11px] font-bold text-blue-600 bg-blue-50 group-hover:bg-blue-600 group-hover:text-white rounded-lg transition-colors inline-flex items-center gap-1 cursor-pointer"
+                                                                >
+                                                                    <span>Explore</span>
+                                                                    <ChevronRight className="w-3.5 h-3.5" />
+                                                                </button>
+                                                            </td>
+                                                        </tr>
+                                                    ))
+                                                )}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    ) : null}
                 </div>
             )}
 
@@ -899,18 +1247,18 @@ export default function FederalDashboard() {
                                                 <p>{admin.name}</p>
                                                 <p className="text-[11px] text-slate-500 font-normal">{admin.email}</p>
                                             </td>
-                                            <td className="p-3 text-slate-800">{regionName}</td>
-                                            <td className="p-3 text-slate-700">Regional Administrator</td>
+                                            <td className="p-3 font-medium text-slate-800">{regionName}</td>
+                                            <td className="p-3 text-slate-600">{admin.roleName}</td>
                                             <td className="p-3">
-                                                {admin.status === "ACTIVE" ? (
-                                                    <span className="inline-block px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800">
-                                                        Active
-                                                    </span>
-                                                ) : (
-                                                    <span className="inline-block px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800">
-                                                        Invitation Pending
-                                                    </span>
-                                                )}
+                                                <span
+                                                    className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold ${
+                                                        admin.status === "ACTIVE"
+                                                            ? "bg-emerald-100 text-emerald-800"
+                                                            : "bg-amber-100 text-amber-800"
+                                                    }`}
+                                                >
+                                                    {admin.status === "ACTIVE" ? "Active" : "Invitation Pending"}
+                                                </span>
                                             </td>
                                             <td className="p-3 text-right">
                                                 <div className="flex items-center justify-end gap-2">
@@ -918,16 +1266,16 @@ export default function FederalDashboard() {
                                                         <button
                                                             onClick={() => handleResendInvitation(regionId)}
                                                             disabled={actionLoadingId === regionId}
-                                                            className="px-2 py-1 text-[11px] font-semibold text-slate-700 hover:bg-slate-100 border border-slate-200 rounded cursor-pointer disabled:opacity-50"
+                                                            className="text-[11px] font-semibold text-blue-700 hover:underline cursor-pointer disabled:opacity-50"
                                                         >
                                                             Resend
                                                         </button>
                                                     )}
                                                     <button
-                                                        onClick={() => router.push(`/dashboard/region?targetOrgId=${regionId}`)}
-                                                        className="px-2.5 py-1 text-[11px] font-semibold text-slate-800 hover:bg-slate-100 border border-slate-300 rounded cursor-pointer"
+                                                        onClick={() => navigateToUnit(regionId)}
+                                                        className="px-2.5 py-1 text-[11px] font-semibold text-slate-700 hover:bg-slate-100 border border-slate-300 rounded transition-colors cursor-pointer"
                                                     >
-                                                        View Region
+                                                        Explore Region
                                                     </button>
                                                 </div>
                                             </td>
@@ -940,136 +1288,77 @@ export default function FederalDashboard() {
                 </div>
             )}
 
-            {/* DRILL-DOWN MODAL */}
-            {selectedRegionForDrilldown && (
-                <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
-                    <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl max-w-lg w-full p-6 space-y-4">
-                        <div className="flex items-start justify-between border-b border-slate-100 pb-3">
-                            <div>
-                                <h3 className="text-base font-bold text-slate-900">{selectedRegionForDrilldown.name}</h3>
-                                <p className="text-xs text-slate-500">Autonomous Regional Bureau Telemetry</p>
-                            </div>
+            {/* MODAL: CREATE REGION */}
+            {createRegionOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-xs p-4">
+                    <div className="bg-white rounded-2xl shadow-xl border border-slate-100 max-w-md w-full p-6 space-y-4 animate-in fade-in zoom-in-95">
+                        <div className="flex items-center justify-between">
+                            <h3 className="text-base font-bold text-slate-900">Add New Region</h3>
                             <button
-                                onClick={() => setSelectedRegionForDrilldown(null)}
-                                className="p-1 rounded text-slate-400 hover:text-slate-600"
+                                onClick={() => setCreateRegionOpen(false)}
+                                className="p-1 text-slate-400 hover:text-slate-600 rounded-lg"
                             >
                                 <X className="w-5 h-5" />
                             </button>
                         </div>
 
-                        {/* Totals */}
-                        <div className="grid grid-cols-3 gap-3">
-                            <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 text-center">
-                                <span className="text-[10px] font-semibold text-slate-500 uppercase">Zones</span>
-                                <div className="text-lg font-bold text-slate-900">{selectedRegionForDrilldown.zonesCount}</div>
-                            </div>
-                            <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 text-center">
-                                <span className="text-[10px] font-semibold text-slate-500 uppercase">Woredas</span>
-                                <div className="text-lg font-bold text-slate-900">{selectedRegionForDrilldown.woredasCount}</div>
-                            </div>
-                            <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 text-center">
-                                <span className="text-[10px] font-semibold text-slate-500 uppercase">Schools</span>
-                                <div className="text-lg font-bold text-slate-900">{selectedRegionForDrilldown.schoolsCount}</div>
-                            </div>
-                        </div>
-
-                        {/* Admin info */}
-                        <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 text-xs">
-                            <span className="font-semibold text-slate-600">Administrator:</span>
-                            {selectedRegionForDrilldown.admin ? (
-                                <div className="mt-1">
-                                    <p className="font-bold text-slate-900">{selectedRegionForDrilldown.admin.name}</p>
-                                    <p className="text-slate-500 text-[11px]">{selectedRegionForDrilldown.admin.email}</p>
-                                </div>
-                            ) : (
-                                <p className="text-slate-500 mt-1 italic">Not appointed</p>
-                            )}
-                        </div>
-
-                        {/* Actions */}
-                        <div className="flex items-center justify-between pt-3 border-t border-slate-100">
-                            <button
-                                onClick={() => setSelectedRegionForDrilldown(null)}
-                                className="px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-lg cursor-pointer"
+                        {createRegionMessage && (
+                            <div
+                                className={`p-3 rounded-lg text-xs font-semibold flex items-center gap-2 ${
+                                    createRegionMessage.type === "success"
+                                        ? "bg-emerald-50 text-emerald-800 border border-emerald-200"
+                                        : "bg-rose-50 text-rose-800 border border-rose-200"
+                                }`}
                             >
-                                Close
-                            </button>
-                            <button
-                                onClick={() => router.push(`/dashboard/region?targetOrgId=${selectedRegionForDrilldown.id}`)}
-                                className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-xl transition-colors cursor-pointer shadow-xs"
-                            >
-                                Open Regional Dashboard
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
+                                {createRegionMessage.type === "success" ? (
+                                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                                ) : (
+                                    <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+                                )}
+                                <span>{createRegionMessage.text}</span>
+                            </div>
+                        )}
 
-            {/* MODAL 1: CREATE REGION */}
-            {createRegionOpen && (
-                <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
-                    <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl max-w-md w-full p-6 space-y-4">
-                        <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                            <h3 className="text-sm font-bold text-slate-900">Create Region</h3>
-                            <button
-                                onClick={() => setCreateRegionOpen(false)}
-                                className="text-slate-400 hover:text-slate-600 text-sm font-bold"
-                            >
-                                ✕
-                            </button>
-                        </div>
-
-                        <form onSubmit={handleCreateRegionSubmit} className="space-y-4 text-xs">
-                            <div className="space-y-1">
-                                <label className="text-xs font-semibold text-slate-700 block">
+                        <form onSubmit={handleCreateRegionSubmit} className="space-y-4">
+                            <div>
+                                <label className="block text-xs font-bold text-slate-700 mb-1">
                                     Region Name <span className="text-rose-500">*</span>
                                 </label>
                                 <input
                                     type="text"
                                     required
-                                    placeholder="e.g., Tigray Region, Oromia Region"
+                                    placeholder="e.g., Sidama Region"
                                     value={newRegionName}
                                     onChange={e => setNewRegionName(e.target.value)}
-                                    className="w-full p-2.5 text-xs bg-slate-50 border border-slate-300 rounded-lg focus:bg-white focus:border-blue-500 outline-none"
+                                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs focus:outline-hidden focus:border-blue-500"
                                 />
                             </div>
 
-                            <div className="space-y-1">
-                                <label className="text-xs font-semibold text-slate-700 block">Region Code</label>
+                            <div>
+                                <label className="block text-xs font-bold text-slate-700 mb-1">
+                                    Region Code / Acronym (Optional)
+                                </label>
                                 <input
                                     type="text"
-                                    placeholder="e.g., TG, OR"
+                                    placeholder="e.g., SDR"
                                     value={newRegionCode}
                                     onChange={e => setNewRegionCode(e.target.value)}
-                                    className="w-full p-2.5 text-xs bg-slate-50 border border-slate-300 rounded-lg focus:bg-white focus:border-blue-500 outline-none"
+                                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs focus:outline-hidden focus:border-blue-500"
                                 />
                             </div>
 
-                            {createRegionMessage && (
-                                <div
-                                    className={`p-3 rounded text-xs flex items-center gap-2 border ${
-                                        createRegionMessage.type === "success"
-                                            ? "bg-emerald-50 text-emerald-800 border-emerald-200"
-                                            : "bg-rose-50 text-rose-800 border-rose-200"
-                                    }`}
-                                >
-                                    <span>{createRegionMessage.text}</span>
-                                </div>
-                            )}
-
-                            <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+                            <div className="flex items-center justify-end gap-2 pt-2">
                                 <button
                                     type="button"
                                     onClick={() => setCreateRegionOpen(false)}
-                                    disabled={creatingRegion}
-                                    className="px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
+                                    className="px-4 py-2 border border-slate-200 text-slate-600 hover:bg-slate-50 text-xs font-bold rounded-lg cursor-pointer"
                                 >
                                     Cancel
                                 </button>
                                 <button
                                     type="submit"
                                     disabled={creatingRegion || !newRegionName.trim()}
-                                    className="px-4 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-500 rounded-lg transition-colors disabled:opacity-50 cursor-pointer"
+                                    className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-lg transition-colors disabled:opacity-50 cursor-pointer"
                                 >
                                     {creatingRegion ? "Creating..." : "Create Region"}
                                 </button>
@@ -1079,92 +1368,96 @@ export default function FederalDashboard() {
                 </div>
             )}
 
-            {/* MODAL 2: ASSIGN REGIONAL ADMINISTRATOR */}
+            {/* MODAL: ASSIGN REGIONAL ADMINISTRATOR */}
             {assignAdminOpen && selectedRegionForAdmin && (
-                <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
-                    <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl max-w-md w-full p-6 space-y-4">
-                        <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-xs p-4">
+                    <div className="bg-white rounded-2xl shadow-xl border border-slate-100 max-w-md w-full p-6 space-y-4 animate-in fade-in zoom-in-95">
+                        <div className="flex items-center justify-between">
                             <div>
-                                <h3 className="text-sm font-bold text-slate-900">Assign Regional Administrator</h3>
-                                <p className="text-[11px] text-slate-500">
-                                    Region: <strong>{selectedRegionForAdmin.name}</strong>
-                                </p>
+                                <h3 className="text-base font-bold text-slate-900">Assign Regional Administrator</h3>
+                                <p className="text-xs text-slate-500">{selectedRegionForAdmin.name}</p>
                             </div>
                             <button
                                 onClick={() => setAssignAdminOpen(false)}
-                                className="text-slate-400 hover:text-slate-600 text-sm font-bold"
+                                className="p-1 text-slate-400 hover:text-slate-600 rounded-lg"
                             >
-                                ✕
+                                <X className="w-5 h-5" />
                             </button>
                         </div>
 
-                        <form onSubmit={handleAssignAdminSubmit} className="space-y-4 text-xs">
-                            <div className="space-y-1">
-                                <label className="text-xs font-semibold text-slate-700 block">
+                        {assignAdminMessage && (
+                            <div
+                                className={`p-3 rounded-lg text-xs font-semibold flex items-center gap-2 ${
+                                    assignAdminMessage.type === "success"
+                                        ? "bg-emerald-50 text-emerald-800 border border-emerald-200"
+                                        : "bg-rose-50 text-rose-800 border border-rose-200"
+                                }`}
+                            >
+                                {assignAdminMessage.type === "success" ? (
+                                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                                ) : (
+                                    <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+                                )}
+                                <span>{assignAdminMessage.text}</span>
+                            </div>
+                        )}
+
+                        <form onSubmit={handleAssignAdminSubmit} className="space-y-4">
+                            <div>
+                                <label className="block text-xs font-bold text-slate-700 mb-1">
                                     Full Name <span className="text-rose-500">*</span>
                                 </label>
                                 <input
                                     type="text"
                                     required
-                                    placeholder="e.g., Abebe Kebede"
+                                    placeholder="e.g., Dr. Samuel Abera"
                                     value={adminFullName}
                                     onChange={e => setAdminFullName(e.target.value)}
-                                    className="w-full p-2.5 text-xs bg-slate-50 border border-slate-300 rounded-lg focus:bg-white focus:border-blue-500 outline-none"
+                                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs focus:outline-hidden focus:border-blue-500"
                                 />
                             </div>
 
-                            <div className="space-y-1">
-                                <label className="text-xs font-semibold text-slate-700 block">
-                                    Email Address <span className="text-rose-500">*</span>
+                            <div>
+                                <label className="block text-xs font-bold text-slate-700 mb-1">
+                                    Official Email Address <span className="text-rose-500">*</span>
                                 </label>
                                 <input
                                     type="email"
                                     required
-                                    placeholder="e.g., abebe@edubridge.gov.et"
+                                    placeholder="e.g., samuel@amhara.edu.et"
                                     value={adminEmail}
                                     onChange={e => setAdminEmail(e.target.value)}
-                                    className="w-full p-2.5 text-xs bg-slate-50 border border-slate-300 rounded-lg focus:bg-white focus:border-blue-500 outline-none"
+                                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs focus:outline-hidden focus:border-blue-500"
                                 />
                             </div>
 
-                            <div className="space-y-1">
-                                <label className="text-xs font-semibold text-slate-700 block">Phone Number</label>
+                            <div>
+                                <label className="block text-xs font-bold text-slate-700 mb-1">
+                                    Phone Number (Optional)
+                                </label>
                                 <input
-                                    type="text"
-                                    placeholder="e.g., +251 911 234 567"
+                                    type="tel"
+                                    placeholder="e.g., +251 91 123 4567"
                                     value={adminPhone}
                                     onChange={e => setAdminPhone(e.target.value)}
-                                    className="w-full p-2.5 text-xs bg-slate-50 border border-slate-300 rounded-lg focus:bg-white focus:border-blue-500 outline-none"
+                                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs focus:outline-hidden focus:border-blue-500"
                                 />
                             </div>
 
-                            {assignAdminMessage && (
-                                <div
-                                    className={`p-3 rounded text-xs flex items-center gap-2 border ${
-                                        assignAdminMessage.type === "success"
-                                            ? "bg-emerald-50 text-emerald-800 border-emerald-200"
-                                            : "bg-rose-50 text-rose-800 border-rose-200"
-                                    }`}
-                                >
-                                    <span>{assignAdminMessage.text}</span>
-                                </div>
-                            )}
-
-                            <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+                            <div className="flex items-center justify-end gap-2 pt-2">
                                 <button
                                     type="button"
                                     onClick={() => setAssignAdminOpen(false)}
-                                    disabled={assigningAdmin}
-                                    className="px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
+                                    className="px-4 py-2 border border-slate-200 text-slate-600 hover:bg-slate-50 text-xs font-bold rounded-lg cursor-pointer"
                                 >
                                     Cancel
                                 </button>
                                 <button
                                     type="submit"
                                     disabled={assigningAdmin || !adminFullName.trim() || !adminEmail.trim()}
-                                    className="px-4 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-500 rounded-lg transition-colors disabled:opacity-50 cursor-pointer"
+                                    className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-lg transition-colors disabled:opacity-50 cursor-pointer"
                                 >
-                                    {assigningAdmin ? "Sending..." : "Send Invitation"}
+                                    {assigningAdmin ? "Sending Invitation..." : "Send Invitation"}
                                 </button>
                             </div>
                         </form>
