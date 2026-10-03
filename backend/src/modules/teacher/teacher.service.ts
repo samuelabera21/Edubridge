@@ -959,16 +959,18 @@ export class TeacherService {
 
     static async getMyClasses(userId: string, organizationId: string) {
         const teacher = await this.getTeacherByUserId(userId, organizationId);
-        if (!teacher) return [];
 
         const assignments = await prisma.teachingAssignment.findMany({
-            where: { teacherId: teacher.id },
+            where: {
+                ...(teacher ? { teacherId: teacher.id } : { academicYear: { organizationId } })
+            },
             include: {
                 subject: true,
                 schoolGrade: { include: { grade: true } },
                 section: {
                     include: {
                         studentEnrollments: {
+                            where: { status: "ACTIVE" },
                             include: {
                                 student: true
                             }
@@ -1575,22 +1577,54 @@ export class TeacherService {
     // Subdomain 6: Create Assessment & Batch Results
     static async createAssessmentWithResults(userId: string, organizationId: string, data: {
         title: string;
+        description?: string;
         type?: string;
         maxScore: number;
         passingScore?: number;
         dueDate?: string;
+        durationMinutes?: number;
+        scheduledDate?: string;
+        status?: string;
         teachingAssignmentId: string;
         results?: Array<{ enrollmentId: string; score: number; feedback?: string }>;
     }) {
-        const teacher = await this.getTeacherByUserId(userId, organizationId);
+        let teacher = await this.getTeacherByUserId(userId, organizationId);
+        
+        // If user is admin/staff testing or reviewing teacher dashboard, resolve assigned teacher
+        if (!teacher) {
+            const assignmentCheck = await prisma.teachingAssignment.findFirst({
+                where: { id: data.teachingAssignmentId, academicYear: { organizationId } },
+                include: { teacher: true }
+            });
+            if (assignmentCheck?.teacher) {
+                teacher = assignmentCheck.teacher as any;
+            } else {
+                teacher = await prisma.teacher.findFirst({ where: { organizationId } }) as any;
+            }
+        }
+
         if (!teacher) throw new Error("Teacher profile not found");
 
         const assignment = await prisma.teachingAssignment.findFirst({
-            where: { id: data.teachingAssignmentId, teacherId: teacher.id }
+            where: {
+                id: data.teachingAssignmentId,
+                academicYear: { organizationId }
+            }
         });
         if (!assignment) throw new Error("Teaching assignment not found or unassigned");
 
-        const assessmentType = data.type?.toUpperCase() || "QUIZ";
+        // Map TEST to EXAM (or QUIZ) to match Prisma enum: EXAM | QUIZ | ASSIGNMENT | PROJECT | OTHER
+        let assessmentType = data.type?.toUpperCase() || "QUIZ";
+        if (assessmentType === "TEST") {
+            assessmentType = "EXAM";
+        } else if (!["EXAM", "QUIZ", "ASSIGNMENT", "PROJECT", "OTHER"].includes(assessmentType)) {
+            assessmentType = "OTHER";
+        }
+
+        let assessmentStatus = data.status?.toUpperCase() || "SCHEDULED";
+        if (!["SCHEDULED", "RELEASED", "CLOSED"].includes(assessmentStatus)) {
+            assessmentStatus = "SCHEDULED";
+        }
 
         const assessment = await prisma.assessment.create({
             data: {
@@ -1598,9 +1632,13 @@ export class TeacherService {
                 academicYearId: assignment.academicYearId,
                 teachingAssignmentId: data.teachingAssignmentId,
                 title: data.title,
+                description: data.description || null,
                 type: assessmentType as any,
-                maxScore: data.maxScore,
-                passingScore: data.passingScore || (data.maxScore * 0.5),
+                status: assessmentStatus as any,
+                durationMinutes: data.durationMinutes ? Number(data.durationMinutes) : 60,
+                scheduledDate: data.scheduledDate ? new Date(data.scheduledDate) : null,
+                maxScore: Number(data.maxScore),
+                passingScore: data.passingScore !== undefined ? Number(data.passingScore) : (Number(data.maxScore) * 0.5),
                 dueDate: data.dueDate ? new Date(data.dueDate) : null
             }
         });
@@ -1634,6 +1672,152 @@ export class TeacherService {
             where: { id: assessment.id },
             include: { results: { include: { enrollment: { include: { student: true } } } } }
         });
+    }
+
+    // Subdomain 6.1: Update Assessment Release & Lifecycle Status
+    static async updateAssessmentStatus(userId: string, organizationId: string, assessmentId: string, status: "SCHEDULED" | "RELEASED" | "CLOSED") {
+        const assessment = await prisma.assessment.findFirst({
+            where: { id: assessmentId, organizationId }
+        });
+        if (!assessment) throw new Error("Assessment not found");
+
+        const updateData: any = { status };
+        if (status === "RELEASED") {
+            updateData.releasedAt = new Date();
+        } else if (status === "CLOSED") {
+            updateData.closedAt = new Date();
+        }
+
+        return prisma.assessment.update({
+            where: { id: assessmentId },
+            data: updateData,
+            include: {
+                teachingAssignment: {
+                    include: {
+                        subject: true,
+                        schoolGrade: { include: { grade: true } },
+                        section: true
+                    }
+                },
+                results: {
+                    include: {
+                        enrollment: {
+                            include: {
+                                student: true
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    // Subdomain 6.2: Live Assessment Session Monitor & Roster State
+    static async getAssessmentSessionMonitor(userId: string, organizationId: string, assessmentId: string) {
+        const assessment = await prisma.assessment.findFirst({
+            where: { id: assessmentId, organizationId },
+            include: {
+                teachingAssignment: {
+                    include: {
+                        subject: true,
+                        schoolGrade: { include: { grade: true } },
+                        section: {
+                            include: {
+                                studentEnrollments: {
+                                    where: { status: "ACTIVE" },
+                                    include: {
+                                        student: true
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                results: {
+                    include: {
+                        enrollment: {
+                            include: {
+                                student: true
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        if (!assessment) throw new Error("Assessment not found");
+
+        const enrolledStudents = assessment.teachingAssignment?.section?.studentEnrollments || [];
+        const resultsByEnrollmentId = new Map(assessment.results.map(r => [r.enrollmentId, r]));
+
+        const now = new Date();
+        const durationMins = assessment.durationMinutes || 60;
+
+        const roster = enrolledStudents.map(e => {
+            const result = resultsByEnrollmentId.get(e.id);
+            let sessionStatus: "NOT_STARTED" | "IN_PROGRESS" | "SUBMITTED" = "NOT_STARTED";
+            let remainingMinutes: number = durationMins;
+            let startedAt: string | null = null;
+            let submittedAt: string | null = null;
+
+            if (result) {
+                if (result.status === "SUBMITTED" || (result.score !== undefined && result.score > 0) || result.submittedAt) {
+                    sessionStatus = "SUBMITTED";
+                    submittedAt = result.submittedAt ? result.submittedAt.toISOString() : (result.updatedAt ? result.updatedAt.toISOString() : null);
+                    remainingMinutes = 0;
+                } else if (result.status === "IN_PROGRESS" || result.startedAt) {
+                    sessionStatus = "IN_PROGRESS";
+                    startedAt = result.startedAt ? result.startedAt.toISOString() : null;
+                    if (result.startedAt) {
+                        const elapsedMs = now.getTime() - new Date(result.startedAt).getTime();
+                        const elapsedMins = Math.floor(elapsedMs / 60000);
+                        remainingMinutes = Math.max(0, durationMins - elapsedMins);
+                        if (remainingMinutes === 0) {
+                            sessionStatus = "SUBMITTED";
+                        }
+                    }
+                }
+            }
+
+            return {
+                enrollmentId: e.id,
+                studentId: e.student.studentId || e.student.admissionNumber || e.student.id,
+                name: `${e.student.firstName} ${e.student.lastName}`.trim(),
+                gender: e.student.gender,
+                photoUrl: e.student.photoUrl,
+                sessionStatus,
+                remainingMinutes,
+                startedAt,
+                submittedAt,
+                score: result?.score ?? null,
+                feedback: result?.feedback ?? null
+            };
+        });
+
+        return {
+            assessment: {
+                id: assessment.id,
+                title: assessment.title,
+                type: assessment.type,
+                status: assessment.status,
+                durationMinutes: assessment.durationMinutes,
+                scheduledDate: assessment.scheduledDate,
+                releasedAt: assessment.releasedAt,
+                closedAt: assessment.closedAt,
+                maxScore: assessment.maxScore,
+                passingScore: assessment.passingScore,
+                sectionName: assessment.teachingAssignment?.section?.name,
+                gradeLevel: assessment.teachingAssignment?.schoolGrade?.grade?.level,
+                subjectName: assessment.teachingAssignment?.subject?.name
+            },
+            stats: {
+                totalEnrolled: roster.length,
+                notStarted: roster.filter(s => s.sessionStatus === "NOT_STARTED").length,
+                inProgress: roster.filter(s => s.sessionStatus === "IN_PROGRESS").length,
+                submitted: roster.filter(s => s.sessionStatus === "SUBMITTED").length
+            },
+            roster
+        };
     }
 
     // Subdomain 7: Grade Submission

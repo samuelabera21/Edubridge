@@ -1,7 +1,9 @@
 import nodemailer from "nodemailer";
 import { Resend } from "resend";
 
-const resend = new Resend(process.env.RESEND_API_KEY || "re_dummy_fallback_key");
+const resend = (process.env.RESEND_API_KEY && process.env.RESEND_API_KEY !== "re_dummy_fallback_key")
+    ? new Resend(process.env.RESEND_API_KEY)
+    : null;
 
 const APP_URL = process.env.FRONTEND_URL || "http://localhost:3001";
 
@@ -231,6 +233,11 @@ export async function sendAdminInvitationEmail(payload: InvitationEmailPayload):
     }
 
     // Fallback to Resend if SMTP is not configured
+    if (!resend) {
+        console.warn(`[EmailService] Neither SMTP nor RESEND_API_KEY is configured. Skipping email dispatch to ${recipientEmail}.`);
+        return;
+    }
+
     console.log(`[EmailService] Sending invitation via Resend to ${recipientEmail}...`);
     const { error } = await resend.emails.send({
         from: fromAddress,

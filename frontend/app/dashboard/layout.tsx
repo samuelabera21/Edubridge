@@ -92,10 +92,12 @@ function TeacherBreadcrumbs({ pathname, currentTab, currentType }: { pathname: s
             grade: "Record Results & Grade",
             feedback: "Provide Feedback"
         };
-        if (currentType && typeMap[currentType]) {
-            subItemTitle = typeMap[currentType];
-        } else if (currentTab && tabMap[currentTab]) {
+        if (currentTab && tabMap[currentTab]) {
             subItemTitle = tabMap[currentTab];
+        } else if (currentType && typeMap[currentType]) {
+            subItemTitle = typeMap[currentType];
+        } else {
+            subItemTitle = "Create Assessment";
         }
     } else if (pathname.startsWith("/dashboard/teacher/learning") || pathname.startsWith("/dashboard/teacher/activities")) {
         parentTitle = "Learning Activities";
@@ -921,11 +923,7 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
                                     </button>
                                     {openMenus.teacherAssessment && !sidebarCollapsed && (
                                         <div className="pl-8 pr-2 py-1.5 space-y-1 bg-[#103454]/80 rounded-xl my-1 border-l-2 border-[#2c6da7]/50 shadow-inner">
-                                            <Link href="/dashboard/teacher/assessment?type=ALL" className={`block py-1.5 px-2 rounded-lg text-xs transition-all duration-150 hover:translate-x-0.5 ${pathname === "/dashboard/teacher/assessment" && currentType === "ALL" ? "text-amber-300 font-semibold bg-[#0f2f4c] shadow-xs" : "text-blue-200/90 hover:text-amber-200 hover:bg-[#225785]/60"}`}>Create Assessment</Link>
-                                            <Link href="/dashboard/teacher/assessment?type=QUIZ" className={`block py-1.5 px-2 rounded-lg text-xs transition-all duration-150 hover:translate-x-0.5 ${pathname === "/dashboard/teacher/assessment" && currentType === "QUIZ" ? "text-amber-300 font-semibold bg-[#0f2f4c] shadow-xs" : "text-blue-200/90 hover:text-amber-200 hover:bg-[#225785]/60"}`}>Create Quiz</Link>
-                                            <Link href="/dashboard/teacher/assessment?type=TEST" className={`block py-1.5 px-2 rounded-lg text-xs transition-all duration-150 hover:translate-x-0.5 ${pathname === "/dashboard/teacher/assessment" && currentType === "TEST" ? "text-amber-300 font-semibold bg-[#0f2f4c] shadow-xs" : "text-blue-200/90 hover:text-amber-200 hover:bg-[#225785]/60"}`}>Create Test</Link>
-                                            <Link href="/dashboard/teacher/assessment?type=ASSIGNMENT" className={`block py-1.5 px-2 rounded-lg text-xs transition-all duration-150 hover:translate-x-0.5 ${pathname === "/dashboard/teacher/assessment" && currentType === "ASSIGNMENT" ? "text-amber-300 font-semibold bg-[#0f2f4c] shadow-xs" : "text-blue-200/90 hover:text-amber-200 hover:bg-[#225785]/60"}`}>Create Assignment</Link>
-                                            <Link href="/dashboard/teacher/assessment?type=PROJECT" className={`block py-1.5 px-2 rounded-lg text-xs transition-all duration-150 hover:translate-x-0.5 ${pathname === "/dashboard/teacher/assessment" && currentType === "PROJECT" ? "text-amber-300 font-semibold bg-[#0f2f4c] shadow-xs" : "text-blue-200/90 hover:text-amber-200 hover:bg-[#225785]/60"}`}>Create Project</Link>
+                                            <Link href="/dashboard/teacher/assessment" className={`block py-1.5 px-2 rounded-lg text-xs transition-all duration-150 hover:translate-x-0.5 ${pathname === "/dashboard/teacher/assessment" && (!currentTab || currentTab === "create") ? "text-amber-300 font-semibold bg-[#0f2f4c] shadow-xs" : "text-blue-200/90 hover:text-amber-200 hover:bg-[#225785]/60"}`}>Create Assessment</Link>
                                             <Link href="/dashboard/teacher/assessment?tab=conduct" className={`block py-1.5 px-2 rounded-lg text-xs transition-all duration-150 hover:translate-x-0.5 ${pathname === "/dashboard/teacher/assessment" && currentTab === "conduct" ? "text-amber-300 font-semibold bg-[#0f2f4c] shadow-xs" : "text-blue-200/90 hover:text-amber-200 hover:bg-[#225785]/60"}`}>Conduct Assessment</Link>
                                             <Link href="/dashboard/teacher/assessment?tab=grade" className={`block py-1.5 px-2 rounded-lg text-xs transition-all duration-150 hover:translate-x-0.5 ${pathname === "/dashboard/teacher/assessment" && currentTab === "grade" ? "text-amber-300 font-semibold bg-[#0f2f4c] shadow-xs" : "text-blue-200/90 hover:text-amber-200 hover:bg-[#225785]/60"}`}>Record Results & Grade</Link>
                                             <Link href="/dashboard/teacher/assessment?tab=feedback" className={`block py-1.5 px-2 rounded-lg text-xs transition-all duration-150 hover:translate-x-0.5 ${pathname === "/dashboard/teacher/assessment" && currentTab === "feedback" ? "text-amber-300 font-semibold bg-[#0f2f4c] shadow-xs" : "text-blue-200/90 hover:text-amber-200 hover:bg-[#225785]/60"}`}>Provide Feedback</Link>

@@ -9,4 +9,6 @@ swagger_dump.json
 .agents/
 .claude/
 .windsurf/
+scripts/register_students_12ab.ts
+*register*student*12ab*
 

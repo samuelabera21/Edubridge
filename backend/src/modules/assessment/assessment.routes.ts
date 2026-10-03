@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { 
     createAssessment, 
+    deleteAssessment,
     getAssessments,
     getAssessmentWithResults,
     recordResult,
@@ -88,6 +89,7 @@ router.post("/", requirePermission("ACADEMIC:CREATE"), createAssessment);
  */
 router.get("/", requirePermission("ACADEMIC:VIEW"), getAssessments);
 router.get("/:id/results", requirePermission("ACADEMIC:VIEW"), getAssessmentWithResults);
+router.delete("/:id", requirePermission("ACADEMIC:CREATE"), deleteAssessment);
 
 /**
  * @openapi
