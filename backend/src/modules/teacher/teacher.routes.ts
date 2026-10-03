@@ -29,6 +29,8 @@ import {
     getStudentDetail,
     recordBatchAttendance,
     createAssessmentWithResults,
+    updateAssessmentStatus,
+    getAssessmentSessionMonitor,
     gradeActivitySubmission,
     createStudentSupportFlag,
     resolveSupportFlag,
@@ -287,6 +289,8 @@ router.get("/learning/support", requirePermission("ACADEMIC:VIEW"), getSupportFl
 router.post("/assessment", requirePermission("ACADEMIC:CREATE"), createAssessment);
 router.get("/assessment", requirePermission("ACADEMIC:VIEW"), getAssessments);
 router.delete("/assessment/:id", requirePermission("ACADEMIC:CREATE"), deleteAssessment);
+router.patch("/assessment/:id/status", requirePermission("ACADEMIC:CREATE"), updateAssessmentStatus);
+router.get("/assessment/:id/session", requirePermission("ACADEMIC:VIEW"), getAssessmentSessionMonitor);
 
 /**
  * @openapi

@@ -1126,17 +1126,28 @@ enum AssessmentType {
   OTHER
 }
 
+enum AssessmentStatus {
+  SCHEDULED
+  RELEASED
+  CLOSED
+}
+
 model Assessment {
-  id                   String         @id @default(cuid())
+  id                   String           @id @default(cuid())
   organizationId       String
   academicYearId       String
   teachingAssignmentId String // Links back to the specific Subject+Section+Teacher
   title                String
   description          String?
-  type                 AssessmentType @default(EXAM)
+  type                 AssessmentType   @default(EXAM)
+  status               AssessmentStatus @default(SCHEDULED)
+  durationMinutes      Int?             @default(60)
+  scheduledDate        DateTime?
+  releasedAt           DateTime?
+  closedAt             DateTime?
   maxScore             Float
   passingScore         Float?
-  dueDate              DateTime?      @db.Date
+  dueDate              DateTime?        @db.Date
 
   organization       OrganizationUnit   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   academicYear       AcademicYear       @relation(fields: [academicYearId], references: [id], onDelete: Cascade)
@@ -1152,10 +1163,13 @@ model Assessment {
 }
 
 model StudentResult {
-  id           String  @id @default(cuid())
+  id           String    @id @default(cuid())
   assessmentId String
   enrollmentId String
-  score        Float
+  score        Float     @default(0)
+  status       String    @default("SUBMITTED")
+  startedAt    DateTime?
+  submittedAt  DateTime?
   feedback     String?
   gradedById   String?
 

@@ -68,15 +68,91 @@ export class ReportsService {
         };
     }
 
-    // 4. Assessment Aggregations
+    // 4. Assessment Aggregations for School Admin
     static async getAssessmentAnalytics(organizationId: string) {
-        const totalAssessments = await prisma.assessment.count({ where: { organizationId } });
-        const publishedAssessments = await prisma.assessment.count({ where: { organizationId, status: "PUBLISHED" } });
+        const assessments = await prisma.assessment.findMany({
+            where: { organizationId },
+            include: {
+                teachingAssignment: {
+                    include: {
+                        subject: true,
+                        schoolGrade: { include: { grade: true } },
+                        section: true,
+                        teacher: true
+                    }
+                },
+                results: true
+            },
+            orderBy: { createdAt: "desc" }
+        });
+
+        const totalAssessments = assessments.length;
+        let totalResultsCount = 0;
+        let gradedAssessmentsCount = 0;
+        let totalScoreSum = 0;
+        let totalMaxSum = 0;
+        let passCount = 0;
+        let failCount = 0;
+
+        const assessmentList = assessments.map(a => {
+            const resultsCount = a.results?.length || 0;
+            totalResultsCount += resultsCount;
+            if (resultsCount > 0) gradedAssessmentsCount++;
+
+            let aTotalScore = 0;
+            let aPass = 0;
+            a.results.forEach(r => {
+                aTotalScore += r.score;
+                totalScoreSum += r.score;
+                totalMaxSum += a.maxScore;
+                const passing = a.passingScore || (a.maxScore * 0.5);
+                if (r.score >= passing) {
+                    passCount++;
+                    aPass++;
+                } else {
+                    failCount++;
+                }
+            });
+
+            const avgScore = resultsCount > 0 ? (aTotalScore / resultsCount).toFixed(1) : "0";
+            const avgPct = (resultsCount > 0 && a.maxScore > 0) ? Math.round(((aTotalScore / resultsCount) / a.maxScore) * 100) : 0;
+            const passRate = resultsCount > 0 ? Math.round((aPass / resultsCount) * 100) : 0;
+
+            return {
+                id: a.id,
+                title: a.title,
+                type: a.type,
+                status: a.status,
+                durationMinutes: a.durationMinutes || 60,
+                maxScore: a.maxScore,
+                passingScore: a.passingScore || (a.maxScore * 0.5),
+                subjectName: a.teachingAssignment?.subject?.name || "General Subject",
+                gradeLevel: a.teachingAssignment?.schoolGrade?.grade?.level || "12",
+                sectionName: a.teachingAssignment?.section?.name || "A",
+                teacherName: a.teachingAssignment?.teacher ? `${a.teachingAssignment.teacher.firstName} ${a.teachingAssignment.teacher.lastName}` : "Assigned Faculty",
+                gradedCount: resultsCount,
+                averageScore: avgScore,
+                averagePercentage: `${avgPct}%`,
+                passRate: `${passRate}%`,
+                dueDate: a.dueDate
+            };
+        });
+
+        const schoolAveragePct = totalMaxSum > 0 ? Math.round((totalScoreSum / totalMaxSum) * 100) : 0;
+        const completionRate = totalAssessments > 0 ? Math.round((gradedAssessmentsCount / totalAssessments) * 100) : 0;
+        const totalEvaluated = passCount + failCount;
+        const passRate = totalEvaluated > 0 ? Math.round((passCount / totalEvaluated) * 100) : 0;
 
         return {
-            totalSubmissions: totalAssessments,
-            gradedSubmissions: publishedAssessments,
-            completionRate: totalAssessments > 0 ? `${Math.round((publishedAssessments / totalAssessments) * 100)}%` : "96.2%"
+            totalAssessments,
+            totalSubmissions: totalResultsCount,
+            gradedSubmissions: totalResultsCount,
+            completionRate: `${completionRate}%`,
+            schoolAveragePercentage: `${schoolAveragePct}%`,
+            passRate: `${passRate}%`,
+            totalPassed: passCount,
+            totalFailed: failCount,
+            assessments: assessmentList
         };
     }
 

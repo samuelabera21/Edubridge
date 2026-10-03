@@ -28,7 +28,12 @@ import {
     HelpCircle,
     FileText,
     Sparkles,
-    AlertCircle
+    AlertCircle,
+    Lock,
+    Unlock,
+    RefreshCw,
+    Square,
+    Radio
 } from "lucide-react";
 
 interface AssessmentItem {
@@ -36,6 +41,11 @@ interface AssessmentItem {
     title: string;
     description?: string | null;
     type: string;
+    status?: "SCHEDULED" | "RELEASED" | "CLOSED";
+    durationMinutes?: number | null;
+    scheduledDate?: string | null;
+    releasedAt?: string | null;
+    closedAt?: string | null;
     maxScore: number;
     passingScore?: number | null;
     dueDate?: string | null;
@@ -79,6 +89,9 @@ function AssessmentContent() {
     const [newPassingScore, setNewPassingScore] = useState<number>(10);
     const [newAssignmentId, setNewAssignmentId] = useState<string>("");
     const [newDueDate, setNewDueDate] = useState<string>(new Date().toISOString().split('T')[0]);
+    const [newScheduledDate, setNewScheduledDate] = useState<string>(new Date().toISOString().split('T')[0]);
+    const [newScheduledTime, setNewScheduledTime] = useState<string>("09:00");
+    const [newDurationMinutes, setNewDurationMinutes] = useState<number>(60);
     const [newDescription, setNewDescription] = useState<string>("");
 
     // Filters
@@ -90,6 +103,13 @@ function AssessmentContent() {
     const [saving, setSaving] = useState(false);
     const [deletingId, setDeletingId] = useState<string | null>(null);
     const [msg, setMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
+
+    // Live Session Monitor State
+    const [sessionRoster, setSessionRoster] = useState<any[]>([]);
+    const [sessionStats, setSessionStats] = useState<{ totalEnrolled: number; notStarted: number; inProgress: number; submitted: number } | null>(null);
+    const [loadingSession, setLoadingSession] = useState(false);
+    const [statusModal, setStatusModal] = useState<"RELEASE" | "CLOSE" | null>(null);
+    const [updatingStatus, setUpdatingStatus] = useState(false);
 
     // Sync from URL parameters
     useEffect(() => {
@@ -116,26 +136,32 @@ function AssessmentContent() {
             case "QUIZ":
                 setNewMaxScore(10);
                 setNewPassingScore(5);
+                setNewDurationMinutes(15);
                 break;
             case "TEST":
                 setNewMaxScore(40);
                 setNewPassingScore(20);
+                setNewDurationMinutes(45);
                 break;
             case "EXAM":
                 setNewMaxScore(100);
                 setNewPassingScore(50);
+                setNewDurationMinutes(60);
                 break;
             case "ASSIGNMENT":
                 setNewMaxScore(20);
                 setNewPassingScore(10);
+                setNewDurationMinutes(60);
                 break;
             case "PROJECT":
                 setNewMaxScore(50);
                 setNewPassingScore(25);
+                setNewDurationMinutes(120);
                 break;
             default:
                 setNewMaxScore(20);
                 setNewPassingScore(10);
+                setNewDurationMinutes(60);
         }
     };
 
@@ -191,7 +217,97 @@ function AssessmentContent() {
             };
         });
         setResultsMap(map);
+        loadSessionData(ass.id);
     };
+
+    const loadSessionData = async (assessmentId: string) => {
+        if (!assessmentId) return;
+        try {
+            setLoadingSession(true);
+            const res = await fetchApi(`/teacher/assessment/${assessmentId}/session`);
+            if (res.ok) {
+                const data = await res.json();
+                setSessionRoster(data.roster || []);
+                setSessionStats(data.stats || null);
+                if (data.assessment) {
+                    setSelectedAssessment(prev => prev ? { 
+                        ...prev, 
+                        status: data.assessment.status, 
+                        releasedAt: data.assessment.releasedAt, 
+                        closedAt: data.assessment.closedAt 
+                    } : null);
+                    setAssessments(prev => prev.map(a => a.id === assessmentId ? { 
+                        ...a, 
+                        status: data.assessment.status, 
+                        releasedAt: data.assessment.releasedAt, 
+                        closedAt: data.assessment.closedAt 
+                    } : a));
+                }
+            }
+        } catch (e) {
+            console.error("Failed to load session monitor data:", e);
+        } finally {
+            setLoadingSession(false);
+        }
+    };
+
+    const handleStatusTransition = async (newStatus: "RELEASED" | "CLOSED" | "SCHEDULED") => {
+        if (!selectedAssessment) return;
+        try {
+            setUpdatingStatus(true);
+            const res = await fetchApi(`/teacher/assessment/${selectedAssessment.id}/status`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ status: newStatus })
+            });
+
+            if (!res.ok) {
+                const err = await res.json().catch(() => ({}));
+                throw new Error(err.error || "Failed to update assessment status");
+            }
+
+            const updated = await res.json();
+            setSelectedAssessment(prev => prev ? { 
+                ...prev, 
+                status: newStatus, 
+                releasedAt: updated.releasedAt, 
+                closedAt: updated.closedAt 
+            } : null);
+            setAssessments(prev => prev.map(a => a.id === selectedAssessment.id ? { 
+                ...a, 
+                status: newStatus, 
+                releasedAt: updated.releasedAt, 
+                closedAt: updated.closedAt 
+            } : a));
+            setStatusModal(null);
+
+            setMsg({
+                type: "success",
+                text: newStatus === "RELEASED" 
+                    ? `🚀 Exam "${selectedAssessment.title}" released to all students! Students can now start their timed session.`
+                    : newStatus === "CLOSED"
+                    ? `🏁 Exam session for "${selectedAssessment.title}" has been closed.`
+                    : `🔒 Exam returned to scheduled / locked state.`
+            });
+
+            await loadSessionData(selectedAssessment.id);
+        } catch (err: any) {
+            setMsg({ type: "error", text: err.message || "Failed to update status" });
+        } finally {
+            setUpdatingStatus(false);
+        }
+    };
+
+    // Auto-poll session monitor every 12 seconds when in conduct tab
+    useEffect(() => {
+        if (activeTab === "conduct" && selectedAssessment?.id) {
+            loadSessionData(selectedAssessment.id);
+            const timer = setInterval(() => {
+                loadSessionData(selectedAssessment.id);
+            }, 12000);
+            return () => clearInterval(timer);
+        }
+    }, [activeTab, selectedAssessment?.id]);
 
     const handleCreateAssessment = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -203,9 +319,9 @@ function AssessmentContent() {
         try {
             setSaving(true);
             setMsg(null);
-
             const selectedClass = classes.find((c: any) => (c.assignment?.id || c.id) === newAssignmentId);
             const academicYearId = selectedClass?.assignment?.academicYearId || "active-year";
+            const combinedScheduledAt = newScheduledDate ? `${newScheduledDate}T${newScheduledTime || "09:00"}:00` : undefined;
 
             const res = await fetchApi("/teacher/assessment/batch", {
                 method: "POST",
@@ -216,6 +332,9 @@ function AssessmentContent() {
                     title: newTitle.trim(),
                     description: newDescription.trim() || undefined,
                     type: newType,
+                    status: "SCHEDULED",
+                    durationMinutes: Number(newDurationMinutes),
+                    scheduledDate: combinedScheduledAt,
                     maxScore: Number(newMaxScore),
                     passingScore: Number(newPassingScore),
                     dueDate: newDueDate
@@ -243,7 +362,7 @@ function AssessmentContent() {
 
             setMsg({ 
                 type: "success", 
-                text: `${newType} "${created.title}" created successfully! Click "Grade Roster" below to enter scores.` 
+                text: `${newType} "${created.title}" (${newDurationMinutes} mins) created successfully! 🔒 Status: Locked / Scheduled. Students cannot access it until you release it in "Conduct & Session Monitor".` 
             });
         } catch (err: any) {
             setMsg({ type: "error", text: err.message || "Failed to create assessment" });
@@ -317,7 +436,10 @@ function AssessmentContent() {
             setSelectedAssessment(updated);
             setAssessments(assessments.map(a => a.id === updated.id ? updated : a));
 
-            setMsg({ type: "success", text: "All student marks, grades, and feedback saved successfully!" });
+            setMsg({ 
+                type: "success", 
+                text: "All student marks, letter grades, and feedback saved successfully! The results are now live in the School Admin Assessment & Exam Reports." 
+            });
         } catch (err: any) {
             setMsg({ type: "error", text: err.message || "Failed to save results" });
         } finally {
@@ -325,14 +447,14 @@ function AssessmentContent() {
         }
     };
 
-    // Calculate Letter Grade helper
+    // Calculate Letter Grade helper (SRS Ethiopian Standard)
     const getLetterGrade = (score: number, maxScore: number) => {
         const pct = maxScore > 0 ? (score / maxScore) * 100 : 0;
-        if (pct >= 90) return { grade: "A", color: "bg-emerald-100 text-emerald-800 border-emerald-300" };
-        if (pct >= 80) return { grade: "B", color: "bg-sky-100 text-sky-800 border-sky-300" };
-        if (pct >= 70) return { grade: "C", color: "bg-amber-100 text-amber-800 border-amber-300" };
-        if (pct >= 60) return { grade: "D", color: "bg-orange-100 text-orange-800 border-orange-300" };
-        return { grade: "F", color: "bg-rose-100 text-rose-800 border-rose-300" };
+        if (pct >= 85) return { grade: "A", label: "Excellent", color: "bg-emerald-100 text-emerald-800 border-emerald-300" };
+        if (pct >= 75) return { grade: "B", label: "Very Good", color: "bg-sky-100 text-sky-800 border-sky-300" };
+        if (pct >= 60) return { grade: "C", label: "Good", color: "bg-amber-100 text-amber-800 border-amber-300" };
+        if (pct >= 50) return { grade: "D", label: "Satisfactory", color: "bg-orange-100 text-orange-800 border-orange-300" };
+        return { grade: "F", label: "Needs Support", color: "bg-rose-100 text-rose-800 border-rose-300" };
     };
 
     // Helper: getTypeBadgeStyle
@@ -396,48 +518,6 @@ function AssessmentContent() {
     return (
         <div className="w-full max-w-7xl mx-auto space-y-6 text-slate-900 pb-20">
             
-            {/* Header / Hero Banner */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-gradient-to-r from-slate-900 via-[#0c2454] to-slate-900 p-6 rounded-3xl text-white shadow-xl">
-                <div className="space-y-1">
-                    <div className="flex items-center space-x-2">
-                        <span className="px-3 py-1 bg-amber-400/20 text-amber-300 border border-amber-400/30 rounded-full text-[11px] font-bold tracking-wider uppercase flex items-center space-x-1">
-                            <Sparkles className="w-3 h-3 mr-1" /> Domain 6: Assessment & Grading
-                        </span>
-                        <span className="text-xs text-slate-400">• SRS FR-ASSESS-001/015</span>
-                    </div>
-                    <h1 className="text-2xl md:text-3xl font-black tracking-tight text-white flex items-center space-x-2">
-                        <span>Assessment Command Center</span>
-                    </h1>
-                    <p className="text-xs text-slate-300 max-w-2xl font-normal">
-                        Create quizzes, tests, assignments, and projects. Conduct evaluations, grade active student rosters, and deliver personalized feedback.
-                    </p>
-                </div>
-
-                <div className="flex flex-wrap items-center gap-2">
-                    <button
-                        onClick={() => {
-                            setNewType("QUIZ");
-                            applyTypeDefaults("QUIZ");
-                            setShowCreateModal(true);
-                        }}
-                        className="px-4 py-2.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 rounded-xl text-xs font-black transition-all flex items-center space-x-2 shadow-lg shadow-amber-500/20 cursor-pointer"
-                    >
-                        <Plus className="w-4 h-4" />
-                        <span>Create New Assessment</span>
-                    </button>
-
-                    {selectedAssessment && (activeTab === "grade" || activeTab === "feedback") && (
-                        <button
-                            onClick={handleSaveResults}
-                            disabled={saving}
-                            className="px-4 py-2.5 bg-[#4085b3] hover:bg-[#326a8f] text-white rounded-xl text-xs font-bold transition-all flex items-center space-x-2 shadow-lg shadow-[#4085b3]/30 disabled:opacity-50 cursor-pointer"
-                        >
-                            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                            <span>Save Scores & Feedback</span>
-                        </button>
-                    )}
-                </div>
-            </div>
 
             {/* Quick Metrics Bar */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
@@ -643,13 +723,21 @@ function AssessmentContent() {
                                     >
                                         {/* Card Header */}
                                         <div className="flex items-start justify-between gap-2">
-                                            <div className="flex items-center space-x-2">
-                                                <span className={`px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider border ${getTypeBadgeStyle(ass.type)}`}>
+                                            <div className="flex flex-wrap items-center gap-1.5">
+                                                <span className={`px-2 py-0.5 rounded-lg text-[10px] font-black uppercase tracking-wider border ${getTypeBadgeStyle(ass.type)}`}>
                                                     {ass.type}
                                                 </span>
-                                                <span className="text-[11px] font-bold text-slate-500 flex items-center">
-                                                    <Clock className="w-3 h-3 mr-1 text-slate-400" />
-                                                    {ass.dueDate ? new Date(ass.dueDate).toLocaleDateString() : "No Due Date"}
+                                                {ass.status === "RELEASED" ? (
+                                                    <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-800 border border-emerald-200 flex items-center gap-1">
+                                                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span> Live
+                                                    </span>
+                                                ) : (
+                                                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200 flex items-center gap-1">
+                                                        <Lock className="w-2.5 h-2.5 text-amber-600" /> Locked
+                                                    </span>
+                                                )}
+                                                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-600 flex items-center gap-1">
+                                                    <Clock className="w-2.5 h-2.5 text-slate-400" /> {ass.durationMinutes || 60}m
                                                 </span>
                                             </div>
 
@@ -746,42 +834,97 @@ function AssessmentContent() {
             {activeTab === "conduct" && (
                 <div className="space-y-6">
                     <Card>
-                        <CardHeader>
-                            <CardTitle className="text-base font-bold text-slate-900 flex items-center space-x-2">
-                                <Play className="w-5 h-5 text-emerald-600" />
-                                <span>Assessment Lifecycle & Conduct Overview</span>
-                            </CardTitle>
+                        <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100">
+                            <div>
+                                <CardTitle className="text-base font-black text-slate-900 flex items-center space-x-2">
+                                    <Play className="w-5 h-5 text-emerald-600" />
+                                    <span>2. Conduct & Session Monitor (የፈተና መቆጣጠሪያ እና ክትትል)</span>
+                                </CardTitle>
+                                <p className="text-xs text-slate-500 mt-0.5">
+                                    Release scheduled exams to students simultaneously, track individual countdown timers in real time, and end sessions.
+                                </p>
+                            </div>
+
+                            {/* Assessment Selector dropdown if multiple */}
+                            {assessments.length > 1 && (
+                                <div className="flex items-center space-x-2">
+                                    <span className="text-xs font-bold text-slate-600">Select Exam:</span>
+                                    <select
+                                        value={selectedAssessment?.id || ""}
+                                        onChange={(e) => {
+                                            const found = assessments.find(a => a.id === e.target.value);
+                                            if (found) selectAssessment(found);
+                                        }}
+                                        className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-bold text-slate-800 outline-none focus:ring-2 focus:ring-[#4085b3]"
+                                    >
+                                        {assessments.map(a => (
+                                            <option key={a.id} value={a.id}>
+                                                [{a.type}] {a.title} ({a.status === "RELEASED" ? "🟢 Live" : a.status === "CLOSED" ? "🏁 Closed" : "🔒 Locked"})
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+                            )}
                         </CardHeader>
-                        <CardContent className="space-y-6">
+                        <CardContent className="space-y-6 pt-5">
                             {!selectedAssessment ? (
                                 <div className="p-12 text-center text-slate-400 space-y-2">
                                     <Inbox className="w-10 h-10 mx-auto text-slate-300" />
-                                    <p className="font-semibold text-slate-600">Select an assessment to monitor its conduct lifecycle.</p>
+                                    <p className="font-semibold text-slate-600">Please select an assessment to monitor its conduct lifecycle.</p>
                                 </div>
                             ) : (
                                 <div className="space-y-6">
                                     
                                     {/* Main Hero Card for Selected Assessment */}
-                                    <div className="p-6 bg-slate-50 rounded-2xl border border-slate-200 space-y-4">
-                                        <div className="flex flex-wrap justify-between items-center gap-2">
-                                            <div className="flex items-center space-x-2">
+                                    <div className="p-6 bg-slate-50/80 rounded-2xl border border-slate-200 space-y-5">
+                                        <div className="flex flex-wrap justify-between items-center gap-3">
+                                            <div className="flex flex-wrap items-center gap-2">
                                                 <span className={`px-3 py-1 rounded-lg text-xs font-black uppercase tracking-wider border ${getTypeBadgeStyle(selectedAssessment.type)}`}>
                                                     {selectedAssessment.type} Evaluation
                                                 </span>
-                                                <span className="px-3 py-1 bg-emerald-100 text-emerald-800 rounded-full font-bold text-xs flex items-center">
-                                                    <CheckCircle2 className="w-3.5 h-3.5 mr-1 text-emerald-600" /> Ready / Active
+
+                                                {/* 1. STATUS BADGES */}
+                                                {selectedAssessment.status === "RELEASED" ? (
+                                                    <span className="px-3 py-1 bg-emerald-100 text-emerald-800 border border-emerald-300 rounded-full font-black text-xs flex items-center shadow-xs">
+                                                        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping mr-1.5" />
+                                                        🟢 Active / Released (ለተማሪዎች ተለቋል፤ ተማሪዎች መጀመር ይችላሉ)
+                                                    </span>
+                                                ) : selectedAssessment.status === "CLOSED" ? (
+                                                    <span className="px-3 py-1 bg-slate-200 text-slate-800 border border-slate-300 rounded-full font-bold text-xs flex items-center">
+                                                        🏁 Closed / Completed (ፈተናው ተጠናቋል/ተዘግቷል)
+                                                    </span>
+                                                ) : (
+                                                    <span className="px-3 py-1 bg-amber-100 text-amber-900 border border-amber-300 rounded-full font-bold text-xs flex items-center shadow-xs">
+                                                        <Lock className="w-3.5 h-3.5 mr-1 text-amber-700" />
+                                                        🔒 Locked / Scheduled (ገና ለተማሪዎች አልተለቀቀም)
+                                                    </span>
+                                                )}
+
+                                                <span className="px-3 py-1 bg-white border border-slate-200 text-slate-700 rounded-full font-bold text-xs flex items-center">
+                                                    <Clock className="w-3.5 h-3.5 mr-1 text-[#4085b3]" />
+                                                    ቆይታ፦ {selectedAssessment.durationMinutes || 60} ደቂቃ
                                                 </span>
                                             </div>
-                                            <span className="text-xs font-bold text-slate-500 font-mono">
-                                                Created: {new Date(selectedAssessment.createdAt || Date.now()).toLocaleDateString()}
-                                            </span>
+
+                                            <div className="flex items-center space-x-2">
+                                                <button
+                                                    onClick={() => loadSessionData(selectedAssessment.id)}
+                                                    disabled={loadingSession}
+                                                    className="px-3 py-1.5 bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 font-bold rounded-xl text-xs flex items-center space-x-1.5 transition-colors cursor-pointer"
+                                                    title="Refresh Live Student Roster"
+                                                >
+                                                    <RefreshCw className={`w-3.5 h-3.5 ${loadingSession ? "animate-spin text-[#4085b3]" : "text-slate-500"}`} />
+                                                    <span>Refresh Roster</span>
+                                                </button>
+                                            </div>
                                         </div>
 
                                         <div>
-                                            <h3 className="text-xl font-black text-slate-900">{selectedAssessment.title}</h3>
-                                            <p className="text-xs text-slate-600 mt-1">
-                                                Class: <strong>Grade {selectedAssessment.teachingAssignment?.schoolGrade?.grade?.level || "12"}{selectedAssessment.teachingAssignment?.section?.name ? `-${selectedAssessment.teachingAssignment.section.name}` : ""}</strong> • 
-                                                Subject: <strong>{selectedAssessment.teachingAssignment?.subject?.name || "Mathematics"}</strong>
+                                            <h3 className="text-2xl font-black text-slate-900">{selectedAssessment.title}</h3>
+                                            <p className="text-xs text-slate-600 mt-1 font-medium">
+                                                Class: <strong className="text-slate-900">Grade {selectedAssessment.teachingAssignment?.schoolGrade?.grade?.level || "12"}{selectedAssessment.teachingAssignment?.section?.name ? `-${selectedAssessment.teachingAssignment.section.name}` : ""}</strong> • 
+                                                Subject: <strong className="text-slate-900">{selectedAssessment.teachingAssignment?.subject?.name || "Mathematics"}</strong> • 
+                                                Due/Date: <strong className="text-slate-900">{selectedAssessment.dueDate ? new Date(selectedAssessment.dueDate).toLocaleDateString() : "Today"}</strong>
                                             </p>
                                         </div>
 
@@ -792,49 +935,302 @@ function AssessmentContent() {
                                             </div>
                                         )}
 
-                                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2">
-                                            <div className="p-3 bg-white rounded-xl border border-slate-200">
-                                                <span className="text-[10px] uppercase font-bold text-slate-400 block">Maximum Marks</span>
-                                                <span className="text-base font-black text-slate-900">{selectedAssessment.maxScore} Points</span>
+                                        {/* 2. ACTION CONTROLS (የመልቀቂያ እና መዝጊያ ቁልፎች) */}
+                                        <div className="p-4 bg-white rounded-xl border border-slate-200 flex flex-wrap items-center justify-between gap-3">
+                                            <div className="space-y-0.5">
+                                                <p className="text-xs font-black text-slate-900 flex items-center gap-1.5">
+                                                    <Radio className="w-4 h-4 text-emerald-600" />
+                                                    <span>Exam Control Center (የፈተና መቆጣጠሪያ)</span>
+                                                </p>
+                                                <p className="text-[11px] text-slate-500">
+                                                    {selectedAssessment.status === "RELEASED" 
+                                                        ? "ፈተናው አሁን ክፍት ነው፤ ተማሪዎች Login አድርገው 'Start Exam' ሲጫኑ የየራሳቸው የግል ሰዓት መቁጠር ይጀምራል።"
+                                                        : selectedAssessment.status === "CLOSED"
+                                                        ? "የፈተና ክፍለ ጊዜው ተዘግቷል። ተማሪዎች ተጨማሪ ፈተና መውሰድ አይችሉም።"
+                                                        : "ፈተናው ተቆልፏል። ሁሉም ተማሪዎች Login አድርገው በተዘጋጁበት ሰዓት 'Release Exam' የሚለውን በመጫን በአንድ ጊዜ ልቀቁ።"}
+                                                </p>
                                             </div>
-                                            <div className="p-3 bg-white rounded-xl border border-slate-200">
-                                                <span className="text-[10px] uppercase font-bold text-slate-400 block">Passing Benchmark</span>
-                                                <span className="text-base font-black text-emerald-700">{passingThreshold} Points (50%)</span>
+
+                                            <div className="flex flex-wrap items-center gap-2">
+                                                {selectedAssessment.status !== "RELEASED" && (
+                                                    <button
+                                                        onClick={() => setStatusModal("RELEASE")}
+                                                        disabled={updatingStatus}
+                                                        className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-xl text-xs flex items-center space-x-2 transition-all shadow-md hover:shadow-lg cursor-pointer disabled:opacity-50"
+                                                    >
+                                                        <Play className="w-4 h-4 fill-white" />
+                                                        <span>🚀 Release Exam to Students (ፈተናውን ልቀቅ)</span>
+                                                    </button>
+                                                )}
+
+                                                {selectedAssessment.status === "RELEASED" && (
+                                                    <>
+                                                        <button
+                                                            onClick={() => setStatusModal("CLOSE")}
+                                                            disabled={updatingStatus}
+                                                            className="px-5 py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-black rounded-xl text-xs flex items-center space-x-2 transition-all shadow-md hover:shadow-lg cursor-pointer disabled:opacity-50"
+                                                        >
+                                                            <Square className="w-4 h-4 fill-white" />
+                                                            <span>⏹️ End / Close Exam Session (ፈተናውን ዝጋ)</span>
+                                                        </button>
+
+                                                        <button
+                                                            onClick={() => handleStatusTransition("SCHEDULED")}
+                                                            disabled={updatingStatus}
+                                                            className="px-3.5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs flex items-center space-x-1.5 transition-colors cursor-pointer"
+                                                            title="Re-lock exam if released by mistake"
+                                                        >
+                                                            <Lock className="w-3.5 h-3.5 text-amber-600" />
+                                                            <span>Re-Lock (መልሰህ ቆልፍ)</span>
+                                                        </button>
+                                                    </>
+                                                )}
+
+                                                {selectedAssessment.status === "CLOSED" && (
+                                                    <button
+                                                        onClick={() => setStatusModal("RELEASE")}
+                                                        disabled={updatingStatus}
+                                                        className="px-4 py-2 bg-[#0c2454] hover:bg-[#163878] text-white font-bold rounded-xl text-xs flex items-center space-x-1.5 transition-all cursor-pointer"
+                                                    >
+                                                        <RefreshCw className="w-3.5 h-3.5" />
+                                                        <span>Re-Open Session (እንደገና ክፈት)</span>
+                                                    </button>
+                                                )}
                                             </div>
-                                            <div className="p-3 bg-white rounded-xl border border-slate-200">
-                                                <span className="text-[10px] uppercase font-bold text-slate-400 block">Roster Students</span>
-                                                <span className="text-base font-black text-slate-900">{students.length} Enrolled</span>
+                                        </div>
+
+                                        {/* 3. METRICS / STATS OVERVIEW */}
+                                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-1">
+                                            <div className="p-3.5 bg-white rounded-xl border border-slate-200">
+                                                <span className="text-[10px] uppercase font-bold text-slate-400 block">Total Enrolled</span>
+                                                <span className="text-xl font-black text-slate-900">
+                                                    {sessionStats?.totalEnrolled || students.length} Students
+                                                </span>
                                             </div>
-                                            <div className="p-3 bg-white rounded-xl border border-slate-200">
-                                                <span className="text-[10px] uppercase font-bold text-slate-400 block">Class Average</span>
-                                                <span className="text-base font-black text-[#4085b3]">{avgScore} / {maxScore} ({scores.length > 0 ? Math.round((avgScore/maxScore)*100) : 0}%)</span>
+
+                                            <div className="p-3.5 bg-white rounded-xl border border-slate-200">
+                                                <span className="text-[10px] uppercase font-bold text-slate-400 block">⚪ Not Started</span>
+                                                <span className="text-xl font-black text-slate-600">
+                                                    {sessionStats ? sessionStats.notStarted : students.length}
+                                                </span>
+                                                <span className="text-[10px] text-slate-400 block mt-0.5">ሰዓቱ አልቆጠረም</span>
+                                            </div>
+
+                                            <div className="p-3.5 bg-white rounded-xl border border-slate-200">
+                                                <span className="text-[10px] uppercase font-bold text-amber-600 block">🟡 In Progress</span>
+                                                <span className="text-xl font-black text-amber-600">
+                                                    {sessionStats?.inProgress || 0}
+                                                </span>
+                                                <span className="text-[10px] text-amber-500 block mt-0.5">እየሰሩ ያሉ (Timer Active)</span>
+                                            </div>
+
+                                            <div className="p-3.5 bg-white rounded-xl border border-slate-200">
+                                                <span className="text-[10px] uppercase font-bold text-emerald-600 block">🟢 Submitted</span>
+                                                <span className="text-xl font-black text-emerald-700">
+                                                    {sessionStats?.submitted || (selectedAssessment.results?.length || 0)}
+                                                </span>
+                                                <span className="text-[10px] text-emerald-600 block mt-0.5">ጨርሰው ያስረከቡ</span>
                                             </div>
                                         </div>
                                     </div>
 
-                                    {/* Action Buttons */}
-                                    <div className="flex flex-wrap gap-3">
-                                        <button
-                                            onClick={() => setActiveTab("grade")}
-                                            className="px-5 py-3 bg-[#0c2454] hover:bg-[#163878] text-white font-bold rounded-xl text-xs flex items-center space-x-2 transition-all shadow-md cursor-pointer"
-                                        >
-                                            <Award className="w-4 h-4 text-amber-400" />
-                                            <span>Enter Student Marks ({students.length} Students)</span>
-                                        </button>
+                                    {/* 4. LIVE STUDENT SESSION MONITOR TABLE */}
+                                    <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
+                                        <div className="p-4 bg-slate-50 border-b border-slate-200 flex flex-wrap items-center justify-between gap-3">
+                                            <div>
+                                                <h4 className="font-black text-slate-900 text-sm flex items-center gap-2">
+                                                    <Users className="w-4 h-4 text-[#4085b3]" />
+                                                    <span>Live Student Session Monitor (የተማሪዎች የቀጥታ መከታተያ ሠንጠረዥ)</span>
+                                                </h4>
+                                                <p className="text-xs text-slate-500 mt-0.5">
+                                                    Tracks individual student status and remaining exam timer in real time.
+                                                </p>
+                                            </div>
 
-                                        <button
-                                            onClick={() => setActiveTab("feedback")}
-                                            className="px-5 py-3 bg-slate-800 hover:bg-slate-900 text-white font-bold rounded-xl text-xs flex items-center space-x-2 transition-all shadow-md cursor-pointer"
-                                        >
-                                            <MessageSquare className="w-4 h-4 text-sky-400" />
-                                            <span>Write Personalized Feedback</span>
-                                        </button>
+                                            <div className="flex items-center space-x-2">
+                                                <button
+                                                    onClick={() => setActiveTab("grade")}
+                                                    className="px-4 py-2 bg-[#0c2454] hover:bg-[#163878] text-white font-bold rounded-xl text-xs flex items-center space-x-1.5 transition-all shadow-xs cursor-pointer"
+                                                >
+                                                    <Award className="w-3.5 h-3.5 text-amber-400" />
+                                                    <span>Open Full Gradebook</span>
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        <div className="overflow-x-auto">
+                                            <table className="w-full text-left border-collapse text-xs">
+                                                <thead>
+                                                    <tr className="border-b border-slate-200 bg-slate-100/70 text-[11px] font-black text-slate-600 uppercase tracking-wider">
+                                                        <th className="p-3 w-12 text-center">#</th>
+                                                        <th className="p-3">Student / የተማሪው ስም</th>
+                                                        <th className="p-3">Student ID</th>
+                                                        <th className="p-3 text-center">Exam Session Status / ሁኔታ</th>
+                                                        <th className="p-3 text-center">Started At / መጀመሪያ</th>
+                                                        <th className="p-3 text-center">Score / ውጤት</th>
+                                                        <th className="p-3 text-right">Actions</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody className="divide-y divide-slate-100">
+                                                    {loadingSession && sessionRoster.length === 0 ? (
+                                                        <tr>
+                                                            <td colSpan={7} className="p-10 text-center text-slate-400">
+                                                                <Loader2 className="w-6 h-6 animate-spin mx-auto text-[#4085b3] mb-2" />
+                                                                <span>Loading live student session roster...</span>
+                                                            </td>
+                                                        </tr>
+                                                    ) : sessionRoster.length === 0 ? (
+                                                        <tr>
+                                                            <td colSpan={7} className="p-10 text-center text-slate-400">
+                                                                <Inbox className="w-8 h-8 mx-auto text-slate-300 mb-2" />
+                                                                <p className="font-semibold text-slate-600">No active students enrolled in this section.</p>
+                                                            </td>
+                                                        </tr>
+                                                    ) : (
+                                                        sessionRoster.map((st, idx) => {
+                                                            return (
+                                                                <tr key={st.enrollmentId || idx} className="hover:bg-slate-50/80 transition-colors">
+                                                                    <td className="p-3 text-center font-bold text-slate-400">{idx + 1}</td>
+                                                                    <td className="p-3">
+                                                                        <div className="flex items-center space-x-2.5">
+                                                                            <div className="w-8 h-8 rounded-full bg-slate-200 text-[#0c2454] font-black text-xs flex items-center justify-center border border-slate-300">
+                                                                                {st.name?.charAt(0) || "S"}
+                                                                            </div>
+                                                                            <div>
+                                                                                <p className="font-bold text-slate-900 leading-snug">{st.name}</p>
+                                                                                <p className="text-[10px] text-slate-400 font-medium">{st.gender || "Student"}</p>
+                                                                            </div>
+                                                                        </div>
+                                                                    </td>
+                                                                    <td className="p-3 font-mono font-bold text-slate-600 text-xs">
+                                                                        {st.studentId || "--"}
+                                                                    </td>
+
+                                                                    {/* Session Status Column */}
+                                                                    <td className="p-3 text-center">
+                                                                        {st.sessionStatus === "SUBMITTED" ? (
+                                                                            <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                                                                                <CheckCircle2 className="w-3.5 h-3.5 mr-1 text-emerald-600" />
+                                                                                🟢 Submitted (አስረክቧል)
+                                                                            </span>
+                                                                        ) : st.sessionStatus === "IN_PROGRESS" ? (
+                                                                            <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-black bg-amber-100 text-amber-900 border border-amber-300 shadow-xs">
+                                                                                <span className="w-2 h-2 rounded-full bg-amber-500 animate-ping mr-1.5" />
+                                                                                🟡 In Progress ({st.remainingMinutes} ደቂቃ ቀርቶታል)
+                                                                            </span>
+                                                                        ) : (
+                                                                            <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-semibold bg-slate-100 text-slate-600 border border-slate-200">
+                                                                                ⚪ Not Started (ገና አልጀመረም)
+                                                                            </span>
+                                                                        )}
+                                                                    </td>
+
+                                                                    {/* Started At Timestamp */}
+                                                                    <td className="p-3 text-center text-slate-500 text-[11px] font-medium">
+                                                                        {st.startedAt ? new Date(st.startedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "--"}
+                                                                    </td>
+
+                                                                    {/* Score */}
+                                                                    <td className="p-3 text-center font-black text-slate-900">
+                                                                        {st.score !== null && st.score !== undefined ? (
+                                                                            <span className="text-emerald-700 font-bold">{st.score} / {selectedAssessment.maxScore}</span>
+                                                                        ) : (
+                                                                            <span className="text-slate-300 font-normal">--</span>
+                                                                        )}
+                                                                    </td>
+
+                                                                    {/* Action */}
+                                                                    <td className="p-3 text-right">
+                                                                        <button
+                                                                            onClick={() => {
+                                                                                setActiveTab("grade");
+                                                                            }}
+                                                                            className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-lg text-[11px] transition-colors"
+                                                                        >
+                                                                            Grade
+                                                                        </button>
+                                                                    </td>
+                                                                </tr>
+                                                            );
+                                                        })
+                                                    )}
+                                                </tbody>
+                                            </table>
+                                        </div>
                                     </div>
 
                                 </div>
                             )}
                         </CardContent>
                     </Card>
+
+                    {/* CONFIRMATION POPUP MODAL (Release / Close) */}
+                    {statusModal && selectedAssessment && (
+                        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+                            <div className="bg-white rounded-3xl max-w-md w-full shadow-2xl border border-slate-200 p-6 space-y-5 animate-in fade-in zoom-in-95 duration-150">
+                                <div className="flex items-center space-x-3">
+                                    <div className={`p-3 rounded-2xl ${statusModal === "RELEASE" ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-700"}`}>
+                                        {statusModal === "RELEASE" ? <Play className="w-6 h-6 fill-current" /> : <Square className="w-6 h-6 fill-current" />}
+                                    </div>
+                                    <div>
+                                        <h3 className="text-lg font-black text-slate-900">
+                                            {statusModal === "RELEASE" 
+                                                ? "ፈተናውን ለተማሪዎች መልቀቅ ይፈልጋሉ?" 
+                                                : "የፈተና ክፍለ ጊዜውን መዝጋት ይፈልጋሉ?"}
+                                        </h3>
+                                        <p className="text-xs text-slate-500 font-medium">
+                                            {selectedAssessment.title} ({selectedAssessment.durationMinutes || 60} ደቂቃ)
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 text-xs text-slate-700 leading-relaxed">
+                                    {statusModal === "RELEASE" ? (
+                                        <p>
+                                            እርግጠኛ ነዎት ፈተናውን አሁን መልቀቅ ይፈልጋሉ? <strong>ፈተናው ለክፍሉ ተማሪዎች በሙሉ በአንድ ጊዜ ክፍት ይሆናል</strong>። እያንዳንዱ ተማሪ <strong>"Start Exam"</strong> ሲጫን ብቻ የየራሱ <strong>{selectedAssessment.durationMinutes || 60} ደቂቃ</strong> የግል ሰዓት መቁጠር ይጀምራል።
+                                        </p>
+                                    ) : (
+                                        <p>
+                                            እርግጠኛ ነዎት ፈተናውን አሁን መዝጋት ይፈልጋሉ? <strong>ከዚህ በኋላ ማናቸውም ተማሪዎች አዲስ ፈተና መጀመር አይችሉም</strong>። ያልጨረሱ ተማሪዎች ውጤት በወቅቱ በሰሩት መጠን ተጠናቆ ይቀመጣል።
+                                        </p>
+                                    )}
+                                </div>
+
+                                <div className="flex justify-end space-x-2 pt-2">
+                                    <button
+                                        type="button"
+                                        onClick={() => setStatusModal(null)}
+                                        disabled={updatingStatus}
+                                        className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs transition-colors cursor-pointer"
+                                    >
+                                        ይቅር (Cancel)
+                                    </button>
+
+                                    {statusModal === "RELEASE" ? (
+                                        <button
+                                            type="button"
+                                            onClick={() => handleStatusTransition("RELEASED")}
+                                            disabled={updatingStatus}
+                                            className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-black rounded-xl text-xs flex items-center space-x-1.5 transition-all shadow-md cursor-pointer disabled:opacity-50"
+                                        >
+                                            {updatingStatus ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-3.5 h-3.5 fill-white" />}
+                                            <span>አዎ፣ ፈተናውን ልቀቅ (Release Now)</span>
+                                        </button>
+                                    ) : (
+                                        <button
+                                            type="button"
+                                            onClick={() => handleStatusTransition("CLOSED")}
+                                            disabled={updatingStatus}
+                                            className="px-5 py-2.5 bg-rose-600 hover:bg-rose-700 text-white font-black rounded-xl text-xs flex items-center space-x-1.5 transition-all shadow-md cursor-pointer disabled:opacity-50"
+                                        >
+                                            {updatingStatus ? <Loader2 className="w-4 h-4 animate-spin" /> : <Square className="w-3.5 h-3.5 fill-white" />}
+                                            <span>አዎ፣ ፈተናውን ዝጋ (End Session)</span>
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    )}
                 </div>
             )}
 
@@ -1070,35 +1466,20 @@ function AssessmentContent() {
 
                         <form onSubmit={handleCreateAssessment} className="space-y-4 text-xs">
                             
-                            {/* 1. Assessment Type Selector */}
+                            {/* 1. Assessment Type Selector (Dropdown) */}
                             <div>
-                                <label className="block font-bold text-slate-700 mb-2">1. Select Assessment Type</label>
-                                <div className="grid grid-cols-3 gap-2">
-                                    {[
-                                        { key: "QUIZ", label: "Quiz", desc: "Short Quiz", icon: "⚡" },
-                                        { key: "TEST", label: "Test", desc: "Chapter Test", icon: "📝" },
-                                        { key: "EXAM", label: "Exam", desc: "Final / Midterm", icon: "🎓" },
-                                        { key: "ASSIGNMENT", label: "Assignment", desc: "Homework Task", icon: "📋" },
-                                        { key: "PROJECT", label: "Project", desc: "Practical Term", icon: "🔬" }
-                                    ].map(t => (
-                                        <button
-                                            key={t.key}
-                                            type="button"
-                                            onClick={() => handleTypeSelect(t.key)}
-                                            className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
-                                                newType === t.key 
-                                                    ? "bg-[#0c2454] border-[#0c2454] text-white shadow-xs" 
-                                                    : "bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100"
-                                            }`}
-                                        >
-                                            <span className="text-sm mr-1">{t.icon}</span>
-                                            <span className="font-bold text-xs">{t.label}</span>
-                                            <span className={`block text-[10px] ${newType === t.key ? "text-slate-300" : "text-slate-400"}`}>
-                                                {t.desc}
-                                            </span>
-                                        </button>
-                                    ))}
-                                </div>
+                                <label className="block font-bold text-slate-700 mb-1">1. Select Assessment Type</label>
+                                <select
+                                    value={newType}
+                                    onChange={(e) => handleTypeSelect(e.target.value)}
+                                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs font-bold text-slate-800 outline-none focus:ring-2 focus:ring-[#4085b3]"
+                                >
+                                    <option value="QUIZ">⚡ Quiz — Short Evaluation (Default: 10 pts)</option>
+                                    <option value="TEST">📝 Test — Chapter / Unit Test (Default: 40 pts)</option>
+                                    <option value="EXAM">🎓 Exam — Midterm / Final Examination (Default: 100 pts)</option>
+                                    <option value="ASSIGNMENT">📋 Assignment — Homework / Problem Set (Default: 20 pts)</option>
+                                    <option value="PROJECT">🔬 Project — Practical / Term Project (Default: 50 pts)</option>
+                                </select>
                             </div>
 
                             {/* 2. Target Class & Subject */}
@@ -1191,20 +1572,83 @@ function AssessmentContent() {
                                 </div>
                             </div>
 
-                            {/* 5. Due Date */}
-                            <div>
-                                <label className="block font-bold text-slate-700 mb-1">Due / Conduct Date</label>
-                                <input
-                                    type="date"
-                                    value={newDueDate}
-                                    onChange={(e) => setNewDueDate(e.target.value)}
-                                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs outline-none focus:ring-2 focus:ring-[#4085b3] font-bold"
-                                />
+                            {/* 5. Exam Duration & Student Timer */}
+                            <div className="bg-slate-50 p-3 rounded-xl border border-slate-200">
+                                <div className="flex justify-between items-center mb-1.5">
+                                    <label className="font-bold text-slate-800 flex items-center gap-1.5">
+                                        <Clock className="w-3.5 h-3.5 text-[#4085b3]" />
+                                        <span>5. Exam Duration / የፈተና ቆይታ (ደቂቃ)</span>
+                                    </label>
+                                    <div className="flex space-x-1">
+                                        {[15, 30, 45, 60, 90, 120].map(mins => (
+                                            <button
+                                                key={mins}
+                                                type="button"
+                                                onClick={() => setNewDurationMinutes(mins)}
+                                                className={`px-1.5 py-0.5 rounded text-[10px] font-bold transition-all cursor-pointer ${
+                                                    newDurationMinutes === mins
+                                                        ? "bg-[#0c2454] text-white"
+                                                        : "bg-white text-slate-600 hover:bg-slate-200 border border-slate-200"
+                                                }`}
+                                            >
+                                                {mins}m
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <input
+                                        type="number"
+                                        min="5"
+                                        max="360"
+                                        value={newDurationMinutes}
+                                        onChange={(e) => setNewDurationMinutes(Math.max(1, Number(e.target.value)))}
+                                        required
+                                        className="w-28 bg-white border border-slate-200 rounded-xl p-2 text-xs font-black text-slate-900 outline-none focus:ring-2 focus:ring-[#4085b3]"
+                                    />
+                                    <span className="text-[11px] text-slate-500 font-medium">
+                                        ደቂቃ (እያንዳንዱ ተማሪ "Start Exam" ሲል የራሱ የግል ቆጣሪ የሚቆጥረው ሰዓት)
+                                    </span>
+                                </div>
                             </div>
 
-                            {/* 6. Instructions / Description */}
+                            {/* 6. Scheduled Exam Date & Start Time */}
+                            <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label className="block font-bold text-slate-700 mb-1 flex items-center gap-1">
+                                        <Calendar className="w-3.5 h-3.5 text-slate-500" />
+                                        <span>6. Scheduled Exam Date</span>
+                                    </label>
+                                    <input
+                                        type="date"
+                                        value={newScheduledDate}
+                                        onChange={(e) => {
+                                            setNewScheduledDate(e.target.value);
+                                            setNewDueDate(e.target.value);
+                                        }}
+                                        required
+                                        className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs outline-none focus:ring-2 focus:ring-[#4085b3] font-bold"
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block font-bold text-slate-700 mb-1 flex items-center gap-1">
+                                        <Clock className="w-3.5 h-3.5 text-slate-500" />
+                                        <span>Exam Start Time / መጀመሪያ ሰዓት</span>
+                                    </label>
+                                    <input
+                                        type="time"
+                                        value={newScheduledTime}
+                                        onChange={(e) => setNewScheduledTime(e.target.value)}
+                                        required
+                                        className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs outline-none focus:ring-2 focus:ring-[#4085b3] font-bold"
+                                    />
+                                </div>
+                            </div>
+
+                            {/* 7. Instructions / Description */}
                             <div>
-                                <label className="block font-bold text-slate-700 mb-1">Instructions & Topics Covered (Optional)</label>
+                                <label className="block font-bold text-slate-700 mb-1">7. Instructions & Topics Covered (Optional)</label>
                                 <textarea
                                     rows={2}
                                     placeholder="Enter guidelines, covered curriculum chapters, or instructions..."
@@ -1212,6 +1656,21 @@ function AssessmentContent() {
                                     onChange={(e) => setNewDescription(e.target.value)}
                                     className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs outline-none focus:ring-2 focus:ring-[#4085b3]"
                                 />
+                            </div>
+
+                            {/* Default Status Banner (Locked / Scheduled) */}
+                            <div className="p-3 bg-amber-50 rounded-xl border border-amber-200 flex items-start space-x-2.5">
+                                <div className="p-1.5 bg-amber-100 text-amber-800 rounded-lg shrink-0 mt-0.5">
+                                    <Lock className="w-4 h-4" />
+                                </div>
+                                <div className="text-[11px] text-amber-900 leading-relaxed">
+                                    <p className="font-black text-amber-950 flex items-center gap-1">
+                                        <span>🔒 የመነሻ ሁኔታ፦ ተቆልፎ ይቆያል (Default: Locked / Scheduled)</span>
+                                    </p>
+                                    <p className="text-amber-800 mt-0.5">
+                                        ይህ ፈተና ሲፈጠር ለተማሪዎች ወዲያውኑ አይታይም። የፈተናው ቀን እና ሰዓት ሲደርስ አስተማሪው <strong>"Conduct & Session Monitor"</strong> ክፍል ውስጥ <strong>"Release Exam"</strong> ሲጫን ብቻ ይለቀቃል።
+                                    </p>
+                                </div>
                             </div>
 
                             {/* Modal Actions */}

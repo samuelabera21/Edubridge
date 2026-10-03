@@ -2,7 +2,7 @@ import { prisma } from "../../infrastructure/prisma/client.js";
 import { AssessmentType } from "../../generated/prisma/enums.js";
 
 export class AssessmentService {
-    static async createAssessment(organizationId: string, data: { academicYearId: string; teachingAssignmentId: string; title: string; description?: string; type: AssessmentType; maxScore: number; passingScore?: number; dueDate?: string }) {
+    static async createAssessment(organizationId: string, data: { academicYearId: string; teachingAssignmentId: string; title: string; description?: string; type: AssessmentType; maxScore: number; passingScore?: number; dueDate?: string; durationMinutes?: number; scheduledDate?: string; status?: string }) {
         // Validate teaching assignment exists and belongs to school
         const assignment = await prisma.teachingAssignment.findFirst({
             where: { id: data.teachingAssignmentId, academicYear: { organizationId } }
@@ -19,6 +19,11 @@ export class AssessmentService {
             assessmentType = AssessmentType.OTHER;
         }
 
+        let assessmentStatus = data.status?.toUpperCase() || "SCHEDULED";
+        if (!["SCHEDULED", "RELEASED", "CLOSED"].includes(assessmentStatus)) {
+            assessmentStatus = "SCHEDULED";
+        }
+
         const assessment = await prisma.assessment.create({
             data: {
                 organizationId,
@@ -27,6 +32,9 @@ export class AssessmentService {
                 title: data.title,
                 description: data.description,
                 type: assessmentType,
+                status: assessmentStatus as any,
+                durationMinutes: data.durationMinutes ? Number(data.durationMinutes) : 60,
+                scheduledDate: data.scheduledDate ? new Date(data.scheduledDate) : null,
                 maxScore: Number(data.maxScore),
                 passingScore: data.passingScore !== undefined ? Number(data.passingScore) : undefined,
                 dueDate: data.dueDate ? new Date(data.dueDate) : null
