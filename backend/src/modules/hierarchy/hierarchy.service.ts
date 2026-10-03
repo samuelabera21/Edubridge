@@ -523,14 +523,27 @@ export class HierarchyService {
         // 1. Resolve target unit
         let targetUnit: any = null;
         if (!unitId || unitId === "FEDERAL" || unitId === "root") {
-            targetUnit = await prisma.organizationUnit.findFirst({
-                where: { type: "FEDERAL" },
-                include: {
-                    assignments: {
-                        include: { user: true, role: true }
+            if (actorScope && actorScope.type !== "FEDERAL") {
+                targetUnit = await prisma.organizationUnit.findUnique({
+                    where: { id: actorScope.id },
+                    include: {
+                        parent: true,
+                        schoolProfile: true,
+                        assignments: {
+                            include: { user: true, role: true }
+                        }
                     }
-                }
-            });
+                });
+            } else {
+                targetUnit = await prisma.organizationUnit.findFirst({
+                    where: { type: "FEDERAL" },
+                    include: {
+                        assignments: {
+                            include: { user: true, role: true }
+                        }
+                    }
+                });
+            }
             if (!targetUnit) {
                 return {
                     node: {

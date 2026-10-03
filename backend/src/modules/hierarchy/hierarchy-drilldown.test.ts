@@ -309,5 +309,102 @@ describe("Hierarchy Drill-Down (Federal -> Region -> Zone -> Woreda -> School)",
             expect(result).toBeDefined();
             expect(result.node.id).toBe("school-1");
         });
+
+        it("should default to regional unit when unitId is omitted for Regional admin", async () => {
+            (prisma.organizationUnit.findUnique as any).mockResolvedValue({
+                id: "reg-1",
+                name: "Amhara Region",
+                type: "REGION",
+                parentId: "fed-1",
+                parent: { id: "fed-1", name: "Federal Ministry of Education" },
+                assignments: []
+            });
+            (prisma.organizationUnit.findMany as any).mockImplementation((args: any) => {
+                if (args?.where?.type === "ZONE") {
+                    return Promise.resolve([
+                        { id: "zone-1", name: "South Gondar Zone", type: "ZONE", parentId: "reg-1", assignments: [] }
+                    ]);
+                }
+                return Promise.resolve(mockUnits);
+            });
+            (prisma.studentEnrollment.count as any).mockResolvedValue(1250);
+            (prisma.teacher.count as any).mockResolvedValue(45);
+
+            const regionalScope = { id: "reg-1", type: "REGION" as OrganizationUnitType, name: "Amhara Region" };
+
+            const result: any = await HierarchyService.getHierarchyDrilldown(undefined, regionalScope);
+            expect(result).toBeDefined();
+            expect(result.node.id).toBe("reg-1");
+            expect(result.node.type).toBe("REGION");
+            expect(result.children).toHaveLength(1);
+            expect(result.children[0].id).toBe("zone-1");
+        });
+
+        it("should default to zonal unit when unitId is omitted for Zone admin", async () => {
+            (prisma.organizationUnit.findUnique as any).mockResolvedValue({
+                id: "zone-1",
+                name: "South Gondar Zone",
+                type: "ZONE",
+                parentId: "reg-1",
+                parent: { id: "reg-1", name: "Amhara Region" },
+                assignments: []
+            });
+            (prisma.organizationUnit.findMany as any).mockImplementation((args: any) => {
+                if (args?.where?.type === "WOREDA") {
+                    return Promise.resolve([
+                        { id: "woreda-1", name: "Debre Tabor Woreda", type: "WOREDA", parentId: "zone-1", assignments: [] }
+                    ]);
+                }
+                return Promise.resolve(mockUnits);
+            });
+            (prisma.studentEnrollment.count as any).mockResolvedValue(600);
+            (prisma.teacher.count as any).mockResolvedValue(25);
+
+            const zonalScope = { id: "zone-1", type: "ZONE" as OrganizationUnitType, name: "South Gondar Zone" };
+
+            const result: any = await HierarchyService.getHierarchyDrilldown(undefined, zonalScope);
+            expect(result).toBeDefined();
+            expect(result.node.id).toBe("zone-1");
+            expect(result.node.type).toBe("ZONE");
+            expect(result.children).toHaveLength(1);
+            expect(result.children[0].id).toBe("woreda-1");
+        });
+
+        it("should default to woreda unit when unitId is omitted for Woreda admin", async () => {
+            (prisma.organizationUnit.findUnique as any).mockResolvedValue({
+                id: "woreda-1",
+                name: "Debre Tabor Woreda",
+                type: "WOREDA",
+                parentId: "zone-1",
+                parent: { id: "zone-1", name: "South Gondar Zone" },
+                assignments: []
+            });
+            (prisma.organizationUnit.findMany as any).mockImplementation((args: any) => {
+                if (args?.where?.type === "SCHOOL") {
+                    return Promise.resolve([
+                        {
+                            id: "school-1",
+                            name: "Tabor Secondary School",
+                            type: "SCHOOL",
+                            parentId: "woreda-1",
+                            schoolProfile: null,
+                            assignments: [],
+                            _count: { studentEnrollments: 350, teachers: 15 }
+                        }
+                    ]);
+                }
+                return Promise.resolve(mockUnits);
+            });
+
+            const woredaScope = { id: "woreda-1", type: "WOREDA" as OrganizationUnitType, name: "Debre Tabor Woreda" };
+
+            const result: any = await HierarchyService.getHierarchyDrilldown(undefined, woredaScope);
+            expect(result).toBeDefined();
+            expect(result.node.id).toBe("woreda-1");
+            expect(result.node.type).toBe("WOREDA");
+            expect(result.children).toHaveLength(1);
+            expect(result.children[0].id).toBe("school-1");
+        });
     });
 });
+
