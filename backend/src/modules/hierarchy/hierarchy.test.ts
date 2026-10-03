@@ -24,6 +24,9 @@ vi.mock("../../infrastructure/prisma/client.js", () => ({
         },
         schoolProfile: {
             findUnique: vi.fn()
+        },
+        auditLog: {
+            create: vi.fn()
         }
     }
 }));

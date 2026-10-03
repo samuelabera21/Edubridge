@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { fetchApi } from "@/lib/api";
 import { useAuth } from "@/hooks/useAuth";
 import { 
@@ -141,11 +142,27 @@ interface DashboardData {
 
 export default function AdminDashboardPage() {
     const { authData } = useAuth();
+    const router = useRouter();
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
     const [selectedYearId, setSelectedYearId] = useState<string>("");
+
+    // Auto-redirect administrative governance tiers to their specialized dashboards
+    useEffect(() => {
+        if (!authData) return;
+        const scopeType = authData.access?.[0]?.scope?.type;
+        if (scopeType === "FEDERAL") {
+            router.replace("/dashboard/federal");
+        } else if (scopeType === "REGION") {
+            router.replace("/dashboard/region");
+        } else if (scopeType === "ZONE") {
+            router.replace("/dashboard/zone");
+        } else if (scopeType === "WOREDA") {
+            router.replace("/dashboard/woreda");
+        }
+    }, [authData, router]);
 
     const loadDashboard = async (yearId?: string) => {
         try {

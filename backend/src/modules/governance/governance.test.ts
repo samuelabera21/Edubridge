@@ -9,6 +9,7 @@ vi.mock("../../infrastructure/prisma/client.js", () => ({
         organizationUnit: {
             findMany: vi.fn(),
             findUnique: vi.fn(),
+            findFirst: vi.fn(),
         },
         academicYear: {
             findMany: vi.fn(),
@@ -73,12 +74,12 @@ describe("GovernanceDashboardService (H3 Governance Dashboard Foundation)", () =
 
     const mockEnrollments = [
         // sch-a1a1: 2 students (1 Male Grade 9, 1 Female Grade 10)
-        { id: "enr-1", organizationId: "sch-a1a1", schoolGradeId: "g9", schoolGrade: { id: "g9", name: "Grade 9", level: 9 }, student: { gender: "MALE" } },
-        { id: "enr-2", organizationId: "sch-a1a1", schoolGradeId: "g10", schoolGrade: { id: "g10", name: "Grade 10", level: 10 }, student: { gender: "FEMALE" } },
+        { id: "enr-1", organizationId: "sch-a1a1", schoolGradeId: "g9", schoolGrade: { id: "g9", grade: { id: "g9", name: "Grade 9", level: 9 } }, student: { gender: "MALE" } },
+        { id: "enr-2", organizationId: "sch-a1a1", schoolGradeId: "g10", schoolGrade: { id: "g10", grade: { id: "g10", name: "Grade 10", level: 10 } }, student: { gender: "FEMALE" } },
         // sch-a1a2: 1 student (Female Grade 11)
-        { id: "enr-3", organizationId: "sch-a1a2", schoolGradeId: "g11", schoolGrade: { id: "g11", name: "Grade 11", level: 11 }, student: { gender: "FEMALE" } },
+        { id: "enr-3", organizationId: "sch-a1a2", schoolGradeId: "g11", schoolGrade: { id: "g11", grade: { id: "g11", name: "Grade 11", level: 11 } }, student: { gender: "FEMALE" } },
         // sch-b1a1 (Region B): 1 student (Male Grade 9)
-        { id: "enr-4", organizationId: "sch-b1a1", schoolGradeId: "g9", schoolGrade: { id: "g9", name: "Grade 9", level: 9 }, student: { gender: "MALE" } },
+        { id: "enr-4", organizationId: "sch-b1a1", schoolGradeId: "g9", schoolGrade: { id: "g9", grade: { id: "g9", name: "Grade 9", level: 9 } }, student: { gender: "MALE" } },
     ];
 
     const mockTeachers = [
@@ -430,4 +431,114 @@ describe("GovernanceDashboardService (H3 Governance Dashboard Foundation)", () =
             );
         });
     });
+
+    describe("4. Tier Validation & Administrative Boundary Isolation", () => {
+        it("4.1 should allow Federal user on FEDERAL tier dashboard", async () => {
+            (HierarchyScopeService.getAccessibleOrganizationScope as any).mockResolvedValue({
+                userId: "user-fed",
+                currentOrganizationId: "fed-1",
+                currentOrganizationType: "FEDERAL",
+                currentOrganization: { id: "fed-1", name: "Federal Ministry", type: "FEDERAL", parentId: null },
+                accessibleOrganizationIds: mockAllUnits.map(u => u.id),
+                descendantSchoolIds: ["sch-a1a1", "sch-a1a2", "sch-b1a1"],
+                lineage: [{ id: "fed-1", name: "Federal Ministry", type: "FEDERAL", parentId: null }],
+            });
+
+            (prisma.studentEnrollment.findMany as any).mockResolvedValue([]);
+            (prisma.teacher.findMany as any).mockResolvedValue([]);
+            (prisma.studentAttendance.findMany as any).mockResolvedValue([]);
+            (prisma.studentResult.findMany as any).mockResolvedValue([]);
+
+            const dashboard = await GovernanceDashboardService.getGovernanceDashboard("user-fed", undefined, "FEDERAL");
+            expect(dashboard.context.organizationType).toBe("FEDERAL");
+        });
+
+        it("4.2 should reject Region user accessing FEDERAL tier dashboard", async () => {
+            (HierarchyScopeService.getAccessibleOrganizationScope as any).mockResolvedValue({
+                userId: "user-reg-a",
+                currentOrganizationId: "reg-a",
+                currentOrganizationType: "REGION",
+                currentOrganization: { id: "reg-a", name: "Addis Ababa Region", type: "REGION", parentId: "fed-1" },
+                accessibleOrganizationIds: ["reg-a", "zone-a1", "wor-a1a", "sch-a1a1", "sch-a1a2", "wor-a1b"],
+                descendantSchoolIds: ["sch-a1a1", "sch-a1a2"],
+                lineage: [{ id: "reg-a", name: "Addis Ababa Region", type: "REGION", parentId: "fed-1" }],
+            });
+
+            await expect(
+                GovernanceDashboardService.getGovernanceDashboard("user-reg-a", undefined, "FEDERAL")
+            ).rejects.toThrow("Forbidden: Organization tier 'REGION' is not authorized for FEDERAL dashboard");
+        });
+
+        it("4.3 should reject School user accessing any hierarchy dashboard", async () => {
+            (HierarchyScopeService.getAccessibleOrganizationScope as any).mockResolvedValue({
+                userId: "user-sch-a1a1",
+                currentOrganizationId: "sch-a1a1",
+                currentOrganizationType: "SCHOOL",
+                currentOrganization: { id: "sch-a1a1", name: "Kirkos Primary School", type: "SCHOOL", parentId: "wor-a1a" },
+                accessibleOrganizationIds: ["sch-a1a1"],
+                descendantSchoolIds: ["sch-a1a1"],
+                lineage: [{ id: "sch-a1a1", name: "Kirkos Primary School", type: "SCHOOL", parentId: "wor-a1a" }],
+            });
+
+            await expect(
+                GovernanceDashboardService.getGovernanceDashboard("user-sch-a1a1", undefined, "WOREDA")
+            ).rejects.toThrow("Forbidden: School level users cannot access administrative hierarchy dashboards");
+        });
+
+        it("4.4 should allow Region user on REGION tier dashboard", async () => {
+            (HierarchyScopeService.getAccessibleOrganizationScope as any).mockResolvedValue({
+                userId: "user-reg-a",
+                currentOrganizationId: "reg-a",
+                currentOrganizationType: "REGION",
+                currentOrganization: { id: "reg-a", name: "Addis Ababa Region", type: "REGION", parentId: "fed-1" },
+                accessibleOrganizationIds: ["reg-a", "zone-a1", "wor-a1a", "sch-a1a1", "sch-a1a2", "wor-a1b"],
+                descendantSchoolIds: ["sch-a1a1", "sch-a1a2"],
+                lineage: [{ id: "reg-a", name: "Addis Ababa Region", type: "REGION", parentId: "fed-1" }],
+            });
+
+            (prisma.studentEnrollment.findMany as any).mockResolvedValue([]);
+            (prisma.teacher.findMany as any).mockResolvedValue([]);
+            (prisma.studentAttendance.findMany as any).mockResolvedValue([]);
+            (prisma.studentResult.findMany as any).mockResolvedValue([]);
+
+            const dashboard = await GovernanceDashboardService.getGovernanceDashboard("user-reg-a", undefined, "REGION");
+            expect(dashboard.context.organizationType).toBe("REGION");
+        });
+
+        it("4.5 should allow Federal user on subordinate WOREDA tier dashboard and auto-resolve descendant Woreda", async () => {
+            (HierarchyScopeService.getAccessibleOrganizationScope as any).mockResolvedValue({
+                userId: "user-fed",
+                currentOrganizationId: "fed-1",
+                currentOrganizationType: "FEDERAL",
+                currentOrganization: { id: "fed-1", name: "Federal Ministry", type: "FEDERAL", parentId: null },
+                accessibleOrganizationIds: mockAllUnits.map(u => u.id),
+                descendantSchoolIds: ["sch-a1a1", "sch-a1a2", "sch-b1a1"],
+                lineage: [{ id: "fed-1", name: "Federal Ministry", type: "FEDERAL", parentId: null }],
+            });
+
+            (prisma.organizationUnit.findFirst as any).mockResolvedValue({
+                id: "wor-a1a",
+                name: "Kirkos Woreda",
+                type: "WOREDA",
+                parentId: "zone-a1",
+            });
+
+            (HierarchyScopeService.getLineage as any).mockResolvedValue([
+                { id: "wor-a1a", name: "Kirkos Woreda", type: "WOREDA", parentId: "zone-a1" },
+                { id: "zone-a1", name: "Central Zone", type: "ZONE", parentId: "reg-a" },
+                { id: "reg-a", name: "Addis Ababa Region", type: "REGION", parentId: "fed-1" },
+                { id: "fed-1", name: "Federal Ministry", type: "FEDERAL", parentId: null },
+            ]);
+
+            (prisma.studentEnrollment.findMany as any).mockResolvedValue([]);
+            (prisma.teacher.findMany as any).mockResolvedValue([]);
+            (prisma.studentAttendance.findMany as any).mockResolvedValue([]);
+            (prisma.studentResult.findMany as any).mockResolvedValue([]);
+
+            const dashboard = await GovernanceDashboardService.getGovernanceDashboard("user-fed", undefined, "WOREDA");
+            expect(dashboard.context.organizationType).toBe("WOREDA");
+            expect(dashboard.context.organizationId).toBe("wor-a1a");
+        });
+    });
 });
+
