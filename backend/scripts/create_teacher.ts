@@ -88,8 +88,8 @@ async function main() {
     }
 
     // 4. Create or update User for Teacher
-    const email = "teacher@edubridge.local";
-    const password = "Teacher@2026!";
+    const email = process.env.TEST_TEACHER_EMAIL || "teacher@edubridge.local";
+    const password = process.env.TEST_TEACHER_PASSWORD || process.env.DEFAULT_INITIAL_PASSWORD || "TestTeacherPass2026!";
 
     let user = await prisma.user.findUnique({ where: { email } });
     if (!user) {
