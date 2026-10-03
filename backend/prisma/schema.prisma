@@ -52,6 +52,8 @@ model User {
   requestedCorrections          AttendanceCorrection[] @relation("RequestedCorrections")
   reviewedCorrections           AttendanceCorrection[] @relation("ReviewedCorrections")
   importantNotices              ImportantNotice[]      @relation("AuthoredImportantNotices")
+  authoredDirectives            NationalDirective[]    @relation("AuthoredDirectives")
+  directiveAcknowledgments      DirectiveAcknowledgment[]
 
   @@unique([email])
   @@map("user")
@@ -202,6 +204,9 @@ model OrganizationUnit {
   notifications         Notification[]
   messages              Message[]
   importantNotices      ImportantNotice[]
+  issuedDirectives      NationalDirective[]    @relation("IssuedDirectives")
+  targetedDirectives    DirectiveTargetUnit[]
+  directiveAcknowledgments DirectiveAcknowledgment[]
 
   @@index([parentId])
   @@index([type])
@@ -1777,3 +1782,107 @@ model SchoolSetting {
   @@unique([organizationId, key])
   @@map("school_setting")
 }
+
+// ============================================================
+// DOMAIN 17: NATIONAL POLICIES & DIRECTIVES
+// ============================================================
+
+enum DirectiveType {
+  POLICY
+  DIRECTIVE
+}
+
+enum DirectivePriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+  CRITICAL
+}
+
+enum DirectiveStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+model NationalDirective {
+  id                      String                    @id @default(cuid())
+  issuerOrganizationId   String
+  authorId                String
+  title                   String
+  code                    String?
+  type                    DirectiveType             @default(DIRECTIVE)
+  category                String?
+  priority                DirectivePriority         @default(NORMAL)
+  status                  DirectiveStatus           @default(PUBLISHED)
+  content                 String
+  issueDate               DateTime                  @default(now())
+  effectiveDate           DateTime                  @default(now())
+  deadline                DateTime?
+  attachmentUrl           String?
+  attachmentName          String?
+  isAcknowledgmentRequired Boolean                  @default(false)
+  
+  targetLevelAll          Boolean                   @default(true)
+  targetLevels            String[]
+  cascadeDescendants      Boolean                   @default(true)
+
+  targetOrganizationUnits DirectiveTargetUnit[]
+  acknowledgments         DirectiveAcknowledgment[]
+
+  issuerOrganization      OrganizationUnit          @relation("IssuedDirectives", fields: [issuerOrganizationId], references: [id], onDelete: Cascade)
+  author                  User                      @relation("AuthoredDirectives", fields: [authorId], references: [id], onDelete: Cascade)
+
+  createdAt               DateTime                  @default(now())
+  updatedAt               DateTime                  @updatedAt
+
+  @@index([issuerOrganizationId])
+  @@index([status])
+  @@index([type])
+  @@index([effectiveDate])
+  @@map("national_directive")
+}
+
+model DirectiveTargetUnit {
+  id                  String            @id @default(cuid())
+  directiveId         String
+  organizationId      String
+
+  directive           NationalDirective @relation(fields: [directiveId], references: [id], onDelete: Cascade)
+  organization        OrganizationUnit  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  createdAt           DateTime          @default(now())
+
+  @@unique([directiveId, organizationId])
+  @@index([organizationId])
+  @@map("directive_target_unit")
+}
+
+model DirectiveAcknowledgment {
+  id                  String            @id @default(cuid())
+  directiveId         String
+  organizationId      String
+  userId              String?
+  
+  isRead              Boolean           @default(false)
+  readAt              DateTime?
+  
+  isAcknowledged      Boolean           @default(false)
+  acknowledgedAt      DateTime?
+  acknowledgmentNotes String?
+
+  directive           NationalDirective @relation(fields: [directiveId], references: [id], onDelete: Cascade)
+  organization        OrganizationUnit  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user                User?             @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
+
+  @@unique([directiveId, organizationId])
+  @@index([organizationId])
+  @@index([isRead])
+  @@index([isAcknowledged])
+  @@map("directive_acknowledgment")
+}
+

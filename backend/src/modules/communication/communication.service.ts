@@ -233,16 +233,30 @@ export class CommunicationService {
         });
     }
 
-    static async getUserNotifications(userId: string, organizationId: string) {
+    static async getUserNotifications(userId: string, organizationId?: string) {
         return prisma.notification.findMany({
-            where: { userId, organizationId },
+            where: {
+                userId,
+                ...(organizationId ? { organizationId } : {})
+            },
+            include: {
+                organization: {
+                    select: { id: true, name: true, type: true }
+                }
+            },
             orderBy: { createdAt: "desc" },
             take: 50
         });
     }
 
-    static async markNotificationRead(id: string, userId: string, organizationId: string) {
-        const notif = await prisma.notification.findFirst({ where: { id, userId, organizationId } });
+    static async markNotificationRead(id: string, userId: string, organizationId?: string) {
+        const notif = await prisma.notification.findFirst({
+            where: {
+                id,
+                userId,
+                ...(organizationId ? { organizationId } : {})
+            }
+        });
         if (!notif) throw new Error("Notification not found");
 
         return prisma.notification.update({
@@ -251,9 +265,13 @@ export class CommunicationService {
         });
     }
 
-    static async getUnreadNotificationCount(userId: string, organizationId: string): Promise<number> {
+    static async getUnreadNotificationCount(userId: string, organizationId?: string): Promise<number> {
         return prisma.notification.count({
-            where: { userId, organizationId, isRead: false }
+            where: {
+                userId,
+                ...(organizationId ? { organizationId } : {}),
+                isRead: false
+            }
         });
     }
 

@@ -86,6 +86,12 @@ export default function AdministrativeNavigation({
                 icon: Shield,
                 tab: "administration",
             },
+            {
+                label: "Policies & Directives",
+                href: `${basePath}?tab=directives`,
+                icon: FileText,
+                tab: "directives",
+            },
         ];
     } else if (currentTier === "REGION") {
         navItems = [
@@ -105,6 +111,12 @@ export default function AdministrativeNavigation({
                 href: `${basePath}?tab=administration`,
                 icon: Shield,
                 tab: "administration",
+            },
+            {
+                label: "Policies & Directives",
+                href: `${basePath}?tab=directives`,
+                icon: FileText,
+                tab: "directives",
             },
         ];
     } else if (currentTier === "ZONE") {
@@ -126,6 +138,12 @@ export default function AdministrativeNavigation({
                 icon: Shield,
                 tab: "administration",
             },
+            {
+                label: "Policies & Directives",
+                href: `${basePath}?tab=directives`,
+                icon: FileText,
+                tab: "directives",
+            },
         ];
     } else {
         navItems = [
@@ -145,6 +163,12 @@ export default function AdministrativeNavigation({
                 href: `${basePath}?tab=administration`,
                 icon: Shield,
                 tab: "administration",
+            },
+            {
+                label: "Policies & Directives",
+                href: `${basePath}?tab=directives`,
+                icon: FileText,
+                tab: "directives",
             },
         ];
     }

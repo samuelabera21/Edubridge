@@ -161,9 +161,9 @@ export const deleteImportantNotice = async (req: Request, res: Response) => {
 export const getMyNotifications = async (req: Request, res: Response) => {
     try {
         const userId = req.user?.id;
-        const organizationId = (req as any).accessScope?.id;
-        if (!userId || !organizationId) return res.status(401).json({ error: "Unauthorized" });
+        if (!userId) return res.status(401).json({ error: "Unauthorized" });
 
+        const organizationId = (req as any).accessScope?.id || (req.query?.organizationId as string) || undefined;
         const notifications = await CommunicationService.getUserNotifications(userId, organizationId);
         return res.json(notifications);
     } catch (error: any) {
@@ -174,9 +174,9 @@ export const getMyNotifications = async (req: Request, res: Response) => {
 export const markNotificationRead = async (req: Request, res: Response) => {
     try {
         const userId = req.user?.id;
-        const organizationId = (req as any).accessScope?.id;
-        if (!userId || !organizationId) return res.status(401).json({ error: "Unauthorized" });
+        if (!userId) return res.status(401).json({ error: "Unauthorized" });
 
+        const organizationId = (req as any).accessScope?.id || (req.query?.organizationId as string) || undefined;
         const { id } = req.params;
         if (!id) return res.status(400).json({ error: "Notification id is required" });
 
@@ -190,9 +190,9 @@ export const markNotificationRead = async (req: Request, res: Response) => {
 export const getUnreadNotificationCount = async (req: Request, res: Response) => {
     try {
         const userId = req.user?.id;
-        const organizationId = (req as any).accessScope?.id;
-        if (!userId || !organizationId) return res.status(401).json({ error: "Unauthorized" });
+        if (!userId) return res.status(401).json({ error: "Unauthorized" });
 
+        const organizationId = (req as any).accessScope?.id || (req.query?.organizationId as string) || undefined;
         const count = await CommunicationService.getUnreadNotificationCount(userId, organizationId);
         return res.json({ count });
     } catch (error: any) {
