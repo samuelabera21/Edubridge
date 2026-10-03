@@ -24,8 +24,10 @@ import {
     Phone,
     Mail,
     Calendar,
-    Shield
+    Shield,
+    FileText
 } from "lucide-react";
+import DirectivesRecipientView from "./DirectivesRecipientView";
 
 export interface SchoolAdmin {
     id: string;
@@ -531,6 +533,17 @@ export default function WoredaDashboard() {
                     >
                         <UserCheck className="w-3.5 h-3.5" />
                         <span>Leadership ({assignedAdministrators.length})</span>
+                    </button>
+                    <button
+                        onClick={() => router.push(`/dashboard/woreda?tab=directives${targetParam}`)}
+                        className={`pb-3 text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5 ${
+                            currentTab === "directives" && !unitIdParam
+                                ? "text-blue-600 border-b-2 border-blue-600"
+                                : "text-slate-500 hover:text-slate-800"
+                        }`}
+                    >
+                        <FileText className="w-3.5 h-3.5" />
+                        <span>Policies & Directives</span>
                     </button>
                 </div>
 
@@ -1337,6 +1350,15 @@ export default function WoredaDashboard() {
                         </table>
                     </div>
                 </div>
+            )}
+
+            {/* TAB 4: NATIONAL POLICIES & DIRECTIVES */}
+            {currentTab === "directives" && !unitIdParam && (
+                <DirectivesRecipientView
+                    tierName={data?.woredaName || "Woreda Education Office"}
+                    tierType="WOREDA"
+                    organizationId={data?.woredaId || undefined}
+                />
             )}
 
             {/* MODAL: CREATE SCHOOL */}
