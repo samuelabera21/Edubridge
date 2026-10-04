@@ -9,8 +9,7 @@ async function resolveActorScope(req: Request) {
     const userId = (req as any).user?.id;
     if (userId) {
         try {
-            const requestedOrgId = (req.query?.organizationId || req.headers["x-organization-id"]) as string | undefined;
-            const scope = await HierarchyScopeService.getAccessibleOrganizationScope(userId, requestedOrgId);
+            const scope = await HierarchyScopeService.getAccessibleOrganizationScope(userId);
             return scope.currentOrganization;
         } catch {
             return null;
@@ -146,3 +145,22 @@ export async function acknowledgeDirectiveHandler(req: Request, res: Response) {
         });
     }
 }
+
+export async function getDirectivesRecipientsTreeHandler(req: Request, res: Response) {
+    try {
+        const actorScope = await resolveActorScope(req);
+        const hierarchy = await DirectiveService.getGovernanceRecipientsHierarchy(actorScope);
+
+        return res.status(200).json({
+            success: true,
+            data: hierarchy
+        });
+    } catch (error: any) {
+        console.error("Error in getDirectivesRecipientsTreeHandler:", error);
+        return res.status(error.message?.startsWith("Unauthorized") ? 401 : 500).json({
+            success: false,
+            message: error.message || "Failed to fetch recipient hierarchy tree"
+        });
+    }
+}
+

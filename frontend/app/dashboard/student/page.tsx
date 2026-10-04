@@ -139,8 +139,11 @@ export default function StudentDashboard() {
 
                 <div className="space-y-6">
                     <section className="rounded-xl border border-gray-100 bg-white shadow-sm">
-                        <div className="border-b border-gray-100 px-6 py-4"><h2 className="flex items-center gap-2 font-semibold text-gray-900"><Megaphone className="h-4 w-4" /> Announcements</h2></div>
-                        <div className="space-y-3 p-6">{dashboard.announcements.length === 0 ? <Empty text="No announcements." /> : dashboard.announcements.slice(0, 3).map((item) => <div key={item.id}><p className="font-medium text-gray-900">{item.title}</p><p className="mt-1 text-sm text-gray-500">{item.content}</p></div>)}</div>
+                        <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4">
+                            <h2 className="flex items-center gap-2 font-semibold text-gray-900"><Megaphone className="h-4 w-4 text-[#006b3f]" /> Announcements</h2>
+                            <Link href="/dashboard/student/communication" className="text-xs font-semibold text-[#006b3f] hover:underline">View all</Link>
+                        </div>
+                        <div className="space-y-3 p-6">{dashboard.announcements.length === 0 ? <Empty text="No announcements." /> : dashboard.announcements.slice(0, 3).map((item) => <Link key={item.id} href="/dashboard/student/communication" className="block hover:bg-slate-50 p-2 rounded-lg transition-colors"><p className="font-medium text-gray-900 text-sm">{item.title}</p><p className="mt-0.5 text-xs text-gray-500 line-clamp-2">{item.content}</p></Link>)}</div>
                     </section>
                     {dashboard.supportFlags.length > 0 && <div className="rounded-xl border border-amber-100 bg-amber-50 p-6 text-amber-900"><h2 className="flex items-center gap-2 font-semibold"><TriangleAlert className="h-4 w-4" /> Needs attention</h2><p className="mt-2 text-sm">You have {dashboard.supportFlags.length} active support notification{dashboard.supportFlags.length === 1 ? "" : "s"}.</p></div>}
                 </div>

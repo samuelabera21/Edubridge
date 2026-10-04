@@ -2,8 +2,12 @@ import { Router } from "express";
 import {
     createAnnouncement,
     getAnnouncements,
+    getAnnouncementRecipientsHierarchy,
     deleteAnnouncement,
     updateAnnouncement,
+    getAnnouncementStatus,
+    acknowledgeAnnouncement,
+    markAnnouncementRead,
     getMyNotifications,
     markNotificationRead,
     getUnreadNotificationCount,
@@ -28,6 +32,10 @@ router.get("/notifications", requireAuth(), getMyNotifications);
 router.get("/notifications/unread-count", requireAuth(), getUnreadNotificationCount);
 router.patch("/notifications/:id/read", requireAuth(), markNotificationRead);
 
+// Announcement Acknowledgment & Read Actions (Accessible to any recipient user)
+router.post("/announcements/:id/acknowledge", requireAuth(), acknowledgeAnnouncement);
+router.post("/announcements/:id/read", requireAuth(), markAnnouncementRead);
+
 // Legacy path aliases (kept for backwards compat, deprecated)
 router.get("/notification", requireAuth(), getMyNotifications);
 router.patch("/notification/:id/read", requireAuth(), markNotificationRead);
@@ -36,7 +44,9 @@ router.patch("/notification/:id/read", requireAuth(), markNotificationRead);
 router.use(requireScope("SCHOOL"));
 
 // ── Announcements ──────────────────────────────────────
+router.get("/announcements/recipients-tree", requirePermission("COMMUNICATION:VIEW"), getAnnouncementRecipientsHierarchy);
 router.get("/announcements", requirePermission("COMMUNICATION:VIEW"), getAnnouncements);
+router.get("/announcements/:id/status", requirePermission("COMMUNICATION:VIEW"), getAnnouncementStatus);
 router.post("/announcements", requirePermission("COMMUNICATION:CREATE"), createAnnouncement);
 router.put("/announcements/:id", requirePermission("COMMUNICATION:CREATE"), updateAnnouncement);
 router.delete("/announcement/:id", requirePermission("COMMUNICATION:MANAGE"), deleteAnnouncement);

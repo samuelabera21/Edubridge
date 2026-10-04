@@ -1,5 +1,5 @@
 import { prisma } from "../../infrastructure/prisma/client.js";
-import { EnrollmentStatus, EnrollmentType, DocumentVerificationStatus } from "../../generated/prisma/enums.js";
+import { EnrollmentStatus, EnrollmentType, DocumentVerificationStatus, AnnouncementTarget } from "../../generated/prisma/enums.js";
 
 export interface GuardianInput {
     id?: string;
@@ -862,39 +862,50 @@ export class StudentService {
         return updated;
     }
 
-    static async getStudentByUserId(userId: string, organizationId: string) {
+    static async getStudentByUserId(userId: string, organizationId?: string) {
         return prisma.student.findFirst({
             where: { 
                 userId,
-                enrollments: {
-                    some: {
-                        organizationId,
-                        status: { in: ["ENROLLED", "ACTIVE"] }
+                ...(organizationId ? {
+                    enrollments: {
+                        some: { organizationId }
                     }
-                }
+                } : {})
             },
             include: {
                 enrollments: {
-                    where: {
-                        organizationId,
-                        status: { in: ["ENROLLED", "ACTIVE"] }
-                    },
+                    ...(organizationId ? {
+                        where: { organizationId }
+                    } : {}),
                     include: {
                         schoolGrade: { include: { grade: true } },
                         section: true,
                         organization: true,
                         academicYear: true
+                    },
+                    orderBy: { createdAt: "desc" }
+                },
+                user: { select: { id: true, name: true, email: true } },
+                parents: {
+                    include: {
+                        parent: {
+                            include: {
+                                user: { select: { id: true, name: true, email: true } }
+                            }
+                        }
                     }
                 }
             }
         });
     }
 
-    static async getStudentDashboard(userId: string, organizationId: string) {
+    static async getStudentDashboard(userId: string, organizationId?: string) {
         const student = await this.getStudentByUserId(userId, organizationId);
         const enrollment = student?.enrollments[0];
 
         if (!student || !enrollment) return null;
+
+        const effectiveOrgId = organizationId || enrollment.organizationId;
 
         const today = new Date();
         const todayStart = new Date(today);
@@ -905,7 +916,7 @@ export class StudentService {
         const [todayClasses, attendance, results, activities, notifications, supportFlags, announcements] = await Promise.all([
             prisma.timetable.findMany({
                 where: {
-                    organizationId,
+                    organizationId: effectiveOrgId,
                     academicYearId: enrollment.academicYearId,
                     dayOfWeek: today.getDay(),
                     teachingAssignment: { sectionId: enrollment.sectionId }
@@ -919,11 +930,11 @@ export class StudentService {
                 orderBy: { classPeriod: { startTime: "asc" } }
             }),
             prisma.studentAttendance.findMany({
-                where: { organizationId, enrollmentId: enrollment.id },
+                where: { organizationId: effectiveOrgId, enrollmentId: enrollment.id },
                 select: { status: true }
             }),
             prisma.studentResult.findMany({
-                where: { enrollmentId: enrollment.id, assessment: { organizationId } },
+                where: { enrollmentId: enrollment.id, assessment: { organizationId: effectiveOrgId } },
                 include: {
                     assessment: {
                         include: { teachingAssignment: { include: { subject: true } } }
@@ -934,7 +945,7 @@ export class StudentService {
             }),
             prisma.learningActivity.findMany({
                 where: {
-                    organizationId,
+                    organizationId: effectiveOrgId,
                     academicYearId: enrollment.academicYearId,
                     teachingAssignment: { sectionId: enrollment.sectionId },
                     OR: [{ dueDate: null }, { dueDate: { gte: todayStart } }]
@@ -952,18 +963,18 @@ export class StudentService {
                 take: 5
             }),
             prisma.supportFlag.findMany({
-                where: { organizationId, enrollmentId: enrollment.id, resolvedAt: null },
+                where: { organizationId: effectiveOrgId, enrollmentId: enrollment.id, resolvedAt: null },
                 orderBy: { createdAt: "desc" },
                 take: 5
             }),
             prisma.announcement.findMany({
                 where: {
-                    organizationId,
+                    organizationId: effectiveOrgId,
                     OR: [
-                        { target: "ALL" },
-                        { target: "STUDENTS" },
-                        { target: "SPECIFIC_GRADE", targetId: enrollment.schoolGradeId },
-                        { target: "SPECIFIC_SECTION", targetId: enrollment.sectionId }
+                        { target: AnnouncementTarget.ALL },
+                        { target: AnnouncementTarget.STUDENTS },
+                        ...(enrollment.schoolGradeId ? [{ target: AnnouncementTarget.SPECIFIC_GRADE, targetId: enrollment.schoolGradeId }] : []),
+                        ...(enrollment.sectionId ? [{ target: AnnouncementTarget.SPECIFIC_SECTION, targetId: enrollment.sectionId }] : [])
                     ],
                     AND: [{ OR: [{ expiresAt: null }, { expiresAt: { gte: todayStart } }] }]
                 },
@@ -979,7 +990,7 @@ export class StudentService {
             student: {
                 id: student.id,
                 studentId: student.studentId,
-                name: [student.firstName, student.lastName].filter(Boolean).join(" "),
+                name: student.user?.name || [student.firstName, student.lastName].filter(Boolean).join(" "),
                 photoUrl: student.photoUrl
             },
             enrollment,

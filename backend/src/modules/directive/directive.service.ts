@@ -28,8 +28,7 @@ export interface CreateDirectiveInput {
 
 export class DirectiveService {
     /**
-     * Creates and publishes a National Policy or Directive.
-     * Only Federal Administrators can issue National Policies & Directives.
+     * Creates and publishes a Directive or Announcement from an Administrative Authority (Federal, Region, Zone, Woreda).
      */
     static async createAndPublishDirective(
         input: CreateDirectiveInput,
@@ -37,17 +36,17 @@ export class DirectiveService {
         userId: string,
         ipAddress?: string
     ) {
-        // 1. Verify Federal Authority
-        if (!actorScope || actorScope.type !== "FEDERAL") {
-            throw new Error("Forbidden: Only Federal administrators can issue National Policies & Directives.");
+        // 1. Verify Authority
+        if (!actorScope || !["FEDERAL", "REGION", "ZONE", "WOREDA"].includes(actorScope.type)) {
+            throw new Error("Forbidden: Only administrative authorities can issue policies, directives, or announcements.");
         }
 
         // 2. Validate required inputs
         if (!input.title || !input.title.trim()) {
-            throw new Error("Directive title is required.");
+            throw new Error("Announcement title is required.");
         }
         if (!input.content || !input.content.trim()) {
-            throw new Error("Directive content/description is required.");
+            throw new Error("Announcement content/details are required.");
         }
 
         const type = input.type || DirectiveType.DIRECTIVE;
@@ -61,7 +60,7 @@ export class DirectiveService {
         const cascadeDescendants = input.cascadeDescendants !== undefined ? input.cascadeDescendants : true;
         const targetUnitIds = input.targetOrganizationUnitIds || [];
 
-        // 3. Create the National Directive record
+        // 3. Create the Directive record
         const directive = await prisma.nationalDirective.create({
             data: {
                 issuerOrganizationId: actorScope.id,
@@ -101,18 +100,37 @@ export class DirectiveService {
             select: { id: true, name: true, type: true, parentId: true }
         });
 
-        const nonFederalUnits = allUnits.filter(u => u.type !== "FEDERAL");
+        // Find all descendants of the actor's scope
+        const descendantUnitIds = new Set<string>();
+        if (actorScope.type === "FEDERAL") {
+            for (const u of allUnits) {
+                if (u.type !== "FEDERAL") descendantUnitIds.add(u.id);
+            }
+        } else {
+            const queue = [actorScope.id];
+            while (queue.length > 0) {
+                const currentId = queue.shift()!;
+                const children = allUnits.filter(u => u.parentId === currentId);
+                for (const child of children) {
+                    descendantUnitIds.add(child.id);
+                    queue.push(child.id);
+                }
+            }
+        }
+
         const recipientUnitIds = new Set<string>();
 
         if (targetUnitIds.length === 0 && targetLevelAll) {
-            // Applies to all units matching targetLevels (or all non-federal units if targetLevels is empty)
-            for (const unit of nonFederalUnits) {
+            // Applies to all descendants matching targetLevels (or all descendants if targetLevels is empty)
+            for (const unitId of descendantUnitIds) {
+                const unit = allUnits.find(u => u.id === unitId);
+                if (!unit) continue;
                 if (targetLevels.length === 0 || targetLevels.includes(unit.type)) {
                     recipientUnitIds.add(unit.id);
                 }
             }
         } else {
-            // Targeted specific units
+            // Targeted specific units within the actor's jurisdiction
             for (const unitId of targetUnitIds) {
                 const targetUnit = allUnits.find(u => u.id === unitId);
                 if (!targetUnit) continue;
@@ -122,7 +140,6 @@ export class DirectiveService {
                 }
 
                 if (cascadeDescendants) {
-                    // Traverse and add all child descendants
                     const queue = [targetUnit.id];
                     while (queue.length > 0) {
                         const currentId = queue.shift()!;
@@ -173,12 +190,13 @@ export class DirectiveService {
                 }
 
                 if (notifMap.size > 0) {
+                    const notifPrefix = actorScope.type === "FEDERAL" ? "National" : `${actorScope.name}`;
                     const notifResult = await prisma.notification.createMany({
                         data: Array.from(notifMap.values()).map(item => ({
                             userId: item.userId,
                             organizationId: item.organizationId,
-                            title: `National ${type}: ${directive.title}`,
-                            content: `Priority: ${priority}. Effective: ${effectiveDate.toLocaleDateString()}.${input.isAcknowledgmentRequired ? " Acknowledgment required." : ""}`,
+                            title: `${notifPrefix} Announcement: ${directive.title}`,
+                            content: `Effective: ${effectiveDate.toLocaleDateString()}.${input.isAcknowledgmentRequired ? " Acknowledgment required." : ""}`,
                             link: `/dashboard/directives`,
                             isRead: false
                         })),
@@ -197,7 +215,7 @@ export class DirectiveService {
                 data: {
                     organizationId: actorScope.id,
                     userId,
-                    action: "NATIONAL_DIRECTIVE_PUBLISHED",
+                    action: "ANNOUNCEMENT_PUBLISHED",
                     resource: "NATIONAL_DIRECTIVE",
                     resourceId: directive.id,
                     newValue: {
@@ -222,9 +240,12 @@ export class DirectiveService {
     }
 
     /**
-     * Retrieves directives applicable to the actor's scope.
+     * Retrieves directives and announcements applicable to the actor's scope.
      * - Federal Admin sees all issued directives with overall delivery/read/acknowledgment metrics.
-     * - Lower levels (Region, Zone, Woreda, School) see directives specifically targeted to them or cascaded to them.
+     * - Region/Zone/Woreda sees:
+     *     1. Directives/Announcements issued by their unit (with delivery & acknowledgment statistics)
+     *     2. Incoming Directives/Announcements cascaded from higher tiers (with user acknowledgment status)
+     * - School sees announcements targeted/cascaded to it.
      */
     static async getDirectivesForScope(
         actorScope: { id: string; type: OrganizationUnitType; name: string } | null,
@@ -283,6 +304,7 @@ export class DirectiveService {
 
                     return {
                         ...d,
+                        isIssuedByMe: true,
                         totalRecipients: d._count.acknowledgments,
                         readCount,
                         acknowledgedCount
@@ -293,13 +315,58 @@ export class DirectiveService {
             return directivesWithStats;
         }
 
-        // Lower-level recipient view (REGION, ZONE, WOREDA, SCHOOL)
+        // 1. Directives issued by this organization unit (e.g. Regional Bureau)
+        const issuedDirectives = await prisma.nationalDirective.findMany({
+            where: {
+                issuerOrganizationId: actorScope.id,
+                ...(queryOptions?.type ? { type: queryOptions.type } : {}),
+                ...(queryOptions?.priority ? { priority: queryOptions.priority } : {})
+            },
+            include: {
+                issuerOrganization: { select: { id: true, name: true, type: true } },
+                author: { select: { id: true, name: true, email: true } },
+                targetOrganizationUnits: {
+                    include: { organization: { select: { id: true, name: true, type: true } } }
+                },
+                _count: {
+                    select: {
+                        acknowledgments: true
+                    }
+                }
+            },
+            orderBy: { createdAt: "desc" }
+        });
+
+        const issuedWithStats = await Promise.all(
+            issuedDirectives.map(async d => {
+                const [readCount, acknowledgedCount] = await Promise.all([
+                    prisma.directiveAcknowledgment.count({
+                        where: { directiveId: d.id, isRead: true }
+                    }),
+                    prisma.directiveAcknowledgment.count({
+                        where: { directiveId: d.id, isAcknowledged: true }
+                    })
+                ]);
+
+                return {
+                    ...d,
+                    isIssuedByMe: true,
+                    totalRecipients: d._count.acknowledgments,
+                    readCount,
+                    acknowledgedCount,
+                    targetLevels: d.targetLevels,
+                    cascadeDescendants: d.cascadeDescendants
+                };
+            })
+        );
+
+        // 2. Incoming Directives cascaded from higher tiers
         const lineage = await HierarchyScopeService.getLineage(actorScope.id);
         const ancestorIds = lineage.map(u => u.id); // [unit, parent, grandParent, ..., federal]
 
-        // Find all published directives that apply to this unit or any of its ancestors
-        const allPublishedDirectives = await prisma.nationalDirective.findMany({
+        const incomingDirectives = await prisma.nationalDirective.findMany({
             where: {
+                issuerOrganizationId: { not: actorScope.id },
                 status: DirectiveStatus.PUBLISHED,
                 ...(queryOptions?.type ? { type: queryOptions.type } : {}),
                 ...(queryOptions?.priority ? { priority: queryOptions.priority } : {})
@@ -316,7 +383,7 @@ export class DirectiveService {
         });
 
         // Filter strictly by target scoping
-        const applicableDirectives = allPublishedDirectives.filter(d => {
+        const applicableIncoming = incomingDirectives.filter(d => {
             const matchesLevel = d.targetLevels.length === 0 || d.targetLevels.includes(actorScope.type);
             const targetedUnitIds = d.targetOrganizationUnits.map(t => t.organizationId);
 
@@ -338,9 +405,9 @@ export class DirectiveService {
             return false;
         });
 
-        // Ensure acknowledgment record exists for tracking and format result
-        const results = await Promise.all(
-            applicableDirectives.map(async d => {
+        // Ensure acknowledgment record exists for incoming items
+        const incomingFormatted = await Promise.all(
+            applicableIncoming.map(async d => {
                 let userAck = d.acknowledgments[0];
                 if (!userAck) {
                     userAck = await prisma.directiveAcknowledgment.upsert({
@@ -377,6 +444,7 @@ export class DirectiveService {
                     isAcknowledgmentRequired: d.isAcknowledgmentRequired,
                     targetLevels: d.targetLevels,
                     cascadeDescendants: d.cascadeDescendants,
+                    isIssuedByMe: false,
                     issuer: {
                         id: d.issuerOrganization.id,
                         name: d.issuerOrganization.name,
@@ -394,17 +462,19 @@ export class DirectiveService {
             })
         );
 
+        let combined = [...issuedWithStats, ...incomingFormatted];
+
         if (queryOptions?.search && queryOptions.search.trim()) {
             const q = queryOptions.search.toLowerCase();
-            return results.filter(
-                r =>
+            combined = combined.filter(
+                (r: any) =>
                     r.title.toLowerCase().includes(q) ||
                     r.content.toLowerCase().includes(q) ||
                     (r.code && r.code.toLowerCase().includes(q))
             );
         }
 
-        return results;
+        return combined;
     }
 
     /**
@@ -430,8 +500,10 @@ export class DirectiveService {
             throw new Error(`Directive with ID '${directiveId}' not found.`);
         }
 
-        // Validate scope visibility
-        if (actorScope && actorScope.type !== "FEDERAL") {
+        const isIssuer = actorScope && (actorScope.id === directive.issuerOrganizationId || actorScope.type === "FEDERAL");
+
+        // Validate scope visibility if not the issuer
+        if (!isIssuer && actorScope) {
             const lineage = await HierarchyScopeService.getLineage(actorScope.id);
             const ancestorIds = lineage.map(u => u.id);
             const targetedUnitIds = directive.targetOrganizationUnits.map(t => t.organizationId);
@@ -474,9 +546,9 @@ export class DirectiveService {
             });
         }
 
-        // For Federal view, load recipient acknowledgment summary
+        // For Issuer (Federal or Regional issuer), load recipient acknowledgment summary
         let tracking = null;
-        if (actorScope?.type === "FEDERAL") {
+        if (isIssuer) {
             const acknowledgments = await prisma.directiveAcknowledgment.findMany({
                 where: { directiveId },
                 include: {
@@ -530,6 +602,131 @@ export class DirectiveService {
             ...directive,
             userAcknowledgment,
             tracking
+        };
+    }
+
+    /**
+     * Returns subordinate hierarchy tree (Zones -> Woredas -> Schools) for targeted audience selection.
+     */
+    static async getGovernanceRecipientsHierarchy(
+        actorScope: { id: string; type: OrganizationUnitType; name: string } | null
+    ) {
+        if (!actorScope) {
+            throw new Error("Unauthorized: Organization scope is required.");
+        }
+
+        if (actorScope.type === "REGION") {
+            const zones = await prisma.organizationUnit.findMany({
+                where: { parentId: actorScope.id, type: "ZONE" },
+                select: {
+                    id: true,
+                    name: true,
+                    children: {
+                        where: { type: "WOREDA" },
+                        select: {
+                            id: true,
+                            name: true,
+                            children: {
+                                where: { type: "SCHOOL" },
+                                select: {
+                                    id: true,
+                                    name: true
+                                },
+                                orderBy: { name: "asc" }
+                            }
+                        },
+                        orderBy: { name: "asc" }
+                    }
+                },
+                orderBy: { name: "asc" }
+            });
+
+            const formattedZones = zones.map(z => ({
+                id: z.id,
+                name: z.name,
+                woredas: z.children.map(w => ({
+                    id: w.id,
+                    name: w.name,
+                    schools: w.children.map(s => ({
+                        id: s.id,
+                        name: s.name
+                    }))
+                }))
+            }));
+
+            const totalWoredas = formattedZones.reduce((acc, z) => acc + z.woredas.length, 0);
+            const totalSchools = formattedZones.reduce(
+                (acc, z) => acc + z.woredas.reduce((wAcc, w) => wAcc + w.schools.length, 0),
+                0
+            );
+
+            return {
+                regionId: actorScope.id,
+                regionName: actorScope.name,
+                totalZones: formattedZones.length,
+                totalWoredas,
+                totalSchools,
+                zones: formattedZones
+            };
+        } else if (actorScope.type === "FEDERAL") {
+            const regions = await prisma.organizationUnit.findMany({
+                where: { type: "REGION" },
+                select: {
+                    id: true,
+                    name: true,
+                    children: {
+                        where: { type: "ZONE" },
+                        select: {
+                            id: true,
+                            name: true,
+                            children: {
+                                where: { type: "WOREDA" },
+                                select: {
+                                    id: true,
+                                    name: true,
+                                    children: {
+                                        where: { type: "SCHOOL" },
+                                        select: { id: true, name: true },
+                                        orderBy: { name: "asc" }
+                                    }
+                                },
+                                orderBy: { name: "asc" }
+                            }
+                        },
+                        orderBy: { name: "asc" }
+                    }
+                },
+                orderBy: { name: "asc" }
+            });
+
+            const formattedRegions = regions.map(r => ({
+                id: r.id,
+                name: r.name,
+                zones: r.children.map(z => ({
+                    id: z.id,
+                    name: z.name,
+                    woredas: z.children.map(w => ({
+                        id: w.id,
+                        name: w.name,
+                        schools: w.children.map(s => ({
+                            id: s.id,
+                            name: s.name
+                        }))
+                    }))
+                }))
+            }));
+
+            return {
+                federalId: actorScope.id,
+                federalName: actorScope.name,
+                regions: formattedRegions
+            };
+        }
+
+        return {
+            unitId: actorScope.id,
+            unitName: actorScope.name,
+            zones: []
         };
     }
 

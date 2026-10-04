@@ -8,18 +8,39 @@ import { AnnouncementTarget } from "../../generated/prisma/enums.js";
 
 export const createAnnouncement = async (req: Request, res: Response) => {
     try {
-        const organizationId = (req as any).accessScope?.id;
+        const organizationId = (req as any).accessScope?.id || req.body.organizationId;
         const userId = req.user?.id;
         if (!organizationId || !userId) return res.status(403).json({ error: "Missing school scope or authentication" });
 
-        const { title, content, target, targetId, expiresAt } = req.body;
+        const {
+            title,
+            content,
+            code,
+            category,
+            priority,
+            target,
+            targetId,
+            targetDetails,
+            attachmentUrl,
+            attachmentName,
+            isAcknowledgmentRequired,
+            expiresAt
+        } = req.body;
+
         if (!title || !content) return res.status(400).json({ error: "title and content are required" });
 
         const announcement = await CommunicationService.createAnnouncement(organizationId, {
             title,
             content,
+            code,
+            category,
+            priority,
             target: target as AnnouncementTarget || AnnouncementTarget.ALL,
             targetId,
+            targetDetails,
+            attachmentUrl,
+            attachmentName,
+            isAcknowledgmentRequired: !!isAcknowledgmentRequired,
             authorId: userId,
             expiresAt
         });
@@ -32,13 +53,19 @@ export const createAnnouncement = async (req: Request, res: Response) => {
 
 export const getAnnouncements = async (req: Request, res: Response) => {
     try {
-        const organizationId = (req as any).accessScope?.id;
+        const organizationId = (req as any).accessScope?.id || (req.query?.organizationId as string);
         if (!organizationId) return res.status(403).json({ error: "Missing school scope" });
 
-        const { target } = req.query;
+        const { target, search, category, priority } = req.query;
         const announcements = await CommunicationService.getAnnouncements(
             organizationId,
-            target ? (target as string) as AnnouncementTarget : undefined
+            {
+                target: target ? (target as string) as AnnouncementTarget : undefined,
+                search: search ? String(search) : undefined,
+                category: category ? String(category) : undefined,
+                priority: priority ? String(priority) : undefined,
+                currentUserId: req.user?.id
+            }
         );
         return res.json(announcements);
     } catch (error: any) {
@@ -46,9 +73,24 @@ export const getAnnouncements = async (req: Request, res: Response) => {
     }
 };
 
+export const getAnnouncementRecipientsHierarchy = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id || (req.query?.organizationId as string);
+        if (!organizationId) return res.status(403).json({ error: "Missing school scope" });
+
+        const hierarchy = await CommunicationService.getSchoolAnnouncementRecipientsHierarchy(organizationId);
+        return res.json({
+            success: true,
+            data: hierarchy
+        });
+    } catch (error: any) {
+        return res.status(500).json({ error: error.message || "Failed to fetch recipients hierarchy" });
+    }
+};
+
 export const deleteAnnouncement = async (req: Request, res: Response) => {
     try {
-        const organizationId = (req as any).accessScope?.id;
+        const organizationId = (req as any).accessScope?.id || (req.query?.organizationId as string);
         if (!organizationId) return res.status(403).json({ error: "Missing school scope" });
 
         const { id } = req.params;
@@ -63,22 +105,77 @@ export const deleteAnnouncement = async (req: Request, res: Response) => {
 
 export const updateAnnouncement = async (req: Request, res: Response) => {
     try {
-        const organizationId = (req as any).accessScope?.id;
+        const organizationId = (req as any).accessScope?.id || (req.query?.organizationId as string);
         if (!organizationId) return res.status(403).json({ error: "Missing school scope" });
 
         const { id } = req.params;
         if (!id) return res.status(400).json({ error: "Announcement id is required" });
 
-        const { title, content, target, targetId } = req.body;
-        const updated = await CommunicationService.updateAnnouncement(organizationId, id as string, {
-            title,
-            content,
-            target,
-            targetId
-        });
-        return res.json(updated);
+        const announcement = await CommunicationService.updateAnnouncement(organizationId, id as string, req.body);
+        return res.json(announcement);
     } catch (error: any) {
         return res.status(400).json({ error: error.message || "Failed to update announcement" });
+    }
+};
+
+export const getAnnouncementStatus = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id || (req.query?.organizationId as string);
+        const { id } = req.params;
+        if (!id) return res.status(400).json({ error: "Announcement id is required" });
+        if (!organizationId) return res.status(403).json({ error: "Missing school scope" });
+
+        const statusReport = await CommunicationService.getAnnouncementStatus(organizationId, id as string);
+        return res.json({
+            success: true,
+            data: statusReport
+        });
+    } catch (error: any) {
+        return res.status(error.message?.includes("not found") ? 404 : 500).json({
+            error: error.message || "Failed to get announcement delivery status"
+        });
+    }
+};
+
+export const acknowledgeAnnouncement = async (req: Request, res: Response) => {
+    try {
+        const userId = req.user?.id;
+        const { id } = req.params;
+        const { notes } = req.body || {};
+
+        if (!userId) return res.status(401).json({ error: "Authentication required" });
+        if (!id) return res.status(400).json({ error: "Announcement id is required" });
+
+        const ack = await CommunicationService.acknowledgeAnnouncement(id as string, userId, notes);
+        return res.json({
+            success: true,
+            message: "Announcement acknowledged successfully",
+            data: ack
+        });
+    } catch (error: any) {
+        return res.status(400).json({
+            error: error.message || "Failed to acknowledge announcement"
+        });
+    }
+};
+
+export const markAnnouncementRead = async (req: Request, res: Response) => {
+    try {
+        const userId = req.user?.id;
+        const { id } = req.params;
+
+        if (!userId) return res.status(401).json({ error: "Authentication required" });
+        if (!id) return res.status(400).json({ error: "Announcement id is required" });
+
+        const ack = await CommunicationService.markAnnouncementRead(id as string, userId);
+        return res.json({
+            success: true,
+            data: ack
+        });
+    } catch (error: any) {
+        return res.status(400).json({
+            error: error.message || "Failed to mark announcement as read"
+        });
     }
 };
 

@@ -54,6 +54,7 @@ model User {
   importantNotices              ImportantNotice[]      @relation("AuthoredImportantNotices")
   authoredDirectives            NationalDirective[]    @relation("AuthoredDirectives")
   directiveAcknowledgments      DirectiveAcknowledgment[]
+  announcementAcknowledgments   AnnouncementAcknowledgment[]
 
   @@unique([email])
   @@map("user")
@@ -1294,18 +1295,34 @@ enum AnnouncementTarget {
   SPECIFIC_SECTION
 }
 
+enum AnnouncementPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+  CRITICAL
+}
+
 model Announcement {
-  id             String             @id @default(cuid())
-  organizationId String
-  title          String
-  content        String
-  target         AnnouncementTarget @default(ALL)
-  targetId       String?
-  authorId       String
-  expiresAt      DateTime?          @db.Date
+  id                       String               @id @default(cuid())
+  organizationId           String
+  code                     String?
+  title                    String
+  content                  String
+  category                 String?
+  priority                 AnnouncementPriority @default(NORMAL)
+  target                   AnnouncementTarget   @default(ALL)
+  targetId                 String?
+  targetDetails            Json?
+  attachmentUrl            String?
+  attachmentName           String?
+  isAcknowledgmentRequired Boolean              @default(false)
+  authorId                 String
+  expiresAt                DateTime?            @db.Date
 
   organization OrganizationUnit @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   author       User             @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  acknowledgments AnnouncementAcknowledgment[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1313,6 +1330,37 @@ model Announcement {
   @@index([organizationId])
   @@index([target])
   @@map("announcement")
+}
+
+model AnnouncementAcknowledgment {
+  id                  String            @id @default(cuid())
+  announcementId      String
+  userId              String
+  organizationId      String?
+  
+  recipientType       String?
+  recipientName       String?
+  recipientIdentifier String?
+  
+  isRead              Boolean           @default(false)
+  readAt              DateTime?
+  
+  isAcknowledged      Boolean           @default(false)
+  acknowledgedAt      DateTime?
+  acknowledgmentNotes String?
+
+  announcement        Announcement      @relation(fields: [announcementId], references: [id], onDelete: Cascade)
+  user                User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
+
+  @@unique([announcementId, userId])
+  @@index([announcementId])
+  @@index([userId])
+  @@index([isRead])
+  @@index([isAcknowledged])
+  @@map("announcement_acknowledgment")
 }
 
 model Notification {
