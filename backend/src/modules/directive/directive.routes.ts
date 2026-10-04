@@ -4,18 +4,21 @@ import {
     createDirectiveHandler,
     getDirectivesHandler,
     getDirectiveByIdHandler,
-    acknowledgeDirectiveHandler
+    acknowledgeDirectiveHandler,
+    getDirectivesRecipientsTreeHandler
 } from "./directive.controller.js";
 
 const router = Router();
 
-// National Directive routes require authentication
+// Directive & Announcement routes require authentication
 router.use(requireAuth());
 
 // Endpoints
 router.post("/", createDirectiveHandler);
+router.get("/recipients-tree", getDirectivesRecipientsTreeHandler);
 router.get("/", getDirectivesHandler);
 router.get("/:id", getDirectiveByIdHandler);
 router.post("/:id/acknowledge", acknowledgeDirectiveHandler);
 
 export default router;
+

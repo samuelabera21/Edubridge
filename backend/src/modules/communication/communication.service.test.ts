@@ -17,6 +17,7 @@ vi.mock("../../infrastructure/prisma/client.js", () => ({
         },
         notification: {
             create: vi.fn(),
+            createMany: vi.fn(),
             findMany: vi.fn(),
             findFirst: vi.fn(),
             update: vi.fn(),
@@ -33,7 +34,12 @@ vi.mock("../../infrastructure/prisma/client.js", () => ({
             findFirst: vi.fn()
         },
         teacher: {
-            findFirst: vi.fn()
+            findFirst: vi.fn(),
+            findMany: vi.fn()
+        },
+        student: {
+            findFirst: vi.fn(),
+            findMany: vi.fn()
         },
         teachingAssignment: {
             findFirst: vi.fn(),
@@ -84,7 +90,7 @@ describe("CommunicationService", () => {
                     organizationId: "school-1"
                 })
             }));
-            expect(result).toEqual(mockAnnouncement);
+            expect(result).toEqual(expect.objectContaining(mockAnnouncement));
         });
 
         it("validates specific grade target belongs to this school", async () => {

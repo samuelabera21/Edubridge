@@ -85,7 +85,6 @@ const studentNavGroups: StudentNavGroup[] = [
         label: "Communication",
         icon: MessageSquare,
         links: [
-            { label: "Teacher Messages", href: "/dashboard/student/communication" },
             { label: "School Announcements", href: "/dashboard/student/communication" },
             { label: "Notifications", href: "/dashboard/student/communication" },
         ],

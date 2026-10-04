@@ -74,17 +74,36 @@ export function requireScope(scopeType: "SCHOOL" | "WOREDA" | "ZONE" | "REGION" 
             return res.status(401).json({ message: "Unauthorized" });
         }
 
-        const assignment = await prisma.roleAssignment.findFirst({
-            where: {
-                userId: session.user.id,
-                scope: {
-                    type: scopeType,
+        const requestedOrgId = (req.headers["x-organization-id"] as string) || (req.headers["x-scope-id"] as string) || (req.query?.organizationId as string);
+
+        let assignment = null;
+        if (requestedOrgId) {
+            assignment = await prisma.roleAssignment.findFirst({
+                where: {
+                    userId: session.user.id,
+                    scopeId: requestedOrgId,
+                    scope: { type: scopeType }
                 },
-            },
-            include: {
-                scope: true,
-            },
-        });
+                include: { scope: true }
+            });
+        }
+
+        if (!assignment) {
+            assignment = await prisma.roleAssignment.findFirst({
+                where: {
+                    userId: session.user.id,
+                    scope: {
+                        type: scopeType,
+                    },
+                },
+                include: {
+                    scope: true,
+                },
+                orderBy: {
+                    createdAt: "desc"
+                }
+            });
+        }
 
         if (!assignment) {
             return res.status(403).json({
@@ -96,7 +115,7 @@ export function requireScope(scopeType: "SCHOOL" | "WOREDA" | "ZONE" | "REGION" 
         (req as any).accessScope = assignment.scope;
         (req as any).user = session.user;
         
-        console.log("=> [MIDDLEWARE] requireScope PASSED for user:", session.user.email);
+        console.log("=> [MIDDLEWARE] requireScope PASSED for user:", session.user.email, "Scope:", assignment.scope.name, assignment.scope.id);
 
         next();
     };

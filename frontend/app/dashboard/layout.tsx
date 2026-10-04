@@ -626,43 +626,74 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
                                             No notifications right now.
                                         </div>
                                     ) : (
-                                        notificationsList.slice(0, 8).map(n => (
-                                            <div
-                                                key={n.id}
-                                                onClick={() => markNotificationAsRead(n.id, n.link || (isAdministrativeTier ? `/dashboard/directives` : undefined))}
-                                                className={`p-3 hover:bg-gray-50 transition-colors cursor-pointer ${
-                                                    !n.isRead ? "bg-blue-50/40" : ""
-                                                }`}
-                                            >
-                                                <div className="flex items-start justify-between gap-2">
-                                                    <div className="font-semibold text-gray-900 text-xs">
-                                                        {n.title}
+                                        notificationsList.slice(0, 8).map(n => {
+                                            const communicationUrl = (() => {
+                                                if (pathname.startsWith("/dashboard/student") || roleName === "STUDENT") {
+                                                    return "/dashboard/student/communication";
+                                                }
+                                                if (pathname.startsWith("/dashboard/teacher") || roleName === "TEACHER" || isTeacherRoute) {
+                                                    return "/dashboard/teacher/communication/staff";
+                                                }
+                                                if (isAdministrativeTier) {
+                                                    return "/dashboard/directives";
+                                                }
+                                                return "/dashboard/communication/announcements";
+                                            })();
+
+                                            return (
+                                                <div
+                                                    key={n.id}
+                                                    onClick={() => markNotificationAsRead(n.id, n.link || communicationUrl)}
+                                                    className={`p-3 hover:bg-gray-50 transition-colors cursor-pointer ${
+                                                        !n.isRead ? "bg-blue-50/40" : ""
+                                                    }`}
+                                                >
+                                                    <div className="flex items-start justify-between gap-2">
+                                                        <div className="font-semibold text-gray-900 text-xs">
+                                                            {n.title}
+                                                        </div>
+                                                        {!n.isRead && (
+                                                            <span className="w-2 h-2 rounded-full bg-blue-600 shrink-0 mt-1" />
+                                                        )}
                                                     </div>
-                                                    {!n.isRead && (
-                                                        <span className="w-2 h-2 rounded-full bg-blue-600 shrink-0 mt-1" />
-                                                    )}
+                                                    <p className="text-[11px] text-gray-500 mt-0.5 line-clamp-2">
+                                                        {n.content}
+                                                    </p>
+                                                    <div className="flex items-center justify-between mt-1 text-[10px] text-gray-400">
+                                                        <span>{n.organization?.name || "Official Mandate"}</span>
+                                                        <span>{new Date(n.createdAt).toLocaleDateString()}</span>
+                                                    </div>
                                                 </div>
-                                                <p className="text-[11px] text-gray-500 mt-0.5 line-clamp-2">
-                                                    {n.content}
-                                                </p>
-                                                <div className="flex items-center justify-between mt-1 text-[10px] text-gray-400">
-                                                    <span>{n.organization?.name || "Official Mandate"}</span>
-                                                    <span>{new Date(n.createdAt).toLocaleDateString()}</span>
-                                                </div>
-                                            </div>
-                                        ))
+                                            );
+                                        })
                                     )}
                                 </div>
 
-                                <div className="pt-2 px-4 border-t border-gray-100 text-center">
-                                    <Link
-                                        href={isAdministrativeTier ? `/dashboard/directives` : `/dashboard/communication/notifications`}
-                                        onClick={() => setShowNotificationsDropdown(false)}
-                                        className="text-xs font-bold text-blue-600 hover:text-blue-800"
-                                    >
-                                        View All Directives & Announcements →
-                                    </Link>
-                                </div>
+                                 <div className="pt-2 px-4 border-t border-gray-100 text-center">
+                                     {(() => {
+                                         const viewAllUrl = (() => {
+                                             if (pathname.startsWith("/dashboard/student") || roleName === "STUDENT") {
+                                                 return "/dashboard/student/communication";
+                                             }
+                                             if (pathname.startsWith("/dashboard/teacher") || roleName === "TEACHER" || isTeacherRoute) {
+                                                 return "/dashboard/teacher/communication/staff";
+                                             }
+                                             if (isAdministrativeTier) {
+                                                 return "/dashboard/directives";
+                                             }
+                                             return "/dashboard/communication/announcements";
+                                         })();
+                                         return (
+                                             <Link
+                                                 href={viewAllUrl}
+                                                 onClick={() => setShowNotificationsDropdown(false)}
+                                                 className="text-xs font-bold text-blue-600 hover:text-blue-800"
+                                             >
+                                                 View All Directives & Announcements →
+                                             </Link>
+                                         );
+                                     })()}
+                                 </div>
                             </div>
                         )}
                     </div>

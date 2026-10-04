@@ -31,7 +31,7 @@ function isPdfUrl(url?: string | null, name?: string | null): boolean {
     return /\.pdf($|\?)/i.test(testStr) || testStr.includes("application/pdf");
 }
 
-export default function TeacherStaffCommunicationPage() {
+export default function StudentCommunicationPage() {
     const { authData } = useAuth();
     const currentUserId = authData?.user?.id;
 
@@ -69,7 +69,7 @@ export default function TeacherStaffCommunicationPage() {
                 setNotifications([]);
             }
         } catch (err) {
-            console.error("Failed to load teacher communication data:", err);
+            console.error("Failed to load communication data:", err);
         } finally {
             setLoading(false);
         }
@@ -126,7 +126,7 @@ export default function TeacherStaffCommunicationPage() {
         return notifications.filter(n => !n.isRead).length;
     }, [notifications]);
 
-    if (loading) return <LoadingState message="Loading teacher communications..." />;
+    if (loading) return <LoadingState message="Loading communications..." />;
 
     return (
         <div className="max-w-3xl mx-auto space-y-4 font-sans text-slate-800 pb-16">
@@ -134,7 +134,7 @@ export default function TeacherStaffCommunicationPage() {
             <div className="flex items-center justify-between gap-3 pb-3 border-b border-slate-200">
                 <div className="flex items-center gap-2">
                     <Megaphone className="w-5 h-5 text-emerald-600" />
-                    <h1 className="text-lg font-bold text-slate-900">Faculty & Staff Announcements</h1>
+                    <h1 className="text-lg font-bold text-slate-900">Announcements</h1>
                 </div>
 
                 {/* Tabs */}
@@ -189,12 +189,12 @@ export default function TeacherStaffCommunicationPage() {
                         <div className="p-12 text-center bg-white rounded-2xl border border-slate-200 shadow-xs space-y-2">
                             <Inbox className="w-8 h-8 mx-auto text-slate-300" />
                             <p className="font-bold text-slate-800 text-sm">No announcements at this time</p>
-                            <p className="text-xs text-slate-400">All announcements from administration will appear here.</p>
+                            <p className="text-xs text-slate-400">All announcements sent to you will appear here.</p>
                         </div>
                     ) : (
                         <div className="space-y-4">
                             {filteredAnnouncements.map((item) => {
-                                // Find acknowledgment record for this teacher user
+                                // Find acknowledgment record for this student user
                                 const ack = (item.acknowledgments || []).find((a: any) => a.userId === currentUserId) || item.viewerAcknowledgment;
                                 const isConfirmed = !!ack?.isAcknowledged;
                                 const hasImage = isImageUrl(item.attachmentUrl, item.attachmentName);
