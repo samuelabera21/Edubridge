@@ -31,6 +31,7 @@ import {
 import { Button } from "@/components/ui/Button";
 import { LoadingState } from "@/components/ui/LoadingState";
 import SchoolAnnouncementPublishView from "@/components/communication/SchoolAnnouncementPublishView";
+import DirectivesRecipientView from "@/components/governance/DirectivesRecipientView";
 
 function isImageUrl(url?: string | null, name?: string | null): boolean {
     if (!url && !name) return false;
@@ -47,7 +48,9 @@ function isPdfUrl(url?: string | null, name?: string | null): boolean {
 export default function SchoolAnnouncementsPage() {
     const { authData } = useAuth();
     const currentUserId = authData?.user?.id;
+    const activeScope = authData?.access?.[0]?.scope;
 
+    const [mainTab, setMainTab] = useState<"internal" | "directives">("internal");
     const [viewMode, setViewMode] = useState<"list" | "publish">("list");
     const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
@@ -327,21 +330,57 @@ export default function SchoolAnnouncementsPage() {
                 <div>
                     <h1 className="text-lg font-bold text-slate-900 flex items-center gap-2">
                         <Megaphone className="w-5 h-5 text-blue-600" />
-                        <span>School Announcements</span>
+                        <span>Communication & Directives</span>
                     </h1>
-                    <p className="text-xs text-slate-500">Manage, deliver, and track confirmation receipts for school announcements.</p>
+                    <p className="text-xs text-slate-500">Manage internal school announcements and receive official directives from Woreda, Zone, Region, and Federal MoE.</p>
                 </div>
-                <Button
-                    onClick={() => setViewMode("publish")}
-                    leftIcon={<Plus className="w-4 h-4" />}
-                    className="bg-blue-600 hover:bg-blue-700 text-white text-xs h-8 px-3.5 font-semibold shadow-xs"
-                >
-                    Publish Announcement
-                </Button>
+                {mainTab === "internal" && (
+                    <Button
+                        onClick={() => setViewMode("publish")}
+                        leftIcon={<Plus className="w-4 h-4" />}
+                        className="bg-blue-600 hover:bg-blue-700 text-white text-xs h-8 px-3.5 font-semibold shadow-xs"
+                    >
+                        Publish Announcement
+                    </Button>
+                )}
             </div>
 
-            {/* Filter & Search Bar */}
-            <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-xs flex flex-col sm:flex-row items-center gap-2.5">
+            {/* Sub-Tabs: School Internal Announcements vs Higher Administrative Directives */}
+            <div className="flex items-center gap-2 pb-1">
+                <button
+                    type="button"
+                    onClick={() => setMainTab("internal")}
+                    className={`px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                        mainTab === "internal"
+                            ? "bg-blue-600 text-white shadow-xs"
+                            : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                    }`}
+                >
+                    School Internal Circulars ({announcements.length})
+                </button>
+                <button
+                    type="button"
+                    onClick={() => setMainTab("directives")}
+                    className={`px-3.5 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                        mainTab === "directives"
+                            ? "bg-blue-600 text-white shadow-xs"
+                            : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                    }`}
+                >
+                    Higher Directives (Woreda / Zone / Region / MoE)
+                </button>
+            </div>
+
+            {mainTab === "directives" ? (
+                <DirectivesRecipientView
+                    tierName={activeScope?.name || "School"}
+                    tierType="SCHOOL"
+                    organizationId={activeScope?.id}
+                />
+            ) : (
+                <>
+                    {/* Filter & Search Bar */}
+                    <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-xs flex flex-col sm:flex-row items-center gap-2.5">
                 <div className="relative flex-1 w-full">
                     <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                     <input
@@ -603,6 +642,8 @@ export default function SchoolAnnouncementsPage() {
                     </div>
                 )}
             </div>
+            </>
+            )}
 
             {/* Recipient Delivery & Status Tracking Modal */}
             {statusModalAnnouncement && (
