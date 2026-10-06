@@ -627,23 +627,36 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
                                         </div>
                                     ) : (
                                         notificationsList.slice(0, 8).map(n => {
-                                            const communicationUrl = (() => {
+                                            const getDirectivesOrAnnouncementsUrl = () => {
                                                 if (pathname.startsWith("/dashboard/student") || roleName === "STUDENT") {
                                                     return "/dashboard/student/communication";
                                                 }
                                                 if (pathname.startsWith("/dashboard/teacher") || roleName === "TEACHER" || isTeacherRoute) {
                                                     return "/dashboard/teacher/communication/staff";
                                                 }
-                                                if (isAdministrativeTier) {
-                                                    return "/dashboard/directives";
+                                                if (pathname.startsWith("/dashboard/region") || scopeType === "REGION" || roleName === "REGION_ADMIN") {
+                                                    return "/dashboard/region?tab=directives";
+                                                }
+                                                if (pathname.startsWith("/dashboard/zone") || scopeType === "ZONE" || roleName === "ZONE_ADMIN") {
+                                                    return "/dashboard/zone?tab=directives";
+                                                }
+                                                if (pathname.startsWith("/dashboard/woreda") || scopeType === "WOREDA" || roleName === "WOREDA_ADMIN") {
+                                                    return "/dashboard/woreda?tab=directives";
+                                                }
+                                                if (pathname.startsWith("/dashboard/federal") || scopeType === "FEDERAL" || roleName === "FEDERAL_ADMIN") {
+                                                    return "/dashboard/federal?tab=directives";
                                                 }
                                                 return "/dashboard/communication/announcements";
-                                            })();
+                                            };
+
+                                            const resolvedLink = (!n.link || n.link === "/dashboard/directives") 
+                                                ? getDirectivesOrAnnouncementsUrl() 
+                                                : n.link;
 
                                             return (
                                                 <div
                                                     key={n.id}
-                                                    onClick={() => markNotificationAsRead(n.id, n.link || communicationUrl)}
+                                                    onClick={() => markNotificationAsRead(n.id, resolvedLink)}
                                                     className={`p-3 hover:bg-gray-50 transition-colors cursor-pointer ${
                                                         !n.isRead ? "bg-blue-50/40" : ""
                                                     }`}
@@ -678,8 +691,17 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
                                              if (pathname.startsWith("/dashboard/teacher") || roleName === "TEACHER" || isTeacherRoute) {
                                                  return "/dashboard/teacher/communication/staff";
                                              }
-                                             if (isAdministrativeTier) {
-                                                 return "/dashboard/directives";
+                                             if (pathname.startsWith("/dashboard/region") || scopeType === "REGION" || roleName === "REGION_ADMIN") {
+                                                 return "/dashboard/region?tab=directives";
+                                             }
+                                             if (pathname.startsWith("/dashboard/zone") || scopeType === "ZONE" || roleName === "ZONE_ADMIN") {
+                                                 return "/dashboard/zone?tab=directives";
+                                             }
+                                             if (pathname.startsWith("/dashboard/woreda") || scopeType === "WOREDA" || roleName === "WOREDA_ADMIN") {
+                                                 return "/dashboard/woreda?tab=directives";
+                                             }
+                                             if (pathname.startsWith("/dashboard/federal") || scopeType === "FEDERAL" || roleName === "FEDERAL_ADMIN") {
+                                                 return "/dashboard/federal?tab=directives";
                                              }
                                              return "/dashboard/communication/announcements";
                                          })();
