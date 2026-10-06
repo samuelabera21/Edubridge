@@ -178,28 +178,51 @@ export class DirectiveService {
                     where: {
                         scopeId: { in: Array.from(recipientUnitIds) }
                     },
-                    select: { userId: true, scopeId: true }
+                    include: {
+                        scope: {
+                            select: { id: true, type: true, name: true }
+                        }
+                    }
                 });
 
-                const notifMap = new Map<string, { userId: string; organizationId: string }>();
+                const notifMap = new Map<string, { userId: string; organizationId: string; scopeType: string }>();
                 for (const ra of roleAssignments) {
                     const key = `${ra.userId}_${ra.scopeId}`;
                     if (!notifMap.has(key)) {
-                        notifMap.set(key, { userId: ra.userId, organizationId: ra.scopeId });
+                        notifMap.set(key, {
+                            userId: ra.userId,
+                            organizationId: ra.scopeId,
+                            scopeType: ra.scope?.type || "REGION"
+                        });
                     }
                 }
 
                 if (notifMap.size > 0) {
                     const notifPrefix = actorScope.type === "FEDERAL" ? "National" : `${actorScope.name}`;
                     const notifResult = await prisma.notification.createMany({
-                        data: Array.from(notifMap.values()).map(item => ({
-                            userId: item.userId,
-                            organizationId: item.organizationId,
-                            title: `${notifPrefix} Announcement: ${directive.title}`,
-                            content: `Effective: ${effectiveDate.toLocaleDateString()}.${input.isAcknowledgmentRequired ? " Acknowledgment required." : ""}`,
-                            link: `/dashboard/directives`,
-                            isRead: false
-                        })),
+                        data: Array.from(notifMap.values()).map(item => {
+                            let link = "/dashboard/directives";
+                            if (item.scopeType === "REGION") {
+                                link = "/dashboard/region?tab=directives";
+                            } else if (item.scopeType === "ZONE") {
+                                link = "/dashboard/zone?tab=directives";
+                            } else if (item.scopeType === "WOREDA") {
+                                link = "/dashboard/woreda?tab=directives";
+                            } else if (item.scopeType === "FEDERAL") {
+                                link = "/dashboard/federal?tab=directives";
+                            } else if (item.scopeType === "SCHOOL") {
+                                link = "/dashboard/communication/announcements";
+                            }
+
+                            return {
+                                userId: item.userId,
+                                organizationId: item.organizationId,
+                                title: `${notifPrefix} Announcement: ${directive.title}`,
+                                content: `Effective: ${effectiveDate.toLocaleDateString()}.${input.isAcknowledgmentRequired ? " Acknowledgment required." : ""}`,
+                                link,
+                                isRead: false
+                            };
+                        }),
                         skipDuplicates: true
                     });
                     notificationsCount = notifResult.count;
@@ -259,63 +282,7 @@ export class DirectiveService {
             throw new Error("Unauthorized: Active organization scope is required.");
         }
 
-        if (actorScope.type === "FEDERAL") {
-            // Federal view: all directives issued
-            const directives = await prisma.nationalDirective.findMany({
-                where: {
-                    ...(queryOptions?.type ? { type: queryOptions.type } : {}),
-                    ...(queryOptions?.priority ? { priority: queryOptions.priority } : {}),
-                    ...(queryOptions?.search
-                        ? {
-                              OR: [
-                                  { title: { contains: queryOptions.search, mode: "insensitive" } },
-                                  { content: { contains: queryOptions.search, mode: "insensitive" } },
-                                  { code: { contains: queryOptions.search, mode: "insensitive" } }
-                              ]
-                          }
-                        : {})
-                },
-                include: {
-                    issuerOrganization: { select: { id: true, name: true, type: true } },
-                    author: { select: { id: true, name: true, email: true } },
-                    targetOrganizationUnits: {
-                        include: { organization: { select: { id: true, name: true, type: true } } }
-                    },
-                    _count: {
-                        select: {
-                            acknowledgments: true
-                        }
-                    }
-                },
-                orderBy: { createdAt: "desc" }
-            });
-
-            // Calculate read & acknowledged rollups for each directive
-            const directivesWithStats = await Promise.all(
-                directives.map(async d => {
-                    const [readCount, acknowledgedCount] = await Promise.all([
-                        prisma.directiveAcknowledgment.count({
-                            where: { directiveId: d.id, isRead: true }
-                        }),
-                        prisma.directiveAcknowledgment.count({
-                            where: { directiveId: d.id, isAcknowledged: true }
-                        })
-                    ]);
-
-                    return {
-                        ...d,
-                        isIssuedByMe: true,
-                        totalRecipients: d._count.acknowledgments,
-                        readCount,
-                        acknowledgedCount
-                    };
-                })
-            );
-
-            return directivesWithStats;
-        }
-
-        // 1. Directives issued by this organization unit (e.g. Regional Bureau)
+        // 1. Directives issued strictly by this organization unit (Federal, Regional Bureau, Zone, Woreda, or School)
         const issuedDirectives = await prisma.nationalDirective.findMany({
             where: {
                 issuerOrganizationId: actorScope.id,
@@ -384,6 +351,11 @@ export class DirectiveService {
 
         // Filter strictly by target scoping
         const applicableIncoming = incomingDirectives.filter(d => {
+            const isAncestorIssuer = ancestorIds.includes(d.issuerOrganization.id) || d.issuerOrganization.type === "FEDERAL";
+            if (!isAncestorIssuer) {
+                return false;
+            }
+
             const matchesLevel = d.targetLevels.length === 0 || d.targetLevels.includes(actorScope.type);
             const targetedUnitIds = d.targetOrganizationUnits.map(t => t.organizationId);
 
@@ -500,7 +472,7 @@ export class DirectiveService {
             throw new Error(`Directive with ID '${directiveId}' not found.`);
         }
 
-        const isIssuer = actorScope && (actorScope.id === directive.issuerOrganizationId || actorScope.type === "FEDERAL");
+        const isIssuer = actorScope && actorScope.id === directive.issuerOrganizationId;
 
         // Validate scope visibility if not the issuer
         if (!isIssuer && actorScope) {
@@ -509,8 +481,10 @@ export class DirectiveService {
             const targetedUnitIds = directive.targetOrganizationUnits.map(t => t.organizationId);
             const matchesLevel = directive.targetLevels.length === 0 || directive.targetLevels.includes(actorScope.type);
 
+            const isAncestorIssuer = ancestorIds.includes(directive.issuerOrganizationId) || directive.issuerOrganization.type === "FEDERAL";
+
             let isAllowed = false;
-            if (directive.targetLevelAll && targetedUnitIds.length === 0 && matchesLevel) {
+            if (directive.targetLevelAll && targetedUnitIds.length === 0 && matchesLevel && isAncestorIssuer) {
                 isAllowed = true;
             } else if (targetedUnitIds.includes(actorScope.id) && matchesLevel) {
                 isAllowed = true;
@@ -721,12 +695,60 @@ export class DirectiveService {
                 federalName: actorScope.name,
                 regions: formattedRegions
             };
+        } else if (actorScope.type === "ZONE") {
+            const woredas = await prisma.organizationUnit.findMany({
+                where: { parentId: actorScope.id, type: "WOREDA" },
+                select: {
+                    id: true,
+                    name: true,
+                    children: {
+                        where: { type: "SCHOOL" },
+                        select: { id: true, name: true },
+                        orderBy: { name: "asc" }
+                    }
+                },
+                orderBy: { name: "asc" }
+            });
+
+            const formattedWoredas = woredas.map(w => ({
+                id: w.id,
+                name: w.name,
+                schools: w.children.map(s => ({
+                    id: s.id,
+                    name: s.name
+                }))
+            }));
+
+            const totalSchools = formattedWoredas.reduce((acc, w) => acc + w.schools.length, 0);
+
+            return {
+                zoneId: actorScope.id,
+                zoneName: actorScope.name,
+                totalWoredas: formattedWoredas.length,
+                totalSchools,
+                woredas: formattedWoredas
+            };
+        } else if (actorScope.type === "WOREDA") {
+            const schools = await prisma.organizationUnit.findMany({
+                where: { parentId: actorScope.id, type: "SCHOOL" },
+                select: { id: true, name: true },
+                orderBy: { name: "asc" }
+            });
+
+            return {
+                woredaId: actorScope.id,
+                woredaName: actorScope.name,
+                totalSchools: schools.length,
+                schools: schools.map(s => ({ id: s.id, name: s.name }))
+            };
         }
 
         return {
             unitId: actorScope.id,
             unitName: actorScope.name,
-            zones: []
+            zones: [],
+            woredas: [],
+            schools: []
         };
     }
 
