@@ -77,6 +77,7 @@ router.delete("/schools/:schoolId/cancel-invitation", cancelSchoolAdminInvitatio
 
 // Organization Unit CRUD & Placement
 router.post("/schools/register", registerSchoolHandler);
+router.post("/register-school", registerSchoolHandler);
 router.post("/", createOrganizationUnitHandler);
 router.patch("/schools/:schoolId/placement", placeSchoolHandler);
 router.patch("/:id", updateOrganizationUnitHandler);

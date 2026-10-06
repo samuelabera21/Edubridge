@@ -40,12 +40,22 @@ export interface RecipientDirectiveItem {
     isAcknowledgmentRequired: boolean;
     targetLevels: string[];
     cascadeDescendants: boolean;
-    issuer: {
+    issuer?: {
+        id?: string;
+        name?: string;
+        type?: string;
+        authorName?: string;
+    } | null;
+    issuerOrganization?: {
         id: string;
         name: string;
         type: string;
-        authorName: string;
-    };
+    } | null;
+    author?: {
+        id: string;
+        name: string;
+        email: string;
+    } | null;
     userAcknowledgment?: {
         isRead: boolean;
         readAt?: string | null;
@@ -554,10 +564,10 @@ export default function DirectivesRecipientView({
 
                                             <td className="py-3 px-3 whitespace-nowrap">
                                                 <div className="text-xs font-medium text-slate-800">
-                                                    {d.issuer.name}
+                                                    {d.issuer?.name || d.issuerOrganization?.name || "Official Authority"}
                                                 </div>
                                                 <div className="text-[10px] text-slate-400">
-                                                    {d.issuer.authorName}
+                                                    {d.issuer?.authorName || d.author?.name || "Governance Desk"}
                                                 </div>
                                             </td>
 
@@ -662,7 +672,7 @@ export default function DirectivesRecipientView({
                                     {selectedDirective.title}
                                 </h3>
                                 <div className="text-xs text-slate-500 flex items-center gap-2 flex-wrap">
-                                    <span>Issued by: <strong className="text-slate-700">{selectedDirective.issuer.name}</strong></span>
+                                    <span>Issued by: <strong className="text-slate-700">{selectedDirective.issuer?.name || selectedDirective.issuerOrganization?.name || "Official Authority"}</strong></span>
                                     <span>•</span>
                                     <span>Effective: {new Date(selectedDirective.effectiveDate).toLocaleDateString()}</span>
                                     {selectedDirective.deadline && (

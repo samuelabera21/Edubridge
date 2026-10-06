@@ -12,61 +12,50 @@ import {
     X,
     CheckCircle2,
     AlertCircle,
-    Building2,
-    MapPin,
-    School,
     Loader2
 } from "lucide-react";
 import SearchableSelect, { SearchableOption } from "../ui/SearchableSelect";
 
-export interface RegionalSchoolItem {
+export interface ZoneSchoolItem {
     id: string;
     name: string;
 }
 
-export interface RegionalWoredaItem {
+export interface ZoneWoredaItem {
     id: string;
     name: string;
-    schools: RegionalSchoolItem[];
+    schools: ZoneSchoolItem[];
 }
 
-export interface RegionalZoneItem {
-    id: string;
-    name: string;
-    woredas: RegionalWoredaItem[];
-}
-
-export interface RegionalHierarchyTree {
-    regionId: string;
-    regionName: string;
-    totalZones: number;
+export interface ZoneHierarchyTree {
+    zoneId: string;
+    zoneName: string;
     totalWoredas: number;
     totalSchools: number;
-    zones: RegionalZoneItem[];
+    woredas: ZoneWoredaItem[];
 }
 
-interface RegionalAnnouncementPublishViewProps {
+interface ZoneAnnouncementPublishViewProps {
     onBack?: () => void;
     onPublished?: () => void;
-    regionName?: string;
+    zoneName?: string;
 }
 
-export default function RegionalAnnouncementPublishView({
+export default function ZoneAnnouncementPublishView({
     onBack,
     onPublished,
-    regionName = "Regional Bureau"
-}: RegionalAnnouncementPublishViewProps) {
+    zoneName = "Zonal Education Department"
+}: ZoneAnnouncementPublishViewProps) {
     const router = useRouter();
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     // Form states
     const [title, setTitle] = useState("");
     const [targetType, setTargetType] = useState<
-        "ALL" | "ALL_ZONES" | "SPECIFIC_ZONE" | "ALL_WOREDAS" | "SPECIFIC_WOREDA" | "ALL_SCHOOLS" | "SPECIFIC_SCHOOL"
+        "ALL" | "ALL_WOREDAS" | "SPECIFIC_WOREDA" | "ALL_SCHOOLS" | "SPECIFIC_SCHOOL"
     >("ALL");
 
     // Dynamic Hierarchy Drill-down Selection
-    const [selectedZoneId, setSelectedZoneId] = useState("");
     const [selectedWoredaId, setSelectedWoredaId] = useState("");
     const [selectedSchoolId, setSelectedSchoolId] = useState("");
 
@@ -77,14 +66,14 @@ export default function RegionalAnnouncementPublishView({
     // Content
     const [content, setContent] = useState("");
 
-    // Attachment (Image or PDF via MinIO)
+    // Attachment
     const [attachmentUrl, setAttachmentUrl] = useState("");
     const [attachmentName, setAttachmentName] = useState("");
     const [uploadingFile, setUploadingFile] = useState(false);
     const [isAcknowledgmentRequired, setIsAcknowledgmentRequired] = useState(true);
 
     // Hierarchy data
-    const [hierarchy, setHierarchy] = useState<RegionalHierarchyTree | null>(null);
+    const [hierarchy, setHierarchy] = useState<ZoneHierarchyTree | null>(null);
     const [loadingHierarchy, setLoadingHierarchy] = useState(true);
 
     // Submission & Confirmation
@@ -96,7 +85,7 @@ export default function RegionalAnnouncementPublishView({
         notificationsCount: number;
     } | null>(null);
 
-    // Fetch regional subordinate tree
+    // Fetch zone subordinate tree
     useEffect(() => {
         async function loadHierarchy() {
             setLoadingHierarchy(true);
@@ -109,7 +98,7 @@ export default function RegionalAnnouncementPublishView({
                     }
                 }
             } catch (err) {
-                console.error("Error loading regional recipient hierarchy:", err);
+                console.error("Error loading zone recipient hierarchy:", err);
             } finally {
                 setLoadingHierarchy(false);
             }
@@ -118,36 +107,21 @@ export default function RegionalAnnouncementPublishView({
     }, []);
 
     // Derived lists based on selection
-    const availableWoredas = useMemo(() => {
-        if (!hierarchy?.zones || !selectedZoneId) return [];
-        const zone = hierarchy.zones.find(z => z.id === selectedZoneId);
-        return zone?.woredas || [];
-    }, [hierarchy, selectedZoneId]);
-
     const availableSchools = useMemo(() => {
-        if (!availableWoredas.length || !selectedWoredaId) return [];
-        const woreda = availableWoredas.find(w => w.id === selectedWoredaId);
+        if (!hierarchy?.woredas || !selectedWoredaId) return [];
+        const woreda = hierarchy.woredas.find(w => w.id === selectedWoredaId);
         return woreda?.schools || [];
-    }, [availableWoredas, selectedWoredaId]);
+    }, [hierarchy, selectedWoredaId]);
 
     // Searchable Select Options
-    const zoneOptions: SearchableOption[] = useMemo(() => {
-        if (!hierarchy?.zones) return [];
-        return hierarchy.zones.map(z => ({
-            value: z.id,
-            label: z.name,
-            badge: `${z.woredas.length} woredas`
-        }));
-    }, [hierarchy]);
-
     const woredaOptions: SearchableOption[] = useMemo(() => {
-        if (!availableWoredas) return [];
-        return availableWoredas.map(w => ({
+        if (!hierarchy?.woredas) return [];
+        return hierarchy.woredas.map(w => ({
             value: w.id,
             label: w.name,
             badge: `${w.schools.length} schools`
         }));
-    }, [availableWoredas]);
+    }, [hierarchy]);
 
     const schoolOptions: SearchableOption[] = useMemo(() => {
         if (!availableSchools) return [];
@@ -220,17 +194,12 @@ export default function RegionalAnnouncementPublishView({
             return;
         }
 
-        // Validate drill-down selection
-        if (targetType === "SPECIFIC_ZONE" && !selectedZoneId) {
-            setError("Please select a target Zone.");
+        if (targetType === "SPECIFIC_WOREDA" && !selectedWoredaId) {
+            setError("Please select a target Woreda.");
             return;
         }
-        if (targetType === "SPECIFIC_WOREDA" && (!selectedZoneId || !selectedWoredaId)) {
-            setError("Please select both Zone and target Woreda.");
-            return;
-        }
-        if (targetType === "SPECIFIC_SCHOOL" && (!selectedZoneId || !selectedWoredaId || !selectedSchoolId)) {
-            setError("Please select Zone, Woreda, and target School.");
+        if (targetType === "SPECIFIC_SCHOOL" && (!selectedWoredaId || !selectedSchoolId)) {
+            setError("Please select both Woreda and target School.");
             return;
         }
 
@@ -244,17 +213,9 @@ export default function RegionalAnnouncementPublishView({
 
             if (targetType === "ALL") {
                 targetLevelAll = true;
-                targetLevels = []; // all lower levels in region
+                targetLevels = []; // All subordinate units in zone
                 targetOrganizationUnitIds = [];
                 cascadeDescendants = true;
-            } else if (targetType === "ALL_ZONES") {
-                targetLevelAll = true;
-                targetLevels = ["ZONE"];
-                cascadeDescendants = false;
-            } else if (targetType === "SPECIFIC_ZONE") {
-                targetOrganizationUnitIds = [selectedZoneId];
-                targetLevels = ["ZONE"];
-                cascadeDescendants = false; // Deliver to that exact Zone ONLY
             } else if (targetType === "ALL_WOREDAS") {
                 targetLevelAll = true;
                 targetLevels = ["WOREDA"];
@@ -307,7 +268,7 @@ export default function RegionalAnnouncementPublishView({
                 setError(errData.message || "Failed to publish announcement.");
             }
         } catch (err: any) {
-            console.error("Error publishing regional announcement:", err);
+            console.error("Error publishing zonal announcement:", err);
             setError("A network error occurred while publishing.");
         } finally {
             setSubmitting(false);
@@ -322,13 +283,13 @@ export default function RegionalAnnouncementPublishView({
                     <button
                         type="button"
                         onClick={() => (onBack ? onBack() : router.back())}
-                        className="p-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-100"
+                        className="p-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-100 cursor-pointer"
                     >
                         <ArrowLeft className="w-4 h-4" />
                     </button>
                     <div>
-                        <h1 className="text-base font-bold text-slate-900">Publish Regional Announcement</h1>
-                        <p className="text-xs text-slate-500">Send an official announcement or directive to subordinate units.</p>
+                        <h1 className="text-base font-bold text-slate-900">Publish Zonal Announcement</h1>
+                        <p className="text-xs text-slate-500">Send an official announcement or directive to subordinate woredas and schools.</p>
                     </div>
                 </div>
 
@@ -336,7 +297,7 @@ export default function RegionalAnnouncementPublishView({
                     <button
                         type="button"
                         onClick={() => (onBack ? onBack() : router.back())}
-                        className="px-3 py-1.5 text-xs font-medium text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50"
+                        className="px-3 py-1.5 text-xs font-medium text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50 cursor-pointer"
                     >
                         Cancel
                     </button>
@@ -359,7 +320,7 @@ export default function RegionalAnnouncementPublishView({
                         <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
                         <span>{error}</span>
                     </div>
-                    <button onClick={() => setError(null)} className="text-rose-500 hover:text-rose-700">
+                    <button onClick={() => setError(null)} className="text-rose-500 hover:text-rose-700 cursor-pointer">
                         <X className="w-3.5 h-3.5" />
                     </button>
                 </div>
@@ -377,119 +338,63 @@ export default function RegionalAnnouncementPublishView({
                         onChange={(e) => {
                             const val = e.target.value as any;
                             setTargetType(val);
-                            setSelectedZoneId("");
                             setSelectedWoredaId("");
                             setSelectedSchoolId("");
                         }}
                         className="w-full border border-slate-300 rounded-lg p-2.5 text-xs bg-white focus:ring-1 focus:ring-blue-600 font-medium text-slate-800 cursor-pointer"
                     >
-                        <option value="ALL">Entire Region (All Zones, Woredas, & Schools)</option>
-                        <option value="ALL_ZONES">All Zones in Region (Zones Only)</option>
-                        <option value="SPECIFIC_ZONE">Target Specific Zone (Zone Only)</option>
-                        <option value="ALL_WOREDAS">All Woredas in Region (Woredas Only)</option>
+                        <option value="ALL">Entire Zone (All Woredas & Schools)</option>
+                        <option value="ALL_WOREDAS">All Woredas in Zone (Woredas Only)</option>
                         <option value="SPECIFIC_WOREDA">Target Specific Woreda (Woreda Only)</option>
-                        <option value="ALL_SCHOOLS">All Schools in Region (Schools Only)</option>
+                        <option value="ALL_SCHOOLS">All Schools in Zone (Schools Only)</option>
                         <option value="SPECIFIC_SCHOOL">Target Specific School (School Only)</option>
                     </select>
 
-                    {/* Drill-down: Specific Zone (Searchable) */}
-                    {targetType === "SPECIFIC_ZONE" && (
+                    {/* Drill-down: Specific Woreda (Searchable) */}
+                    {targetType === "SPECIFIC_WOREDA" && (
                         <div className="pt-2">
                             <label className="block text-xs font-semibold text-slate-700 mb-1">
-                                Select Zone <span className="text-rose-500">*</span>
+                                Select Woreda <span className="text-rose-500">*</span>
                             </label>
                             <SearchableSelect
-                                options={zoneOptions}
-                                value={selectedZoneId}
-                                onChange={(val) => setSelectedZoneId(val)}
-                                placeholder="-- Choose or Search Zone --"
-                                searchPlaceholder="Type zone name..."
+                                options={woredaOptions}
+                                value={selectedWoredaId}
+                                onChange={(val) => setSelectedWoredaId(val)}
+                                placeholder="-- Choose or Search Woreda --"
+                                searchPlaceholder="Type woreda name..."
                             />
                         </div>
                     )}
 
-                    {/* Drill-down: Specific Woreda (Searchable Cascade) */}
-                    {targetType === "SPECIFIC_WOREDA" && (
+                    {/* Drill-down: Specific School (Searchable Woreda -> School) */}
+                    {targetType === "SPECIFIC_SCHOOL" && (
                         <div className="pt-2 grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                             <div>
                                 <label className="block text-xs font-semibold text-slate-700 mb-1">
-                                    1. Select Zone <span className="text-rose-500">*</span>
-                                </label>
-                                <SearchableSelect
-                                    options={zoneOptions}
-                                    value={selectedZoneId}
-                                    onChange={(val) => {
-                                        setSelectedZoneId(val);
-                                        setSelectedWoredaId("");
-                                    }}
-                                    placeholder="-- Choose or Search Zone --"
-                                    searchPlaceholder="Type zone name..."
-                                />
-                            </div>
-
-                            <div>
-                                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                                    2. Select Woreda <span className="text-rose-500">*</span>
+                                    1. Select Woreda <span className="text-rose-500">*</span>
                                 </label>
                                 <SearchableSelect
                                     options={woredaOptions}
                                     value={selectedWoredaId}
-                                    disabled={!selectedZoneId}
-                                    onChange={(val) => setSelectedWoredaId(val)}
-                                    placeholder={selectedZoneId ? "-- Choose or Search Woreda --" : "-- Select Zone First --"}
-                                    searchPlaceholder="Type woreda name..."
-                                />
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Drill-down: Specific School (Searchable 3-Level Cascade) */}
-                    {targetType === "SPECIFIC_SCHOOL" && (
-                        <div className="pt-2 grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-                            <div>
-                                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                                    1. Select Zone <span className="text-rose-500">*</span>
-                                </label>
-                                <SearchableSelect
-                                    options={zoneOptions}
-                                    value={selectedZoneId}
-                                    onChange={(val) => {
-                                        setSelectedZoneId(val);
-                                        setSelectedWoredaId("");
-                                        setSelectedSchoolId("");
-                                    }}
-                                    placeholder="-- Search Zone --"
-                                    searchPlaceholder="Type zone name..."
-                                />
-                            </div>
-
-                            <div>
-                                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                                    2. Select Woreda <span className="text-rose-500">*</span>
-                                </label>
-                                <SearchableSelect
-                                    options={woredaOptions}
-                                    value={selectedWoredaId}
-                                    disabled={!selectedZoneId}
                                     onChange={(val) => {
                                         setSelectedWoredaId(val);
                                         setSelectedSchoolId("");
                                     }}
-                                    placeholder={selectedZoneId ? "-- Search Woreda --" : "-- Choose Zone First --"}
+                                    placeholder="-- Choose or Search Woreda --"
                                     searchPlaceholder="Type woreda name..."
                                 />
                             </div>
 
                             <div>
                                 <label className="block text-xs font-semibold text-slate-700 mb-1">
-                                    3. Select School <span className="text-rose-500">*</span>
+                                    2. Select School <span className="text-rose-500">*</span>
                                 </label>
                                 <SearchableSelect
                                     options={schoolOptions}
                                     value={selectedSchoolId}
                                     disabled={!selectedWoredaId}
                                     onChange={(val) => setSelectedSchoolId(val)}
-                                    placeholder={selectedWoredaId ? "-- Search School --" : "-- Choose Woreda First --"}
+                                    placeholder={selectedWoredaId ? "-- Choose or Search School --" : "-- Select Woreda First --"}
                                     searchPlaceholder="Type school name..."
                                 />
                             </div>
@@ -507,7 +412,7 @@ export default function RegionalAnnouncementPublishView({
                         required
                         value={title}
                         onChange={(e) => setTitle(e.target.value)}
-                        placeholder="e.g., Regional Education Assessment & Curriculum Directives"
+                        placeholder="e.g., Zonal Education Resource Allocation & Directives"
                         className="w-full border border-slate-300 rounded-lg p-2 text-xs focus:ring-1 focus:ring-blue-600 focus:outline-none font-medium"
                     />
                 </div>
@@ -554,7 +459,7 @@ export default function RegionalAnnouncementPublishView({
                                 type="button"
                                 onClick={() => fileInputRef.current?.click()}
                                 disabled={uploadingFile}
-                                className="inline-flex items-center gap-1.5 px-3 py-2 border border-slate-300 rounded-lg text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+                                className="inline-flex items-center gap-1.5 px-3 py-2 border border-slate-300 rounded-lg text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50 cursor-pointer"
                             >
                                 {uploadingFile ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <UploadCloud className="w-3.5 h-3.5 text-blue-600" />}
                                 <span>{uploadingFile ? "Uploading to storage..." : "Choose Image or PDF File"}</span>
@@ -577,7 +482,7 @@ export default function RegionalAnnouncementPublishView({
                                     setAttachmentUrl("");
                                     setAttachmentName("");
                                 }}
-                                className="text-slate-400 hover:text-rose-600 p-1"
+                                className="text-slate-400 hover:text-rose-600 p-1 cursor-pointer"
                                 title="Remove file"
                             >
                                 <X className="w-3.5 h-3.5" />
@@ -605,12 +510,12 @@ export default function RegionalAnnouncementPublishView({
                 <div className="flex items-start gap-2.5 p-3 rounded-xl border border-blue-100 bg-blue-50/50">
                     <input
                         type="checkbox"
-                        id="requireAckToggleRegional"
+                        id="requireAckToggleZone"
                         checked={isAcknowledgmentRequired}
                         onChange={(e) => setIsAcknowledgmentRequired(e.target.checked)}
                         className="mt-0.5 w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500 cursor-pointer"
                     />
-                    <label htmlFor="requireAckToggleRegional" className="text-xs font-bold text-slate-800 cursor-pointer select-none">
+                    <label htmlFor="requireAckToggleZone" className="text-xs font-bold text-slate-800 cursor-pointer select-none">
                         Track Delivery & Require Recipient Confirmation
                         <span className="block text-2xs font-normal text-slate-500 mt-0.5">
                             Recipients receive an interactive &quot;Confirm Receipt&quot; prompt, and live delivery status (Seen / Read / Confirmed) will appear on your announcement ledger.
@@ -662,7 +567,6 @@ export default function RegionalAnnouncementPublishView({
                                     setContent("");
                                     setAttachmentUrl("");
                                     setAttachmentName("");
-                                    setSelectedZoneId("");
                                     setSelectedWoredaId("");
                                     setSelectedSchoolId("");
                                 }}
