@@ -18,7 +18,12 @@ import {
     AlertCircle,
     CheckCircle2,
     ArrowUpDown,
-    CornerDownRight
+    CornerDownRight,
+    TrendingUp,
+    Award,
+    Activity,
+    UserCheck,
+    PieChart
 } from "lucide-react";
 import { fetchApi } from "../../lib/api";
 
@@ -56,8 +61,13 @@ interface ReportBreakdownRow {
     zonesCount?: number;
     woredasCount?: number;
     schoolsCount?: number;
+    maleStudents?: number;
+    femaleStudents?: number;
     studentsCount?: number;
+    maleTeachers?: number;
+    femaleTeachers?: number;
     teachersCount?: number;
+    ptr?: number | string;
     gradesCount?: number;
     sectionsCount?: number;
     status?: string;
@@ -94,9 +104,48 @@ interface EducationSummaryReportData {
         woredasCount: number;
         schoolsCount: number;
         totalStudents: number;
+        maleStudents: number;
+        femaleStudents: number;
         totalTeachers: number;
+        maleTeachers: number;
+        femaleTeachers: number;
+        pupilTeacherRatio: number | string;
+        genderParityIndex: number;
         gradesCount: number;
         sectionsCount: number;
+    };
+    analytics?: {
+        gender: {
+            maleStudents: number;
+            femaleStudents: number;
+            totalStudents: number;
+            femaleStudentPct: number;
+            genderParityIndex: number;
+            maleTeachers: number;
+            femaleTeachers: number;
+            totalTeachers: number;
+            femaleTeacherPct: number;
+        };
+        staffing: {
+            pupilTeacherRatio: number | string;
+            totalAssignments: number;
+            qualifications: {
+                doctorate: number;
+                masters: number;
+                bachelors: number;
+                diploma: number;
+                certificate: number;
+                other: number;
+            };
+        };
+        studentRetention: {
+            enrolled: number;
+            active: number;
+            transferred: number;
+            withdrawn: number;
+            droppedOut: number;
+            graduated: number;
+        };
     };
     breakdown: {
         level: "REGION" | "ZONE" | "WOREDA" | "SCHOOL" | "GRADE_SECTION";
@@ -126,7 +175,6 @@ export default function HierarchicalReportsView({
 
     const [scopeMode, setScopeMode] = useState<"CURRENT_AND_DESCENDANTS" | "CURRENT_ONLY">("CURRENT_AND_DESCENDANTS");
     const [selectedAcademicYearId, setSelectedAcademicYearId] = useState<string>("");
-    const [selectedReportType, setSelectedReportType] = useState<string>("EDUCATION_SUMMARY");
 
     // Report data & loading state
     const [reportData, setReportData] = useState<EducationSummaryReportData | null>(null);
@@ -181,8 +229,6 @@ export default function HierarchicalReportsView({
         const target = units.find(u => u.id === orgId);
         if (!target) return;
 
-        const unitMap = new Map(units.map(u => [u.id, u]));
-
         if (target.type === "FEDERAL") {
             setTargetLevelCategory("FEDERAL");
             setFilterRegionId("");
@@ -203,201 +249,252 @@ export default function HierarchicalReportsView({
             setFilterSchoolId("");
         } else if (target.type === "WOREDA") {
             setTargetLevelCategory("WOREDA");
-            const parentZone = target.parentId ? unitMap.get(target.parentId) : null;
+            const parentZone = units.find(u => u.id === target.parentId);
             setFilterRegionId(parentZone?.parentId || "");
             setFilterZoneId(target.parentId || "");
             setFilterWoredaId(target.id);
             setFilterSchoolId("");
         } else if (target.type === "SCHOOL") {
             setTargetLevelCategory("SCHOOL");
-            const parentWoreda = target.parentId ? unitMap.get(target.parentId) : null;
-            const parentZone = parentWoreda?.parentId ? unitMap.get(parentWoreda.parentId) : null;
-            setFilterRegionId(parentZone?.parentId || "");
-            setFilterZoneId(parentWoreda?.parentId || "");
+            const parentWor = units.find(u => u.id === target.parentId);
+            const parentZon = parentWor ? units.find(u => u.id === parentWor.parentId) : null;
+            setFilterRegionId(parentZon?.parentId || "");
+            setFilterZoneId(parentWor?.parentId || "");
             setFilterWoredaId(target.parentId || "");
             setFilterSchoolId(target.id);
         }
     };
 
-    // Load available scope and organizations on mount
+    // Initialize reporting scope
     useEffect(() => {
-        loadReportingScope();
+        let isMounted = true;
+
+        async function initScope() {
+            setLoadingScope(true);
+            setError(null);
+            try {
+                const res = await fetchApi("/hierarchical-reports/scope");
+                if (!res.ok) {
+                    const errJson = await res.json().catch(() => ({}));
+                    throw new Error(errJson.error || "Failed to fetch reporting scope");
+                }
+
+                const data = await res.json();
+                if (isMounted) {
+                    setAccessibleUnits(data.accessibleOrganizations || []);
+                    setAcademicYears(data.academicYears || []);
+                    if (data.userScope) {
+                        setUserScopeOrg({
+                            id: data.userScope.currentOrganizationId,
+                            name: data.userScope.currentOrganizationName,
+                            type: data.userScope.currentOrganizationType
+                        });
+
+                        const activeAy = data.academicYears?.find((y: any) => y.status === "ACTIVE");
+                        const defaultAyId = activeAy ? activeAy.id : "";
+                        setSelectedAcademicYearId(defaultAyId);
+
+                        const initialOrg = initialTargetOrgId || data.userScope.currentOrganizationId;
+                        setSelectedOrgId(initialOrg);
+                        syncFiltersFromOrgId(initialOrg, data.accessibleOrganizations);
+
+                        generateReport(initialOrg, "CURRENT_AND_DESCENDANTS", defaultAyId);
+                    }
+                }
+            } catch (err: any) {
+                if (isMounted) {
+                    setError(err.message || "Failed to initialize reporting scope.");
+                }
+            } finally {
+                if (isMounted) {
+                    setLoadingScope(false);
+                }
+            }
+        }
+
+        initScope();
+
+        return () => {
+            isMounted = false;
+        };
     }, []);
 
-    const loadReportingScope = async () => {
-        setLoadingScope(true);
-        setError(null);
-        try {
-            const res = await fetchApi("/hierarchical-reports/scope");
-            if (!res.ok) {
-                const errData = await res.json().catch(() => ({}));
-                throw new Error(errData.message || "Failed to load reporting scope.");
-            }
-            const payload = await res.json();
-            const data = payload.data;
-            const units: AccessibleUnit[] = data.accessibleOrganizations || [];
-            setAccessibleUnits(units);
-            setAcademicYears(data.academicYears || []);
-            
-            const userScope = {
-                id: data.userScope.currentOrganizationId,
-                name: data.userScope.currentOrganizationName,
-                type: data.userScope.currentOrganizationType
-            };
-            setUserScopeOrg(userScope);
-            setTargetLevelCategory(userScope.type);
-
-            // Set initial selected organization
-            const targetId = initialTargetOrgId || userScope.id;
-            setSelectedOrgId(targetId);
-            syncFiltersFromOrgId(targetId, units);
-
-            // Trigger initial report generation
-            generateReport(targetId, scopeMode, selectedAcademicYearId);
-        } catch (err: any) {
-            setError(err.message || "Failed to initialize reporting scope.");
-        } finally {
-            setLoadingScope(false);
-        }
-    };
-
+    // Generate report
     const generateReport = async (
-        orgId: string = selectedOrgId,
-        mode: "CURRENT_AND_DESCENDANTS" | "CURRENT_ONLY" = scopeMode,
-        ayId: string = selectedAcademicYearId
+        targetOrgIdToUse?: string,
+        scopeModeToUse?: "CURRENT_AND_DESCENDANTS" | "CURRENT_ONLY",
+        ayIdToUse?: string
     ) => {
-        if (!orgId && !userScopeOrg?.id) return;
+        const orgId = targetOrgIdToUse || selectedOrgId;
+        const mode = scopeModeToUse || scopeMode;
+        const ayId = ayIdToUse !== undefined ? ayIdToUse : selectedAcademicYearId;
+
+        if (!orgId) return;
+
         setGenerating(true);
         setError(null);
 
-        const targetId = orgId || userScopeOrg?.id || "";
-
         try {
             const queryParams = new URLSearchParams();
-            if (targetId) queryParams.set("targetOrganizationId", targetId);
+            queryParams.set("targetOrganizationId", orgId);
             queryParams.set("scopeMode", mode);
-            if (ayId) queryParams.set("academicYearId", ayId);
+            if (ayId) {
+                queryParams.set("academicYearId", ayId);
+            }
 
             const res = await fetchApi(`/hierarchical-reports/education-summary?${queryParams.toString()}`);
             if (!res.ok) {
-                const errData = await res.json().catch(() => ({}));
-                throw new Error(errData.message || "Failed to generate Education Summary report.");
+                const errJson = await res.json().catch(() => ({}));
+                throw new Error(errJson.error || "Failed to generate report.");
             }
-            const payload = await res.json();
-            setReportData(payload.data);
+
+            const data: EducationSummaryReportData = await res.json();
+            setReportData(data);
+            setSelectedOrgId(data.targetOrganization.id);
+            syncFiltersFromOrgId(data.targetOrganization.id);
         } catch (err: any) {
-            setError(err.message || "An error occurred while generating report data.");
+            setError(err.message || "Error generating report.");
         } finally {
             setGenerating(false);
         }
     };
 
-    // Trigger report download (CSV or Excel)
+    // Handle Drill-down navigation by clicking on table row
+    const handleDrillDownRow = (rowOrgId: string) => {
+        if (!rowOrgId) return;
+        setSelectedOrgId(rowOrgId);
+        syncFiltersFromOrgId(rowOrgId);
+        generateReport(rowOrgId, scopeMode, selectedAcademicYearId);
+    };
+
+    // Handle exports
     const handleExport = async (format: "csv" | "excel") => {
         if (!reportData) return;
-        const setExporting = format === "csv" ? setExportingCsv : setExportingExcel;
-        setExporting(true);
+
+        if (format === "csv") setExportingCsv(true);
+        else setExportingExcel(true);
 
         try {
             const queryParams = new URLSearchParams();
             queryParams.set("targetOrganizationId", reportData.targetOrganization.id);
             queryParams.set("scopeMode", reportData.scopeMode);
+            queryParams.set("format", format);
             if (reportData.academicYear?.id) {
                 queryParams.set("academicYearId", reportData.academicYear.id);
             }
-            queryParams.set("format", format);
 
             const downloadUrl = `/api/hierarchical-reports/education-summary/export?${queryParams.toString()}`;
-            
-            // Trigger browser direct download
-            const link = document.createElement("a");
-            link.href = downloadUrl;
-            link.setAttribute("download", `Education_Summary_${format}.${format === "excel" ? "xlsx" : "csv"}`);
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
+            window.open(downloadUrl, "_blank");
         } catch (err: any) {
-            alert(`Export failed: ${err.message || "Could not download report file."}`);
+            setError(`Export failed: ${err.message}`);
         } finally {
-            setExporting(false);
+            setExportingCsv(false);
+            setExportingExcel(false);
         }
     };
 
-    // Helper for tier badges
-    const getTierBadge = (type: string) => {
-        switch (type) {
-            case "FEDERAL":
-                return <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-indigo-100 text-indigo-800 border border-indigo-200">Federal</span>;
-            case "REGION":
-                return <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-blue-100 text-blue-800 border border-blue-200">Region</span>;
-            case "ZONE":
-                return <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-emerald-100 text-emerald-800 border border-emerald-200">Zone</span>;
-            case "WOREDA":
-                return <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-amber-100 text-amber-800 border border-amber-200">Woreda</span>;
-            case "SCHOOL":
-                return <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-purple-100 text-purple-800 border border-purple-200">School</span>;
-            default:
-                return <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-slate-100 text-slate-700">{type}</span>;
-        }
-    };
-
-    // Filtered & Sorted Breakdown Table Rows
-    const filteredBreakdownRows = useMemo(() => {
-        if (!reportData?.breakdown?.rows) return [];
-        let rows = [...reportData.breakdown.rows];
-
-        // Search filter
-        if (tableSearch.trim()) {
-            const query = tableSearch.toLowerCase();
-            rows = rows.filter(r => (r.name || r.gradeName || "").toLowerCase().includes(query));
-        }
-
-        // Sorting
-        rows.sort((a, b) => {
-            const valA = a[sortColumn];
-            const valB = b[sortColumn];
-
-            if (typeof valA === "number" && typeof valB === "number") {
-                return sortDirection === "asc" ? valA - valB : valB - valA;
-            }
-            const strA = String(valA || "").toLowerCase();
-            const strB = String(valB || "").toLowerCase();
-            return sortDirection === "asc" ? strA.localeCompare(strB) : strB.localeCompare(strA);
-        });
-
-        return rows;
-    }, [reportData, tableSearch, sortColumn, sortDirection]);
-
-    const handleSort = (colKey: string) => {
-        if (sortColumn === colKey) {
+    // Sort handler
+    const handleSort = (columnKey: string) => {
+        if (sortColumn === columnKey) {
             setSortDirection(prev => (prev === "asc" ? "desc" : "asc"));
         } else {
-            setSortColumn(colKey);
+            setSortColumn(columnKey);
             setSortDirection("asc");
         }
     };
 
-    // Drill down into child unit directly from table row click
-    const handleDrillDownRow = (rowUnitId: string) => {
-        if (!rowUnitId || rowUnitId === reportData?.targetOrganization.id) return;
-        syncFiltersFromOrgId(rowUnitId);
-        setSelectedOrgId(rowUnitId);
-        generateReport(rowUnitId, scopeMode, selectedAcademicYearId);
+    // Filter and Sort rows
+    const filteredBreakdownRows = useMemo(() => {
+        if (!reportData?.breakdown?.rows) return [];
+
+        let result = [...reportData.breakdown.rows];
+
+        if (tableSearch.trim()) {
+            const term = tableSearch.toLowerCase().trim();
+            result = result.filter(row => {
+                return (
+                    row.name?.toLowerCase().includes(term) ||
+                    row.status?.toLowerCase().includes(term) ||
+                    row.gradeName?.toLowerCase().includes(term)
+                );
+            });
+        }
+
+        result.sort((a, b) => {
+            let valA = a[sortColumn];
+            let valB = b[sortColumn];
+
+            if (valA === undefined || valA === null) valA = "";
+            if (valB === undefined || valB === null) valB = "";
+
+            if (typeof valA === "number" && typeof valB === "number") {
+                return sortDirection === "asc" ? valA - valB : valB - valA;
+            }
+
+            return sortDirection === "asc"
+                ? String(valA).localeCompare(String(valB))
+                : String(valB).localeCompare(String(valA));
+        });
+
+        return result;
+    }, [reportData, tableSearch, sortColumn, sortDirection]);
+
+    // Calculate column totals for breakdown table
+    const tableTotals = useMemo(() => {
+        if (!reportData?.breakdown?.rows) return null;
+        const sums: Record<string, number> = {};
+
+        for (const col of reportData.breakdown.columns) {
+            if (col.isNumeric && col.key !== "ptr") {
+                let total = 0;
+                for (const row of reportData.breakdown.rows) {
+                    const v = row[col.key];
+                    if (typeof v === "number") total += v;
+                }
+                sums[col.key] = total;
+            }
+        }
+
+        const totalStudents = sums["studentsCount"] || 0;
+        const totalTeachers = sums["teachersCount"] || 0;
+        sums["ptr"] = totalTeachers > 0 ? Number((totalStudents / totalTeachers).toFixed(1)) : totalStudents;
+
+        return sums;
+    }, [reportData]);
+
+    const getTierBadge = (type: string) => {
+        switch (type) {
+            case "FEDERAL":
+                return <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-800 border border-blue-200">FEDERAL</span>;
+            case "REGION":
+                return <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800 border border-emerald-200">REGION</span>;
+            case "ZONE":
+                return <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-purple-100 text-purple-800 border border-purple-200">ZONE</span>;
+            case "WOREDA":
+                return <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-800 border border-amber-200">WOREDA</span>;
+            case "SCHOOL":
+                return <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-teal-100 text-teal-800 border border-teal-200">SCHOOL</span>;
+            default:
+                return <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-slate-100 text-slate-700">{type}</span>;
+        }
     };
 
     return (
-        <div className="space-y-6 font-sans">
-            {/* Top Title & Quick Action Bar */}
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 bg-gradient-to-r from-[#0d233a] to-[#1a3a5f] p-6 rounded-2xl shadow-md text-white">
-                <div className="space-y-1">
+        <div className="space-y-6">
+            {/* Header / Hero Banner */}
+            <div className="bg-gradient-to-r from-slate-900 via-blue-950 to-indigo-950 rounded-2xl p-6 text-white shadow-lg flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div className="space-y-1.5">
                     <div className="flex items-center gap-2">
-                        <FileSpreadsheet className="w-6 h-6 text-blue-300" />
-                        <h1 className="text-xl md:text-2xl font-bold tracking-tight">
+                        <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold tracking-wide uppercase bg-blue-500/20 text-blue-300 border border-blue-400/30">
                             Hierarchical Reports & Analytics
-                        </h1>
+                        </span>
+                        <span className="text-xs text-slate-400">• Authoritative Live Intelligence</span>
                     </div>
-                    <p className="text-xs md:text-sm text-blue-100/80">
-                        Authoritative education data aggregation & multi-format export across the national hierarchy
+                    <h1 className="text-xl sm:text-2xl font-bold tracking-tight">
+                        Education Summary & Disaggregated Analytics
+                    </h1>
+                    <p className="text-xs text-slate-300 max-w-2xl leading-relaxed">
+                        Cross-hierarchy statistical rollups including student/teacher gender disaggregation, pupil-teacher ratios, qualifications, and retention profiles.
                     </p>
                 </div>
 
@@ -423,19 +520,18 @@ export default function HierarchicalReportsView({
                 </div>
             </div>
 
-            {/* Simple Filters Card */}
+            {/* Filters Card */}
             <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-5 space-y-4">
                 <div className="flex items-center justify-between pb-3 border-b border-slate-100">
                     <div className="flex items-center gap-2 text-slate-800 font-semibold text-sm">
                         <Filter className="w-4 h-4 text-blue-600" />
-                        <span>Report Configuration & Filters</span>
+                        <span>Report Configuration & Administrative Scope</span>
                     </div>
                     <span className="text-xs text-slate-400">Enforcing HierarchyScopeService</span>
                 </div>
 
-                {/* Level / Audience Selector & Cascading Filters */}
+                {/* Level Selector & Cascading Filters */}
                 <div className="space-y-3">
-                    {/* 1. Target Level Selection */}
                     <div className="space-y-1.5">
                         <label className="text-xs font-semibold text-slate-700">Target Level / Scope *</label>
                         <select
@@ -490,10 +586,8 @@ export default function HierarchicalReportsView({
                         </select>
                     </div>
 
-                    {/* 2. Cascading Child Selectors Grid */}
                     {targetLevelCategory !== "FEDERAL" && (
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 bg-slate-50/80 p-3.5 rounded-xl border border-slate-200">
-                            {/* Region Dropdown (If user is Federal and selected tier is Region, Zone, Woreda, or School) */}
                             {userScopeOrg?.type === "FEDERAL" && (
                                 <div className="space-y-1">
                                     <label className="text-[11px] font-semibold text-slate-600">1. Select Region *</label>
@@ -515,15 +609,12 @@ export default function HierarchicalReportsView({
                                     >
                                         <option value="">-- Choose Region --</option>
                                         {regionsList.map(r => (
-                                            <option key={r.id} value={r.id}>
-                                                {r.name}
-                                            </option>
+                                            <option key={r.id} value={r.id}>{r.name}</option>
                                         ))}
                                     </select>
                                 </div>
                             )}
 
-                            {/* Zone Dropdown (If tier is Zone, Woreda, or School) */}
                             {(targetLevelCategory === "ZONE" || targetLevelCategory === "WOREDA" || targetLevelCategory === "SCHOOL") &&
                                 (userScopeOrg?.type === "FEDERAL" || userScopeOrg?.type === "REGION") && (
                                 <div className="space-y-1">
@@ -546,29 +637,20 @@ export default function HierarchicalReportsView({
                                         className="w-full text-xs bg-white border border-slate-300 rounded-lg px-2.5 py-2 text-slate-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all disabled:bg-slate-100 disabled:text-slate-400"
                                     >
                                         <option value="">
-                                            {userScopeOrg?.type === "FEDERAL" && !filterRegionId
-                                                ? "-- Choose Region First --"
-                                                : "-- Choose Zone --"}
+                                            {userScopeOrg?.type === "FEDERAL" && !filterRegionId ? "-- Choose Region First --" : "-- Choose Zone --"}
                                         </option>
                                         {zonesList.map(z => (
-                                            <option key={z.id} value={z.id}>
-                                                {z.name}
-                                            </option>
+                                            <option key={z.id} value={z.id}>{z.name}</option>
                                         ))}
                                     </select>
                                 </div>
                             )}
 
-                            {/* Woreda Dropdown (If tier is Woreda or School) */}
                             {(targetLevelCategory === "WOREDA" || targetLevelCategory === "SCHOOL") &&
                                 (userScopeOrg?.type === "FEDERAL" || userScopeOrg?.type === "REGION" || userScopeOrg?.type === "ZONE") && (
                                 <div className="space-y-1">
                                     <label className="text-[11px] font-semibold text-slate-600">
-                                        {userScopeOrg?.type === "FEDERAL"
-                                            ? "3. Select Woreda *"
-                                            : userScopeOrg?.type === "REGION"
-                                            ? "2. Select Woreda *"
-                                            : "1. Select Woreda *"}
+                                        {userScopeOrg?.type === "FEDERAL" ? "3. Select Woreda *" : userScopeOrg?.type === "REGION" ? "2. Select Woreda *" : "1. Select Woreda *"}
                                     </label>
                                     <select
                                         value={filterWoredaId}
@@ -590,28 +672,19 @@ export default function HierarchicalReportsView({
                                         className="w-full text-xs bg-white border border-slate-300 rounded-lg px-2.5 py-2 text-slate-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all disabled:bg-slate-100 disabled:text-slate-400"
                                     >
                                         <option value="">
-                                            {(!filterZoneId && (userScopeOrg?.type === "FEDERAL" || userScopeOrg?.type === "REGION"))
-                                                ? "-- Choose Zone First --"
-                                                : "-- Choose Woreda --"}
+                                            {(!filterZoneId && (userScopeOrg?.type === "FEDERAL" || userScopeOrg?.type === "REGION")) ? "-- Choose Zone First --" : "-- Choose Woreda --"}
                                         </option>
                                         {woredasList.map(w => (
-                                            <option key={w.id} value={w.id}>
-                                                {w.name}
-                                            </option>
+                                            <option key={w.id} value={w.id}>{w.name}</option>
                                         ))}
                                     </select>
                                 </div>
                             )}
 
-                            {/* School Dropdown (If tier is School) */}
                             {targetLevelCategory === "SCHOOL" && userScopeOrg?.type !== "SCHOOL" && (
                                 <div className="space-y-1">
                                     <label className="text-[11px] font-semibold text-slate-600">
-                                        {userScopeOrg?.type === "FEDERAL"
-                                            ? "4. Select School *"
-                                            : userScopeOrg?.type === "REGION"
-                                            ? "3. Select School *"
-                                            : "2. Select School *"}
+                                        {userScopeOrg?.type === "FEDERAL" ? "4. Select School *" : userScopeOrg?.type === "REGION" ? "3. Select School *" : "2. Select School *"}
                                     </label>
                                     <select
                                         value={filterSchoolId}
@@ -630,9 +703,7 @@ export default function HierarchicalReportsView({
                                             {!filterWoredaId ? "-- Choose Woreda First --" : "-- Choose School --"}
                                         </option>
                                         {schoolsList.map(s => (
-                                            <option key={s.id} value={s.id}>
-                                                {s.name}
-                                            </option>
+                                            <option key={s.id} value={s.id}>{s.name}</option>
                                         ))}
                                     </select>
                                 </div>
@@ -642,7 +713,6 @@ export default function HierarchicalReportsView({
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
-                    {/* Scope Depth Mode */}
                     <div className="space-y-1.5">
                         <label className="text-xs font-semibold text-slate-700">Hierarchy Depth</label>
                         <select
@@ -656,7 +726,6 @@ export default function HierarchicalReportsView({
                         </select>
                     </div>
 
-                    {/* Academic Year */}
                     <div className="space-y-1.5">
                         <label className="text-xs font-semibold text-slate-700">Academic Year (Optional)</label>
                         <select
@@ -675,7 +744,6 @@ export default function HierarchicalReportsView({
                     </div>
                 </div>
 
-                {/* Report Type & Generate Button Row */}
                 <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-2">
                     <div className="flex items-center gap-2">
                         <span className="text-xs font-semibold text-slate-600">Report Type:</span>
@@ -695,7 +763,6 @@ export default function HierarchicalReportsView({
                 </div>
             </div>
 
-            {/* Error Message */}
             {error && (
                 <div className="bg-red-50 border border-red-200 rounded-2xl p-4 flex items-start gap-3 text-red-800 text-xs">
                     <AlertCircle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
@@ -706,19 +773,17 @@ export default function HierarchicalReportsView({
                 </div>
             )}
 
-            {/* Loading Skeleton */}
             {generating && !reportData && (
                 <div className="bg-white rounded-2xl border border-slate-200 p-8 text-center space-y-3">
                     <RefreshCw className="w-8 h-8 text-blue-600 animate-spin mx-auto" />
                     <p className="text-sm font-semibold text-slate-800">Aggregating live data across authorized hierarchy...</p>
-                    <p className="text-xs text-slate-500">Querying live schools, students, teachers, and units...</p>
+                    <p className="text-xs text-slate-500">Querying live schools, student genders, teachers, and units...</p>
                 </div>
             )}
 
-            {/* Generated Report Content */}
             {reportData && (
                 <div className="space-y-6">
-                    {/* Breadcrumbs & Organization Context Banner */}
+                    {/* Lineage & Scope Banner */}
                     <div className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 shadow-sm space-y-3">
                         <div className="flex flex-wrap items-center gap-1.5 text-xs text-slate-500">
                             <span className="font-medium text-slate-700">Hierarchy Lineage:</span>
@@ -765,47 +830,61 @@ export default function HierarchicalReportsView({
                         </div>
                     </div>
 
-                    {/* Summary Metrics Cards */}
+                    {/* Enhanced Executive KPI Cards */}
                     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
-                        {reportData.metrics.regionsCount > 0 && (
-                            <div className="bg-white rounded-2xl border border-slate-200/80 p-4 shadow-sm space-y-1">
-                                <div className="flex items-center justify-between text-slate-500">
-                                    <span className="text-[11px] font-semibold uppercase tracking-wider">Regions</span>
-                                    <Layers className="w-4 h-4 text-blue-600" />
-                                </div>
-                                <p className="text-xl sm:text-2xl font-bold text-slate-900">
-                                    {reportData.metrics.regionsCount.toLocaleString()}
-                                </p>
-                                <p className="text-[10px] text-slate-400">Regional Bureaus</p>
+                        {/* Students Card with M/F split */}
+                        <div className="bg-white rounded-2xl border border-slate-200/80 p-4 shadow-sm space-y-1">
+                            <div className="flex items-center justify-between text-slate-500">
+                                <span className="text-[11px] font-semibold uppercase tracking-wider">Students</span>
+                                <GraduationCap className="w-4 h-4 text-indigo-600" />
                             </div>
-                        )}
+                            <p className="text-xl sm:text-2xl font-bold text-slate-900">
+                                {reportData.metrics.totalStudents.toLocaleString()}
+                            </p>
+                            <p className="text-[10px] text-slate-500 font-medium">
+                                ♂ {reportData.metrics.maleStudents.toLocaleString()} • ♀ {reportData.metrics.femaleStudents.toLocaleString()}
+                            </p>
+                        </div>
 
-                        {reportData.metrics.zonesCount > 0 && (
-                            <div className="bg-white rounded-2xl border border-slate-200/80 p-4 shadow-sm space-y-1">
-                                <div className="flex items-center justify-between text-slate-500">
-                                    <span className="text-[11px] font-semibold uppercase tracking-wider">Zones</span>
-                                    <Building2 className="w-4 h-4 text-emerald-600" />
-                                </div>
-                                <p className="text-xl sm:text-2xl font-bold text-slate-900">
-                                    {reportData.metrics.zonesCount.toLocaleString()}
-                                </p>
-                                <p className="text-[10px] text-slate-400">Administrative Zones</p>
+                        {/* Teachers Card with M/F split */}
+                        <div className="bg-white rounded-2xl border border-slate-200/80 p-4 shadow-sm space-y-1">
+                            <div className="flex items-center justify-between text-slate-500">
+                                <span className="text-[11px] font-semibold uppercase tracking-wider">Teachers</span>
+                                <Users className="w-4 h-4 text-teal-600" />
                             </div>
-                        )}
+                            <p className="text-xl sm:text-2xl font-bold text-slate-900">
+                                {reportData.metrics.totalTeachers.toLocaleString()}
+                            </p>
+                            <p className="text-[10px] text-slate-500 font-medium">
+                                ♂ {reportData.metrics.maleTeachers.toLocaleString()} • ♀ {reportData.metrics.femaleTeachers.toLocaleString()}
+                            </p>
+                        </div>
 
-                        {reportData.metrics.woredasCount > 0 && (
-                            <div className="bg-white rounded-2xl border border-slate-200/80 p-4 shadow-sm space-y-1">
-                                <div className="flex items-center justify-between text-slate-500">
-                                    <span className="text-[11px] font-semibold uppercase tracking-wider">Woredas</span>
-                                    <MapPin className="w-4 h-4 text-amber-600" />
-                                </div>
-                                <p className="text-xl sm:text-2xl font-bold text-slate-900">
-                                    {reportData.metrics.woredasCount.toLocaleString()}
-                                </p>
-                                <p className="text-[10px] text-slate-400">Woreda Offices</p>
+                        {/* Pupil-Teacher Ratio (PTR) */}
+                        <div className="bg-white rounded-2xl border border-slate-200/80 p-4 shadow-sm space-y-1">
+                            <div className="flex items-center justify-between text-slate-500">
+                                <span className="text-[11px] font-semibold uppercase tracking-wider">PTR</span>
+                                <TrendingUp className="w-4 h-4 text-amber-600" />
                             </div>
-                        )}
+                            <p className="text-xl sm:text-2xl font-bold text-amber-600">
+                                {reportData.metrics.pupilTeacherRatio}:1
+                            </p>
+                            <p className="text-[10px] text-slate-400">Pupil-Teacher Ratio</p>
+                        </div>
 
+                        {/* Gender Parity Index (GPI) */}
+                        <div className="bg-white rounded-2xl border border-slate-200/80 p-4 shadow-sm space-y-1">
+                            <div className="flex items-center justify-between text-slate-500">
+                                <span className="text-[11px] font-semibold uppercase tracking-wider">GPI</span>
+                                <UserCheck className="w-4 h-4 text-rose-600" />
+                            </div>
+                            <p className="text-xl sm:text-2xl font-bold text-rose-600">
+                                {reportData.metrics.genderParityIndex}
+                            </p>
+                            <p className="text-[10px] text-slate-400">Gender Parity (F/M)</p>
+                        </div>
+
+                        {/* Operating Schools */}
                         <div className="bg-white rounded-2xl border border-slate-200/80 p-4 shadow-sm space-y-1">
                             <div className="flex items-center justify-between text-slate-500">
                                 <span className="text-[11px] font-semibold uppercase tracking-wider">Schools</span>
@@ -817,40 +896,25 @@ export default function HierarchicalReportsView({
                             <p className="text-[10px] text-slate-400">Operating Schools</p>
                         </div>
 
+                        {/* Administrative Hierarchy Units */}
                         <div className="bg-white rounded-2xl border border-slate-200/80 p-4 shadow-sm space-y-1">
                             <div className="flex items-center justify-between text-slate-500">
-                                <span className="text-[11px] font-semibold uppercase tracking-wider">Students</span>
-                                <GraduationCap className="w-4 h-4 text-indigo-600" />
+                                <span className="text-[11px] font-semibold uppercase tracking-wider">Units</span>
+                                <Layers className="w-4 h-4 text-blue-600" />
                             </div>
                             <p className="text-xl sm:text-2xl font-bold text-slate-900">
-                                {reportData.metrics.totalStudents.toLocaleString()}
+                                {(
+                                    reportData.metrics.regionsCount +
+                                    reportData.metrics.zonesCount +
+                                    reportData.metrics.woredasCount
+                                ).toLocaleString()}
                             </p>
-                            <p className="text-[10px] text-slate-400">Enrolled Students</p>
-                        </div>
-
-                        <div className="bg-white rounded-2xl border border-slate-200/80 p-4 shadow-sm space-y-1">
-                            <div className="flex items-center justify-between text-slate-500">
-                                <span className="text-[11px] font-semibold uppercase tracking-wider">Teachers</span>
-                                <Users className="w-4 h-4 text-teal-600" />
-                            </div>
-                            <p className="text-xl sm:text-2xl font-bold text-slate-900">
-                                {reportData.metrics.totalTeachers.toLocaleString()}
+                            <p className="text-[10px] text-slate-400">
+                                {reportData.metrics.regionsCount > 0 ? `${reportData.metrics.regionsCount} Reg ` : ""}
+                                {reportData.metrics.zonesCount > 0 ? `${reportData.metrics.zonesCount} Zon ` : ""}
+                                {reportData.metrics.woredasCount > 0 ? `${reportData.metrics.woredasCount} Wor` : ""}
                             </p>
-                            <p className="text-[10px] text-slate-400">Appointed Teachers</p>
                         </div>
-
-                        {reportData.metrics.gradesCount > 0 && (
-                            <div className="bg-white rounded-2xl border border-slate-200/80 p-4 shadow-sm space-y-1">
-                                <div className="flex items-center justify-between text-slate-500">
-                                    <span className="text-[11px] font-semibold uppercase tracking-wider">Grades</span>
-                                    <BookOpen className="w-4 h-4 text-rose-600" />
-                                </div>
-                                <p className="text-xl sm:text-2xl font-bold text-slate-900">
-                                    {reportData.metrics.gradesCount.toLocaleString()}
-                                </p>
-                                <p className="text-[10px] text-slate-400">Academic Grades</p>
-                            </div>
-                        )}
                     </div>
 
                     {/* Breakdown Data Table */}
@@ -863,7 +927,6 @@ export default function HierarchicalReportsView({
                                 </p>
                             </div>
 
-                            {/* Table Search Input */}
                             <div className="relative w-full sm:w-64">
                                 <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
                                 <input
@@ -903,7 +966,7 @@ export default function HierarchicalReportsView({
                                                 </div>
                                             </th>
                                         ))}
-                                        <th className="px-4 py-3 text-center w-24">Action</th>
+                                        <th className="px-4 py-3 text-center w-20">Action</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-100 text-slate-800">
@@ -937,7 +1000,7 @@ export default function HierarchicalReportsView({
                                                             }`}
                                                         >
                                                             {col.isNumeric && typeof cellVal === "number"
-                                                                ? cellVal.toLocaleString()
+                                                                ? col.key === "ptr" ? cellVal.toFixed(1) : cellVal.toLocaleString()
                                                                 : cellVal !== undefined && cellVal !== null
                                                                 ? String(cellVal)
                                                                 : "—"}
@@ -964,9 +1027,173 @@ export default function HierarchicalReportsView({
                                         ))
                                     )}
                                 </tbody>
+
+                                {/* Aggregate Totals Footer */}
+                                {tableTotals && filteredBreakdownRows.length > 0 && (
+                                    <tfoot>
+                                        <tr className="bg-slate-100/90 font-bold border-t-2 border-slate-300 text-slate-900">
+                                            {reportData.breakdown.columns.map((col, colIdx) => (
+                                                <td
+                                                    key={col.key}
+                                                    className={`px-4 py-3 ${
+                                                        colIdx === 0
+                                                            ? "text-left text-blue-900"
+                                                            : col.align === "right"
+                                                            ? "text-right text-blue-700 font-bold"
+                                                            : "text-center"
+                                                    }`}
+                                                >
+                                                    {colIdx === 0
+                                                        ? "TOTAL / HIERARCHY AGGREGATE"
+                                                        : col.isNumeric && tableTotals[col.key] !== undefined
+                                                        ? col.key === "ptr" ? `${tableTotals[col.key]}` : tableTotals[col.key].toLocaleString()
+                                                        : ""}
+                                                </td>
+                                            ))}
+                                            <td className="px-4 py-3 text-center text-slate-400 text-[10px]">Total</td>
+                                        </tr>
+                                    </tfoot>
+                                )}
                             </table>
                         </div>
                     </div>
+
+                    {/* Dedicated Analytical Breakdowns Section */}
+                    {reportData.analytics && (
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                            {/* Card 1: Gender & Demographic Balance */}
+                            <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-sm space-y-4">
+                                <div className="flex items-center gap-2 pb-2 border-b border-slate-100">
+                                    <PieChart className="w-4 h-4 text-indigo-600" />
+                                    <h4 className="text-sm font-bold text-slate-900">Gender & Demographic Balance</h4>
+                                </div>
+
+                                <div className="space-y-4">
+                                    {/* Students Gender Split */}
+                                    <div className="space-y-1.5">
+                                        <div className="flex justify-between text-xs">
+                                            <span className="font-semibold text-slate-700">Student Enrollment</span>
+                                            <span className="text-slate-500">
+                                                ♀ {reportData.analytics.gender.femaleStudentPct}% Female
+                                            </span>
+                                        </div>
+                                        <div className="h-3 bg-slate-100 rounded-full overflow-hidden flex">
+                                            <div
+                                                className="bg-blue-600 transition-all duration-500"
+                                                style={{ width: `${100 - reportData.analytics.gender.femaleStudentPct}%` }}
+                                                title={`Male: ${reportData.analytics.gender.maleStudents}`}
+                                            />
+                                            <div
+                                                className="bg-rose-500 transition-all duration-500"
+                                                style={{ width: `${reportData.analytics.gender.femaleStudentPct}%` }}
+                                                title={`Female: ${reportData.analytics.gender.femaleStudents}`}
+                                            />
+                                        </div>
+                                        <div className="flex justify-between text-[11px] text-slate-500">
+                                            <span>♂ Male: {reportData.analytics.gender.maleStudents.toLocaleString()}</span>
+                                            <span>♀ Female: {reportData.analytics.gender.femaleStudents.toLocaleString()}</span>
+                                        </div>
+                                    </div>
+
+                                    {/* Teachers Gender Split */}
+                                    <div className="space-y-1.5 pt-2 border-t border-slate-100">
+                                        <div className="flex justify-between text-xs">
+                                            <span className="font-semibold text-slate-700">Teaching Faculty</span>
+                                            <span className="text-slate-500">
+                                                ♀ {reportData.analytics.gender.femaleTeacherPct}% Female
+                                            </span>
+                                        </div>
+                                        <div className="h-3 bg-slate-100 rounded-full overflow-hidden flex">
+                                            <div
+                                                className="bg-teal-600 transition-all duration-500"
+                                                style={{ width: `${100 - reportData.analytics.gender.femaleTeacherPct}%` }}
+                                                title={`Male: ${reportData.analytics.gender.maleTeachers}`}
+                                            />
+                                            <div
+                                                className="bg-amber-500 transition-all duration-500"
+                                                style={{ width: `${reportData.analytics.gender.femaleTeacherPct}%` }}
+                                                title={`Female: ${reportData.analytics.gender.femaleTeachers}`}
+                                            />
+                                        </div>
+                                        <div className="flex justify-between text-[11px] text-slate-500">
+                                            <span>♂ Male: {reportData.analytics.gender.maleTeachers.toLocaleString()}</span>
+                                            <span>♀ Female: {reportData.analytics.gender.femaleTeachers.toLocaleString()}</span>
+                                        </div>
+                                    </div>
+
+                                    <div className="bg-slate-50 rounded-xl p-3 flex justify-between items-center text-xs">
+                                        <span className="font-medium text-slate-600">Gender Parity Index (GPI)</span>
+                                        <span className="font-bold text-slate-900 bg-white px-2.5 py-1 rounded-lg border border-slate-200 shadow-2xs">
+                                            {reportData.analytics.gender.genderParityIndex}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Card 2: Teacher Qualifications & Workforce Profile */}
+                            <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-sm space-y-4">
+                                <div className="flex items-center gap-2 pb-2 border-b border-slate-100">
+                                    <Award className="w-4 h-4 text-teal-600" />
+                                    <h4 className="text-sm font-bold text-slate-900">Faculty Qualifications Profile</h4>
+                                </div>
+
+                                <div className="space-y-2.5 text-xs">
+                                    {[
+                                        { label: "Doctorate (PhD)", count: reportData.analytics.staffing.qualifications.doctorate, color: "bg-purple-600" },
+                                        { label: "Master's Degree (MA/MSc)", count: reportData.analytics.staffing.qualifications.masters, color: "bg-indigo-600" },
+                                        { label: "Bachelor's Degree (BA/BSc)", count: reportData.analytics.staffing.qualifications.bachelors, color: "bg-teal-600" },
+                                        { label: "Diploma (10+3 / 12+2)", count: reportData.analytics.staffing.qualifications.diploma, color: "bg-amber-600" },
+                                        { label: "Certificate / Other", count: reportData.analytics.staffing.qualifications.certificate + reportData.analytics.staffing.qualifications.other, color: "bg-slate-500" }
+                                    ].map(item => {
+                                        const total = reportData.metrics.totalTeachers || 1;
+                                        const pct = ((item.count / total) * 100).toFixed(1);
+                                        return (
+                                            <div key={item.label} className="space-y-1">
+                                                <div className="flex justify-between items-center">
+                                                    <span className="text-slate-600 font-medium">{item.label}</span>
+                                                    <span className="font-semibold text-slate-900">
+                                                        {item.count} <span className="text-slate-400 font-normal">({pct}%)</span>
+                                                    </span>
+                                                </div>
+                                                <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                                                    <div className={`h-full ${item.color}`} style={{ width: `${pct}%` }} />
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+
+                            {/* Card 3: Student Cohort & Retention Status */}
+                            <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-sm space-y-4">
+                                <div className="flex items-center gap-2 pb-2 border-b border-slate-100">
+                                    <Activity className="w-4 h-4 text-emerald-600" />
+                                    <h4 className="text-sm font-bold text-slate-900">Student Enrollment & Retention</h4>
+                                </div>
+
+                                <div className="space-y-2.5 text-xs">
+                                    {[
+                                        { label: "Active / Enrolled Cohort", count: reportData.analytics.studentRetention.enrolled + reportData.analytics.studentRetention.active, badge: "bg-emerald-50 text-emerald-700 border-emerald-200" },
+                                        { label: "Transferred Out", count: reportData.analytics.studentRetention.transferred, badge: "bg-blue-50 text-blue-700 border-blue-200" },
+                                        { label: "Withdrawn", count: reportData.analytics.studentRetention.withdrawn, badge: "bg-amber-50 text-amber-700 border-amber-200" },
+                                        { label: "Dropped Out", count: reportData.analytics.studentRetention.droppedOut, badge: "bg-rose-50 text-rose-700 border-rose-200" },
+                                        { label: "Graduated / Promoted", count: reportData.analytics.studentRetention.graduated, badge: "bg-purple-50 text-purple-700 border-purple-200" }
+                                    ].map(st => {
+                                        const total = reportData.metrics.totalStudents || 1;
+                                        const pct = ((st.count / total) * 100).toFixed(1);
+                                        return (
+                                            <div key={st.label} className="flex items-center justify-between p-2 rounded-xl bg-slate-50 border border-slate-100">
+                                                <span className="font-medium text-slate-700">{st.label}</span>
+                                                <span className={`px-2 py-0.5 rounded-md text-[11px] font-bold border ${st.badge}`}>
+                                                    {st.count.toLocaleString()} ({pct}%)
+                                                </span>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        </div>
+                    )}
                 </div>
             )}
         </div>

@@ -25,7 +25,12 @@ vi.mock("../../infrastructure/prisma/client.js", () => {
         },
         teacher: {
             count: vi.fn(),
-            groupBy: vi.fn()
+            groupBy: vi.fn(),
+            findMany: vi.fn()
+        },
+        teachingAssignment: {
+            count: vi.fn(),
+            findMany: vi.fn()
         },
         grade: {
             count: vi.fn(),
@@ -110,10 +115,15 @@ describe("H6: Hierarchical Reports & Export Service", () => {
             { organizationId: "sch-jimma", _count: { id: 500 } }
         ]);
 
+        (prisma.studentEnrollment.findMany as any).mockResolvedValue([]);
+
         (prisma.teacher.groupBy as any).mockResolvedValue([
             { organizationId: "sch-tabor", _count: { id: 30 } },
             { organizationId: "sch-jimma", _count: { id: 18 } }
         ]);
+
+        (prisma.teacher.findMany as any).mockResolvedValue([]);
+        ((prisma as any).teachingAssignment.count as any).mockResolvedValue(40);
     });
 
     describe("1. Scope Resolution & Multi-Tier Reporting Authorization", () => {
