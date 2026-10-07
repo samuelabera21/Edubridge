@@ -25,9 +25,18 @@ import {
     Mail,
     Calendar,
     Shield,
-    FileText
+    FileText,
+    Megaphone,
+    Paperclip,
+    Eye,
+    Check,
+    ExternalLink,
+    Clock,
+    CheckSquare,
+    Image as ImageIcon
 } from "lucide-react";
 import DirectivesRecipientView from "./DirectivesRecipientView";
+import WoredaAnnouncementPublishView from "./WoredaAnnouncementPublishView";
 
 export interface SchoolAdmin {
     id: string;
@@ -170,6 +179,87 @@ export default function WoredaDashboard() {
     const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
     const [toastMessage, setToastMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
+    // Directives & Announcements State
+    const [isPublishingAnnouncement, setIsPublishingAnnouncement] = useState(false);
+    const [directivesList, setDirectivesList] = useState<any[]>([]);
+    const [directivesLoading, setDirectivesLoading] = useState(false);
+    const [directivesError, setDirectivesError] = useState<string | null>(null);
+    const [directiveSearch, setDirectiveSearch] = useState("");
+    const [directiveSubTab, setDirectiveSubTab] = useState<"ISSUED" | "INCOMING">("ISSUED");
+
+    // Ledger & Acknowledgment modals
+    const [selectedDirectiveForLedger, setSelectedDirectiveForLedger] = useState<any | null>(null);
+    const [ledgerLoading, setLedgerLoading] = useState(false);
+    const [ackModalDirective, setAckModalDirective] = useState<any | null>(null);
+    const [ackNotes, setAckNotes] = useState("");
+    const [ackConfirmed, setAckConfirmed] = useState(false);
+    const [ackSubmitting, setAckSubmitting] = useState(false);
+    const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null);
+
+    const loadDirectives = async () => {
+        setDirectivesLoading(true);
+        setDirectivesError(null);
+        try {
+            const res = await fetchApi("/directives");
+            if (!res.ok) {
+                const errJson = await res.json().catch(() => ({}));
+                throw new Error(errJson.message || "Failed to fetch directives and announcements");
+            }
+            const payload = await res.json();
+            setDirectivesList(payload.data || []);
+        } catch (err: any) {
+            setDirectivesError(err.message || "Failed to load directives");
+        } finally {
+            setDirectivesLoading(false);
+        }
+    };
+
+    const loadDirectiveLedger = async (id: string) => {
+        setLedgerLoading(true);
+        try {
+            const res = await fetchApi(`/directives/${id}`);
+            if (!res.ok) {
+                const errJson = await res.json().catch(() => ({}));
+                throw new Error(errJson.message || "Failed to load delivery ledger");
+            }
+            const payload = await res.json();
+            setSelectedDirectiveForLedger(payload.data);
+        } catch (err: any) {
+            showToast("error", err.message || "Failed to load delivery status");
+        } finally {
+            setLedgerLoading(false);
+        }
+    };
+
+    const handleAcknowledgeDirective = async () => {
+        if (!ackModalDirective) return;
+        if (!ackConfirmed) {
+            showToast("error", "Please check the confirmation box to confirm receipt.");
+            return;
+        }
+        setAckSubmitting(true);
+        try {
+            const res = await fetchApi(`/directives/${ackModalDirective.id}/acknowledge`, {
+                method: "POST",
+                body: JSON.stringify({ notes: ackNotes.trim() || undefined })
+            });
+            if (res.ok) {
+                showToast("success", "Official receipt confirmation recorded.");
+                setAckModalDirective(null);
+                setAckNotes("");
+                setAckConfirmed(false);
+                loadDirectives();
+            } else {
+                const errJson = await res.json().catch(() => ({}));
+                showToast("error", errJson.message || "Failed to confirm receipt.");
+            }
+        } catch (err: any) {
+            showToast("error", err.message || "Network error occurred.");
+        } finally {
+            setAckSubmitting(false);
+        }
+    };
+
     const loadWoredaData = async () => {
         setLoading(true);
         setError(null);
@@ -298,6 +388,32 @@ export default function WoredaDashboard() {
             }));
     }, [data?.schools]);
 
+    useEffect(() => {
+        if (currentTab === "directives") {
+            loadDirectives();
+        }
+    }, [currentTab]);
+
+    const issuedDirectives = useMemo(() => {
+        return directivesList.filter((d: any) => d.isIssuedByMe);
+    }, [directivesList]);
+
+    const incomingDirectives = useMemo(() => {
+        return directivesList.filter((d: any) => !d.isIssuedByMe);
+    }, [directivesList]);
+
+    const filteredDirectives = useMemo(() => {
+        const base = directiveSubTab === "ISSUED" ? issuedDirectives : incomingDirectives;
+        if (!directiveSearch.trim()) return base;
+        const q = directiveSearch.toLowerCase();
+        return base.filter(
+            (d: any) =>
+                d.title.toLowerCase().includes(q) ||
+                d.content.toLowerCase().includes(q) ||
+                (d.code && d.code.toLowerCase().includes(q))
+        );
+    }, [directiveSubTab, issuedDirectives, incomingDirectives, directiveSearch]);
+
     // Format number helper
     const fmt = (num: number | undefined | null) => {
         if (num === undefined || num === null) return "0";
@@ -352,7 +468,7 @@ export default function WoredaDashboard() {
                 })
             });
 
-            const resJson = await res.json();
+            const resJson = await res.json().catch(() => ({}));
             if (!res.ok) {
                 throw new Error(resJson.message || resJson.error || "Failed to register School");
             }
@@ -1352,13 +1468,500 @@ export default function WoredaDashboard() {
                 </div>
             )}
 
-            {/* TAB 4: NATIONAL POLICIES & DIRECTIVES */}
+            {/* TAB 4: DIRECTIVES & ANNOUNCEMENTS */}
             {currentTab === "directives" && !unitIdParam && (
-                <DirectivesRecipientView
-                    tierName={data?.woredaName || "Woreda Education Office"}
-                    tierType="WOREDA"
-                    organizationId={data?.woredaId || undefined}
-                />
+                <div>
+                    {isPublishingAnnouncement ? (
+                        <WoredaAnnouncementPublishView
+                            onBack={() => setIsPublishingAnnouncement(false)}
+                            onPublished={() => {
+                                setIsPublishingAnnouncement(false);
+                                loadDirectives();
+                            }}
+                            woredaName={data?.woredaName}
+                        />
+                    ) : (
+                        <div className="space-y-4 font-sans">
+                            {/* Top Header Bar */}
+                            <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-xs">
+                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                                    <div>
+                                        <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                                            <Megaphone className="w-5 h-5 text-blue-600" />
+                                            <span>Directives & Announcements</span>
+                                        </h2>
+                                        <p className="text-xs text-slate-500 mt-0.5">
+                                            Publish official announcements and circulars to schools in your woreda, and monitor delivery confirmations.
+                                        </p>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <button
+                                            type="button"
+                                            onClick={() => loadDirectives()}
+                                            className="p-2 border border-slate-200 hover:bg-slate-50 text-slate-600 rounded-lg transition-colors cursor-pointer"
+                                            title="Refresh Announcements"
+                                        >
+                                            <RefreshCw className={`w-4 h-4 ${directivesLoading ? "animate-spin text-blue-600" : ""}`} />
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => setIsPublishingAnnouncement(true)}
+                                            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-lg transition-colors flex items-center gap-1.5 shadow-xs cursor-pointer"
+                                        >
+                                            <Plus className="w-4 h-4" />
+                                            <span>Publish Announcement</span>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Summary Metrics */}
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                                <div className="bg-white p-4 rounded-xl border border-slate-200">
+                                    <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block">
+                                        Issued Announcements
+                                    </span>
+                                    <p className="text-2xl font-bold text-slate-900 mt-1">
+                                        {issuedDirectives.length}
+                                    </p>
+                                </div>
+                                <div className="bg-white p-4 rounded-xl border border-slate-200">
+                                    <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block">
+                                        Schools Reach
+                                    </span>
+                                    <p className="text-2xl font-bold text-slate-900 mt-1">
+                                        {fmt(issuedDirectives.reduce((acc: number, d: any) => acc + (d.totalRecipients || 0), 0))} schools
+                                    </p>
+                                </div>
+                                <div className="bg-white p-4 rounded-xl border border-slate-200">
+                                    <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block">
+                                        Confirmations Logged
+                                    </span>
+                                    <p className="text-2xl font-bold text-emerald-600 mt-1">
+                                        {fmt(issuedDirectives.reduce((acc: number, d: any) => acc + (d.acknowledgedCount || 0), 0))}
+                                    </p>
+                                </div>
+                                <div className="bg-white p-4 rounded-xl border border-slate-200">
+                                    <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block">
+                                        Higher Directives
+                                    </span>
+                                    <p className="text-2xl font-bold text-blue-600 mt-1">
+                                        {incomingDirectives.length}
+                                    </p>
+                                </div>
+                            </div>
+
+                            {/* Main List Container */}
+                            <div className="bg-white rounded-xl border border-slate-200 p-5 space-y-4">
+                                {/* Sub-Tabs and Search Filter */}
+                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
+                                    <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-lg">
+                                        <button
+                                            type="button"
+                                            onClick={() => setDirectiveSubTab("ISSUED")}
+                                            className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all cursor-pointer ${
+                                                directiveSubTab === "ISSUED"
+                                                    ? "bg-white text-slate-900 shadow-xs"
+                                                    : "text-slate-500 hover:text-slate-800"
+                                            }`}
+                                        >
+                                            Woreda Announcements ({issuedDirectives.length})
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => setDirectiveSubTab("INCOMING")}
+                                            className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all cursor-pointer ${
+                                                directiveSubTab === "INCOMING"
+                                                    ? "bg-white text-slate-900 shadow-xs"
+                                                    : "text-slate-500 hover:text-slate-800"
+                                            }`}
+                                        >
+                                            Incoming Directives ({incomingDirectives.length})
+                                        </button>
+                                    </div>
+
+                                    <div className="relative w-full sm:w-64">
+                                        <Search className="w-3.5 h-3.5 absolute left-3 top-2.5 text-slate-400" />
+                                        <input
+                                            type="text"
+                                            placeholder="Search title, content, or code..."
+                                            value={directiveSearch}
+                                            onChange={e => setDirectiveSearch(e.target.value)}
+                                            className="w-full pl-8 pr-3 py-1.5 border border-slate-200 rounded-lg text-xs focus:outline-none focus:border-blue-500"
+                                        />
+                                    </div>
+                                </div>
+
+                                {/* List of Announcements */}
+                                {directivesLoading ? (
+                                    <div className="py-12 text-center text-slate-400">
+                                        <RefreshCw className="w-5 h-5 animate-spin mx-auto text-blue-600 mb-2" />
+                                        <span className="text-xs font-medium">Loading announcements...</span>
+                                    </div>
+                                ) : filteredDirectives.length === 0 ? (
+                                    <div className="py-12 text-center text-slate-500">
+                                        <FileText className="w-8 h-8 mx-auto text-slate-300 mb-2" />
+                                        <p className="text-xs font-semibold text-slate-700">No announcements found</p>
+                                        <p className="text-2xs text-slate-400 mt-0.5">
+                                            {directiveSubTab === "ISSUED"
+                                                ? "Publish your first official circular or directive to schools."
+                                                : "No incoming directives from higher governance tiers."}
+                                        </p>
+                                        {directiveSubTab === "ISSUED" && (
+                                            <button
+                                                type="button"
+                                                onClick={() => setIsPublishingAnnouncement(true)}
+                                                className="mt-3 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold transition-colors inline-flex items-center gap-1.5 shadow-xs cursor-pointer"
+                                            >
+                                                <Plus className="w-3.5 h-3.5" />
+                                                <span>Create Announcement</span>
+                                            </button>
+                                        )}
+                                    </div>
+                                ) : (
+                                    <div className="space-y-3.5">
+                                        {filteredDirectives.map((item: any) => {
+                                            const total = item.totalRecipients || 0;
+                                            const read = item.readCount || 0;
+                                            const ack = item.acknowledgedCount || 0;
+                                            const ackPct = total > 0 ? Math.round((ack / total) * 100) : 0;
+                                            const isImage = item.attachmentUrl && (
+                                                item.attachmentUrl.includes("image") ||
+                                                item.attachmentUrl.includes("images.unsplash.com") ||
+                                                /\.(jpg|jpeg|png|gif|webp|svg|avif)($|\?)/i.test(item.attachmentUrl)
+                                            );
+
+                                            return (
+                                                <div
+                                                    key={item.id}
+                                                    className="p-4 rounded-xl border border-slate-200 bg-white hover:border-slate-300 transition-all space-y-3"
+                                                >
+                                                    {/* Card Header */}
+                                                    <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2.5">
+                                                        <div className="space-y-1">
+                                                            <div className="flex flex-wrap items-center gap-2">
+                                                                <h3 className="text-sm font-bold text-slate-900">
+                                                                    {item.title}
+                                                                </h3>
+                                                                {item.targetLevels && item.targetLevels.length > 0 && (
+                                                                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-100">
+                                                                        Target: {item.targetLevels.join(", ")}
+                                                                    </span>
+                                                                )}
+                                                                {item.priority === "URGENT" || item.priority === "CRITICAL" ? (
+                                                                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200">
+                                                                        {item.priority}
+                                                                    </span>
+                                                                ) : null}
+                                                            </div>
+                                                            <div className="flex items-center gap-3 text-[11px] text-slate-400">
+                                                                <span>Issued: {new Date(item.issueDate || item.createdAt).toLocaleDateString()}</span>
+                                                                {item.deadline && (
+                                                                    <span className="text-rose-600 font-semibold">
+                                                                        Due: {new Date(item.deadline).toLocaleDateString()}
+                                                                    </span>
+                                                                )}
+                                                                {item.issuer?.name && !item.isIssuedByMe && (
+                                                                    <span className="text-slate-600 font-medium">
+                                                                        From: {item.issuer.name}
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                        </div>
+
+                                                        {/* Status Pills */}
+                                                        {item.isIssuedByMe ? (
+                                                            <div className="flex items-center gap-2">
+                                                                <span className="px-2.5 py-1 rounded-lg text-xs font-bold bg-slate-100 text-slate-700 border border-slate-200 flex items-center gap-1.5">
+                                                                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                                                                    <span>{ack} / {total} Confirmed ({ackPct}%)</span>
+                                                                </span>
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => loadDirectiveLedger(item.id)}
+                                                                    className="px-3 py-1 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-bold transition-colors cursor-pointer shadow-2xs"
+                                                                >
+                                                                    Delivery Ledger
+                                                                </button>
+                                                            </div>
+                                                        ) : (
+                                                            <div>
+                                                                {item.userAcknowledgment?.isAcknowledged ? (
+                                                                    <span className="px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-1.5">
+                                                                        <CheckCircle2 className="w-3.5 h-3.5" />
+                                                                        <span>Receipt Confirmed</span>
+                                                                    </span>
+                                                                ) : item.isAcknowledgmentRequired ? (
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => {
+                                                                            setAckModalDirective(item);
+                                                                            setAckNotes("");
+                                                                            setAckConfirmed(false);
+                                                                        }}
+                                                                        className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold transition-colors cursor-pointer shadow-xs flex items-center gap-1"
+                                                                    >
+                                                                        <CheckSquare className="w-3.5 h-3.5" />
+                                                                        <span>Confirm Receipt</span>
+                                                                    </button>
+                                                                ) : (
+                                                                    <span className="text-2xs text-slate-400">
+                                                                        {item.userAcknowledgment?.isRead ? "Viewed" : "Unread"}
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                        )}
+                                                    </div>
+
+                                                    {/* Content Body */}
+                                                    <p className="text-xs text-slate-600 whitespace-pre-wrap leading-relaxed">
+                                                        {item.content}
+                                                    </p>
+
+                                                    {/* Direct Inline Attachment Preview (MinIO) */}
+                                                    {item.attachmentUrl && (
+                                                        <div className="pt-2">
+                                                            {isImage ? (
+                                                                <div className="space-y-1.5">
+                                                                    <div className="relative group max-w-sm rounded-lg overflow-hidden border border-slate-200 bg-slate-50 cursor-pointer"
+                                                                        onClick={() => setPreviewImageUrl(item.attachmentUrl)}
+                                                                    >
+                                                                        <img
+                                                                            src={item.attachmentUrl}
+                                                                            alt={item.attachmentName || "Attachment Preview"}
+                                                                            className="w-full max-h-48 object-cover group-hover:scale-105 transition-transform"
+                                                                        />
+                                                                        <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1 text-white text-xs font-bold">
+                                                                            <Eye className="w-4 h-4" />
+                                                                            <span>Click to Enlarge</span>
+                                                                        </div>
+                                                                    </div>
+                                                                    {item.attachmentName && (
+                                                                        <span className="text-2xs text-slate-400 font-medium block">
+                                                                            📷 {item.attachmentName}
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+                                                            ) : (
+                                                                <div className="flex items-center gap-2 p-2.5 rounded-lg border border-slate-200 bg-slate-50 text-xs text-slate-700 max-w-md">
+                                                                    <Paperclip className="w-4 h-4 text-blue-600 shrink-0" />
+                                                                    <span className="truncate flex-1 font-medium text-slate-800">
+                                                                        {item.attachmentName || "Attached Document (PDF)"}
+                                                                    </span>
+                                                                    <a
+                                                                        href={item.attachmentUrl}
+                                                                        target="_blank"
+                                                                        rel="noopener noreferrer"
+                                                                        className="text-blue-600 hover:text-blue-800 font-bold text-xs inline-flex items-center gap-0.5"
+                                                                    >
+                                                                        <span>Open</span>
+                                                                        <ExternalLink className="w-3 h-3" />
+                                                                    </a>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {/* MODAL: DELIVERY CONFIRMATION LEDGER */}
+            {selectedDirectiveForLedger && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 animate-in fade-in">
+                    <div className="w-full max-w-3xl rounded-2xl border border-slate-100 bg-white p-6 shadow-2xl space-y-4 max-h-[85vh] flex flex-col">
+                        <div className="flex items-start justify-between border-b border-slate-100 pb-3">
+                            <div>
+                                <h3 className="text-sm font-bold text-slate-900">
+                                    Delivery Ledger: {selectedDirectiveForLedger.title}
+                                </h3>
+                                <p className="text-xs text-slate-500 mt-0.5">
+                                    Detailed delivery and sign-off records for schools in your woreda.
+                                </p>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => setSelectedDirectiveForLedger(null)}
+                                className="p-1 text-slate-400 hover:text-slate-600 rounded-lg cursor-pointer"
+                            >
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+
+                        {/* Rollup Counters */}
+                        <div className="grid grid-cols-3 gap-3">
+                            <div className="bg-slate-50 p-3 rounded-lg border border-slate-200 text-center">
+                                <span className="text-[10px] uppercase font-bold text-slate-500">Recipients</span>
+                                <p className="text-lg font-bold text-slate-900">{selectedDirectiveForLedger.tracking?.totalRecipients || 0}</p>
+                            </div>
+                            <div className="bg-blue-50 p-3 rounded-lg border border-blue-100 text-center">
+                                <span className="text-[10px] uppercase font-bold text-blue-600">Viewed</span>
+                                <p className="text-lg font-bold text-blue-900">{selectedDirectiveForLedger.tracking?.readCount || 0}</p>
+                            </div>
+                            <div className="bg-emerald-50 p-3 rounded-lg border border-emerald-100 text-center">
+                                <span className="text-[10px] uppercase font-bold text-emerald-600">Confirmed</span>
+                                <p className="text-lg font-bold text-emerald-900">{selectedDirectiveForLedger.tracking?.acknowledgedCount || 0}</p>
+                            </div>
+                        </div>
+
+                        {/* Recipients Table */}
+                        <div className="flex-1 overflow-y-auto border border-slate-200 rounded-xl">
+                            <table className="w-full text-left text-xs border-collapse">
+                                <thead>
+                                    <tr className="border-b border-slate-200 bg-slate-50 text-[11px] font-bold text-slate-600">
+                                        <th className="py-2.5 px-3">School Name</th>
+                                        <th className="py-2.5 px-3">Status</th>
+                                        <th className="py-2.5 px-3">Read Time</th>
+                                        <th className="py-2.5 px-3">Confirmed By</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100 text-slate-700">
+                                    {selectedDirectiveForLedger.tracking?.recipients?.map((r: any) => (
+                                        <tr key={r.organizationId} className="hover:bg-slate-50/60">
+                                            <td className="py-2.5 px-3 font-semibold text-slate-900">
+                                                {r.organizationName}
+                                            </td>
+                                            <td className="py-2.5 px-3">
+                                                {r.isAcknowledged ? (
+                                                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                                        Confirmed
+                                                    </span>
+                                                ) : r.isRead ? (
+                                                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200">
+                                                        Viewed
+                                                    </span>
+                                                ) : (
+                                                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-500">
+                                                        Delivered
+                                                    </span>
+                                                )}
+                                            </td>
+                                            <td className="py-2.5 px-3 text-slate-500 text-[11px]">
+                                                {r.readAt ? new Date(r.readAt).toLocaleString() : "—"}
+                                            </td>
+                                            <td className="py-2.5 px-3 text-slate-600 text-[11px]">
+                                                {r.acknowledgedBy?.name || (r.isAcknowledged ? "Signed" : "—")}
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div className="flex justify-end pt-2">
+                            <button
+                                type="button"
+                                onClick={() => setSelectedDirectiveForLedger(null)}
+                                className="px-4 py-1.5 text-xs font-bold text-slate-700 border border-slate-200 rounded-lg hover:bg-slate-50 cursor-pointer"
+                            >
+                                Close Ledger
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* MODAL: CONFIRM RECEIPT / ACKNOWLEDGE */}
+            {ackModalDirective && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 animate-in fade-in">
+                    <div className="w-full max-w-md rounded-2xl border border-slate-100 bg-white p-6 shadow-2xl space-y-4">
+                        <div className="flex items-start justify-between border-b border-slate-100 pb-3">
+                            <div>
+                                <h3 className="text-sm font-bold text-slate-900">
+                                    Official Receipt Confirmation
+                                </h3>
+                                <p className="text-xs text-slate-500 mt-0.5">
+                                    {ackModalDirective.title}
+                                </p>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => setAckModalDirective(null)}
+                                className="p-1 text-slate-400 hover:text-slate-600 rounded-lg cursor-pointer"
+                            >
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+
+                        <div className="space-y-3 text-xs text-slate-700">
+                            <p>
+                                By confirming, your administrative receipt will be logged on the governance dispatch registry.
+                            </p>
+
+                            <div>
+                                <label className="block text-2xs uppercase font-bold text-slate-500 mb-1">
+                                    Acknowledgment Notes (Optional)
+                                </label>
+                                <textarea
+                                    rows={3}
+                                    value={ackNotes}
+                                    onChange={e => setAckNotes(e.target.value)}
+                                    placeholder="Add optional notes or compliance dispatch notes..."
+                                    className="w-full p-2 border border-slate-200 rounded-lg text-xs focus:outline-none focus:border-blue-500"
+                                />
+                            </div>
+
+                            <label className="flex items-center gap-2 p-2.5 bg-blue-50/50 rounded-lg border border-blue-100 cursor-pointer">
+                                <input
+                                    type="checkbox"
+                                    checked={ackConfirmed}
+                                    onChange={e => setAckConfirmed(e.target.checked)}
+                                    className="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500 cursor-pointer"
+                                />
+                                <span className="font-semibold text-slate-800 text-xs">
+                                    I formally confirm receipt of this official directive.
+                                </span>
+                            </label>
+                        </div>
+
+                        <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
+                            <button
+                                type="button"
+                                onClick={() => setAckModalDirective(null)}
+                                className="px-4 py-1.5 text-xs font-semibold text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50 cursor-pointer"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                type="button"
+                                onClick={handleAcknowledgeDirective}
+                                disabled={ackSubmitting || !ackConfirmed}
+                                className="px-4 py-1.5 text-xs font-bold text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50 shadow-xs cursor-pointer"
+                            >
+                                {ackSubmitting ? "Recording..." : "Confirm & Sign"}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* LIGHTBOX: IMAGE FULL VIEW */}
+            {previewImageUrl && (
+                <div
+                    className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 animate-in fade-in"
+                    onClick={() => setPreviewImageUrl(null)}
+                >
+                    <div className="relative max-w-4xl max-h-[90vh] overflow-hidden rounded-xl bg-black">
+                        <button
+                            type="button"
+                            onClick={() => setPreviewImageUrl(null)}
+                            className="absolute top-3 right-3 p-2 rounded-full bg-black/60 text-white hover:bg-black/80 cursor-pointer"
+                        >
+                            <X className="w-5 h-5" />
+                        </button>
+                        <img
+                            src={previewImageUrl}
+                            alt="Attachment preview full"
+                            className="max-h-[85vh] max-w-full object-contain mx-auto"
+                        />
+                    </div>
+                </div>
             )}
 
             {/* MODAL: CREATE SCHOOL */}
