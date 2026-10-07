@@ -33,10 +33,12 @@ import {
     ExternalLink,
     Clock,
     CheckSquare,
-    Image as ImageIcon
+    Image as ImageIcon,
+    Compass
 } from "lucide-react";
 import DirectivesRecipientView from "./DirectivesRecipientView";
 import WoredaAnnouncementPublishView from "./WoredaAnnouncementPublishView";
+import ProgramsRegistryView from "./ProgramsRegistryView";
 
 export interface SchoolAdmin {
     id: string;
@@ -660,6 +662,17 @@ export default function WoredaDashboard() {
                     >
                         <FileText className="w-3.5 h-3.5" />
                         <span>Policies & Directives</span>
+                    </button>
+                    <button
+                        onClick={() => router.push(`/dashboard/woreda?tab=programs${targetParam}`)}
+                        className={`pb-3 text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5 ${
+                            currentTab === "programs" && !unitIdParam
+                                ? "text-blue-600 border-b-2 border-blue-600"
+                                : "text-slate-500 hover:text-slate-800"
+                        }`}
+                    >
+                        <Compass className="w-3.5 h-3.5" />
+                        <span>Programs & Initiatives</span>
                     </button>
                 </div>
 
@@ -1770,6 +1783,15 @@ export default function WoredaDashboard() {
                         </div>
                     )}
                 </div>
+            )}
+
+            {/* TAB: PROGRAMS & INITIATIVES */}
+            {currentTab === "programs" && !unitIdParam && (
+                <ProgramsRegistryView
+                    tierName={data?.woredaName || "Woreda Education Office"}
+                    tierType="WOREDA"
+                    canCreateProgram={true}
+                />
             )}
 
             {/* MODAL: DELIVERY CONFIRMATION LEDGER */}
