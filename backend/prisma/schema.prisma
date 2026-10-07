@@ -55,6 +55,8 @@ model User {
   authoredDirectives            NationalDirective[]    @relation("AuthoredDirectives")
   directiveAcknowledgments      DirectiveAcknowledgment[]
   announcementAcknowledgments   AnnouncementAcknowledgment[]
+  createdPrograms               Program[]              @relation("CreatedPrograms")
+  programAcknowledgments        ProgramImplementation[] @relation("ProgramAcknowledgments")
 
   @@unique([email])
   @@map("user")
@@ -208,6 +210,9 @@ model OrganizationUnit {
   issuedDirectives      NationalDirective[]    @relation("IssuedDirectives")
   targetedDirectives    DirectiveTargetUnit[]
   directiveAcknowledgments DirectiveAcknowledgment[]
+  issuedPrograms        Program[]              @relation("IssuedPrograms")
+  targetedPrograms      ProgramTargetUnit[]
+  programImplementations ProgramImplementation[]
 
   @@index([parentId])
   @@index([type])
@@ -1932,5 +1937,116 @@ model DirectiveAcknowledgment {
   @@index([isRead])
   @@index([isAcknowledged])
   @@map("directive_acknowledgment")
+}
+
+// ============================================================
+// HIERARCHICAL NATIONAL PROGRAMS / INITIATIVES
+// ============================================================
+
+enum ProgramPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+  CRITICAL
+}
+
+enum ProgramStatus {
+  DRAFT
+  PUBLISHED
+  ACTIVE
+  COMPLETED
+  CLOSED
+}
+
+enum ProgramImplementationStatus {
+  PENDING
+  ACKNOWLEDGED
+  IN_PROGRESS
+  COMPLETED
+  BLOCKED
+}
+
+model Program {
+  id                    String                   @id @default(cuid())
+  name                  String
+  description           String
+  objective             String
+  priority              ProgramPriority          @default(NORMAL)
+  startDate             DateTime
+  endDate               DateTime
+  instructions          String
+  requiredAction        String
+  attachmentUrl         String?
+  attachmentName        String?
+  status                ProgramStatus            @default(PUBLISHED)
+  
+  createdBy             String
+  createdOrganizationId String
+  parentProgramId       String?
+
+  targetLevelAll        Boolean                  @default(true)
+  targetLevels          String[]
+  cascadeDescendants    Boolean                  @default(true)
+
+  creator               User                     @relation("CreatedPrograms", fields: [createdBy], references: [id], onDelete: Cascade)
+  createdOrganization   OrganizationUnit         @relation("IssuedPrograms", fields: [createdOrganizationId], references: [id], onDelete: Cascade)
+  parentProgram         Program?                 @relation("SubordinatePrograms", fields: [parentProgramId], references: [id], onDelete: SetNull)
+  subordinatePrograms   Program[]                @relation("SubordinatePrograms")
+
+  targetOrganizationUnits ProgramTargetUnit[]
+  implementations         ProgramImplementation[]
+
+  createdAt             DateTime                 @default(now())
+  updatedAt             DateTime                 @updatedAt
+
+  @@index([createdOrganizationId])
+  @@index([parentProgramId])
+  @@index([status])
+  @@index([startDate])
+  @@index([endDate])
+  @@map("program")
+}
+
+model ProgramTargetUnit {
+  id             String           @id @default(cuid())
+  programId      String
+  organizationId String
+
+  program        Program          @relation(fields: [programId], references: [id], onDelete: Cascade)
+  organization   OrganizationUnit @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  createdAt      DateTime         @default(now())
+
+  @@unique([programId, organizationId])
+  @@index([organizationId])
+  @@map("program_target_unit")
+}
+
+model ProgramImplementation {
+  id                    String                      @id @default(cuid())
+  programId             String
+  organizationId        String
+  acknowledgedByUserId  String?
+
+  status                ProgramImplementationStatus @default(PENDING)
+  isAcknowledged        Boolean                     @default(false)
+  acknowledgedAt        DateTime?
+  startedAt             DateTime?
+  completedAt           DateTime?
+  notes                 String?
+  submittedData         String?
+
+  program               Program                     @relation(fields: [programId], references: [id], onDelete: Cascade)
+  organization          OrganizationUnit            @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  acknowledgedByUser    User?                       @relation("ProgramAcknowledgments", fields: [acknowledgedByUserId], references: [id], onDelete: SetNull)
+
+  createdAt             DateTime                    @default(now())
+  updatedAt             DateTime                    @updatedAt
+
+  @@unique([programId, organizationId])
+  @@index([organizationId])
+  @@index([status])
+  @@map("program_implementation")
 }
 
