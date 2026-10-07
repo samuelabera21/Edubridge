@@ -27,6 +27,7 @@ import hierarchyRoutes from "./modules/hierarchy/hierarchy.routes.js";
 import governanceRoutes from "./modules/governance/governance.routes.js";
 import directiveRoutes from "./modules/directive/directive.routes.js";
 import programRoutes from "./modules/program/program.routes.js";
+import hierarchicalReportRoutes from "./modules/hierarchical-reporting/hierarchical-report.routes.js";
 import storageRoutes from "./modules/storage/storage.routes.js";
 import { StorageService } from "./modules/storage/storage.service.js";
 import swaggerUi from "swagger-ui-express";
@@ -82,6 +83,7 @@ app.use("/api/hierarchy", hierarchyRoutes);
 app.use("/api/governance", governanceRoutes);
 app.use("/api/directives", directiveRoutes);
 app.use("/api/programs", programRoutes);
+app.use("/api/hierarchical-reports", hierarchicalReportRoutes);
 app.use("/api/storage", storageRoutes);
 
 app.get("/", (_req, res) => {
