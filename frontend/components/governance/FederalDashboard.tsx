@@ -35,10 +35,12 @@ import {
     Filter,
     Bell,
     ChevronLeft,
-    Compass
+    Compass,
+    BarChart3
 } from "lucide-react";
 import DirectivesPublishView from "./DirectivesPublishView";
 import ProgramsRegistryView from "./ProgramsRegistryView";
+import HierarchicalReportsView from "./HierarchicalReportsView";
 
 export interface RegionAdmin {
     id: string;
@@ -724,6 +726,17 @@ export default function FederalDashboard() {
                     >
                         <Compass className="w-3.5 h-3.5" />
                         <span>Programs & Initiatives</span>
+                    </button>
+                    <button
+                        onClick={() => router.push("/dashboard/federal?tab=reports")}
+                        className={`pb-3 text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5 ${
+                            currentTab === "reports" && !unitIdParam
+                                ? "text-blue-600 border-b-2 border-blue-600"
+                                : "text-slate-500 hover:text-slate-800"
+                        }`}
+                    >
+                        <BarChart3 className="w-3.5 h-3.5" />
+                        <span>Reports & Analytics</span>
                     </button>
                     <button
                         onClick={() => router.push("/dashboard/federal?tab=administration")}
@@ -1971,6 +1984,14 @@ export default function FederalDashboard() {
                     tierName="Federal Ministry of Education"
                     tierType="FEDERAL"
                     canCreateProgram={true}
+                />
+            )}
+
+            {/* TAB: HIERARCHICAL REPORTS & EXPORT */}
+            {currentTab === "reports" && !unitIdParam && (
+                <HierarchicalReportsView
+                    tierName="Federal Ministry of Education"
+                    tierType="FEDERAL"
                 />
             )}
 

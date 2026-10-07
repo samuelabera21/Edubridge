@@ -12,7 +12,8 @@ import {
     MapPin,
     Network,
     Shield,
-    Compass
+    Compass,
+    BarChart3
 } from "lucide-react";
 
 export type AdminTier = "FEDERAL" | "REGION" | "ZONE" | "WOREDA";
@@ -99,6 +100,12 @@ export default function AdministrativeNavigation({
                 icon: Compass,
                 tab: "programs",
             },
+            {
+                label: "Reports & Analytics",
+                href: `${basePath}?tab=reports`,
+                icon: BarChart3,
+                tab: "reports",
+            },
         ];
     } else if (currentTier === "REGION") {
         navItems = [
@@ -130,6 +137,12 @@ export default function AdministrativeNavigation({
                 href: `${basePath}?tab=programs`,
                 icon: Compass,
                 tab: "programs",
+            },
+            {
+                label: "Reports & Analytics",
+                href: `${basePath}?tab=reports`,
+                icon: BarChart3,
+                tab: "reports",
             },
         ];
     } else if (currentTier === "ZONE") {
@@ -163,6 +176,12 @@ export default function AdministrativeNavigation({
                 icon: Compass,
                 tab: "programs",
             },
+            {
+                label: "Reports & Analytics",
+                href: `${basePath}?tab=reports`,
+                icon: BarChart3,
+                tab: "reports",
+            },
         ];
     } else {
         navItems = [
@@ -194,6 +213,12 @@ export default function AdministrativeNavigation({
                 href: `${basePath}?tab=programs`,
                 icon: Compass,
                 tab: "programs",
+            },
+            {
+                label: "Reports & Analytics",
+                href: `${basePath}?tab=reports`,
+                icon: BarChart3,
+                tab: "reports",
             },
         ];
     }
