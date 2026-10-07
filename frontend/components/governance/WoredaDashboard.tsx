@@ -340,7 +340,7 @@ export default function WoredaDashboard() {
         setCreatingSchool(true);
         setCreateSchoolMessage(null);
         try {
-            const res = await fetchApi("/hierarchy/register-school", {
+            const res = await fetchApi("/hierarchy/schools/register", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
@@ -354,7 +354,7 @@ export default function WoredaDashboard() {
 
             const resJson = await res.json();
             if (!res.ok) {
-                throw new Error(resJson.message || "Failed to register School");
+                throw new Error(resJson.message || resJson.error || "Failed to register School");
             }
 
             setCreateSchoolMessage({

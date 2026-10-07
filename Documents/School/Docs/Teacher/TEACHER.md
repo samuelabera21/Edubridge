@@ -12,6 +12,8 @@ TEACHER
 │   ├── Attendance tasks
 │   ├── Pending assessments
 │   ├── Pending assignments
+
+
 │   ├── Students requiring attention
 │   └── AI teaching insights
 │
