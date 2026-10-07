@@ -871,7 +871,7 @@ export default function DirectivesRecipientView({
                         <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 text-xs space-y-1">
                             <div className="font-bold text-slate-900">{ackModalDirective.title}</div>
                             <div className="text-[11px] text-slate-500">
-                                Issued by {ackModalDirective.issuer.name}
+                                Issued by {ackModalDirective.issuer?.name || ackModalDirective.issuerOrganization?.name || "Official Authority"}
                             </div>
                         </div>
 

@@ -11,7 +11,8 @@ import {
     Building2,
     MapPin,
     Network,
-    Shield
+    Shield,
+    Compass
 } from "lucide-react";
 
 export type AdminTier = "FEDERAL" | "REGION" | "ZONE" | "WOREDA";
@@ -92,6 +93,12 @@ export default function AdministrativeNavigation({
                 icon: FileText,
                 tab: "directives",
             },
+            {
+                label: "Programs & Initiatives",
+                href: `${basePath}?tab=programs`,
+                icon: Compass,
+                tab: "programs",
+            },
         ];
     } else if (currentTier === "REGION") {
         navItems = [
@@ -117,6 +124,12 @@ export default function AdministrativeNavigation({
                 href: `${basePath}?tab=directives`,
                 icon: FileText,
                 tab: "directives",
+            },
+            {
+                label: "Programs & Initiatives",
+                href: `${basePath}?tab=programs`,
+                icon: Compass,
+                tab: "programs",
             },
         ];
     } else if (currentTier === "ZONE") {
@@ -144,6 +157,12 @@ export default function AdministrativeNavigation({
                 icon: FileText,
                 tab: "directives",
             },
+            {
+                label: "Programs & Initiatives",
+                href: `${basePath}?tab=programs`,
+                icon: Compass,
+                tab: "programs",
+            },
         ];
     } else {
         navItems = [
@@ -169,6 +188,12 @@ export default function AdministrativeNavigation({
                 href: `${basePath}?tab=directives`,
                 icon: FileText,
                 tab: "directives",
+            },
+            {
+                label: "Programs & Initiatives",
+                href: `${basePath}?tab=programs`,
+                icon: Compass,
+                tab: "programs",
             },
         ];
     }
