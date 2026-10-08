@@ -43,7 +43,7 @@ export class DirectiveService {
 
         // 2. Validate required inputs
         if (!input.title || !input.title.trim()) {
-            throw new Error("Announcement title is required.");
+            throw new Error("Directive title is required.");
         }
         if (!input.content || !input.content.trim()) {
             throw new Error("Announcement content/details are required.");
@@ -318,7 +318,7 @@ export class DirectiveService {
                 return {
                     ...d,
                     isIssuedByMe: true,
-                    totalRecipients: d._count.acknowledgments,
+                    totalRecipients: d._count?.acknowledgments ?? 0,
                     readCount,
                     acknowledgedCount,
                     targetLevels: d.targetLevels,
@@ -472,7 +472,9 @@ export class DirectiveService {
             throw new Error(`Directive with ID '${directiveId}' not found.`);
         }
 
-        const isIssuer = actorScope && actorScope.id === directive.issuerOrganizationId;
+        const isIssuer = Boolean(
+            actorScope && (actorScope.id === directive.issuerOrganizationId || actorScope.id === directive.issuerOrganization?.id)
+        );
 
         // Validate scope visibility if not the issuer
         if (!isIssuer && actorScope) {

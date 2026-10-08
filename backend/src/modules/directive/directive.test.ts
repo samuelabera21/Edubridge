@@ -124,17 +124,18 @@ describe("National Policies & Directives (Federal -> Lower Levels Data-Flow)", (
             expect(prisma.notification.createMany).toHaveBeenCalledTimes(1);
         });
 
-        it("should reject non-Federal user attempting to issue a directive", async () => {
+        it("should reject non-administrative authority (e.g. School) attempting to issue a directive", async () => {
+            const schoolScope = { id: "school-1", type: "SCHOOL" as OrganizationUnitType, name: "Tabor Secondary School" };
             await expect(
                 DirectiveService.createAndPublishDirective(
                     {
                         title: "Unauthorized Directive",
                         content: "Test content"
                     },
-                    amharaScope,
-                    "user-reg"
+                    schoolScope,
+                    "user-school"
                 )
-            ).rejects.toThrow(/Only Federal administrators/);
+            ).rejects.toThrow(/Only administrative authorities/);
         });
 
         it("should validate required fields", async () => {
@@ -181,7 +182,12 @@ describe("National Policies & Directives (Federal -> Lower Levels Data-Flow)", (
                 ]
             };
 
-            (prisma.nationalDirective.findMany as any).mockResolvedValue([amharaDirective]);
+            (prisma.nationalDirective.findMany as any).mockImplementation(({ where }: any) => {
+                if (where?.issuerOrganizationId && typeof where.issuerOrganizationId === "string") {
+                    return Promise.resolve(where.issuerOrganizationId === "fed-1" ? [amharaDirective] : []);
+                }
+                return Promise.resolve([amharaDirective]);
+            });
             (prisma.directiveAcknowledgment.upsert as any).mockResolvedValue({
                 isRead: false,
                 isAcknowledged: false
@@ -226,7 +232,12 @@ describe("National Policies & Directives (Federal -> Lower Levels Data-Flow)", (
                 ]
             };
 
-            (prisma.nationalDirective.findMany as any).mockResolvedValue([schoolOnlyDirective]);
+            (prisma.nationalDirective.findMany as any).mockImplementation(({ where }: any) => {
+                if (where?.issuerOrganizationId && typeof where.issuerOrganizationId === "string") {
+                    return Promise.resolve(where.issuerOrganizationId === "fed-1" ? [schoolOnlyDirective] : []);
+                }
+                return Promise.resolve([schoolOnlyDirective]);
+            });
             (prisma.directiveAcknowledgment.upsert as any).mockResolvedValue({
                 isRead: false,
                 isAcknowledged: false
