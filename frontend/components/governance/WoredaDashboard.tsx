@@ -41,6 +41,7 @@ import DirectivesRecipientView from "./DirectivesRecipientView";
 import WoredaAnnouncementPublishView from "./WoredaAnnouncementPublishView";
 import ProgramsRegistryView from "./ProgramsRegistryView";
 import HierarchicalReportsView from "./HierarchicalReportsView";
+import DataRequestsListView from "./DataRequestsListView";
 
 export interface SchoolAdmin {
     id: string;
@@ -1813,6 +1814,11 @@ export default function WoredaDashboard() {
                     tierName={data?.woredaName || "Woreda Education Office"}
                     tierType="WOREDA"
                 />
+            )}
+
+            {/* TAB: DATA REQUESTS & GOOGLE FORMS */}
+            {currentTab === "data-requests" && !unitIdParam && (
+                <DataRequestsListView currentTier="WOREDA" />
             )}
 
             {/* MODAL: DELIVERY CONFIRMATION LEDGER */}

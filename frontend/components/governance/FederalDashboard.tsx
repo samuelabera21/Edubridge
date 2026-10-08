@@ -41,6 +41,7 @@ import {
 import DirectivesPublishView from "./DirectivesPublishView";
 import ProgramsRegistryView from "./ProgramsRegistryView";
 import HierarchicalReportsView from "./HierarchicalReportsView";
+import DataRequestsListView from "./DataRequestsListView";
 
 export interface RegionAdmin {
     id: string;
@@ -681,86 +682,21 @@ export default function FederalDashboard() {
                 </div>
             )}
 
-            {/* Top Navigation Bar */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div className="flex items-center gap-6 border-b border-slate-200 w-full sm:w-auto">
-                    <button
-                        onClick={() => router.push("/dashboard/federal")}
-                        className={`pb-3 text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5 ${
-                            currentTab === "overview" && !unitIdParam
-                                ? "text-blue-600 border-b-2 border-blue-600"
-                                : "text-slate-500 hover:text-slate-800"
-                        }`}
-                    >
-                        <span>Dashboard</span>
-                    </button>
-                    <button
-                        onClick={() => navigateToUnit(null)}
-                        className={`pb-3 text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5 ${
-                            currentTab === "regions" || unitIdParam
-                                ? "text-blue-600 border-b-2 border-blue-600"
-                                : "text-slate-500 hover:text-slate-800"
-                        }`}
-                    >
-                        <Layers className="w-3.5 h-3.5" />
-                        <span>Regions & Hierarchy ({data?.counts?.totalRegions ?? 0})</span>
-                    </button>
-                    <button
-                        onClick={() => router.push("/dashboard/federal?tab=directives")}
-                        className={`pb-3 text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5 ${
-                            currentTab === "directives" && !unitIdParam
-                                ? "text-blue-600 border-b-2 border-blue-600"
-                                : "text-slate-500 hover:text-slate-800"
-                        }`}
-                    >
-                        <FileText className="w-3.5 h-3.5" />
-                        <span>Policies & Directives ({directivesList.length})</span>
-                    </button>
-                    <button
-                        onClick={() => router.push("/dashboard/federal?tab=programs")}
-                        className={`pb-3 text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5 ${
-                            currentTab === "programs" && !unitIdParam
-                                ? "text-blue-600 border-b-2 border-blue-600"
-                                : "text-slate-500 hover:text-slate-800"
-                        }`}
-                    >
-                        <Compass className="w-3.5 h-3.5" />
-                        <span>Programs & Initiatives</span>
-                    </button>
-                    <button
-                        onClick={() => router.push("/dashboard/federal?tab=reports")}
-                        className={`pb-3 text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5 ${
-                            currentTab === "reports" && !unitIdParam
-                                ? "text-blue-600 border-b-2 border-blue-600"
-                                : "text-slate-500 hover:text-slate-800"
-                        }`}
-                    >
-                        <BarChart3 className="w-3.5 h-3.5" />
-                        <span>Reports & Analytics</span>
-                    </button>
-                    <button
-                        onClick={() => router.push("/dashboard/federal?tab=administration")}
-                        className={`pb-3 text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5 ${
-                            currentTab === "administration" && !unitIdParam
-                                ? "text-blue-600 border-b-2 border-blue-600"
-                                : "text-slate-500 hover:text-slate-800"
-                        }`}
-                    >
-                        <UserCheck className="w-3.5 h-3.5" />
-                        <span>Leadership ({assignedAdministrators.length})</span>
-                    </button>
-                </div>
+            {/* Direct contextual actions (when on overview or regions) */}
+            {(currentTab === "overview" || currentTab === "regions") && (
+                <div className="flex items-center justify-between pb-2">
+                    <div>
+                        <h1 className="text-xl font-bold text-slate-900">
+                            {currentTab === "overview" ? "Federal Governance Overview" : "Regional Hierarchy & Directory"}
+                        </h1>
+                        <p className="text-xs text-slate-500 mt-0.5">
+                            {currentTab === "overview"
+                                ? "National education infrastructure, institutional distribution, and regional administration."
+                                : "Explore regional states, zones, woredas, and school hierarchies."}
+                        </p>
+                    </div>
 
-                <div className="flex items-center gap-2 self-end sm:self-auto shrink-0">
-                    {currentTab === "directives" ? (
-                        <button
-                            onClick={() => setIsPublishingDirective(true)}
-                            className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-lg transition-colors flex items-center gap-1.5 shadow-xs cursor-pointer"
-                        >
-                            <Send className="w-3.5 h-3.5" />
-                            <span>Publish Directive</span>
-                        </button>
-                    ) : (
+                    <div className="flex items-center gap-2 shrink-0">
                         <button
                             onClick={() => {
                                 setNewRegionName("");
@@ -768,29 +704,26 @@ export default function FederalDashboard() {
                                 setCreateRegionMessage(null);
                                 setCreateRegionOpen(true);
                             }}
-                            className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-lg transition-colors flex items-center gap-1.5 shadow-xs cursor-pointer"
+                            className="px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-xl transition-all flex items-center gap-1.5 shadow-sm cursor-pointer active:scale-95"
                         >
                             <Plus className="w-4 h-4" />
                             <span>Add Region</span>
                         </button>
-                    )}
-                    <button
-                        onClick={() => {
-                            loadFederalData();
-                            if (currentTab === "regions" || unitIdParam) {
-                                loadDrilldownData(unitIdParam);
-                            }
-                            if (currentTab === "directives") {
-                                loadDirectives();
-                            }
-                        }}
-                        className="p-1.5 border border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-50 rounded-lg transition-colors cursor-pointer"
-                        title="Refresh"
-                    >
-                        <RefreshCw className={`w-4 h-4 ${loading || drilldownLoading || directivesLoading ? "animate-spin text-blue-600" : ""}`} />
-                    </button>
+                        <button
+                            onClick={() => {
+                                loadFederalData();
+                                if (currentTab === "regions" || unitIdParam) {
+                                    loadDrilldownData(unitIdParam);
+                                }
+                            }}
+                            className="p-2 border border-slate-200 bg-white text-slate-600 hover:text-slate-900 hover:bg-slate-50 rounded-xl transition-colors cursor-pointer shadow-2xs"
+                            title="Refresh"
+                        >
+                            <RefreshCw className={`w-4 h-4 ${loading || drilldownLoading ? "animate-spin text-blue-600" : ""}`} />
+                        </button>
+                    </div>
                 </div>
-            </div>
+            )}
 
             {/* Error Banner */}
             {error && (
@@ -1993,6 +1926,11 @@ export default function FederalDashboard() {
                     tierName="Federal Ministry of Education"
                     tierType="FEDERAL"
                 />
+            )}
+
+            {/* TAB: DATA REQUESTS & GOOGLE FORMS */}
+            {currentTab === "data-requests" && !unitIdParam && (
+                <DataRequestsListView currentTier="FEDERAL" />
             )}
 
             {/* TAB 4: LEADERSHIP & ADMINISTRATION */}
