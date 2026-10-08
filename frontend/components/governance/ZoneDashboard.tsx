@@ -41,6 +41,7 @@ import DirectivesRecipientView from "./DirectivesRecipientView";
 import ZoneAnnouncementPublishView from "./ZoneAnnouncementPublishView";
 import ProgramsRegistryView from "./ProgramsRegistryView";
 import HierarchicalReportsView from "./HierarchicalReportsView";
+import DataRequestsListView from "./DataRequestsListView";
 
 export interface WoredaAdmin {
     id: string;
@@ -1805,6 +1806,11 @@ export default function ZoneDashboard() {
                     tierName={data?.zoneName || "Zonal Education Department"}
                     tierType="ZONE"
                 />
+            )}
+
+            {/* TAB: DATA REQUESTS & GOOGLE FORMS */}
+            {currentTab === "data-requests" && !unitIdParam && (
+                <DataRequestsListView currentTier="ZONE" />
             )}
 
             {/* MODAL: DELIVERY CONFIRMATION LEDGER */}

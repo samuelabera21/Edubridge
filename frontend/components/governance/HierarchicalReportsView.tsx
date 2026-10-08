@@ -279,8 +279,9 @@ export default function HierarchicalReportsView({
                     throw new Error(errJson.error || "Failed to fetch reporting scope");
                 }
 
-                const data = await res.json();
-                if (isMounted) {
+                const raw = await res.json();
+                const data = raw?.data || raw;
+                if (isMounted && data) {
                     setAccessibleUnits(data.accessibleOrganizations || []);
                     setAcademicYears(data.academicYears || []);
                     if (data.userScope) {
@@ -348,10 +349,13 @@ export default function HierarchicalReportsView({
                 throw new Error(errJson.error || "Failed to generate report.");
             }
 
-            const data: EducationSummaryReportData = await res.json();
+            const raw = await res.json();
+            const data: EducationSummaryReportData = raw?.data || raw;
             setReportData(data);
-            setSelectedOrgId(data.targetOrganization.id);
-            syncFiltersFromOrgId(data.targetOrganization.id);
+            if (data?.targetOrganization?.id) {
+                setSelectedOrgId(data.targetOrganization.id);
+                syncFiltersFromOrgId(data.targetOrganization.id);
+            }
         } catch (err: any) {
             setError(err.message || "Error generating report.");
         } finally {
@@ -465,69 +469,64 @@ export default function HierarchicalReportsView({
     const getTierBadge = (type: string) => {
         switch (type) {
             case "FEDERAL":
-                return <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-800 border border-blue-200">FEDERAL</span>;
+                return <span className="px-2 py-0.5 rounded text-[11px] font-semibold uppercase bg-slate-100 text-slate-700 border border-slate-200">FEDERAL</span>;
             case "REGION":
-                return <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800 border border-emerald-200">REGION</span>;
+                return <span className="px-2 py-0.5 rounded text-[11px] font-semibold uppercase bg-slate-100 text-slate-700 border border-slate-200">REGION</span>;
             case "ZONE":
-                return <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-purple-100 text-purple-800 border border-purple-200">ZONE</span>;
+                return <span className="px-2 py-0.5 rounded text-[11px] font-semibold uppercase bg-slate-100 text-slate-700 border border-slate-200">ZONE</span>;
             case "WOREDA":
-                return <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-800 border border-amber-200">WOREDA</span>;
+                return <span className="px-2 py-0.5 rounded text-[11px] font-semibold uppercase bg-slate-100 text-slate-700 border border-slate-200">WOREDA</span>;
             case "SCHOOL":
-                return <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-teal-100 text-teal-800 border border-teal-200">SCHOOL</span>;
+                return <span className="px-2 py-0.5 rounded text-[11px] font-semibold uppercase bg-slate-100 text-slate-700 border border-slate-200">SCHOOL</span>;
             default:
-                return <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-slate-100 text-slate-700">{type}</span>;
+                return <span className="px-2 py-0.5 rounded text-[11px] font-semibold uppercase bg-slate-100 text-slate-700">{type}</span>;
         }
     };
 
     return (
-        <div className="space-y-6">
-            {/* Header / Hero Banner */}
-            <div className="bg-gradient-to-r from-slate-900 via-blue-950 to-indigo-950 rounded-2xl p-6 text-white shadow-lg flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div className="space-y-1.5">
-                    <div className="flex items-center gap-2">
-                        <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold tracking-wide uppercase bg-blue-500/20 text-blue-300 border border-blue-400/30">
-                            Hierarchical Reports & Analytics
-                        </span>
-                        <span className="text-xs text-slate-400">• Authoritative Live Intelligence</span>
-                    </div>
-                    <h1 className="text-xl sm:text-2xl font-bold tracking-tight">
+        <div className="space-y-4 max-w-7xl mx-auto pb-10">
+            {/* Clean Government Header Container */}
+            <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="space-y-1">
+                    <h1 className="text-lg md:text-xl font-bold text-slate-900 tracking-tight">
                         Education Summary & Disaggregated Analytics
                     </h1>
-                    <p className="text-xs text-slate-300 max-w-2xl leading-relaxed">
-                        Cross-hierarchy statistical rollups including student/teacher gender disaggregation, pupil-teacher ratios, qualifications, and retention profiles.
+                    <p className="text-xs text-slate-500 max-w-3xl leading-relaxed">
+                        Cross-hierarchy statistical rollups, enrollment, staffing ratios, and retention profiles.
                     </p>
                 </div>
 
                 {/* Export Buttons */}
-                <div className="flex items-center gap-2.5 shrink-0">
+                <div className="flex items-center gap-2 shrink-0">
                     <button
                         onClick={() => handleExport("csv")}
                         disabled={!reportData || exportingCsv || generating}
-                        className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold bg-white/10 hover:bg-white/20 active:bg-white/30 text-white border border-white/20 transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 transition-colors shadow-2xs disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                        title="Export Summary Data to CSV"
                     >
-                        <Download className="w-3.5 h-3.5" />
-                        {exportingCsv ? "Exporting CSV..." : "Export CSV"}
+                        <Download className="w-3.5 h-3.5 text-slate-500" />
+                        <span>{exportingCsv ? "Exporting CSV..." : "Export CSV"}</span>
                     </button>
 
                     <button
                         onClick={() => handleExport("excel")}
                         disabled={!reportData || exportingExcel || generating}
-                        className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white transition-colors shadow-2xs disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                        title="Export Styled Excel Report"
                     >
                         <FileSpreadsheet className="w-3.5 h-3.5" />
-                        {exportingExcel ? "Exporting Excel..." : "Export Excel (.xlsx)"}
+                        <span>{exportingExcel ? "Exporting Excel..." : "Export Excel (.xlsx)"}</span>
                     </button>
                 </div>
             </div>
 
-            {/* Filters Card */}
-            <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-5 space-y-4">
+            {/* Scope Configuration Card */}
+            <div className="bg-white rounded-xl border border-slate-200 p-4 sm:p-5 shadow-2xs space-y-4">
                 <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-                    <div className="flex items-center gap-2 text-slate-800 font-semibold text-sm">
-                        <Filter className="w-4 h-4 text-blue-600" />
+                    <div className="flex items-center gap-2 text-slate-800 font-bold text-xs uppercase tracking-wider">
+                        <Filter className="w-3.5 h-3.5 text-blue-600" />
                         <span>Report Configuration & Administrative Scope</span>
                     </div>
-                    <span className="text-xs text-slate-400">Enforcing HierarchyScopeService</span>
                 </div>
 
                 {/* Level Selector & Cascading Filters */}
@@ -560,7 +559,7 @@ export default function HierarchicalReportsView({
                                 }
                             }}
                             disabled={loadingScope || generating}
-                            className="w-full text-xs font-medium bg-slate-50 border border-slate-300 rounded-xl px-3 py-2.5 text-slate-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                            className="w-full text-xs font-medium bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-800 focus:bg-white focus:outline-blue-500 transition-all"
                         >
                             {userScopeOrg?.type === "FEDERAL" && (
                                 <option value="FEDERAL">National Overview (Entire Country)</option>
@@ -587,7 +586,7 @@ export default function HierarchicalReportsView({
                     </div>
 
                     {targetLevelCategory !== "FEDERAL" && (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 bg-slate-50/80 p-3.5 rounded-xl border border-slate-200">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 bg-slate-50/80 p-3.5 rounded-lg border border-slate-200">
                             {userScopeOrg?.type === "FEDERAL" && (
                                 <div className="space-y-1">
                                     <label className="text-[11px] font-semibold text-slate-600">1. Select Region *</label>
@@ -605,7 +604,7 @@ export default function HierarchicalReportsView({
                                             }
                                         }}
                                         disabled={loadingScope || generating}
-                                        className="w-full text-xs bg-white border border-slate-300 rounded-lg px-2.5 py-2 text-slate-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                                        className="w-full text-xs bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-slate-800 focus:outline-blue-500 transition-all"
                                     >
                                         <option value="">-- Choose Region --</option>
                                         {regionsList.map(r => (
@@ -634,7 +633,7 @@ export default function HierarchicalReportsView({
                                             }
                                         }}
                                         disabled={loadingScope || generating || (userScopeOrg?.type === "FEDERAL" && !filterRegionId)}
-                                        className="w-full text-xs bg-white border border-slate-300 rounded-lg px-2.5 py-2 text-slate-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all disabled:bg-slate-100 disabled:text-slate-400"
+                                        className="w-full text-xs bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-slate-800 focus:outline-blue-500 transition-all disabled:bg-slate-100 disabled:text-slate-400"
                                     >
                                         <option value="">
                                             {userScopeOrg?.type === "FEDERAL" && !filterRegionId ? "-- Choose Region First --" : "-- Choose Zone --"}
@@ -665,11 +664,11 @@ export default function HierarchicalReportsView({
                                         }}
                                         disabled={
                                             loadingScope ||
-                                            generating ||
+                                             generating ||
                                             (userScopeOrg?.type === "FEDERAL" && (!filterRegionId || !filterZoneId)) ||
                                             (userScopeOrg?.type === "REGION" && !filterZoneId)
                                         }
-                                        className="w-full text-xs bg-white border border-slate-300 rounded-lg px-2.5 py-2 text-slate-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all disabled:bg-slate-100 disabled:text-slate-400"
+                                        className="w-full text-xs bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-slate-800 focus:outline-blue-500 transition-all disabled:bg-slate-100 disabled:text-slate-400"
                                     >
                                         <option value="">
                                             {(!filterZoneId && (userScopeOrg?.type === "FEDERAL" || userScopeOrg?.type === "REGION")) ? "-- Choose Zone First --" : "-- Choose Woreda --"}
@@ -697,7 +696,7 @@ export default function HierarchicalReportsView({
                                             }
                                         }}
                                         disabled={loadingScope || generating || (!filterWoredaId && userScopeOrg?.type !== "SCHOOL")}
-                                        className="w-full text-xs bg-white border border-slate-300 rounded-lg px-2.5 py-2 text-slate-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all disabled:bg-slate-100 disabled:text-slate-400"
+                                        className="w-full text-xs bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-slate-800 focus:outline-blue-500 transition-all disabled:bg-slate-100 disabled:text-slate-400"
                                     >
                                         <option value="">
                                             {!filterWoredaId ? "-- Choose Woreda First --" : "-- Choose School --"}
@@ -712,14 +711,14 @@ export default function HierarchicalReportsView({
                     )}
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
                     <div className="space-y-1.5">
                         <label className="text-xs font-semibold text-slate-700">Hierarchy Depth</label>
                         <select
                             value={scopeMode}
                             onChange={e => setScopeMode(e.target.value as any)}
                             disabled={loadingScope || generating}
-                            className="w-full text-xs bg-slate-50 border border-slate-300 rounded-xl px-3 py-2.5 text-slate-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                            className="w-full text-xs bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-800 focus:bg-white focus:outline-blue-500 transition-all"
                         >
                             <option value="CURRENT_AND_DESCENDANTS">Current & All Descendants</option>
                             <option value="CURRENT_ONLY">Current Organization Only</option>
@@ -732,7 +731,7 @@ export default function HierarchicalReportsView({
                             value={selectedAcademicYearId}
                             onChange={e => setSelectedAcademicYearId(e.target.value)}
                             disabled={loadingScope || generating}
-                            className="w-full text-xs bg-slate-50 border border-slate-300 rounded-xl px-3 py-2.5 text-slate-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                            className="w-full text-xs bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-800 focus:bg-white focus:outline-blue-500 transition-all"
                         >
                             <option value="">All Academic Years</option>
                             {academicYears.map(ay => (
@@ -747,7 +746,7 @@ export default function HierarchicalReportsView({
                 <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-2">
                     <div className="flex items-center gap-2">
                         <span className="text-xs font-semibold text-slate-600">Report Type:</span>
-                        <span className="inline-flex items-center px-3 py-1 rounded-lg text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200">
+                        <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium bg-slate-100 text-slate-800 border border-slate-200">
                             Education Summary Report (Authoritative)
                         </span>
                     </div>
@@ -755,16 +754,16 @@ export default function HierarchicalReportsView({
                     <button
                         onClick={() => generateReport()}
                         disabled={generating || loadingScope}
-                        className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-xs font-semibold bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white shadow-sm transition-all disabled:opacity-50"
+                        className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white shadow-2xs transition-all disabled:opacity-50 cursor-pointer"
                     >
                         <RefreshCw className={`w-3.5 h-3.5 ${generating ? "animate-spin" : ""}`} />
-                        {generating ? "Generating Live Report..." : "Generate Report"}
+                        <span>{generating ? "Generating Live Report..." : "Generate Report"}</span>
                     </button>
                 </div>
             </div>
 
             {error && (
-                <div className="bg-red-50 border border-red-200 rounded-2xl p-4 flex items-start gap-3 text-red-800 text-xs">
+                <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex items-start gap-3 text-red-800 text-xs">
                     <AlertCircle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
                     <div className="space-y-1">
                         <span className="font-semibold">Unable to generate report:</span>
@@ -774,25 +773,24 @@ export default function HierarchicalReportsView({
             )}
 
             {generating && !reportData && (
-                <div className="bg-white rounded-2xl border border-slate-200 p-8 text-center space-y-3">
-                    <RefreshCw className="w-8 h-8 text-blue-600 animate-spin mx-auto" />
+                <div className="bg-white rounded-xl border border-slate-200 p-8 text-center space-y-3">
+                    <RefreshCw className="w-6 h-6 text-blue-600 animate-spin mx-auto" />
                     <p className="text-sm font-semibold text-slate-800">Aggregating live data across authorized hierarchy...</p>
-                    <p className="text-xs text-slate-500">Querying live schools, student genders, teachers, and units...</p>
                 </div>
             )}
 
             {reportData && (
-                <div className="space-y-6">
+                <div className="space-y-4">
                     {/* Lineage & Scope Banner */}
-                    <div className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 shadow-sm space-y-3">
+                    <div className="bg-white rounded-xl border border-slate-200 p-4 sm:p-5 shadow-2xs space-y-3">
                         <div className="flex flex-wrap items-center gap-1.5 text-xs text-slate-500">
-                            <span className="font-medium text-slate-700">Hierarchy Lineage:</span>
+                            <span className="font-semibold text-slate-700">Hierarchy:</span>
                             {reportData.lineage.slice().reverse().map((item, idx) => (
                                 <React.Fragment key={item.id}>
-                                    {idx > 0 && <ChevronRight className="w-3.5 h-3.5 text-slate-400" />}
+                                    {idx > 0 && <ChevronRight className="w-3 h-3 text-slate-400" />}
                                     <button
                                         onClick={() => handleDrillDownRow(item.id)}
-                                        className={`hover:underline font-medium ${
+                                        className={`hover:underline font-medium cursor-pointer ${
                                             item.id === reportData.targetOrganization.id
                                                 ? "text-blue-700 font-bold"
                                                 : "text-slate-600 hover:text-slate-900"
@@ -804,104 +802,84 @@ export default function HierarchicalReportsView({
                             ))}
                         </div>
 
-                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-2 border-t border-slate-100">
-                            <div className="space-y-0.5">
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-2.5 border-t border-slate-100">
+                            <div className="space-y-1">
                                 <div className="flex items-center gap-2">
-                                    <h2 className="text-lg font-bold text-slate-900">{reportData.title}</h2>
+                                    <h2 className="text-base sm:text-lg font-bold text-slate-900">{reportData.title}</h2>
                                     {getTierBadge(reportData.targetOrganization.type)}
                                 </div>
                                 <p className="text-xs text-slate-500">
                                     Mode:{" "}
                                     <span className="font-medium text-slate-700">
                                         {reportData.scopeMode === "CURRENT_AND_DESCENDANTS"
-                                            ? "Target Unit & All Subordinate Descendants"
+                                            ? "Target Unit & All Descendants"
                                             : "Target Unit Only"}
                                     </span>{" "}
                                     • Generated: {new Date(reportData.generatedAt).toLocaleString()}
                                 </p>
                             </div>
 
-                            <div className="flex items-center gap-2">
-                                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
-                                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                                    Live Authoritative Data
-                                </span>
-                            </div>
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 w-fit">
+                                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                                <span>Live System Data</span>
+                            </span>
                         </div>
                     </div>
 
-                    {/* Enhanced Executive KPI Cards */}
-                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
-                        {/* Students Card with M/F split */}
-                        <div className="bg-white rounded-2xl border border-slate-200/80 p-4 shadow-sm space-y-1">
-                            <div className="flex items-center justify-between text-slate-500">
-                                <span className="text-[11px] font-semibold uppercase tracking-wider">Students</span>
-                                <GraduationCap className="w-4 h-4 text-indigo-600" />
-                            </div>
+                    {/* Executive KPI Cards */}
+                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+                        {/* Students Card */}
+                        <div className="bg-white rounded-xl border border-slate-200 p-3.5 shadow-2xs space-y-1">
+                            <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block">Students</span>
                             <p className="text-xl sm:text-2xl font-bold text-slate-900">
                                 {reportData.metrics.totalStudents.toLocaleString()}
                             </p>
-                            <p className="text-[10px] text-slate-500 font-medium">
-                                ♂ {reportData.metrics.maleStudents.toLocaleString()} • ♀ {reportData.metrics.femaleStudents.toLocaleString()}
+                            <p className="text-[11px] text-slate-500">
+                                Male: {reportData.metrics.maleStudents.toLocaleString()} • Female: {reportData.metrics.femaleStudents.toLocaleString()}
                             </p>
                         </div>
 
-                        {/* Teachers Card with M/F split */}
-                        <div className="bg-white rounded-2xl border border-slate-200/80 p-4 shadow-sm space-y-1">
-                            <div className="flex items-center justify-between text-slate-500">
-                                <span className="text-[11px] font-semibold uppercase tracking-wider">Teachers</span>
-                                <Users className="w-4 h-4 text-teal-600" />
-                            </div>
+                        {/* Teachers Card */}
+                        <div className="bg-white rounded-xl border border-slate-200 p-3.5 shadow-2xs space-y-1">
+                            <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block">Teachers</span>
                             <p className="text-xl sm:text-2xl font-bold text-slate-900">
                                 {reportData.metrics.totalTeachers.toLocaleString()}
                             </p>
-                            <p className="text-[10px] text-slate-500 font-medium">
-                                ♂ {reportData.metrics.maleTeachers.toLocaleString()} • ♀ {reportData.metrics.femaleTeachers.toLocaleString()}
+                            <p className="text-[11px] text-slate-500">
+                                Male: {reportData.metrics.maleTeachers.toLocaleString()} • Female: {reportData.metrics.femaleTeachers.toLocaleString()}
                             </p>
                         </div>
 
-                        {/* Pupil-Teacher Ratio (PTR) */}
-                        <div className="bg-white rounded-2xl border border-slate-200/80 p-4 shadow-sm space-y-1">
-                            <div className="flex items-center justify-between text-slate-500">
-                                <span className="text-[11px] font-semibold uppercase tracking-wider">PTR</span>
-                                <TrendingUp className="w-4 h-4 text-amber-600" />
-                            </div>
-                            <p className="text-xl sm:text-2xl font-bold text-amber-600">
-                                {reportData.metrics.pupilTeacherRatio}:1
+                        {/* PTR */}
+                        <div className="bg-white rounded-xl border border-slate-200 p-3.5 shadow-2xs space-y-1">
+                            <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block">Pupil-Teacher Ratio</span>
+                            <p className="text-xl sm:text-2xl font-bold text-slate-900">
+                                {reportData.metrics.pupilTeacherRatio} : 1
                             </p>
-                            <p className="text-[10px] text-slate-400">Pupil-Teacher Ratio</p>
+                            <p className="text-[11px] text-slate-400">Students / Teacher</p>
                         </div>
 
-                        {/* Gender Parity Index (GPI) */}
-                        <div className="bg-white rounded-2xl border border-slate-200/80 p-4 shadow-sm space-y-1">
-                            <div className="flex items-center justify-between text-slate-500">
-                                <span className="text-[11px] font-semibold uppercase tracking-wider">GPI</span>
-                                <UserCheck className="w-4 h-4 text-rose-600" />
-                            </div>
-                            <p className="text-xl sm:text-2xl font-bold text-rose-600">
+                        {/* GPI */}
+                        <div className="bg-white rounded-xl border border-slate-200 p-3.5 shadow-2xs space-y-1">
+                            <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block">Gender Parity</span>
+                            <p className="text-xl sm:text-2xl font-bold text-slate-900">
                                 {reportData.metrics.genderParityIndex}
                             </p>
-                            <p className="text-[10px] text-slate-400">Gender Parity (F/M)</p>
+                            <p className="text-[11px] text-slate-400">F / M Ratio</p>
                         </div>
 
-                        {/* Operating Schools */}
-                        <div className="bg-white rounded-2xl border border-slate-200/80 p-4 shadow-sm space-y-1">
-                            <div className="flex items-center justify-between text-slate-500">
-                                <span className="text-[11px] font-semibold uppercase tracking-wider">Schools</span>
-                                <School className="w-4 h-4 text-purple-600" />
-                            </div>
+                        {/* Schools */}
+                        <div className="bg-white rounded-xl border border-slate-200 p-3.5 shadow-2xs space-y-1">
+                            <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block">Schools</span>
                             <p className="text-xl sm:text-2xl font-bold text-slate-900">
                                 {reportData.metrics.schoolsCount.toLocaleString()}
                             </p>
-                            <p className="text-[10px] text-slate-400">Operating Schools</p>
+                            <p className="text-[11px] text-slate-400">Total Institutions</p>
                         </div>
 
-                        {/* Administrative Hierarchy Units */}
-                        <div className="bg-white rounded-2xl border border-slate-200/80 p-4 shadow-sm space-y-1">
-                            <div className="flex items-center justify-between text-slate-500">
-                                <span className="text-[11px] font-semibold uppercase tracking-wider">Units</span>
-                                <Layers className="w-4 h-4 text-blue-600" />
-                            </div>
+                        {/* Units */}
+                        <div className="bg-white rounded-xl border border-slate-200 p-3.5 shadow-2xs space-y-1">
+                            <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block">Admin Units</span>
                             <p className="text-xl sm:text-2xl font-bold text-slate-900">
                                 {(
                                     reportData.metrics.regionsCount +
@@ -909,38 +887,38 @@ export default function HierarchicalReportsView({
                                     reportData.metrics.woredasCount
                                 ).toLocaleString()}
                             </p>
-                            <p className="text-[10px] text-slate-400">
+                            <p className="text-[11px] text-slate-400">
                                 {reportData.metrics.regionsCount > 0 ? `${reportData.metrics.regionsCount} Reg ` : ""}
                                 {reportData.metrics.zonesCount > 0 ? `${reportData.metrics.zonesCount} Zon ` : ""}
-                                {reportData.metrics.woredasCount > 0 ? `${reportData.metrics.woredasCount} Wor` : ""}
+                                {reportData.metrics.woredasCount > 0 ? `${reportData.metrics.woredasCount} Wor` : "Sub-units"}
                             </p>
                         </div>
                     </div>
 
                     {/* Breakdown Data Table */}
-                    <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden space-y-4 p-5">
-                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                    <div className="bg-white rounded-xl border border-slate-200 shadow-2xs overflow-hidden space-y-3 p-4">
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-3 border-b border-slate-100">
                             <div className="space-y-0.5">
-                                <h3 className="text-base font-bold text-slate-900">{reportData.breakdown.title}</h3>
+                                <h3 className="text-sm font-bold text-slate-900">{reportData.breakdown.title}</h3>
                                 <p className="text-xs text-slate-500">
                                     Showing {filteredBreakdownRows.length} of {reportData.breakdown.rows.length} rows • Click any row to drill down into its sub-hierarchy
                                 </p>
                             </div>
 
-                            <div className="relative w-full sm:w-64">
+                            <div className="relative w-full sm:w-60">
                                 <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
                                 <input
                                     type="text"
                                     value={tableSearch}
                                     onChange={e => setTableSearch(e.target.value)}
                                     placeholder="Filter by name..."
-                                    className="w-full text-xs bg-slate-50 border border-slate-200 rounded-xl pl-8 pr-3 py-2 text-slate-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all"
+                                    className="w-full text-xs bg-slate-50 border border-slate-200 rounded-lg pl-8 pr-3 py-1.5 text-slate-800 focus:bg-white focus:outline-blue-500 transition-all"
                                 />
                             </div>
                         </div>
 
                         {/* Table */}
-                        <div className="overflow-x-auto border border-slate-200 rounded-xl">
+                        <div className="overflow-x-auto border border-slate-200 rounded-lg">
                             <table className="w-full text-left border-collapse text-xs">
                                 <thead>
                                     <tr className="bg-slate-50 border-b border-slate-200 text-slate-700 font-semibold uppercase tracking-wider text-[11px]">
@@ -948,7 +926,7 @@ export default function HierarchicalReportsView({
                                             <th
                                                 key={col.key}
                                                 onClick={() => handleSort(col.key)}
-                                                className={`px-4 py-3 cursor-pointer select-none hover:bg-slate-100 transition-colors ${
+                                                className={`px-3 py-2.5 cursor-pointer select-none hover:bg-slate-100 transition-colors ${
                                                     col.align === "right"
                                                         ? "text-right"
                                                         : col.align === "center"
@@ -966,7 +944,7 @@ export default function HierarchicalReportsView({
                                                 </div>
                                             </th>
                                         ))}
-                                        <th className="px-4 py-3 text-center w-20">Action</th>
+                                        <th className="px-3 py-2.5 text-center w-20">Action</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-100 text-slate-800">
@@ -984,14 +962,14 @@ export default function HierarchicalReportsView({
                                             <tr
                                                 key={row.id || idx}
                                                 onClick={() => row.id && handleDrillDownRow(row.id)}
-                                                className="hover:bg-blue-50/50 cursor-pointer transition-colors group"
+                                                className="hover:bg-slate-50 cursor-pointer transition-colors"
                                             >
                                                 {reportData.breakdown.columns.map(col => {
                                                     const cellVal = row[col.key];
                                                     return (
                                                         <td
                                                             key={col.key}
-                                                            className={`px-4 py-3 ${
+                                                            className={`px-3 py-2.5 ${
                                                                 col.align === "right"
                                                                     ? "text-right font-medium"
                                                                     : col.align === "center"
@@ -1007,20 +985,20 @@ export default function HierarchicalReportsView({
                                                         </td>
                                                     );
                                                 })}
-                                                <td className="px-4 py-3 text-center">
+                                                <td className="px-3 py-2.5 text-center">
                                                     {row.id && reportData.breakdown.level !== "GRADE_SECTION" ? (
                                                         <button
                                                             onClick={e => {
                                                                 e.stopPropagation();
                                                                 handleDrillDownRow(row.id);
                                                             }}
-                                                            className="inline-flex items-center gap-1 text-[11px] font-semibold text-blue-600 hover:text-blue-800 hover:underline"
+                                                            className="inline-flex items-center gap-1 text-[11px] font-semibold text-blue-600 hover:text-blue-800 hover:underline cursor-pointer"
                                                         >
                                                             <CornerDownRight className="w-3 h-3" />
-                                                            Drill
+                                                            <span>Drill</span>
                                                         </button>
                                                     ) : (
-                                                        <span className="text-slate-300 text-[10px]">Leaf</span>
+                                                        <span className="text-slate-400 text-[10px]">Leaf</span>
                                                     )}
                                                 </td>
                                             </tr>
@@ -1031,26 +1009,26 @@ export default function HierarchicalReportsView({
                                 {/* Aggregate Totals Footer */}
                                 {tableTotals && filteredBreakdownRows.length > 0 && (
                                     <tfoot>
-                                        <tr className="bg-slate-100/90 font-bold border-t-2 border-slate-300 text-slate-900">
+                                        <tr className="bg-slate-50 font-bold border-t border-slate-200 text-slate-900">
                                             {reportData.breakdown.columns.map((col, colIdx) => (
                                                 <td
                                                     key={col.key}
-                                                    className={`px-4 py-3 ${
+                                                    className={`px-3 py-2.5 ${
                                                         colIdx === 0
-                                                            ? "text-left text-blue-900"
+                                                            ? "text-left text-slate-900 font-bold"
                                                             : col.align === "right"
-                                                            ? "text-right text-blue-700 font-bold"
+                                                            ? "text-right text-slate-900 font-bold"
                                                             : "text-center"
                                                     }`}
                                                 >
                                                     {colIdx === 0
-                                                        ? "TOTAL / HIERARCHY AGGREGATE"
+                                                        ? "TOTAL / AGGREGATE"
                                                         : col.isNumeric && tableTotals[col.key] !== undefined
                                                         ? col.key === "ptr" ? `${tableTotals[col.key]}` : tableTotals[col.key].toLocaleString()
                                                         : ""}
                                                 </td>
                                             ))}
-                                            <td className="px-4 py-3 text-center text-slate-400 text-[10px]">Total</td>
+                                            <td className="px-3 py-2.5 text-center text-slate-400 text-[10px]">—</td>
                                         </tr>
                                     </tfoot>
                                 )}
@@ -1060,12 +1038,12 @@ export default function HierarchicalReportsView({
 
                     {/* Dedicated Analytical Breakdowns Section */}
                     {reportData.analytics && (
-                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
                             {/* Card 1: Gender & Demographic Balance */}
-                            <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-sm space-y-4">
-                                <div className="flex items-center gap-2 pb-2 border-b border-slate-100">
-                                    <PieChart className="w-4 h-4 text-indigo-600" />
-                                    <h4 className="text-sm font-bold text-slate-900">Gender & Demographic Balance</h4>
+                            <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-2xs space-y-4">
+                                <div className="flex items-center gap-2 pb-2.5 border-b border-slate-100">
+                                    <PieChart className="w-4 h-4 text-slate-700" />
+                                    <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider">Gender & Demographic Balance</h4>
                                 </div>
 
                                 <div className="space-y-4">
@@ -1073,57 +1051,53 @@ export default function HierarchicalReportsView({
                                     <div className="space-y-1.5">
                                         <div className="flex justify-between text-xs">
                                             <span className="font-semibold text-slate-700">Student Enrollment</span>
-                                            <span className="text-slate-500">
-                                                ♀ {reportData.analytics.gender.femaleStudentPct}% Female
+                                            <span className="font-medium text-slate-600">
+                                                Female: {reportData.analytics.gender.femaleStudentPct}%
                                             </span>
                                         </div>
-                                        <div className="h-3 bg-slate-100 rounded-full overflow-hidden flex">
+                                        <div className="h-2 bg-slate-100 rounded-full overflow-hidden flex">
                                             <div
-                                                className="bg-blue-600 transition-all duration-500"
+                                                className="bg-blue-600"
                                                 style={{ width: `${100 - reportData.analytics.gender.femaleStudentPct}%` }}
-                                                title={`Male: ${reportData.analytics.gender.maleStudents}`}
                                             />
                                             <div
-                                                className="bg-rose-500 transition-all duration-500"
+                                                className="bg-rose-500"
                                                 style={{ width: `${reportData.analytics.gender.femaleStudentPct}%` }}
-                                                title={`Female: ${reportData.analytics.gender.femaleStudents}`}
                                             />
                                         </div>
                                         <div className="flex justify-between text-[11px] text-slate-500">
-                                            <span>♂ Male: {reportData.analytics.gender.maleStudents.toLocaleString()}</span>
-                                            <span>♀ Female: {reportData.analytics.gender.femaleStudents.toLocaleString()}</span>
+                                            <span>Male: {reportData.analytics.gender.maleStudents.toLocaleString()}</span>
+                                            <span>Female: {reportData.analytics.gender.femaleStudents.toLocaleString()}</span>
                                         </div>
                                     </div>
 
                                     {/* Teachers Gender Split */}
-                                    <div className="space-y-1.5 pt-2 border-t border-slate-100">
+                                    <div className="space-y-1.5 pt-3 border-t border-slate-100">
                                         <div className="flex justify-between text-xs">
                                             <span className="font-semibold text-slate-700">Teaching Faculty</span>
-                                            <span className="text-slate-500">
-                                                ♀ {reportData.analytics.gender.femaleTeacherPct}% Female
+                                            <span className="font-medium text-slate-600">
+                                                Female: {reportData.analytics.gender.femaleTeacherPct}%
                                             </span>
                                         </div>
-                                        <div className="h-3 bg-slate-100 rounded-full overflow-hidden flex">
+                                        <div className="h-2 bg-slate-100 rounded-full overflow-hidden flex">
                                             <div
-                                                className="bg-teal-600 transition-all duration-500"
+                                                className="bg-teal-600"
                                                 style={{ width: `${100 - reportData.analytics.gender.femaleTeacherPct}%` }}
-                                                title={`Male: ${reportData.analytics.gender.maleTeachers}`}
                                             />
                                             <div
-                                                className="bg-amber-500 transition-all duration-500"
+                                                className="bg-amber-500"
                                                 style={{ width: `${reportData.analytics.gender.femaleTeacherPct}%` }}
-                                                title={`Female: ${reportData.analytics.gender.femaleTeachers}`}
                                             />
                                         </div>
                                         <div className="flex justify-between text-[11px] text-slate-500">
-                                            <span>♂ Male: {reportData.analytics.gender.maleTeachers.toLocaleString()}</span>
-                                            <span>♀ Female: {reportData.analytics.gender.femaleTeachers.toLocaleString()}</span>
+                                            <span>Male: {reportData.analytics.gender.maleTeachers.toLocaleString()}</span>
+                                            <span>Female: {reportData.analytics.gender.femaleTeachers.toLocaleString()}</span>
                                         </div>
                                     </div>
 
-                                    <div className="bg-slate-50 rounded-xl p-3 flex justify-between items-center text-xs">
+                                    <div className="bg-slate-50 rounded-lg p-2.5 flex justify-between items-center text-xs border border-slate-200/60">
                                         <span className="font-medium text-slate-600">Gender Parity Index (GPI)</span>
-                                        <span className="font-bold text-slate-900 bg-white px-2.5 py-1 rounded-lg border border-slate-200 shadow-2xs">
+                                        <span className="font-bold text-slate-900 bg-white px-2 py-0.5 rounded border border-slate-200">
                                             {reportData.analytics.gender.genderParityIndex}
                                         </span>
                                     </div>
@@ -1131,19 +1105,19 @@ export default function HierarchicalReportsView({
                             </div>
 
                             {/* Card 2: Teacher Qualifications & Workforce Profile */}
-                            <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-sm space-y-4">
-                                <div className="flex items-center gap-2 pb-2 border-b border-slate-100">
-                                    <Award className="w-4 h-4 text-teal-600" />
-                                    <h4 className="text-sm font-bold text-slate-900">Faculty Qualifications Profile</h4>
+                            <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-2xs space-y-4">
+                                <div className="flex items-center gap-2 pb-2.5 border-b border-slate-100">
+                                    <Award className="w-4 h-4 text-slate-700" />
+                                    <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider">Faculty Qualifications</h4>
                                 </div>
 
-                                <div className="space-y-2.5 text-xs">
+                                <div className="space-y-3 text-xs">
                                     {[
-                                        { label: "Doctorate (PhD)", count: reportData.analytics.staffing.qualifications.doctorate, color: "bg-purple-600" },
-                                        { label: "Master's Degree (MA/MSc)", count: reportData.analytics.staffing.qualifications.masters, color: "bg-indigo-600" },
-                                        { label: "Bachelor's Degree (BA/BSc)", count: reportData.analytics.staffing.qualifications.bachelors, color: "bg-teal-600" },
-                                        { label: "Diploma (10+3 / 12+2)", count: reportData.analytics.staffing.qualifications.diploma, color: "bg-amber-600" },
-                                        { label: "Certificate / Other", count: reportData.analytics.staffing.qualifications.certificate + reportData.analytics.staffing.qualifications.other, color: "bg-slate-500" }
+                                        { label: "Doctorate (PhD)", count: reportData.analytics.staffing.qualifications.doctorate },
+                                        { label: "Master's Degree (MA/MSc)", count: reportData.analytics.staffing.qualifications.masters },
+                                        { label: "Bachelor's Degree (BA/BSc)", count: reportData.analytics.staffing.qualifications.bachelors },
+                                        { label: "Diploma (10+3 / 12+2)", count: reportData.analytics.staffing.qualifications.diploma },
+                                        { label: "Certificate / Other", count: reportData.analytics.staffing.qualifications.certificate + reportData.analytics.staffing.qualifications.other }
                                     ].map(item => {
                                         const total = reportData.metrics.totalTeachers || 1;
                                         const pct = ((item.count / total) * 100).toFixed(1);
@@ -1152,11 +1126,11 @@ export default function HierarchicalReportsView({
                                                 <div className="flex justify-between items-center">
                                                     <span className="text-slate-600 font-medium">{item.label}</span>
                                                     <span className="font-semibold text-slate-900">
-                                                        {item.count} <span className="text-slate-400 font-normal">({pct}%)</span>
+                                                        {item.count} <span className="text-slate-400 font-normal text-[11px]">({pct}%)</span>
                                                     </span>
                                                 </div>
                                                 <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                                                    <div className={`h-full ${item.color}`} style={{ width: `${pct}%` }} />
+                                                    <div className="h-full bg-slate-700" style={{ width: `${pct}%` }} />
                                                 </div>
                                             </div>
                                         );
@@ -1165,27 +1139,27 @@ export default function HierarchicalReportsView({
                             </div>
 
                             {/* Card 3: Student Cohort & Retention Status */}
-                            <div className="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-sm space-y-4">
-                                <div className="flex items-center gap-2 pb-2 border-b border-slate-100">
-                                    <Activity className="w-4 h-4 text-emerald-600" />
-                                    <h4 className="text-sm font-bold text-slate-900">Student Enrollment & Retention</h4>
+                            <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-2xs space-y-4">
+                                <div className="flex items-center gap-2 pb-2.5 border-b border-slate-100">
+                                    <Activity className="w-4 h-4 text-slate-700" />
+                                    <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider">Student Retention Profile</h4>
                                 </div>
 
-                                <div className="space-y-2.5 text-xs">
+                                <div className="space-y-2 text-xs">
                                     {[
-                                        { label: "Active / Enrolled Cohort", count: reportData.analytics.studentRetention.enrolled + reportData.analytics.studentRetention.active, badge: "bg-emerald-50 text-emerald-700 border-emerald-200" },
-                                        { label: "Transferred Out", count: reportData.analytics.studentRetention.transferred, badge: "bg-blue-50 text-blue-700 border-blue-200" },
-                                        { label: "Withdrawn", count: reportData.analytics.studentRetention.withdrawn, badge: "bg-amber-50 text-amber-700 border-amber-200" },
-                                        { label: "Dropped Out", count: reportData.analytics.studentRetention.droppedOut, badge: "bg-rose-50 text-rose-700 border-rose-200" },
-                                        { label: "Graduated / Promoted", count: reportData.analytics.studentRetention.graduated, badge: "bg-purple-50 text-purple-700 border-purple-200" }
+                                        { label: "Active / Enrolled Cohort", count: reportData.analytics.studentRetention.enrolled + reportData.analytics.studentRetention.active },
+                                        { label: "Transferred Out", count: reportData.analytics.studentRetention.transferred },
+                                        { label: "Withdrawn", count: reportData.analytics.studentRetention.withdrawn },
+                                        { label: "Dropped Out", count: reportData.analytics.studentRetention.droppedOut },
+                                        { label: "Graduated / Promoted", count: reportData.analytics.studentRetention.graduated }
                                     ].map(st => {
                                         const total = reportData.metrics.totalStudents || 1;
                                         const pct = ((st.count / total) * 100).toFixed(1);
                                         return (
-                                            <div key={st.label} className="flex items-center justify-between p-2 rounded-xl bg-slate-50 border border-slate-100">
+                                            <div key={st.label} className="flex items-center justify-between p-2 rounded-lg bg-slate-50 border border-slate-100">
                                                 <span className="font-medium text-slate-700">{st.label}</span>
-                                                <span className={`px-2 py-0.5 rounded-md text-[11px] font-bold border ${st.badge}`}>
-                                                    {st.count.toLocaleString()} ({pct}%)
+                                                <span className="font-semibold text-slate-900">
+                                                    {st.count.toLocaleString()} <span className="text-slate-400 font-normal text-[11px]">({pct}%)</span>
                                                 </span>
                                             </div>
                                         );

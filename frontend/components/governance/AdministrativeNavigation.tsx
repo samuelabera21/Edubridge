@@ -13,7 +13,8 @@ import {
     Network,
     Shield,
     Compass,
-    BarChart3
+    BarChart3,
+    FileSpreadsheet
 } from "lucide-react";
 
 export type AdminTier = "FEDERAL" | "REGION" | "ZONE" | "WOREDA";
@@ -101,6 +102,12 @@ export default function AdministrativeNavigation({
                 tab: "programs",
             },
             {
+                label: "Data Requests",
+                href: `${basePath}?tab=data-requests`,
+                icon: FileSpreadsheet,
+                tab: "data-requests",
+            },
+            {
                 label: "Reports & Analytics",
                 href: `${basePath}?tab=reports`,
                 icon: BarChart3,
@@ -137,6 +144,12 @@ export default function AdministrativeNavigation({
                 href: `${basePath}?tab=programs`,
                 icon: Compass,
                 tab: "programs",
+            },
+            {
+                label: "Data Requests",
+                href: `${basePath}?tab=data-requests`,
+                icon: FileSpreadsheet,
+                tab: "data-requests",
             },
             {
                 label: "Reports & Analytics",
@@ -177,6 +190,12 @@ export default function AdministrativeNavigation({
                 tab: "programs",
             },
             {
+                label: "Data Requests",
+                href: `${basePath}?tab=data-requests`,
+                icon: FileSpreadsheet,
+                tab: "data-requests",
+            },
+            {
                 label: "Reports & Analytics",
                 href: `${basePath}?tab=reports`,
                 icon: BarChart3,
@@ -213,6 +232,12 @@ export default function AdministrativeNavigation({
                 href: `${basePath}?tab=programs`,
                 icon: Compass,
                 tab: "programs",
+            },
+            {
+                label: "Data Requests",
+                href: `${basePath}?tab=data-requests`,
+                icon: FileSpreadsheet,
+                tab: "data-requests",
             },
             {
                 label: "Reports & Analytics",

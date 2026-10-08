@@ -40,6 +40,7 @@ import DirectivesRecipientView from "./DirectivesRecipientView";
 import RegionalAnnouncementPublishView from "./RegionalAnnouncementPublishView";
 import ProgramsRegistryView from "./ProgramsRegistryView";
 import HierarchicalReportsView from "./HierarchicalReportsView";
+import DataRequestsListView from "./DataRequestsListView";
 
 export interface ZoneAdmin {
     id: string;
@@ -1852,6 +1853,11 @@ export default function RegionalDashboard() {
                     tierName={data?.regionName || "Regional Education Bureau"}
                     tierType="REGION"
                 />
+            )}
+
+            {/* TAB: DATA REQUESTS & GOOGLE FORMS */}
+            {currentTab === "data-requests" && !unitIdParam && (
+                <DataRequestsListView currentTier="REGION" />
             )}
 
             {/* MODAL: DELIVERY LEDGER */}
