@@ -32,10 +32,15 @@ import {
     Check,
     ExternalLink,
     Clock,
-    CheckSquare
+    CheckSquare,
+    Compass,
+    BarChart3
 } from "lucide-react";
 import DirectivesRecipientView from "./DirectivesRecipientView";
 import RegionalAnnouncementPublishView from "./RegionalAnnouncementPublishView";
+import ProgramsRegistryView from "./ProgramsRegistryView";
+import HierarchicalReportsView from "./HierarchicalReportsView";
+import DataRequestsListView from "./DataRequestsListView";
 
 export interface ZoneAdmin {
     id: string;
@@ -656,6 +661,28 @@ export default function RegionalDashboard() {
                     >
                         <FileText className="w-3.5 h-3.5" />
                         <span>Policies & Directives</span>
+                    </button>
+                    <button
+                        onClick={() => router.push(`/dashboard/region?tab=programs${targetParam}`)}
+                        className={`pb-3 text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5 ${
+                            currentTab === "programs" && !unitIdParam
+                                ? "text-blue-600 border-b-2 border-blue-600"
+                                : "text-slate-500 hover:text-slate-800"
+                        }`}
+                    >
+                        <Compass className="w-3.5 h-3.5" />
+                        <span>Programs & Initiatives</span>
+                    </button>
+                    <button
+                        onClick={() => router.push(`/dashboard/region?tab=reports${targetParam}`)}
+                        className={`pb-3 text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5 ${
+                            currentTab === "reports" && !unitIdParam
+                                ? "text-blue-600 border-b-2 border-blue-600"
+                                : "text-slate-500 hover:text-slate-800"
+                        }`}
+                    >
+                        <BarChart3 className="w-3.5 h-3.5" />
+                        <span>Reports & Analytics</span>
                     </button>
                 </div>
 
@@ -1809,6 +1836,28 @@ export default function RegionalDashboard() {
                         </div>
                     )}
                 </div>
+            )}
+
+            {/* TAB: PROGRAMS & INITIATIVES */}
+            {currentTab === "programs" && !unitIdParam && (
+                <ProgramsRegistryView
+                    tierName={data?.regionName || "Regional Education Bureau"}
+                    tierType="REGION"
+                    canCreateProgram={true}
+                />
+            )}
+
+            {/* TAB: HIERARCHICAL REPORTS & EXPORT */}
+            {currentTab === "reports" && !unitIdParam && (
+                <HierarchicalReportsView
+                    tierName={data?.regionName || "Regional Education Bureau"}
+                    tierType="REGION"
+                />
+            )}
+
+            {/* TAB: DATA REQUESTS & GOOGLE FORMS */}
+            {currentTab === "data-requests" && !unitIdParam && (
+                <DataRequestsListView currentTier="REGION" />
             )}
 
             {/* MODAL: DELIVERY LEDGER */}

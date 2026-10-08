@@ -33,10 +33,15 @@ import {
     ExternalLink,
     Clock,
     CheckSquare,
-    Image as ImageIcon
+    ImageIcon,
+    Compass,
+    BarChart3
 } from "lucide-react";
 import DirectivesRecipientView from "./DirectivesRecipientView";
 import ZoneAnnouncementPublishView from "./ZoneAnnouncementPublishView";
+import ProgramsRegistryView from "./ProgramsRegistryView";
+import HierarchicalReportsView from "./HierarchicalReportsView";
+import DataRequestsListView from "./DataRequestsListView";
 
 export interface WoredaAdmin {
     id: string;
@@ -653,6 +658,28 @@ export default function ZoneDashboard() {
                     >
                         <FileText className="w-3.5 h-3.5" />
                         <span>Policies & Directives</span>
+                    </button>
+                    <button
+                        onClick={() => router.push(`/dashboard/zone?tab=programs${targetParam}`)}
+                        className={`pb-3 text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5 ${
+                            currentTab === "programs" && !unitIdParam
+                                ? "text-blue-600 border-b-2 border-blue-600"
+                                : "text-slate-500 hover:text-slate-800"
+                        }`}
+                    >
+                        <Compass className="w-3.5 h-3.5" />
+                        <span>Programs & Initiatives</span>
+                    </button>
+                    <button
+                        onClick={() => router.push(`/dashboard/zone?tab=reports${targetParam}`)}
+                        className={`pb-3 text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5 ${
+                            currentTab === "reports" && !unitIdParam
+                                ? "text-blue-600 border-b-2 border-blue-600"
+                                : "text-slate-500 hover:text-slate-800"
+                        }`}
+                    >
+                        <BarChart3 className="w-3.5 h-3.5" />
+                        <span>Reports & Analytics</span>
                     </button>
                 </div>
 
@@ -1762,6 +1789,28 @@ export default function ZoneDashboard() {
                         </div>
                     )}
                 </div>
+            )}
+
+            {/* TAB: PROGRAMS & INITIATIVES */}
+            {currentTab === "programs" && !unitIdParam && (
+                <ProgramsRegistryView
+                    tierName={data?.zoneName || "Zonal Education Department"}
+                    tierType="ZONE"
+                    canCreateProgram={true}
+                />
+            )}
+
+            {/* TAB: HIERARCHICAL REPORTS & EXPORT */}
+            {currentTab === "reports" && !unitIdParam && (
+                <HierarchicalReportsView
+                    tierName={data?.zoneName || "Zonal Education Department"}
+                    tierType="ZONE"
+                />
+            )}
+
+            {/* TAB: DATA REQUESTS & GOOGLE FORMS */}
+            {currentTab === "data-requests" && !unitIdParam && (
+                <DataRequestsListView currentTier="ZONE" />
             )}
 
             {/* MODAL: DELIVERY CONFIRMATION LEDGER */}

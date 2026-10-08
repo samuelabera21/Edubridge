@@ -68,6 +68,10 @@ export class HierarchyScopeService {
             return [target.id];
         }
 
+        if (target.type === "FEDERAL") {
+            return allUnits.filter((u) => u.type === "SCHOOL").map((u) => u.id);
+        }
+
         // Build adjacency map: parentId -> children[]
         const childrenMap = new Map<string, MinimalOrganizationUnit[]>();
         for (const unit of allUnits) {
@@ -123,6 +127,12 @@ export class HierarchyScopeService {
         const target = allUnits.find((u) => u.id === organizationId);
         if (!target) {
             return includeSelf ? [organizationId] : [];
+        }
+
+        if (target.type === "FEDERAL") {
+            return includeSelf
+                ? allUnits.map((u) => u.id)
+                : allUnits.filter((u) => u.id !== organizationId).map((u) => u.id);
         }
 
         const childrenMap = new Map<string, MinimalOrganizationUnit[]>();
@@ -256,6 +266,15 @@ export class HierarchyScopeService {
 
         if (currentOrg.type === "SCHOOL") {
             descendantSchoolIds.push(currentOrg.id);
+        } else if (currentOrg.type === "FEDERAL") {
+            for (const u of allUnits) {
+                if (!accessibleOrganizationIds.includes(u.id)) {
+                    accessibleOrganizationIds.push(u.id);
+                }
+                if (u.type === "SCHOOL") {
+                    descendantSchoolIds.push(u.id);
+                }
+            }
         } else {
             const queue: string[] = [currentOrg.id];
             const visited = new Set<string>([currentOrg.id]);

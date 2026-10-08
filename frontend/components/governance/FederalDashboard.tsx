@@ -33,9 +33,15 @@ import {
     Check,
     Paperclip,
     Filter,
-    Bell
+    Bell,
+    ChevronLeft,
+    Compass,
+    BarChart3
 } from "lucide-react";
 import DirectivesPublishView from "./DirectivesPublishView";
+import ProgramsRegistryView from "./ProgramsRegistryView";
+import HierarchicalReportsView from "./HierarchicalReportsView";
+import DataRequestsListView from "./DataRequestsListView";
 
 export interface RegionAdmin {
     id: string;
@@ -235,6 +241,10 @@ export default function FederalDashboard() {
     const [directivesError, setDirectivesError] = useState<string | null>(null);
     const [directiveSearch, setDirectiveSearch] = useState("");
     const [directiveTypeFilter, setDirectiveTypeFilter] = useState<string>("ALL");
+    const [directiveScopeFilter, setDirectiveScopeFilter] = useState<string>("ALL");
+    const [directivePriorityFilter, setDirectivePriorityFilter] = useState<string>("ALL");
+    const [directivePage, setDirectivePage] = useState<number>(1);
+    const [directivePageSize, setDirectivePageSize] = useState<number>(10);
     const [selectedDirectiveForDetail, setSelectedDirectiveForDetail] = useState<DirectiveItem | null>(null);
     const [detailLoading, setDetailLoading] = useState(false);
     const [isPublishingDirective, setIsPublishingDirective] = useState(false);
@@ -391,18 +401,62 @@ export default function FederalDashboard() {
         );
     }, [drilldownData?.children, drilldownSearch]);
 
+    // Reset page to 1 on filter or search change
+    useEffect(() => {
+        setDirectivePage(1);
+    }, [directiveTypeFilter, directiveScopeFilter, directivePriorityFilter, directiveSearch, directivePageSize]);
+
     // Filter directives list
     const filteredDirectives = useMemo(() => {
         return directivesList.filter(d => {
             const matchesType = directiveTypeFilter === "ALL" || d.type === directiveTypeFilter;
+            const matchesPriority = directivePriorityFilter === "ALL" || d.priority === directivePriorityFilter;
+
+            let matchesScope = true;
+            if (directiveScopeFilter === "NATIONAL") {
+                matchesScope = Boolean(d.targetLevelAll && (!d.targetOrganizationUnits || d.targetOrganizationUnits.length === 0));
+            } else if (directiveScopeFilter === "REGION") {
+                matchesScope = Boolean(
+                    d.targetLevels?.includes("REGION") ||
+                    d.targetOrganizationUnits?.some(u => u.organization?.type === "REGION")
+                );
+            } else if (directiveScopeFilter === "ZONE") {
+                matchesScope = Boolean(
+                    d.targetLevels?.includes("ZONE") ||
+                    d.targetOrganizationUnits?.some(u => u.organization?.type === "ZONE")
+                );
+            } else if (directiveScopeFilter === "WOREDA") {
+                matchesScope = Boolean(
+                    d.targetLevels?.includes("WOREDA") ||
+                    d.targetOrganizationUnits?.some(u => u.organization?.type === "WOREDA")
+                );
+            } else if (directiveScopeFilter === "SCHOOL") {
+                matchesScope = Boolean(
+                    d.targetLevels?.includes("SCHOOL") ||
+                    d.targetOrganizationUnits?.some(u => u.organization?.type === "SCHOOL")
+                );
+            } else if (directiveScopeFilter === "TARGETED") {
+                matchesScope = Boolean(d.targetOrganizationUnits && d.targetOrganizationUnits.length > 0);
+            }
+
+            const q = directiveSearch.trim().toLowerCase();
             const matchesSearch =
-                !directiveSearch.trim() ||
-                d.title.toLowerCase().includes(directiveSearch.toLowerCase()) ||
-                d.content.toLowerCase().includes(directiveSearch.toLowerCase()) ||
-                (d.code && d.code.toLowerCase().includes(directiveSearch.toLowerCase()));
-            return matchesType && matchesSearch;
+                !q ||
+                d.title.toLowerCase().includes(q) ||
+                (d.content && d.content.toLowerCase().includes(q)) ||
+                (d.code && d.code.toLowerCase().includes(q)) ||
+                (d.targetOrganizationUnits && d.targetOrganizationUnits.some(u => u.organization?.name?.toLowerCase().includes(q)));
+
+            return matchesType && matchesPriority && matchesScope && matchesSearch;
         });
-    }, [directivesList, directiveTypeFilter, directiveSearch]);
+    }, [directivesList, directiveTypeFilter, directiveScopeFilter, directivePriorityFilter, directiveSearch]);
+
+    // Pagination for directives
+    const totalDirectivePages = Math.max(1, Math.ceil(filteredDirectives.length / directivePageSize));
+    const paginatedDirectives = useMemo(() => {
+        const start = (directivePage - 1) * directivePageSize;
+        return filteredDirectives.slice(start, start + directivePageSize);
+    }, [filteredDirectives, directivePage, directivePageSize]);
 
     // Extract all administrators for Administration tab
     const assignedAdministrators = useMemo(() => {
@@ -628,64 +682,21 @@ export default function FederalDashboard() {
                 </div>
             )}
 
-            {/* Top Navigation Bar */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div className="flex items-center gap-6 border-b border-slate-200 w-full sm:w-auto">
-                    <button
-                        onClick={() => router.push("/dashboard/federal")}
-                        className={`pb-3 text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5 ${
-                            currentTab === "overview" && !unitIdParam
-                                ? "text-blue-600 border-b-2 border-blue-600"
-                                : "text-slate-500 hover:text-slate-800"
-                        }`}
-                    >
-                        <span>Dashboard</span>
-                    </button>
-                    <button
-                        onClick={() => navigateToUnit(null)}
-                        className={`pb-3 text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5 ${
-                            currentTab === "regions" || unitIdParam
-                                ? "text-blue-600 border-b-2 border-blue-600"
-                                : "text-slate-500 hover:text-slate-800"
-                        }`}
-                    >
-                        <Layers className="w-3.5 h-3.5" />
-                        <span>Regions & Hierarchy ({data?.counts?.totalRegions ?? 0})</span>
-                    </button>
-                    <button
-                        onClick={() => router.push("/dashboard/federal?tab=directives")}
-                        className={`pb-3 text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5 ${
-                            currentTab === "directives" && !unitIdParam
-                                ? "text-blue-600 border-b-2 border-blue-600"
-                                : "text-slate-500 hover:text-slate-800"
-                        }`}
-                    >
-                        <FileText className="w-3.5 h-3.5" />
-                        <span>Policies & Directives ({directivesList.length})</span>
-                    </button>
-                    <button
-                        onClick={() => router.push("/dashboard/federal?tab=administration")}
-                        className={`pb-3 text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5 ${
-                            currentTab === "administration" && !unitIdParam
-                                ? "text-blue-600 border-b-2 border-blue-600"
-                                : "text-slate-500 hover:text-slate-800"
-                        }`}
-                    >
-                        <UserCheck className="w-3.5 h-3.5" />
-                        <span>Leadership ({assignedAdministrators.length})</span>
-                    </button>
-                </div>
+            {/* Direct contextual actions (when on overview or regions) */}
+            {(currentTab === "overview" || currentTab === "regions") && (
+                <div className="flex items-center justify-between pb-2">
+                    <div>
+                        <h1 className="text-xl font-bold text-slate-900">
+                            {currentTab === "overview" ? "Federal Governance Overview" : "Regional Hierarchy & Directory"}
+                        </h1>
+                        <p className="text-xs text-slate-500 mt-0.5">
+                            {currentTab === "overview"
+                                ? "National education infrastructure, institutional distribution, and regional administration."
+                                : "Explore regional states, zones, woredas, and school hierarchies."}
+                        </p>
+                    </div>
 
-                <div className="flex items-center gap-2 self-end sm:self-auto shrink-0">
-                    {currentTab === "directives" ? (
-                        <button
-                            onClick={() => setIsPublishingDirective(true)}
-                            className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-lg transition-colors flex items-center gap-1.5 shadow-xs cursor-pointer"
-                        >
-                            <Send className="w-3.5 h-3.5" />
-                            <span>Publish Directive</span>
-                        </button>
-                    ) : (
+                    <div className="flex items-center gap-2 shrink-0">
                         <button
                             onClick={() => {
                                 setNewRegionName("");
@@ -693,29 +704,26 @@ export default function FederalDashboard() {
                                 setCreateRegionMessage(null);
                                 setCreateRegionOpen(true);
                             }}
-                            className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-lg transition-colors flex items-center gap-1.5 shadow-xs cursor-pointer"
+                            className="px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-xl transition-all flex items-center gap-1.5 shadow-sm cursor-pointer active:scale-95"
                         >
                             <Plus className="w-4 h-4" />
                             <span>Add Region</span>
                         </button>
-                    )}
-                    <button
-                        onClick={() => {
-                            loadFederalData();
-                            if (currentTab === "regions" || unitIdParam) {
-                                loadDrilldownData(unitIdParam);
-                            }
-                            if (currentTab === "directives") {
-                                loadDirectives();
-                            }
-                        }}
-                        className="p-1.5 border border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-50 rounded-lg transition-colors cursor-pointer"
-                        title="Refresh"
-                    >
-                        <RefreshCw className={`w-4 h-4 ${loading || drilldownLoading || directivesLoading ? "animate-spin text-blue-600" : ""}`} />
-                    </button>
+                        <button
+                            onClick={() => {
+                                loadFederalData();
+                                if (currentTab === "regions" || unitIdParam) {
+                                    loadDrilldownData(unitIdParam);
+                                }
+                            }}
+                            className="p-2 border border-slate-200 bg-white text-slate-600 hover:text-slate-900 hover:bg-slate-50 rounded-xl transition-colors cursor-pointer shadow-2xs"
+                            title="Refresh"
+                        >
+                            <RefreshCw className={`w-4 h-4 ${loading || drilldownLoading ? "animate-spin text-blue-600" : ""}`} />
+                        </button>
+                    </div>
                 </div>
-            </div>
+            )}
 
             {/* Error Banner */}
             {error && (
@@ -1361,7 +1369,7 @@ export default function FederalDashboard() {
                                             {(drilldownData.node.type === "FEDERAL" || drilldownData.node.type === "REGION") && (
                                                 <th className="py-3 px-4">Woredas</th>
                                             )}
-                                            <th className="py-3 px-4">Schools</th>
+                                            {drilldownData.node.type !== "WOREDA" && <th className="py-3 px-4">Schools</th>}
                                             <th className="py-3 px-4">Students</th>
                                             <th className="py-3 px-4">Teachers</th>
                                             <th className="py-3 px-4">Administrator</th>
@@ -1410,9 +1418,11 @@ export default function FederalDashboard() {
                                                             {fmt(child.woredasCount ?? 0)}
                                                         </td>
                                                     )}
-                                                    <td className="py-3 px-4 font-semibold text-slate-800">
-                                                        {child.type === "SCHOOL" ? "1" : fmt(child.schoolsCount ?? 0)}
-                                                    </td>
+                                                    {drilldownData.node.type !== "WOREDA" && (
+                                                        <td className="py-3 px-4 font-semibold text-slate-800">
+                                                            {fmt(child.schoolsCount ?? 0)}
+                                                        </td>
+                                                    )}
                                                     <td className="py-3 px-4 font-semibold text-blue-700">
                                                         {fmt(child.studentsCount)}
                                                     </td>
@@ -1523,66 +1533,22 @@ export default function FederalDashboard() {
 
                     {/* Directives Table Card */}
                     <div className="bg-white rounded-xl border border-slate-200 p-5 space-y-4">
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                            <div className="flex items-center gap-3">
+                        {/* Table Header & Action */}
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-1 border-b border-slate-100">
+                            <div>
                                 <h3 className="text-sm font-bold text-slate-900">
                                     Official Policies & Directives Registry
                                 </h3>
-                                <span className="text-[11px] text-slate-400 font-medium">
-                                    ({filteredDirectives.length} records)
-                                </span>
+                                <p className="text-xs text-slate-500">
+                                    Manage, filter, and track governance policies and directives across all administrative tiers.
+                                </p>
                             </div>
 
-                            <div className="flex flex-wrap items-center gap-2.5">
-                                {/* Type Filter */}
-                                <div className="flex items-center gap-1 bg-slate-100 p-0.5 rounded-lg text-xs font-semibold">
-                                    <button
-                                        onClick={() => setDirectiveTypeFilter("ALL")}
-                                        className={`px-3 py-1 rounded-md transition-colors ${
-                                            directiveTypeFilter === "ALL"
-                                                ? "bg-white text-slate-900 shadow-2xs"
-                                                : "text-slate-500 hover:text-slate-800"
-                                        }`}
-                                    >
-                                        All
-                                    </button>
-                                    <button
-                                        onClick={() => setDirectiveTypeFilter("POLICY")}
-                                        className={`px-3 py-1 rounded-md transition-colors ${
-                                            directiveTypeFilter === "POLICY"
-                                                ? "bg-white text-slate-900 shadow-2xs"
-                                                : "text-slate-500 hover:text-slate-800"
-                                        }`}
-                                    >
-                                        Policies
-                                    </button>
-                                    <button
-                                        onClick={() => setDirectiveTypeFilter("DIRECTIVE")}
-                                        className={`px-3 py-1 rounded-md transition-colors ${
-                                            directiveTypeFilter === "DIRECTIVE"
-                                                ? "bg-white text-slate-900 shadow-2xs"
-                                                : "text-slate-500 hover:text-slate-800"
-                                        }`}
-                                    >
-                                        Directives
-                                    </button>
-                                </div>
-
-                                <div className="relative w-full sm:w-56">
-                                    <Search className="w-3.5 h-3.5 absolute left-3 top-2.5 text-slate-400" />
-                                    <input
-                                        type="text"
-                                        placeholder="Search title or code..."
-                                        value={directiveSearch}
-                                        onChange={e => setDirectiveSearch(e.target.value)}
-                                        className="w-full pl-8 pr-3 py-1.5 border border-slate-200 rounded-lg text-xs focus:outline-none focus:border-slate-400"
-                                    />
-                                </div>
-
+                            <div className="flex items-center gap-2">
                                 <button
                                     type="button"
                                     onClick={() => setIsPublishingDirective(true)}
-                                    className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-sm transition-colors cursor-pointer"
+                                    className="px-3.5 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 shadow-xs transition-colors cursor-pointer"
                                 >
                                     <Plus className="w-3.5 h-3.5" />
                                     <span>Issue Directive</span>
@@ -1590,24 +1556,132 @@ export default function FederalDashboard() {
                             </div>
                         </div>
 
-                        {/* Directives Table */}
+                        {/* Clean Filter Toolbar */}
+                        <div className="flex flex-wrap items-center justify-between gap-2.5">
+                            <div className="flex flex-wrap items-center gap-2 w-full lg:w-auto flex-1">
+                                {/* Search input */}
+                                <div className="relative w-full sm:w-64">
+                                    <Search className="w-3.5 h-3.5 absolute left-3 top-2.5 text-slate-400" />
+                                    <input
+                                        type="text"
+                                        placeholder="Search by title, code, or unit..."
+                                        value={directiveSearch}
+                                        onChange={e => setDirectiveSearch(e.target.value)}
+                                        className="w-full pl-8 pr-3 py-1.5 border border-slate-200 rounded-lg text-xs focus:outline-none focus:border-slate-400 text-slate-800 placeholder-slate-400 bg-white"
+                                    />
+                                    {directiveSearch && (
+                                        <button
+                                            onClick={() => setDirectiveSearch("")}
+                                            className="absolute right-2.5 top-2 text-slate-400 hover:text-slate-600"
+                                        >
+                                            <X className="w-3 h-3" />
+                                        </button>
+                                    )}
+                                </div>
+
+                                {/* Target Scope Filter */}
+                                <div className="w-full sm:w-44">
+                                    <select
+                                        value={directiveScopeFilter}
+                                        onChange={e => setDirectiveScopeFilter(e.target.value)}
+                                        className="w-full px-2.5 py-1.5 border border-slate-200 rounded-lg text-xs font-medium text-slate-700 bg-white focus:outline-none focus:border-slate-400 cursor-pointer"
+                                    >
+                                        <option value="ALL">All Target Scopes</option>
+                                        <option value="NATIONAL">National (All Tiers)</option>
+                                        <option value="REGION">Regions</option>
+                                        <option value="ZONE">Zones</option>
+                                        <option value="WOREDA">Woredas</option>
+                                        <option value="SCHOOL">Schools</option>
+                                        <option value="TARGETED">Targeted (Specific Units)</option>
+                                    </select>
+                                </div>
+
+                                {/* Priority Filter */}
+                                <div className="w-full sm:w-36">
+                                    <select
+                                        value={directivePriorityFilter}
+                                        onChange={e => setDirectivePriorityFilter(e.target.value)}
+                                        className="w-full px-2.5 py-1.5 border border-slate-200 rounded-lg text-xs font-medium text-slate-700 bg-white focus:outline-none focus:border-slate-400 cursor-pointer"
+                                    >
+                                        <option value="ALL">All Priorities</option>
+                                        <option value="CRITICAL">Critical</option>
+                                        <option value="URGENT">Urgent</option>
+                                        <option value="HIGH">High</option>
+                                        <option value="NORMAL">Normal</option>
+                                        <option value="LOW">Low</option>
+                                    </select>
+                                </div>
+
+                                {/* Reset button if filters active */}
+                                {(directiveTypeFilter !== "ALL" || directiveScopeFilter !== "ALL" || directivePriorityFilter !== "ALL" || directiveSearch.trim() !== "") && (
+                                    <button
+                                        onClick={() => {
+                                            setDirectiveTypeFilter("ALL");
+                                            setDirectiveScopeFilter("ALL");
+                                            setDirectivePriorityFilter("ALL");
+                                            setDirectiveSearch("");
+                                        }}
+                                        className="px-2.5 py-1.5 text-xs text-slate-500 hover:text-slate-800 font-medium hover:bg-slate-100 rounded-lg transition-colors cursor-pointer flex items-center gap-1"
+                                    >
+                                        <X className="w-3 h-3" />
+                                        <span>Clear</span>
+                                    </button>
+                                )}
+                            </div>
+
+                            {/* Type Filter Tabs */}
+                            <div className="flex items-center gap-1 bg-slate-100 p-0.5 rounded-lg text-xs font-semibold">
+                                <button
+                                    onClick={() => setDirectiveTypeFilter("ALL")}
+                                    className={`px-3 py-1 rounded-md transition-colors ${
+                                        directiveTypeFilter === "ALL"
+                                            ? "bg-white text-slate-900 shadow-2xs"
+                                            : "text-slate-500 hover:text-slate-800"
+                                    }`}
+                                >
+                                    All
+                                </button>
+                                <button
+                                    onClick={() => setDirectiveTypeFilter("POLICY")}
+                                    className={`px-3 py-1 rounded-md transition-colors ${
+                                        directiveTypeFilter === "POLICY"
+                                            ? "bg-white text-slate-900 shadow-2xs"
+                                            : "text-slate-500 hover:text-slate-800"
+                                    }`}
+                                >
+                                    Policies
+                                </button>
+                                <button
+                                    onClick={() => setDirectiveTypeFilter("DIRECTIVE")}
+                                    className={`px-3 py-1 rounded-md transition-colors ${
+                                        directiveTypeFilter === "DIRECTIVE"
+                                            ? "bg-white text-slate-900 shadow-2xs"
+                                            : "text-slate-500 hover:text-slate-800"
+                                    }`}
+                                >
+                                    Directives
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Directives Clean Table */}
                         <div className="overflow-x-auto border border-slate-200 rounded-lg">
                             <table className="w-full text-left text-xs">
-                                <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 font-semibold uppercase tracking-wider text-[10px]">
+                                <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 font-semibold uppercase tracking-wider text-[10px]">
                                     <tr>
-                                        <th className="py-2.5 px-3">Title & Code</th>
+                                        <th className="py-2.5 px-3.5">Title & Code</th>
                                         <th className="py-2.5 px-3">Type</th>
                                         <th className="py-2.5 px-3">Priority</th>
                                         <th className="py-2.5 px-3">Target Scope</th>
                                         <th className="py-2.5 px-3">Effective Date</th>
-                                        <th className="py-2.5 px-3">Acknowledgment</th>
-                                        <th className="py-2.5 px-3 text-right">Actions</th>
+                                        <th className="py-2.5 px-3">Sign-off Status</th>
+                                        <th className="py-2.5 px-3.5 text-right">Action</th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-slate-100 text-slate-700 font-medium">
+                                <tbody className="divide-y divide-slate-100 text-slate-700 font-normal">
                                     {directivesLoading ? (
                                         <tr>
-                                            <td colSpan={7} className="py-8 text-center text-slate-400">
+                                            <td colSpan={7} className="py-10 text-center text-slate-400">
                                                 <div className="flex items-center justify-center gap-2">
                                                     <RefreshCw className="w-3.5 h-3.5 animate-spin text-slate-500" />
                                                     <span>Loading directives...</span>
@@ -1616,24 +1690,23 @@ export default function FederalDashboard() {
                                         </tr>
                                     ) : filteredDirectives.length === 0 ? (
                                         <tr>
-                                            <td colSpan={7} className="py-8 text-center text-slate-400">
-                                                No directives or policies found.
+                                            <td colSpan={7} className="py-10 text-center text-slate-400">
+                                                No directives match your selected filter criteria.
                                             </td>
                                         </tr>
                                     ) : (
-                                        filteredDirectives.map(item => {
+                                        paginatedDirectives.map(item => {
                                             const total = item.totalRecipients || 0;
-                                            const read = item.readCount || 0;
                                             const ack = item.acknowledgedCount || 0;
                                             const ackPct = total > 0 ? Math.round((ack / total) * 100) : 0;
 
                                             return (
                                                 <tr
                                                     key={item.id}
-                                                    className="hover:bg-slate-50 transition-colors cursor-pointer"
+                                                    className="hover:bg-slate-50/70 transition-colors cursor-pointer"
                                                     onClick={() => loadDirectiveDetail(item.id)}
                                                 >
-                                                    <td className="py-2.5 px-3">
+                                                    <td className="py-3 px-3.5">
                                                         <div className="font-semibold text-slate-900 flex items-center gap-1.5">
                                                             <span>{item.title}</span>
                                                             {item.attachmentUrl && (
@@ -1646,62 +1719,92 @@ export default function FederalDashboard() {
                                                             </span>
                                                         )}
                                                     </td>
-                                                    <td className="py-2.5 px-3">
-                                                        <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-slate-100 text-slate-800">
+                                                    <td className="py-3 px-3">
+                                                        <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-slate-100 text-slate-700">
                                                             {item.type}
                                                         </span>
                                                     </td>
-                                                    <td className="py-2.5 px-3">
+                                                    <td className="py-3 px-3">
                                                         <span
-                                                            className={`px-2 py-0.5 rounded text-[10px] font-semibold ${
+                                                            className={`px-2 py-0.5 rounded text-[10px] font-medium ${
                                                                 item.priority === "CRITICAL" || item.priority === "URGENT"
-                                                                    ? "bg-rose-50 text-rose-700 border border-rose-200"
+                                                                    ? "bg-slate-900 text-white"
                                                                     : item.priority === "HIGH"
-                                                                    ? "bg-amber-50 text-amber-700 border border-amber-200"
-                                                                    : "bg-slate-100 text-slate-700"
+                                                                    ? "bg-slate-200 text-slate-800"
+                                                                    : "bg-slate-100 text-slate-600"
                                                             }`}
                                                         >
                                                             {item.priority}
                                                         </span>
                                                     </td>
-                                                    <td className="py-2.5 px-3 text-slate-600">
-                                                        <span className="font-medium text-slate-800">
-                                                            {item.targetLevelAll && (!item.targetOrganizationUnits || item.targetOrganizationUnits.length === 0)
-                                                                ? "National Scope"
-                                                                : `Targeted (${item.targetOrganizationUnits?.length ?? 0} Regions)`}
-                                                        </span>
-                                                        {item.cascadeDescendants && (
-                                                            <span className="text-[10px] text-slate-400 block">
-                                                                Cascades to lower tiers
-                                                            </span>
+                                                    <td className="py-3 px-3 text-slate-600">
+                                                        {item.targetOrganizationUnits && item.targetOrganizationUnits.length > 0 ? (
+                                                            <div>
+                                                                <span className="font-medium text-slate-800">
+                                                                    Targeted ({item.targetOrganizationUnits.length} {item.targetOrganizationUnits[0]?.organization?.type ? item.targetOrganizationUnits[0].organization.type.toLowerCase() + "s" : "units"})
+                                                                </span>
+                                                                {item.cascadeDescendants && (
+                                                                    <span className="text-[10px] text-slate-400 block font-normal">
+                                                                        Cascades to lower tiers
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                        ) : item.targetLevelAll && (!item.targetLevels || item.targetLevels.length === 0) ? (
+                                                            <div>
+                                                                <span className="font-medium text-slate-800">National Scope</span>
+                                                                <span className="text-[10px] text-slate-400 block font-normal">All administrative tiers</span>
+                                                            </div>
+                                                        ) : item.targetLevels && item.targetLevels.length > 0 ? (
+                                                            <div>
+                                                                <span className="font-medium text-slate-800">
+                                                                    {item.targetLevels.map(l => l.charAt(0) + l.slice(1).toLowerCase()).join(", ")}
+                                                                </span>
+                                                                {item.cascadeDescendants && (
+                                                                    <span className="text-[10px] text-slate-400 block font-normal">
+                                                                        Cascades to lower tiers
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                        ) : (
+                                                            <span className="font-medium text-slate-800">National Scope</span>
                                                         )}
                                                     </td>
-                                                    <td className="py-2.5 px-3 text-slate-600">
-                                                        <div>{new Date(item.effectiveDate).toLocaleDateString()}</div>
+                                                    <td className="py-3 px-3 text-slate-600">
+                                                        <div>
+                                                            {new Date(item.effectiveDate).toLocaleDateString("en-US", {
+                                                                month: "short",
+                                                                day: "numeric",
+                                                                year: "numeric"
+                                                            })}
+                                                        </div>
                                                         {item.deadline && (
-                                                            <span className="text-[10px] text-rose-600 block">
-                                                                Due: {new Date(item.deadline).toLocaleDateString()}
+                                                            <span className="text-[10px] text-slate-500 block">
+                                                                Due: {new Date(item.deadline).toLocaleDateString("en-US", {
+                                                                    month: "short",
+                                                                    day: "numeric",
+                                                                    year: "numeric"
+                                                                })}
                                                             </span>
                                                         )}
                                                     </td>
-                                                    <td className="py-2.5 px-3">
-                                                        <div className="w-32 space-y-1">
+                                                    <td className="py-3 px-3">
+                                                        <div className="w-28 space-y-1">
                                                             <div className="flex items-center justify-between text-[10px] text-slate-500 font-medium">
                                                                 <span>{ack}/{total} signed</span>
                                                                 <span>{ackPct}%</span>
                                                             </div>
                                                             <div className="w-full h-1 bg-slate-100 rounded-full overflow-hidden">
                                                                 <div
-                                                                    className="h-full bg-emerald-500 rounded-full"
+                                                                    className="h-full bg-slate-600 rounded-full"
                                                                     style={{ width: `${ackPct}%` }}
                                                                 />
                                                             </div>
                                                         </div>
                                                     </td>
-                                                    <td className="py-2.5 px-3 text-right" onClick={e => e.stopPropagation()}>
+                                                    <td className="py-3 px-3.5 text-right" onClick={e => e.stopPropagation()}>
                                                         <button
                                                             onClick={() => loadDirectiveDetail(item.id)}
-                                                            className="px-2.5 py-1 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded text-xs font-semibold transition-colors inline-flex items-center gap-1 cursor-pointer"
+                                                            className="px-2.5 py-1 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded text-xs font-semibold transition-colors inline-flex items-center gap-1 cursor-pointer shadow-2xs"
                                                         >
                                                             <Eye className="w-3 h-3 text-slate-500" />
                                                             <span>Track</span>
@@ -1714,9 +1817,120 @@ export default function FederalDashboard() {
                                 </tbody>
                             </table>
                         </div>
+
+                        {/* Clean Pagination Footer */}
+                        {filteredDirectives.length > 0 && (
+                            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2 text-xs text-slate-500">
+                                <div className="flex items-center gap-3">
+                                    <span>
+                                        Showing{" "}
+                                        <strong className="text-slate-800">
+                                            {(directivePage - 1) * directivePageSize + 1}
+                                        </strong>{" "}
+                                        to{" "}
+                                        <strong className="text-slate-800">
+                                            {Math.min(directivePage * directivePageSize, filteredDirectives.length)}
+                                        </strong>{" "}
+                                        of{" "}
+                                        <strong className="text-slate-800">{filteredDirectives.length}</strong> directives
+                                    </span>
+
+                                    <div className="flex items-center gap-1.5 border-l border-slate-200 pl-3">
+                                        <span className="text-[11px] text-slate-400">Rows per page:</span>
+                                        <select
+                                            value={directivePageSize}
+                                            onChange={e => setDirectivePageSize(Number(e.target.value))}
+                                            className="px-1.5 py-0.5 border border-slate-200 rounded text-xs font-medium text-slate-700 bg-white focus:outline-none cursor-pointer"
+                                        >
+                                            <option value={5}>5</option>
+                                            <option value={10}>10</option>
+                                            <option value={25}>25</option>
+                                            <option value={50}>50</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div className="flex items-center gap-1">
+                                    <button
+                                        onClick={() => setDirectivePage(prev => Math.max(1, prev - 1))}
+                                        disabled={directivePage === 1}
+                                        className={`p-1.5 rounded-lg border border-slate-200 transition-colors ${
+                                            directivePage === 1
+                                                ? "text-slate-300 border-slate-100 cursor-not-allowed"
+                                                : "text-slate-600 hover:bg-slate-50 hover:text-slate-900 cursor-pointer"
+                                        }`}
+                                        title="Previous page"
+                                    >
+                                        <ChevronLeft className="w-3.5 h-3.5" />
+                                    </button>
+
+                                    {Array.from({ length: totalDirectivePages }, (_, i) => i + 1)
+                                        .filter(p => {
+                                            if (totalDirectivePages <= 5) return true;
+                                            if (p === 1 || p === totalDirectivePages) return true;
+                                            return Math.abs(p - directivePage) <= 1;
+                                        })
+                                        .map((p, idx, arr) => {
+                                            const prevP = arr[idx - 1];
+                                            const showEllipsis = prevP && p - prevP > 1;
+
+                                            return (
+                                                <div key={p} className="flex items-center gap-1">
+                                                    {showEllipsis && <span className="px-1 text-slate-400">...</span>}
+                                                    <button
+                                                        onClick={() => setDirectivePage(p)}
+                                                        className={`min-w-[28px] h-7 px-2 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${
+                                                            directivePage === p
+                                                                ? "bg-slate-900 text-white"
+                                                                : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                                                        }`}
+                                                    >
+                                                        {p}
+                                                    </button>
+                                                </div>
+                                            );
+                                        })}
+
+                                    <button
+                                        onClick={() => setDirectivePage(prev => Math.min(totalDirectivePages, prev + 1))}
+                                        disabled={directivePage >= totalDirectivePages}
+                                        className={`p-1.5 rounded-lg border border-slate-200 transition-colors ${
+                                            directivePage >= totalDirectivePages
+                                                ? "text-slate-300 border-slate-100 cursor-not-allowed"
+                                                : "text-slate-600 hover:bg-slate-50 hover:text-slate-900 cursor-pointer"
+                                        }`}
+                                        title="Next page"
+                                    >
+                                        <ChevronRight className="w-3.5 h-3.5" />
+                                    </button>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 </div>
                 )
+            )}
+
+            {/* TAB: PROGRAMS & INITIATIVES */}
+            {currentTab === "programs" && !unitIdParam && (
+                <ProgramsRegistryView
+                    tierName="Federal Ministry of Education"
+                    tierType="FEDERAL"
+                    canCreateProgram={true}
+                />
+            )}
+
+            {/* TAB: HIERARCHICAL REPORTS & EXPORT */}
+            {currentTab === "reports" && !unitIdParam && (
+                <HierarchicalReportsView
+                    tierName="Federal Ministry of Education"
+                    tierType="FEDERAL"
+                />
+            )}
+
+            {/* TAB: DATA REQUESTS & GOOGLE FORMS */}
+            {currentTab === "data-requests" && !unitIdParam && (
+                <DataRequestsListView currentTier="FEDERAL" />
             )}
 
             {/* TAB 4: LEADERSHIP & ADMINISTRATION */}
