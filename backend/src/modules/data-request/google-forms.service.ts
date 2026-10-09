@@ -423,8 +423,12 @@ export class GoogleFormsService {
                             questionTitleMap[item.questionItem.question.questionId] = title;
                         }
                     }
-                } catch (metaErr) {
-                    console.warn("[GoogleFormsService] Failed to fetch form meta for title mapping:", metaErr);
+                } catch (metaErr: any) {
+                    if (metaErr?.status === 404 || metaErr?.code === 404 || metaErr?.message?.includes("not found")) {
+                        console.warn(`[GoogleFormsService] Google Form (${googleFormId}) not found on Google Cloud. Skipping live sync.`);
+                        return [];
+                    }
+                    console.warn("[GoogleFormsService] Failed to fetch form meta for title mapping:", metaErr?.message || metaErr);
                 }
 
                 // 2. Fetch responses
@@ -461,8 +465,12 @@ export class GoogleFormsService {
 
                 return parsedResponses;
             } catch (err: any) {
-                console.error("[GoogleFormsService] Failed to sync live Google Form responses:", err.message);
-                throw new Error(`Google Forms sync failed: ${err.message}`);
+                if (err?.status === 404 || err?.code === 404 || err?.message?.includes("not found")) {
+                    console.warn(`[GoogleFormsService] Google Form (${googleFormId}) does not exist on Google Cloud (404 Not Found). Skipping.`);
+                    return [];
+                }
+                console.warn("[GoogleFormsService] Google Forms sync warning:", err?.message || err);
+                return [];
             }
         }
 
