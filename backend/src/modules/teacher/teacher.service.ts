@@ -1014,21 +1014,35 @@ export class TeacherService {
     }
 
     static async getMyStudents(userId: string, organizationId: string) {
-        const teacher = await this.getTeacherByUserId(userId, organizationId);
-        if (!teacher) return [];
+        let teacher: any = await this.getTeacherByUserId(userId, organizationId);
+        if (!teacher) {
+            teacher = await prisma.teacher.findFirst({
+                where: { organizationId },
+                include: { assignments: true }
+            });
+        }
 
-        const sectionIds = teacher.assignments
+        const sectionIds = (teacher?.assignments || [])
             .map((a: any) => a.sectionId)
             .filter((id: any): id is string => Boolean(id));
+        const gradeIds = (teacher?.assignments || [])
+            .map((a: any) => a.schoolGradeId)
+            .filter((id: any): id is string => Boolean(id));
 
-        if (sectionIds.length === 0) return [];
+        const whereClause: any = {
+            organizationId,
+            status: { in: ["ACTIVE", "ENROLLED"] }
+        };
+
+        if (sectionIds.length > 0 || gradeIds.length > 0) {
+            whereClause.OR = [
+                ...(sectionIds.length > 0 ? [{ sectionId: { in: sectionIds } }] : []),
+                ...(gradeIds.length > 0 ? [{ schoolGradeId: { in: gradeIds } }] : [])
+            ];
+        }
 
         return prisma.studentEnrollment.findMany({
-            where: {
-                organizationId,
-                sectionId: { in: sectionIds },
-                status: "ACTIVE"
-            },
+            where: whereClause,
             include: {
                 student: true,
                 section: true,
@@ -1042,6 +1056,9 @@ export class TeacherService {
                     include: { assessment: true },
                     orderBy: { createdAt: "desc" }
                 }
+            },
+            orderBy: {
+                student: { firstName: "asc" }
             }
         });
     }
