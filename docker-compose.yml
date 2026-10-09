@@ -47,9 +47,8 @@ services:
       - BETTER_AUTH_SECRET=${BETTER_AUTH_SECRET}
       - DEFAULT_INITIAL_PASSWORD=${DEFAULT_INITIAL_PASSWORD}
       - ADMIN_PASSWORD=${ADMIN_PASSWORD:-${DEFAULT_INITIAL_PASSWORD}}
-      # Set BETTER_AUTH_URL to the internal backend address so auth callbacks
-      # and base URLs resolve correctly from inside the Docker network.
-      - BETTER_AUTH_URL=http://backend:5000
+      # Set BETTER_AUTH_URL to the public API address for OAuth redirects
+      - BETTER_AUTH_URL=${BETTER_AUTH_URL:-http://localhost:3001/api/auth}
       # MinIO / Storage
       - MINIO_ENDPOINT=minio
       - MINIO_PORT=9000

@@ -21,11 +21,8 @@ export default function LandingPage() {
                             <Link href="#contact" className="text-sm text-gray-600 hover:text-sky-700 font-medium transition-colors">Contact</Link>
                         </nav>
                         <div className="flex items-center space-x-4">
-                            <Link href="/login" className="text-sm font-medium text-gray-700 hover:text-sky-700 transition-colors">
+                            <Link href="/login" className="bg-[#4085b3] hover:bg-[#32698e] text-white px-5 py-2 rounded-lg font-medium text-sm transition-all shadow-sm">
                                 Sign In
-                            </Link>
-                            <Link href="/register" className="bg-sky-600 hover:bg-sky-700 text-white px-5 py-2 rounded font-medium text-sm transition-colors shadow-sm">
-                                Register
                             </Link>
                         </div>
                     </div>
@@ -53,7 +50,7 @@ export default function LandingPage() {
                     </p>
 
                     <div className="opacity-0 animate-[fade-in-up_1s_ease-out_0.8s_forwards]">
-                        <Link href="/login" className="inline-block border-2 border-white text-white px-8 py-3 rounded hover:bg-white hover:text-[#4085b3] transition-all font-semibold uppercase tracking-wider text-sm shadow-md">
+                        <Link href="/login" className="inline-block border-2 border-white text-white px-8 py-3 rounded-lg hover:bg-white hover:text-[#4085b3] transition-all font-semibold uppercase tracking-wider text-sm shadow-md">
                             Get Started
                         </Link>
                     </div>
@@ -65,6 +62,7 @@ export default function LandingPage() {
                         src="/3.jpg"
                         alt="Students in classroom"
                         fill
+                        sizes="(max-width: 1024px) 100vw, 55vw"
                         className="object-cover object-center"
                         priority
                     />

@@ -253,3 +253,169 @@ export async function sendAdminInvitationEmail(payload: InvitationEmailPayload):
 
     console.log(`[EmailService] Invitation email successfully dispatched via Resend to ${recipientEmail} for ${organizationName}`);
 }
+
+export interface PasswordResetEmailPayload {
+    recipientName: string;
+    recipientEmail: string;
+    resetUrl: string;
+    token?: string;
+    expiryHours?: number;
+}
+
+/**
+ * Sends an official password reset email to a verified user across any hierarchy tier.
+ */
+export async function sendPasswordResetEmail(payload: PasswordResetEmailPayload): Promise<void> {
+    const {
+        recipientName,
+        recipientEmail,
+        resetUrl,
+        expiryHours = 1
+    } = payload;
+
+    const currentYear = new Date().getFullYear();
+    const sentDate = new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
+
+    const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Reset Your EduBridge Password</title>
+</head>
+<body style="margin:0;padding:0;background-color:#f4f6f9;font-family:'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#1e293b;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#f4f6f9;padding:40px 16px;">
+    <tr>
+      <td align="center">
+        <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background-color:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,0.08);border:1px solid #e2e8f0;">
+
+          <!-- Top Brand Header -->
+          <tr>
+            <td style="background:linear-gradient(135deg,#064e3b 0%,#047857 60%,#059669 100%);padding:36px 40px;text-align:center;">
+              <table width="100%" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td align="center">
+                    <div style="display:inline-block;background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.25);border-radius:50%;width:56px;height:56px;line-height:56px;text-align:center;font-size:26px;margin-bottom:12px;">
+                      🔐
+                    </div>
+                    <h1 style="margin:0 0 6px 0;color:#ffffff;font-size:22px;font-weight:700;letter-spacing:-0.3px;">
+                      EduBridge Ethiopia
+                    </h1>
+                    <p style="margin:0;color:#a7f3d0;font-size:12px;letter-spacing:1px;text-transform:uppercase;font-weight:600;">
+                      Password Reset Request
+                    </p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Main Body -->
+          <tr>
+            <td style="padding:36px 40px;">
+              <p style="margin:0 0 16px 0;font-size:16px;font-weight:600;color:#0f172a;">
+                Greetings, ${recipientName || "EduBridge User"},
+              </p>
+              <p style="margin:0 0 20px 0;font-size:14px;line-height:1.7;color:#475569;">
+                We received a request to reset the password associated with your EduBridge account (<strong>${recipientEmail}</strong>). 
+                If you made this request, please click the button below to choose a new password.
+              </p>
+
+              <!-- CTA Button -->
+              <table width="100%" cellpadding="0" cellspacing="0" style="margin:28px 0;">
+                <tr>
+                  <td align="center">
+                    <a href="${resetUrl}"
+                       target="_blank"
+                       style="display:inline-block;background:linear-gradient(135deg,#059669 0%,#047857 100%);color:#ffffff;text-decoration:none;font-size:15px;font-weight:700;padding:14px 36px;border-radius:8px;letter-spacing:0.3px;box-shadow:0 4px 14px rgba(5,150,105,0.35);">
+                      Reset My Password &rarr;
+                    </a>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Fallback Direct Link -->
+              <div style="background-color:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:14px 18px;margin:24px 0 20px 0;">
+                <p style="margin:0 0 6px 0;font-size:12px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;">
+                  Or copy and paste this link into your browser:
+                </p>
+                <p style="margin:0;font-size:12px;line-height:1.5;color:#0284c7;word-break:break-all;">
+                  <a href="${resetUrl}" style="color:#0284c7;text-decoration:underline;">${resetUrl}</a>
+                </p>
+              </div>
+
+              <!-- Security Notice -->
+              <div style="background-color:#fffbeb;border-left:4px solid #f59e0b;padding:12px 16px;border-radius:0 6px 6px 0;margin-top:20px;">
+                <p style="margin:0;font-size:12px;line-height:1.6;color:#92400e;">
+                  <strong>⏳ Important Notice:</strong> This reset link will securely expire in <strong>${expiryHours} hour</strong>. If you did not request a password reset, you can safely ignore this email — your account remains completely secure.
+                </p>
+              </div>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="background-color:#f0f4f8;border-top:1px solid #dde3ea;padding:18px 32px;">
+              <p style="margin:0;color:#8a9ab0;font-size:11px;line-height:1.6;text-align:center;">
+                Official Security Notification &bull; EduBridge Ethiopian Education Administration System<br />
+                Sent on ${sentDate} &bull; Do not reply to this email.<br />
+                &copy; ${currentYear} Federal Democratic Republic of Ethiopia.
+              </p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+
+    console.log(`\n======================================================`);
+    console.log(`🔐  PASSWORD RESET LINK GENERATED:`);
+    console.log(`👤 Recipient : ${recipientName} (${recipientEmail})`);
+    console.log(`🔗 Reset Link: ${resetUrl}`);
+    console.log(`======================================================\n`);
+
+    if (process.env.NODE_ENV === "test") {
+        return;
+    }
+
+    const transporter = getSmtpTransporter();
+    const fromAddress = process.env.EMAIL_FROM || (process.env.SMTP_USER ? `EduBridge Security <${process.env.SMTP_USER}>` : "EduBridge Security <security@resend.dev>");
+    const subject = `Password Reset Request — EduBridge`;
+
+    if (transporter) {
+        try {
+            console.log(`[EmailService] Sending password reset email via SMTP (${process.env.SMTP_USER}) to ${recipientEmail}...`);
+            await transporter.sendMail({
+                from: fromAddress,
+                to: recipientEmail,
+                subject,
+                html,
+            });
+            console.log(`[EmailService] Password reset email successfully dispatched via SMTP to ${recipientEmail}`);
+            return;
+        } catch (smtpError: any) {
+            console.error("[EmailService] Failed to send password reset email via SMTP:", smtpError);
+            throw new Error(`Failed to send password reset email via SMTP: ${smtpError.message}`);
+        }
+    }
+
+    // Fallback to Resend
+    console.log(`[EmailService] Sending password reset email via Resend to ${recipientEmail}...`);
+    const { error } = await resend.emails.send({
+        from: fromAddress,
+        to: recipientEmail,
+        subject,
+        html,
+    });
+
+    if (error) {
+        console.error("[EmailService] Failed to send password reset email via Resend:", error);
+        throw new Error(`Failed to send password reset email: ${error.message}`);
+    }
+
+    console.log(`[EmailService] Password reset email successfully dispatched via Resend to ${recipientEmail}`);
+}
+
