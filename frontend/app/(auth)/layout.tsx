@@ -11,6 +11,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
                     src="/1.png"
                     alt="Education campus"
                     fill
+                    sizes="(max-width: 1024px) 100vw, 50vw"
                     className="object-cover object-center"
                     priority
                 />

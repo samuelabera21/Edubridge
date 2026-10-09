@@ -52,6 +52,14 @@ model User {
   requestedCorrections          AttendanceCorrection[] @relation("RequestedCorrections")
   reviewedCorrections           AttendanceCorrection[] @relation("ReviewedCorrections")
   importantNotices              ImportantNotice[]      @relation("AuthoredImportantNotices")
+  authoredDirectives            NationalDirective[]    @relation("AuthoredDirectives")
+  directiveAcknowledgments      DirectiveAcknowledgment[]
+  announcementAcknowledgments   AnnouncementAcknowledgment[]
+  createdPrograms               Program[]              @relation("CreatedPrograms")
+  programAcknowledgments        ProgramImplementation[] @relation("ProgramAcknowledgments")
+  createdDataRequests           DataRequest[]          @relation("CreatedDataRequests")
+  submittedDataRequests         DataRequestSubmission[] @relation("SubmittedDataRequests")
+  reviewedDataRequests          DataRequestSubmission[] @relation("ReviewedDataRequests")
 
   @@unique([email])
   @@map("user")
@@ -202,6 +210,15 @@ model OrganizationUnit {
   notifications         Notification[]
   messages              Message[]
   importantNotices      ImportantNotice[]
+  issuedDirectives      NationalDirective[]    @relation("IssuedDirectives")
+  targetedDirectives    DirectiveTargetUnit[]
+  directiveAcknowledgments DirectiveAcknowledgment[]
+  issuedPrograms        Program[]              @relation("IssuedPrograms")
+  targetedPrograms      ProgramTargetUnit[]
+  programImplementations ProgramImplementation[]
+  issuedDataRequests    DataRequest[]          @relation("IssuedDataRequests")
+  targetedDataRequests  DataRequestTarget[]    @relation("TargetedDataRequests")
+  dataRequestSubmissions DataRequestSubmission[] @relation("DataRequestSubmissions")
 
   @@index([parentId])
   @@index([type])
@@ -1126,17 +1143,28 @@ enum AssessmentType {
   OTHER
 }
 
+enum AssessmentStatus {
+  SCHEDULED
+  RELEASED
+  CLOSED
+}
+
 model Assessment {
-  id                   String         @id @default(cuid())
+  id                   String           @id @default(cuid())
   organizationId       String
   academicYearId       String
   teachingAssignmentId String // Links back to the specific Subject+Section+Teacher
   title                String
   description          String?
-  type                 AssessmentType @default(EXAM)
+  type                 AssessmentType   @default(EXAM)
+  status               AssessmentStatus @default(SCHEDULED)
+  durationMinutes      Int?             @default(60)
+  scheduledDate        DateTime?
+  releasedAt           DateTime?
+  closedAt             DateTime?
   maxScore             Float
   passingScore         Float?
-  dueDate              DateTime?      @db.Date
+  dueDate              DateTime?        @db.Date
 
   organization       OrganizationUnit   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   academicYear       AcademicYear       @relation(fields: [academicYearId], references: [id], onDelete: Cascade)
@@ -1152,10 +1180,13 @@ model Assessment {
 }
 
 model StudentResult {
-  id           String  @id @default(cuid())
+  id           String    @id @default(cuid())
   assessmentId String
   enrollmentId String
-  score        Float
+  score        Float     @default(0)
+  status       String    @default("SUBMITTED")
+  startedAt    DateTime?
+  submittedAt  DateTime?
   feedback     String?
   gradedById   String?
 
@@ -1275,18 +1306,34 @@ enum AnnouncementTarget {
   SPECIFIC_SECTION
 }
 
+enum AnnouncementPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+  CRITICAL
+}
+
 model Announcement {
-  id             String             @id @default(cuid())
-  organizationId String
-  title          String
-  content        String
-  target         AnnouncementTarget @default(ALL)
-  targetId       String?
-  authorId       String
-  expiresAt      DateTime?          @db.Date
+  id                       String               @id @default(cuid())
+  organizationId           String
+  code                     String?
+  title                    String
+  content                  String
+  category                 String?
+  priority                 AnnouncementPriority @default(NORMAL)
+  target                   AnnouncementTarget   @default(ALL)
+  targetId                 String?
+  targetDetails            Json?
+  attachmentUrl            String?
+  attachmentName           String?
+  isAcknowledgmentRequired Boolean              @default(false)
+  authorId                 String
+  expiresAt                DateTime?            @db.Date
 
   organization OrganizationUnit @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   author       User             @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  acknowledgments AnnouncementAcknowledgment[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1294,6 +1341,37 @@ model Announcement {
   @@index([organizationId])
   @@index([target])
   @@map("announcement")
+}
+
+model AnnouncementAcknowledgment {
+  id                  String            @id @default(cuid())
+  announcementId      String
+  userId              String
+  organizationId      String?
+  
+  recipientType       String?
+  recipientName       String?
+  recipientIdentifier String?
+  
+  isRead              Boolean           @default(false)
+  readAt              DateTime?
+  
+  isAcknowledged      Boolean           @default(false)
+  acknowledgedAt      DateTime?
+  acknowledgmentNotes String?
+
+  announcement        Announcement      @relation(fields: [announcementId], references: [id], onDelete: Cascade)
+  user                User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
+
+  @@unique([announcementId, userId])
+  @@index([announcementId])
+  @@index([userId])
+  @@index([isRead])
+  @@index([isAcknowledged])
+  @@map("announcement_acknowledgment")
 }
 
 model Notification {
@@ -1777,3 +1855,392 @@ model SchoolSetting {
   @@unique([organizationId, key])
   @@map("school_setting")
 }
+
+// ============================================================
+// DOMAIN 17: NATIONAL POLICIES & DIRECTIVES
+// ============================================================
+
+enum DirectiveType {
+  POLICY
+  DIRECTIVE
+}
+
+enum DirectivePriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+  CRITICAL
+}
+
+enum DirectiveStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+model NationalDirective {
+  id                      String                    @id @default(cuid())
+  issuerOrganizationId   String
+  authorId                String
+  title                   String
+  code                    String?
+  type                    DirectiveType             @default(DIRECTIVE)
+  category                String?
+  priority                DirectivePriority         @default(NORMAL)
+  status                  DirectiveStatus           @default(PUBLISHED)
+  content                 String
+  issueDate               DateTime                  @default(now())
+  effectiveDate           DateTime                  @default(now())
+  deadline                DateTime?
+  attachmentUrl           String?
+  attachmentName          String?
+  isAcknowledgmentRequired Boolean                  @default(false)
+  
+  targetLevelAll          Boolean                   @default(true)
+  targetLevels            String[]
+  cascadeDescendants      Boolean                   @default(true)
+
+  targetOrganizationUnits DirectiveTargetUnit[]
+  acknowledgments         DirectiveAcknowledgment[]
+
+  issuerOrganization      OrganizationUnit          @relation("IssuedDirectives", fields: [issuerOrganizationId], references: [id], onDelete: Cascade)
+  author                  User                      @relation("AuthoredDirectives", fields: [authorId], references: [id], onDelete: Cascade)
+
+  createdAt               DateTime                  @default(now())
+  updatedAt               DateTime                  @updatedAt
+
+  @@index([issuerOrganizationId])
+  @@index([status])
+  @@index([type])
+  @@index([effectiveDate])
+  @@map("national_directive")
+}
+
+model DirectiveTargetUnit {
+  id                  String            @id @default(cuid())
+  directiveId         String
+  organizationId      String
+
+  directive           NationalDirective @relation(fields: [directiveId], references: [id], onDelete: Cascade)
+  organization        OrganizationUnit  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  createdAt           DateTime          @default(now())
+
+  @@unique([directiveId, organizationId])
+  @@index([organizationId])
+  @@map("directive_target_unit")
+}
+
+model DirectiveAcknowledgment {
+  id                  String            @id @default(cuid())
+  directiveId         String
+  organizationId      String
+  userId              String?
+  
+  isRead              Boolean           @default(false)
+  readAt              DateTime?
+  
+  isAcknowledged      Boolean           @default(false)
+  acknowledgedAt      DateTime?
+  acknowledgmentNotes String?
+
+  directive           NationalDirective @relation(fields: [directiveId], references: [id], onDelete: Cascade)
+  organization        OrganizationUnit  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user                User?             @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
+
+  @@unique([directiveId, organizationId])
+  @@index([organizationId])
+  @@index([isRead])
+  @@index([isAcknowledged])
+  @@map("directive_acknowledgment")
+}
+
+// ============================================================
+// HIERARCHICAL NATIONAL PROGRAMS / INITIATIVES
+// ============================================================
+
+enum ProgramPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+  CRITICAL
+}
+
+enum ProgramStatus {
+  DRAFT
+  PUBLISHED
+  ACTIVE
+  COMPLETED
+  CLOSED
+}
+
+enum ProgramImplementationStatus {
+  PENDING
+  ACKNOWLEDGED
+  IN_PROGRESS
+  COMPLETED
+  BLOCKED
+}
+
+model Program {
+  id                    String                   @id @default(cuid())
+  name                  String
+  description           String
+  objective             String
+  priority              ProgramPriority          @default(NORMAL)
+  startDate             DateTime
+  endDate               DateTime
+  instructions          String
+  requiredAction        String
+  attachmentUrl         String?
+  attachmentName        String?
+  status                ProgramStatus            @default(PUBLISHED)
+  
+  createdBy             String
+  createdOrganizationId String
+  parentProgramId       String?
+
+  targetLevelAll        Boolean                  @default(true)
+  targetLevels          String[]
+  cascadeDescendants    Boolean                  @default(true)
+
+  creator               User                     @relation("CreatedPrograms", fields: [createdBy], references: [id], onDelete: Cascade)
+  createdOrganization   OrganizationUnit         @relation("IssuedPrograms", fields: [createdOrganizationId], references: [id], onDelete: Cascade)
+  parentProgram         Program?                 @relation("SubordinatePrograms", fields: [parentProgramId], references: [id], onDelete: SetNull)
+  subordinatePrograms   Program[]                @relation("SubordinatePrograms")
+
+  targetOrganizationUnits ProgramTargetUnit[]
+  implementations         ProgramImplementation[]
+
+  createdAt             DateTime                 @default(now())
+  updatedAt             DateTime                 @updatedAt
+
+  @@index([createdOrganizationId])
+  @@index([parentProgramId])
+  @@index([status])
+  @@index([startDate])
+  @@index([endDate])
+  @@map("program")
+}
+
+model ProgramTargetUnit {
+  id             String           @id @default(cuid())
+  programId      String
+  organizationId String
+
+  program        Program          @relation(fields: [programId], references: [id], onDelete: Cascade)
+  organization   OrganizationUnit @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  createdAt      DateTime         @default(now())
+
+  @@unique([programId, organizationId])
+  @@index([organizationId])
+  @@map("program_target_unit")
+}
+
+model ProgramImplementation {
+  id                    String                      @id @default(cuid())
+  programId             String
+  organizationId        String
+  acknowledgedByUserId  String?
+
+  status                ProgramImplementationStatus @default(PENDING)
+  isAcknowledged        Boolean                     @default(false)
+  acknowledgedAt        DateTime?
+  startedAt             DateTime?
+  completedAt           DateTime?
+  notes                 String?
+  submittedData         String?
+
+  program               Program                     @relation(fields: [programId], references: [id], onDelete: Cascade)
+  organization          OrganizationUnit            @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  acknowledgedByUser    User?                       @relation("ProgramAcknowledgments", fields: [acknowledgedByUserId], references: [id], onDelete: SetNull)
+
+  createdAt             DateTime                    @default(now())
+  updatedAt             DateTime                    @updatedAt
+
+  @@unique([programId, organizationId])
+  @@index([organizationId])
+  @@index([status])
+  @@map("program_implementation")
+}
+
+// ============================================================
+// DATA REQUEST & GOOGLE FORMS INTEGRATION DOMAIN
+// ============================================================
+
+enum DataRequestPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+enum DataRequestStatus {
+  DRAFT
+  PUBLISHED
+  CLOSED
+  ARCHIVED
+}
+
+enum DataRequestFieldType {
+  SHORT_TEXT
+  LONG_TEXT
+  NUMBER
+  YES_NO
+  DATE
+  SINGLE_SELECT
+  MULTI_SELECT
+}
+
+enum DataRequestTargetStatus {
+  PENDING
+  SUBMITTED
+  UNDER_REVIEW
+  ACCEPTED
+  RETURNED
+}
+
+enum GoogleFormIntegrationStatus {
+  NOT_CONFIGURED
+  CREATING
+  ACTIVE
+  SYNCING
+  ERROR
+  DISCONNECTED
+}
+
+enum DataRequestSubmissionStatus {
+  DRAFT
+  SUBMITTED
+  UNDER_REVIEW
+  ACCEPTED
+  RETURNED
+  RESUBMITTED
+}
+
+model DataRequest {
+  id                    String              @id @default(cuid())
+  title                 String
+  description           String?             @db.Text
+  objective             String              @db.Text
+  priority              DataRequestPriority @default(NORMAL)
+  startDate             DateTime
+  deadline              DateTime
+  instructions          String?             @db.Text
+  requiredAction        String?             @db.Text
+  status                DataRequestStatus   @default(DRAFT)
+
+  createdById           String
+  createdOrganizationId String
+
+  targetScope           String?             @default("SELECTED_ORGANIZATIONS")
+
+  creator               User                @relation("CreatedDataRequests", fields: [createdById], references: [id], onDelete: Cascade)
+  createdOrganization   OrganizationUnit    @relation("IssuedDataRequests", fields: [createdOrganizationId], references: [id], onDelete: Cascade)
+
+  fields                DataRequestField[]
+  targets               DataRequestTarget[]
+  googleForm            GoogleFormIntegration?
+  submissions           DataRequestSubmission[]
+
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
+
+  @@index([createdOrganizationId])
+  @@index([status])
+  @@index([deadline])
+  @@map("data_request")
+}
+
+model DataRequestField {
+  id            String               @id @default(cuid())
+  requestId     String
+  label         String
+  fieldType     DataRequestFieldType
+  required      Boolean              @default(false)
+  description   String?
+  options       String[]             // For SINGLE_SELECT, MULTI_SELECT
+  order         Int                  @default(0)
+  googleItemId  String?              // External Google Forms question ID
+
+  request       DataRequest          @relation(fields: [requestId], references: [id], onDelete: Cascade)
+
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+
+  @@index([requestId])
+  @@map("data_request_field")
+}
+
+model DataRequestTarget {
+  id             String                  @id @default(cuid())
+  requestId      String
+  organizationId String
+  status         DataRequestTargetStatus @default(PENDING)
+
+  request        DataRequest             @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  organization   OrganizationUnit        @relation("TargetedDataRequests", fields: [organizationId], references: [id], onDelete: Cascade)
+
+  createdAt      DateTime                @default(now())
+  updatedAt      DateTime                @updatedAt
+
+  @@unique([requestId, organizationId])
+  @@index([organizationId])
+  @@map("data_request_target")
+}
+
+model GoogleFormIntegration {
+  id             String                      @id @default(cuid())
+  requestId      String                      @unique
+  googleFormId   String
+  formUrl        String                      // Edit / Manage URL: https://docs.google.com/forms/d/.../edit
+  responderUri   String                      // Public submission URL: https://docs.google.com/forms/d/e/.../viewform
+  status         GoogleFormIntegrationStatus @default(ACTIVE)
+  lastSyncedAt   DateTime?
+  errorMessage   String?
+
+  request        DataRequest                 @relation(fields: [requestId], references: [id], onDelete: Cascade)
+
+  createdAt      DateTime                    @default(now())
+  updatedAt      DateTime                    @updatedAt
+
+  @@map("google_form_integration")
+}
+
+model DataRequestSubmission {
+  id                String                      @id @default(cuid())
+  requestId         String
+  organizationId    String
+  googleResponseId  String?                     // External Google Form response ID (Idempotency key)
+  responseData      Json                        // Dynamic response answers { [fieldLabel or fieldId]: value }
+  status            DataRequestSubmissionStatus @default(SUBMITTED)
+
+  submittedByUserId String?
+  submittedAt       DateTime                    @default(now())
+  
+  reviewedById      String?
+  reviewedAt        DateTime?
+  reviewComment     String?
+
+  request           DataRequest                 @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  organization      OrganizationUnit            @relation("DataRequestSubmissions", fields: [organizationId], references: [id], onDelete: Cascade)
+  submittedByUser   User?                       @relation("SubmittedDataRequests", fields: [submittedByUserId], references: [id], onDelete: SetNull)
+  reviewedBy        User?                       @relation("ReviewedDataRequests", fields: [reviewedById], references: [id], onDelete: SetNull)
+
+  createdAt         DateTime                    @default(now())
+  updatedAt         DateTime                    @updatedAt
+
+  @@unique([requestId, organizationId])
+  @@index([requestId])
+  @@index([organizationId])
+  @@index([status])
+  @@map("data_request_submission")
+}
+
+

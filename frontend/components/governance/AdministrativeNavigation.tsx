@@ -11,7 +11,10 @@ import {
     Building2,
     MapPin,
     Network,
-    Shield
+    Shield,
+    Compass,
+    BarChart3,
+    FileSpreadsheet
 } from "lucide-react";
 
 export type AdminTier = "FEDERAL" | "REGION" | "ZONE" | "WOREDA";
@@ -86,6 +89,30 @@ export default function AdministrativeNavigation({
                 icon: Shield,
                 tab: "administration",
             },
+            {
+                label: "Policies & Directives",
+                href: `${basePath}?tab=directives`,
+                icon: FileText,
+                tab: "directives",
+            },
+            {
+                label: "Programs & Initiatives",
+                href: `${basePath}?tab=programs`,
+                icon: Compass,
+                tab: "programs",
+            },
+            {
+                label: "Data Requests",
+                href: `${basePath}?tab=data-requests`,
+                icon: FileSpreadsheet,
+                tab: "data-requests",
+            },
+            {
+                label: "Reports & Analytics",
+                href: `${basePath}?tab=reports`,
+                icon: BarChart3,
+                tab: "reports",
+            },
         ];
     } else if (currentTier === "REGION") {
         navItems = [
@@ -105,6 +132,30 @@ export default function AdministrativeNavigation({
                 href: `${basePath}?tab=administration`,
                 icon: Shield,
                 tab: "administration",
+            },
+            {
+                label: "Policies & Directives",
+                href: `${basePath}?tab=directives`,
+                icon: FileText,
+                tab: "directives",
+            },
+            {
+                label: "Programs & Initiatives",
+                href: `${basePath}?tab=programs`,
+                icon: Compass,
+                tab: "programs",
+            },
+            {
+                label: "Data Requests",
+                href: `${basePath}?tab=data-requests`,
+                icon: FileSpreadsheet,
+                tab: "data-requests",
+            },
+            {
+                label: "Reports & Analytics",
+                href: `${basePath}?tab=reports`,
+                icon: BarChart3,
+                tab: "reports",
             },
         ];
     } else if (currentTier === "ZONE") {
@@ -126,6 +177,30 @@ export default function AdministrativeNavigation({
                 icon: Shield,
                 tab: "administration",
             },
+            {
+                label: "Policies & Directives",
+                href: `${basePath}?tab=directives`,
+                icon: FileText,
+                tab: "directives",
+            },
+            {
+                label: "Programs & Initiatives",
+                href: `${basePath}?tab=programs`,
+                icon: Compass,
+                tab: "programs",
+            },
+            {
+                label: "Data Requests",
+                href: `${basePath}?tab=data-requests`,
+                icon: FileSpreadsheet,
+                tab: "data-requests",
+            },
+            {
+                label: "Reports & Analytics",
+                href: `${basePath}?tab=reports`,
+                icon: BarChart3,
+                tab: "reports",
+            },
         ];
     } else {
         navItems = [
@@ -145,6 +220,30 @@ export default function AdministrativeNavigation({
                 href: `${basePath}?tab=administration`,
                 icon: Shield,
                 tab: "administration",
+            },
+            {
+                label: "Policies & Directives",
+                href: `${basePath}?tab=directives`,
+                icon: FileText,
+                tab: "directives",
+            },
+            {
+                label: "Programs & Initiatives",
+                href: `${basePath}?tab=programs`,
+                icon: Compass,
+                tab: "programs",
+            },
+            {
+                label: "Data Requests",
+                href: `${basePath}?tab=data-requests`,
+                icon: FileSpreadsheet,
+                tab: "data-requests",
+            },
+            {
+                label: "Reports & Analytics",
+                href: `${basePath}?tab=reports`,
+                icon: BarChart3,
+                tab: "reports",
             },
         ];
     }

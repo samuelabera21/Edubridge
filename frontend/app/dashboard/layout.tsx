@@ -92,10 +92,12 @@ function TeacherBreadcrumbs({ pathname, currentTab, currentType }: { pathname: s
             grade: "Record Results & Grade",
             feedback: "Provide Feedback"
         };
-        if (currentType && typeMap[currentType]) {
-            subItemTitle = typeMap[currentType];
-        } else if (currentTab && tabMap[currentTab]) {
+        if (currentTab && tabMap[currentTab]) {
             subItemTitle = tabMap[currentTab];
+        } else if (currentType && typeMap[currentType]) {
+            subItemTitle = typeMap[currentType];
+        } else {
+            subItemTitle = "Create Assessment";
         }
     } else if (pathname.startsWith("/dashboard/teacher/learning") || pathname.startsWith("/dashboard/teacher/activities")) {
         parentTitle = "Learning Activities";
@@ -277,6 +279,9 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
     const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
     const [showProfileDropdown, setShowProfileDropdown] = useState(false);
+    const [showNotificationsDropdown, setShowNotificationsDropdown] = useState(false);
+    const [notificationsList, setNotificationsList] = useState<any[]>([]);
+    const [unreadCount, setUnreadCount] = useState(0);
     const [headerCounts, setHeaderCounts] = useState<{ notifications: number; messages: number }>({
         notifications: 0,
         messages: 0,
@@ -337,6 +342,39 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
             else if (scopeType === "WOREDA") router.replace("/dashboard/woreda");
         }
     }, [authData, isAdministrativeTier, scopeType, pathname, router]);
+
+    const loadNotifications = async () => {
+        try {
+            const res = await fetchApi("/communication/notifications");
+            if (res.ok) {
+                const data = await res.json();
+                if (Array.isArray(data)) {
+                    setNotificationsList(data);
+                    setUnreadCount(data.filter((n: any) => !n.isRead).length);
+                }
+            }
+        } catch {
+            // Ignore
+        }
+    };
+
+    const markNotificationAsRead = async (id: string, link?: string | null) => {
+        try {
+            await fetchApi(`/communication/notifications/${id}/read`, { method: "PATCH" });
+            setNotificationsList(prev => prev.map(n => n.id === id ? { ...n, isRead: true } : n));
+            setUnreadCount(prev => Math.max(0, prev - 1));
+        } catch {}
+        if (link) {
+            setShowNotificationsDropdown(false);
+            router.push(link);
+        }
+    };
+
+    useEffect(() => {
+        if (authData) {
+            loadNotifications();
+        }
+    }, [authData, pathname]);
 
     useEffect(() => {
         if (isTeacherRoute && authData) {
@@ -533,22 +571,160 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
                         <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
                     </div>
 
-                    {/* Notification & Message Badges for Teacher Header */}
+                    {/* In-App Notifications Bell for All Roles */}
+                    <div className="relative">
+                        <button 
+                            onClick={() => {
+                                setShowNotificationsDropdown(!showNotificationsDropdown);
+                                setShowProfileDropdown(false);
+                            }}
+                            className="relative p-2 rounded-full hover:bg-gray-100 text-gray-600 transition-colors cursor-pointer" 
+                            title="In-App Notifications & Directives"
+                        >
+                            <Bell className="w-5 h-5 text-gray-600" />
+                            {unreadCount > 0 && (
+                                <span className="absolute top-1 right-1 px-1 min-w-4 h-4 bg-rose-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center border-2 border-white">
+                                    {unreadCount}
+                                </span>
+                            )}
+                        </button>
+
+                        {/* Notifications Dropdown */}
+                        {showNotificationsDropdown && (
+                            <div 
+                                className="absolute right-0 mt-3 w-80 sm:w-96 bg-white rounded-2xl shadow-xl border border-gray-100 py-3 z-50 text-xs text-gray-700 animate-in fade-in slide-in-from-top-2 duration-150"
+                                onMouseLeave={() => setShowNotificationsDropdown(false)}
+                            >
+                                <div className="flex items-center justify-between px-4 pb-2.5 border-b border-gray-100">
+                                    <div className="flex items-center gap-2">
+                                        <span className="font-bold text-gray-900 text-xs">Notifications</span>
+                                        {unreadCount > 0 && (
+                                            <span className="px-1.5 py-0.5 bg-rose-100 text-rose-700 font-bold rounded text-[10px]">
+                                                {unreadCount} unread
+                                            </span>
+                                        )}
+                                    </div>
+                                    <button
+                                        onClick={async () => {
+                                            try {
+                                                await Promise.all(
+                                                    notificationsList.filter(n => !n.isRead).map(n =>
+                                                        fetchApi(`/communication/notifications/${n.id}/read`, { method: "PATCH" })
+                                                    )
+                                                );
+                                                setNotificationsList(prev => prev.map(n => ({ ...n, isRead: true })));
+                                                setUnreadCount(0);
+                                            } catch {}
+                                        }}
+                                        className="text-[11px] font-semibold text-blue-600 hover:underline cursor-pointer"
+                                    >
+                                        Mark all read
+                                    </button>
+                                </div>
+
+                                <div className="max-h-80 overflow-y-auto divide-y divide-gray-50">
+                                    {notificationsList.length === 0 ? (
+                                        <div className="py-8 text-center text-gray-400 text-xs">
+                                            No notifications right now.
+                                        </div>
+                                    ) : (
+                                        notificationsList.slice(0, 8).map(n => {
+                                            const getDirectivesOrAnnouncementsUrl = () => {
+                                                if (pathname.startsWith("/dashboard/student") || roleName === "STUDENT") {
+                                                    return "/dashboard/student/communication";
+                                                }
+                                                if (pathname.startsWith("/dashboard/teacher") || roleName === "TEACHER" || isTeacherRoute) {
+                                                    return "/dashboard/teacher/communication/staff";
+                                                }
+                                                if (pathname.startsWith("/dashboard/region") || scopeType === "REGION" || roleName === "REGION_ADMIN") {
+                                                    return "/dashboard/region?tab=directives";
+                                                }
+                                                if (pathname.startsWith("/dashboard/zone") || scopeType === "ZONE" || roleName === "ZONE_ADMIN") {
+                                                    return "/dashboard/zone?tab=directives";
+                                                }
+                                                if (pathname.startsWith("/dashboard/woreda") || scopeType === "WOREDA" || roleName === "WOREDA_ADMIN") {
+                                                    return "/dashboard/woreda?tab=directives";
+                                                }
+                                                if (pathname.startsWith("/dashboard/federal") || scopeType === "FEDERAL" || roleName === "FEDERAL_ADMIN") {
+                                                    return "/dashboard/federal?tab=directives";
+                                                }
+                                                return "/dashboard/communication/announcements";
+                                            };
+
+                                            const resolvedLink = (!n.link || n.link === "/dashboard/directives") 
+                                                ? getDirectivesOrAnnouncementsUrl() 
+                                                : n.link;
+
+                                            return (
+                                                <div
+                                                    key={n.id}
+                                                    onClick={() => markNotificationAsRead(n.id, resolvedLink)}
+                                                    className={`p-3 hover:bg-gray-50 transition-colors cursor-pointer ${
+                                                        !n.isRead ? "bg-blue-50/40" : ""
+                                                    }`}
+                                                >
+                                                    <div className="flex items-start justify-between gap-2">
+                                                        <div className="font-semibold text-gray-900 text-xs">
+                                                            {n.title}
+                                                        </div>
+                                                        {!n.isRead && (
+                                                            <span className="w-2 h-2 rounded-full bg-blue-600 shrink-0 mt-1" />
+                                                        )}
+                                                    </div>
+                                                    <p className="text-[11px] text-gray-500 mt-0.5 line-clamp-2">
+                                                        {n.content}
+                                                    </p>
+                                                    <div className="flex items-center justify-between mt-1 text-[10px] text-gray-400">
+                                                        <span>{n.organization?.name || "Official Mandate"}</span>
+                                                        <span>{new Date(n.createdAt).toLocaleDateString()}</span>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })
+                                    )}
+                                </div>
+
+                                 <div className="pt-2 px-4 border-t border-gray-100 text-center">
+                                     {(() => {
+                                         const viewAllUrl = (() => {
+                                             if (pathname.startsWith("/dashboard/student") || roleName === "STUDENT") {
+                                                 return "/dashboard/student/communication";
+                                             }
+                                             if (pathname.startsWith("/dashboard/teacher") || roleName === "TEACHER" || isTeacherRoute) {
+                                                 return "/dashboard/teacher/communication/staff";
+                                             }
+                                             if (pathname.startsWith("/dashboard/region") || scopeType === "REGION" || roleName === "REGION_ADMIN") {
+                                                 return "/dashboard/region?tab=directives";
+                                             }
+                                             if (pathname.startsWith("/dashboard/zone") || scopeType === "ZONE" || roleName === "ZONE_ADMIN") {
+                                                 return "/dashboard/zone?tab=directives";
+                                             }
+                                             if (pathname.startsWith("/dashboard/woreda") || scopeType === "WOREDA" || roleName === "WOREDA_ADMIN") {
+                                                 return "/dashboard/woreda?tab=directives";
+                                             }
+                                             if (pathname.startsWith("/dashboard/federal") || scopeType === "FEDERAL" || roleName === "FEDERAL_ADMIN") {
+                                                 return "/dashboard/federal?tab=directives";
+                                             }
+                                             return "/dashboard/communication/announcements";
+                                         })();
+                                         return (
+                                             <Link
+                                                 href={viewAllUrl}
+                                                 onClick={() => setShowNotificationsDropdown(false)}
+                                                 className="text-xs font-bold text-blue-600 hover:text-blue-800"
+                                             >
+                                                 View All Directives & Announcements →
+                                             </Link>
+                                         );
+                                     })()}
+                                 </div>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Teacher specific message badge */}
                     {isTeacherRoute && (
                         <div className="flex items-center space-x-3">
-                            <button 
-                                onClick={() => router.push("/dashboard/teacher/support")}
-                                className="relative p-2 rounded-full hover:bg-gray-100 text-gray-600 transition-colors cursor-pointer" 
-                                title="Notifications (Pending Tasks & Alerts)"
-                            >
-                                <Bell className="w-5 h-5 text-gray-600" />
-                                {headerCounts.notifications > 0 && (
-                                    <span className="absolute top-1 right-1 px-1 min-w-4 h-4 bg-rose-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center border-2 border-white">
-                                        {headerCounts.notifications}
-                                    </span>
-                                )}
-                            </button>
-
                             <button 
                                 onClick={() => router.push("/dashboard/teacher/communication/parent")}
                                 className="relative p-2 rounded-full hover:bg-gray-100 text-gray-600 transition-colors cursor-pointer" 
@@ -800,11 +976,7 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
                                     </button>
                                     {openMenus.teacherAssessment && !sidebarCollapsed && (
                                         <div className="pl-8 pr-2 py-1.5 space-y-1 bg-[#103454]/80 rounded-xl my-1 border-l-2 border-[#2c6da7]/50 shadow-inner">
-                                            <Link href="/dashboard/teacher/assessment?type=ALL" className={`block py-1.5 px-2 rounded-lg text-xs transition-all duration-150 hover:translate-x-0.5 ${pathname === "/dashboard/teacher/assessment" && currentType === "ALL" ? "text-amber-300 font-semibold bg-[#0f2f4c] shadow-xs" : "text-blue-200/90 hover:text-amber-200 hover:bg-[#225785]/60"}`}>Create Assessment</Link>
-                                            <Link href="/dashboard/teacher/assessment?type=QUIZ" className={`block py-1.5 px-2 rounded-lg text-xs transition-all duration-150 hover:translate-x-0.5 ${pathname === "/dashboard/teacher/assessment" && currentType === "QUIZ" ? "text-amber-300 font-semibold bg-[#0f2f4c] shadow-xs" : "text-blue-200/90 hover:text-amber-200 hover:bg-[#225785]/60"}`}>Create Quiz</Link>
-                                            <Link href="/dashboard/teacher/assessment?type=TEST" className={`block py-1.5 px-2 rounded-lg text-xs transition-all duration-150 hover:translate-x-0.5 ${pathname === "/dashboard/teacher/assessment" && currentType === "TEST" ? "text-amber-300 font-semibold bg-[#0f2f4c] shadow-xs" : "text-blue-200/90 hover:text-amber-200 hover:bg-[#225785]/60"}`}>Create Test</Link>
-                                            <Link href="/dashboard/teacher/assessment?type=ASSIGNMENT" className={`block py-1.5 px-2 rounded-lg text-xs transition-all duration-150 hover:translate-x-0.5 ${pathname === "/dashboard/teacher/assessment" && currentType === "ASSIGNMENT" ? "text-amber-300 font-semibold bg-[#0f2f4c] shadow-xs" : "text-blue-200/90 hover:text-amber-200 hover:bg-[#225785]/60"}`}>Create Assignment</Link>
-                                            <Link href="/dashboard/teacher/assessment?type=PROJECT" className={`block py-1.5 px-2 rounded-lg text-xs transition-all duration-150 hover:translate-x-0.5 ${pathname === "/dashboard/teacher/assessment" && currentType === "PROJECT" ? "text-amber-300 font-semibold bg-[#0f2f4c] shadow-xs" : "text-blue-200/90 hover:text-amber-200 hover:bg-[#225785]/60"}`}>Create Project</Link>
+                                            <Link href="/dashboard/teacher/assessment" className={`block py-1.5 px-2 rounded-lg text-xs transition-all duration-150 hover:translate-x-0.5 ${pathname === "/dashboard/teacher/assessment" && (!currentTab || currentTab === "create") ? "text-amber-300 font-semibold bg-[#0f2f4c] shadow-xs" : "text-blue-200/90 hover:text-amber-200 hover:bg-[#225785]/60"}`}>Create Assessment</Link>
                                             <Link href="/dashboard/teacher/assessment?tab=conduct" className={`block py-1.5 px-2 rounded-lg text-xs transition-all duration-150 hover:translate-x-0.5 ${pathname === "/dashboard/teacher/assessment" && currentTab === "conduct" ? "text-amber-300 font-semibold bg-[#0f2f4c] shadow-xs" : "text-blue-200/90 hover:text-amber-200 hover:bg-[#225785]/60"}`}>Conduct Assessment</Link>
                                             <Link href="/dashboard/teacher/assessment?tab=grade" className={`block py-1.5 px-2 rounded-lg text-xs transition-all duration-150 hover:translate-x-0.5 ${pathname === "/dashboard/teacher/assessment" && currentTab === "grade" ? "text-amber-300 font-semibold bg-[#0f2f4c] shadow-xs" : "text-blue-200/90 hover:text-amber-200 hover:bg-[#225785]/60"}`}>Record Results & Grade</Link>
                                             <Link href="/dashboard/teacher/assessment?tab=feedback" className={`block py-1.5 px-2 rounded-lg text-xs transition-all duration-150 hover:translate-x-0.5 ${pathname === "/dashboard/teacher/assessment" && currentTab === "feedback" ? "text-amber-300 font-semibold bg-[#0f2f4c] shadow-xs" : "text-blue-200/90 hover:text-amber-200 hover:bg-[#225785]/60"}`}>Provide Feedback</Link>
@@ -1236,6 +1408,9 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
                                             {openMenus.communication && !sidebarCollapsed && (
                                                 <div className="pl-8 pr-2 py-1.5 space-y-1 bg-[#103454]/80 rounded-xl my-1 border-l-2 border-[#2c6da7]/50 shadow-inner">
                                                     <Link href="/dashboard/communication/announcements" className={`block py-1.5 px-2 rounded-lg text-xs transition-all duration-150 hover:translate-x-0.5 ${pathname === "/dashboard/communication/announcements" ? "text-amber-300 font-semibold bg-[#0f2f4c] shadow-xs" : "text-blue-200/90 hover:text-amber-200 hover:bg-[#225785]/60"}`}>Announcements</Link>
+                                                    <Link href="/dashboard/directives" className={`block py-1.5 px-2 rounded-lg text-xs transition-all duration-150 hover:translate-x-0.5 ${pathname === "/dashboard/directives" ? "text-amber-300 font-semibold bg-[#0f2f4c] shadow-xs" : "text-blue-200/90 hover:text-amber-200 hover:bg-[#225785]/60"}`}>National Policies & Directives</Link>
+                                                    <Link href="/dashboard/programs" className={`block py-1.5 px-2 rounded-lg text-xs transition-all duration-150 hover:translate-x-0.5 ${pathname === "/dashboard/programs" ? "text-amber-300 font-semibold bg-[#0f2f4c] shadow-xs" : "text-blue-200/90 hover:text-amber-200 hover:bg-[#225785]/60"}`}>Programs & Initiatives</Link>
+                                                    <Link href="/dashboard/data-requests" className={`block py-1.5 px-2 rounded-lg text-xs transition-all duration-150 hover:translate-x-0.5 ${pathname.startsWith("/dashboard/data-requests") ? "text-amber-300 font-semibold bg-[#0f2f4c] shadow-xs" : "text-blue-200/90 hover:text-amber-200 hover:bg-[#225785]/60"}`}>Data Requests & Surveys</Link>
                                                     <Link href="/dashboard/communication/notices" className={`block py-1.5 px-2 rounded-lg text-xs transition-all duration-150 hover:translate-x-0.5 ${pathname === "/dashboard/communication/notices" ? "text-amber-300 font-semibold bg-[#0f2f4c] shadow-xs" : "text-blue-200/90 hover:text-amber-200 hover:bg-[#225785]/60"}`}>Important Notices</Link>
                                                     <Link href="/dashboard/communication/messages" className={`block py-1.5 px-2 rounded-lg text-xs transition-all duration-150 hover:translate-x-0.5 ${pathname === "/dashboard/communication/messages" ? "text-amber-300 font-semibold bg-[#0f2f4c] shadow-xs" : "text-blue-200/90 hover:text-amber-200 hover:bg-[#225785]/60"}`}>Direct Messages</Link>
                                                     <Link href="/dashboard/communication/notifications" className={`block py-1.5 px-2 rounded-lg text-xs transition-all duration-150 hover:translate-x-0.5 ${pathname === "/dashboard/communication/notifications" ? "text-amber-300 font-semibold bg-[#0f2f4c] shadow-xs" : "text-blue-200/90 hover:text-amber-200 hover:bg-[#225785]/60"}`}>Notifications</Link>

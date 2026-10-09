@@ -2,7 +2,7 @@ import { prisma } from "../../infrastructure/prisma/client.js";
 import { AssessmentType } from "../../generated/prisma/enums.js";
 
 export class AssessmentService {
-    static async createAssessment(organizationId: string, data: { academicYearId: string; teachingAssignmentId: string; title: string; description?: string; type: AssessmentType; maxScore: number; passingScore?: number; dueDate?: string }) {
+    static async createAssessment(organizationId: string, data: { academicYearId: string; teachingAssignmentId: string; title: string; description?: string; type: AssessmentType; maxScore: number; passingScore?: number; dueDate?: string; durationMinutes?: number; scheduledDate?: string; status?: string }) {
         // Validate teaching assignment exists and belongs to school
         const assignment = await prisma.teachingAssignment.findFirst({
             where: { id: data.teachingAssignmentId, academicYear: { organizationId } }
@@ -12,6 +12,18 @@ export class AssessmentService {
             throw new Error("Teaching assignment not found or does not belong to this organization");
         }
 
+        let assessmentType: any = data.type;
+        if (typeof assessmentType === "string" && assessmentType.toUpperCase() === "TEST") {
+            assessmentType = AssessmentType.EXAM;
+        } else if (!Object.values(AssessmentType).includes(assessmentType)) {
+            assessmentType = AssessmentType.OTHER;
+        }
+
+        let assessmentStatus = data.status?.toUpperCase() || "SCHEDULED";
+        if (!["SCHEDULED", "RELEASED", "CLOSED"].includes(assessmentStatus)) {
+            assessmentStatus = "SCHEDULED";
+        }
+
         const assessment = await prisma.assessment.create({
             data: {
                 organizationId,
@@ -19,9 +31,12 @@ export class AssessmentService {
                 teachingAssignmentId: data.teachingAssignmentId,
                 title: data.title,
                 description: data.description,
-                type: data.type,
-                maxScore: data.maxScore,
-                passingScore: data.passingScore,
+                type: assessmentType,
+                status: assessmentStatus as any,
+                durationMinutes: data.durationMinutes ? Number(data.durationMinutes) : 60,
+                scheduledDate: data.scheduledDate ? new Date(data.scheduledDate) : null,
+                maxScore: Number(data.maxScore),
+                passingScore: data.passingScore !== undefined ? Number(data.passingScore) : undefined,
                 dueDate: data.dueDate ? new Date(data.dueDate) : null
             }
         });
@@ -98,6 +113,21 @@ export class AssessmentService {
             assessment,
             rosterResults
         };
+    }
+
+    static async deleteAssessment(organizationId: string, assessmentId: string) {
+        const assessment = await prisma.assessment.findFirst({
+            where: { id: assessmentId, organizationId }
+        });
+        if (!assessment) throw new Error("Assessment not found");
+
+        await prisma.studentResult.deleteMany({
+            where: { assessmentId }
+        });
+
+        return prisma.assessment.delete({
+            where: { id: assessmentId }
+        });
     }
 
     static async recordResult(organizationId: string, data: { assessmentId: string; enrollmentId: string; score: number; feedback?: string; gradedById?: string }) {

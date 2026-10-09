@@ -511,6 +511,481 @@ export class HierarchyService {
     }
 
     /**
+     * Retrieves hierarchical drill-down node data:
+     * - Node details & aggregated counts (Zones, Woredas, Schools, Students, Teachers)
+     * - Full breadcrumb chain (Federal -> Region -> Zone -> Woreda -> School)
+     * - Direct child nodes with their individual aggregated counts
+     */
+    static async getHierarchyDrilldown(
+        unitId?: string,
+        actorScope?: { id: string; type: OrganizationUnitType; name: string } | null
+    ) {
+        // 1. Resolve target unit
+        let targetUnit: any = null;
+        if (!unitId || unitId === "FEDERAL" || unitId === "root") {
+            if (actorScope && actorScope.type !== "FEDERAL") {
+                targetUnit = await prisma.organizationUnit.findUnique({
+                    where: { id: actorScope.id },
+                    include: {
+                        parent: true,
+                        schoolProfile: true,
+                        assignments: {
+                            include: { user: true, role: true }
+                        }
+                    }
+                });
+            } else {
+                targetUnit = await prisma.organizationUnit.findFirst({
+                    where: { type: "FEDERAL" },
+                    include: {
+                        assignments: {
+                            include: { user: true, role: true }
+                        }
+                    }
+                });
+            }
+            if (!targetUnit) {
+                return {
+                    node: {
+                        id: "federal-root",
+                        name: "Federal Ministry of Education",
+                        type: "FEDERAL" as const,
+                        parentId: null,
+                        parentName: null
+                    },
+                    counts: {
+                        totalRegions: 0,
+                        zonesCount: 0,
+                        woredasCount: 0,
+                        schoolsCount: 0,
+                        studentsCount: 0,
+                        teachersCount: 0
+                    },
+                    admin: null,
+                    schoolProfile: null,
+                    breadcrumbs: [{ id: "federal-root", name: "Federal Ministry of Education", type: "FEDERAL" as const }],
+                    children: []
+                };
+            }
+        } else {
+            targetUnit = await prisma.organizationUnit.findUnique({
+                where: { id: unitId },
+                include: {
+                    parent: true,
+                    schoolProfile: true,
+                    assignments: {
+                        include: { user: true, role: true }
+                    }
+                }
+            });
+            if (!targetUnit) {
+                throw new Error(`Organization unit with ID '${unitId}' not found.`);
+            }
+        }
+
+        // 2. Validate scope if actor is not FEDERAL
+        if (actorScope && actorScope.type !== "FEDERAL") {
+            const accessibleIds = await HierarchyScopeService.getAccessibleOrganizationIds(actorScope.id);
+            if (!accessibleIds.includes(targetUnit.id)) {
+                throw new Error(`Forbidden: You do not have permission to access unit '${targetUnit.name}'.`);
+            }
+        }
+
+        // 3. Resolve breadcrumbs via lineage
+        const lineage = await HierarchyScopeService.getLineage(targetUnit.id);
+        const breadcrumbs = [...lineage].reverse().map(u => ({
+            id: u.id,
+            name: u.name,
+            type: u.type
+        }));
+
+        // 4. Resolve admin for targetUnit
+        let unitAdmin = null;
+        const adminAssignment = targetUnit.assignments?.find(
+            (a: any) => a.role.name === "ADMIN" || a.role.name.endsWith("_ADMIN") || a.role.name === "PRINCIPAL"
+        );
+        if (adminAssignment && adminAssignment.user) {
+            const u = adminAssignment.user;
+            unitAdmin = {
+                id: u.id,
+                name: u.name,
+                email: u.email,
+                status: u.emailVerified ? ("ACTIVE" as const) : ("INVITATION_PENDING" as const),
+                invitedAt: adminAssignment.createdAt?.toISOString(),
+                roleName: adminAssignment.role.name
+            };
+        }
+
+        // 5. Load all units for rollups
+        const allUnits = await prisma.organizationUnit.findMany({
+            select: { id: true, name: true, type: true, parentId: true }
+        });
+
+        // Helper to find all descendant school IDs for any given unit ID
+        const getSchoolIdsForUnit = (startId: string, startType: string): string[] => {
+            if (startType === "SCHOOL") return [startId];
+            const schoolIds: string[] = [];
+            const queue = [startId];
+            while (queue.length > 0) {
+                const cur = queue.shift()!;
+                const kids = allUnits.filter(u => u.parentId === cur);
+                for (const k of kids) {
+                    if (k.type === "SCHOOL") {
+                        schoolIds.push(k.id);
+                    } else {
+                        queue.push(k.id);
+                    }
+                }
+            }
+            return schoolIds;
+        };
+
+        // Helper to count units of a specific type under a subtree
+        const countDescendantsOfType = (startId: string, type: string): number => {
+            let count = 0;
+            const queue = [startId];
+            while (queue.length > 0) {
+                const cur = queue.shift()!;
+                const kids = allUnits.filter(u => u.parentId === cur);
+                for (const k of kids) {
+                    if (k.type === type) count++;
+                    queue.push(k.id);
+                }
+            }
+            return count;
+        };
+
+        // 6. Handle Drill-down per Tier:
+        if (targetUnit.type === "FEDERAL") {
+            const regions = await prisma.organizationUnit.findMany({
+                where: { type: "REGION", parentId: targetUnit.id },
+                include: {
+                    assignments: { include: { user: true, role: true } }
+                },
+                orderBy: { name: "asc" }
+            });
+
+            const children = await Promise.all(
+                regions.map(async r => {
+                    const zonesCount = allUnits.filter(u => u.parentId === r.id && u.type === "ZONE").length;
+                    const woredasCount = countDescendantsOfType(r.id, "WOREDA");
+                    const schoolIds = getSchoolIdsForUnit(r.id, "REGION");
+                    const [studentsCount, teachersCount] = await Promise.all([
+                        prisma.studentEnrollment.count({ where: { organizationId: { in: schoolIds } } }).catch(() => 0),
+                        prisma.teacher.count({ where: { organizationId: { in: schoolIds } } }).catch(() => 0)
+                    ]);
+
+                    const rAdminAssignment = r.assignments?.find(
+                        (a: any) => a.role.name === "ADMIN" || a.role.name === "REGIONAL_ADMIN" || a.role.name === "REGION_ADMIN"
+                    );
+                    let rAdmin = null;
+                    if (rAdminAssignment && rAdminAssignment.user) {
+                        rAdmin = {
+                            id: rAdminAssignment.user.id,
+                            name: rAdminAssignment.user.name,
+                            email: rAdminAssignment.user.email,
+                            status: rAdminAssignment.user.emailVerified ? ("ACTIVE" as const) : ("INVITATION_PENDING" as const),
+                            roleName: "Regional Administrator"
+                        };
+                    }
+
+                    return {
+                        id: r.id,
+                        name: r.name,
+                        type: "REGION" as const,
+                        parentId: r.parentId,
+                        zonesCount,
+                        woredasCount,
+                        schoolsCount: schoolIds.length,
+                        studentsCount,
+                        teachersCount,
+                        admin: rAdmin
+                    };
+                })
+            );
+
+            const totalRegions = regions.length;
+            const totalZones = children.reduce((acc, c) => acc + (c.zonesCount || 0), 0);
+            const totalWoredas = children.reduce((acc, c) => acc + (c.woredasCount || 0), 0);
+            const totalSchools = children.reduce((acc, c) => acc + (c.schoolsCount || 0), 0);
+            const totalStudents = children.reduce((acc, c) => acc + (c.studentsCount || 0), 0);
+            const totalTeachers = children.reduce((acc, c) => acc + (c.teachersCount || 0), 0);
+
+            return {
+                node: {
+                    id: targetUnit.id,
+                    name: targetUnit.name,
+                    type: targetUnit.type,
+                    parentId: null,
+                    parentName: null
+                },
+                counts: {
+                    totalRegions,
+                    zonesCount: totalZones,
+                    woredasCount: totalWoredas,
+                    schoolsCount: totalSchools,
+                    studentsCount: totalStudents,
+                    teachersCount: totalTeachers
+                },
+                admin: unitAdmin,
+                schoolProfile: null,
+                breadcrumbs,
+                children
+            };
+        }
+
+        if (targetUnit.type === "REGION") {
+            const zones = await prisma.organizationUnit.findMany({
+                where: { type: "ZONE", parentId: targetUnit.id },
+                include: {
+                    assignments: { include: { user: true, role: true } }
+                },
+                orderBy: { name: "asc" }
+            });
+
+            const children = await Promise.all(
+                zones.map(async z => {
+                    const woredasCount = allUnits.filter(u => u.parentId === z.id && u.type === "WOREDA").length;
+                    const schoolIds = getSchoolIdsForUnit(z.id, "ZONE");
+                    const [studentsCount, teachersCount] = await Promise.all([
+                        prisma.studentEnrollment.count({ where: { organizationId: { in: schoolIds } } }).catch(() => 0),
+                        prisma.teacher.count({ where: { organizationId: { in: schoolIds } } }).catch(() => 0)
+                    ]);
+
+                    const zAdminAssignment = z.assignments?.find(
+                        (a: any) => a.role.name === "ADMIN" || a.role.name === "ZONE_ADMIN" || a.role.name === "ZONAL_ADMIN"
+                    );
+                    let zAdmin = null;
+                    if (zAdminAssignment && zAdminAssignment.user) {
+                        zAdmin = {
+                            id: zAdminAssignment.user.id,
+                            name: zAdminAssignment.user.name,
+                            email: zAdminAssignment.user.email,
+                            status: zAdminAssignment.user.emailVerified ? ("ACTIVE" as const) : ("INVITATION_PENDING" as const),
+                            roleName: "Zonal Administrator"
+                        };
+                    }
+
+                    return {
+                        id: z.id,
+                        name: z.name,
+                        type: "ZONE" as const,
+                        parentId: z.parentId,
+                        woredasCount,
+                        schoolsCount: schoolIds.length,
+                        studentsCount,
+                        teachersCount,
+                        admin: zAdmin
+                    };
+                })
+            );
+
+            const zonesCount = zones.length;
+            const woredasCount = children.reduce((acc, c) => acc + (c.woredasCount || 0), 0);
+            const schoolsCount = children.reduce((acc, c) => acc + (c.schoolsCount || 0), 0);
+            const studentsCount = children.reduce((acc, c) => acc + (c.studentsCount || 0), 0);
+            const teachersCount = children.reduce((acc, c) => acc + (c.teachersCount || 0), 0);
+
+            return {
+                node: {
+                    id: targetUnit.id,
+                    name: targetUnit.name,
+                    type: targetUnit.type,
+                    parentId: targetUnit.parentId,
+                    parentName: targetUnit.parent?.name || "Federal Ministry of Education"
+                },
+                counts: {
+                    zonesCount,
+                    woredasCount,
+                    schoolsCount,
+                    studentsCount,
+                    teachersCount
+                },
+                admin: unitAdmin,
+                schoolProfile: null,
+                breadcrumbs,
+                children
+            };
+        }
+
+        if (targetUnit.type === "ZONE") {
+            const woredas = await prisma.organizationUnit.findMany({
+                where: { type: "WOREDA", parentId: targetUnit.id },
+                include: {
+                    assignments: { include: { user: true, role: true } }
+                },
+                orderBy: { name: "asc" }
+            });
+
+            const children = await Promise.all(
+                woredas.map(async w => {
+                    const schoolIds = getSchoolIdsForUnit(w.id, "WOREDA");
+                    const [studentsCount, teachersCount] = await Promise.all([
+                        prisma.studentEnrollment.count({ where: { organizationId: { in: schoolIds } } }).catch(() => 0),
+                        prisma.teacher.count({ where: { organizationId: { in: schoolIds } } }).catch(() => 0)
+                    ]);
+
+                    const wAdminAssignment = w.assignments?.find(
+                        (a: any) => a.role.name === "ADMIN" || a.role.name === "WOREDA_ADMIN"
+                    );
+                    let wAdmin = null;
+                    if (wAdminAssignment && wAdminAssignment.user) {
+                        wAdmin = {
+                            id: wAdminAssignment.user.id,
+                            name: wAdminAssignment.user.name,
+                            email: wAdminAssignment.user.email,
+                            status: wAdminAssignment.user.emailVerified ? ("ACTIVE" as const) : ("INVITATION_PENDING" as const),
+                            roleName: "Woreda Administrator"
+                        };
+                    }
+
+                    return {
+                        id: w.id,
+                        name: w.name,
+                        type: "WOREDA" as const,
+                        parentId: w.parentId,
+                        schoolsCount: schoolIds.length,
+                        studentsCount,
+                        teachersCount,
+                        admin: wAdmin
+                    };
+                })
+            );
+
+            const woredasCount = woredas.length;
+            const schoolsCount = children.reduce((acc, c) => acc + (c.schoolsCount || 0), 0);
+            const studentsCount = children.reduce((acc, c) => acc + (c.studentsCount || 0), 0);
+            const teachersCount = children.reduce((acc, c) => acc + (c.teachersCount || 0), 0);
+
+            return {
+                node: {
+                    id: targetUnit.id,
+                    name: targetUnit.name,
+                    type: targetUnit.type,
+                    parentId: targetUnit.parentId,
+                    parentName: targetUnit.parent?.name || "Regional Education Bureau"
+                },
+                counts: {
+                    woredasCount,
+                    schoolsCount,
+                    studentsCount,
+                    teachersCount
+                },
+                admin: unitAdmin,
+                schoolProfile: null,
+                breadcrumbs,
+                children
+            };
+        }
+
+        if (targetUnit.type === "WOREDA") {
+            const schools = await prisma.organizationUnit.findMany({
+                where: { type: "SCHOOL", parentId: targetUnit.id },
+                include: {
+                    schoolProfile: true,
+                    assignments: { include: { user: true, role: true } },
+                    _count: {
+                        select: {
+                            studentEnrollments: true,
+                            teachers: true
+                        }
+                    }
+                },
+                orderBy: { name: "asc" }
+            });
+
+            const children = schools.map(s => {
+                const sAdminAssignment = s.assignments?.find(
+                    (a: any) => a.role.name === "ADMIN" || a.role.name === "SCHOOL_ADMIN" || a.role.name === "PRINCIPAL"
+                );
+                let sAdmin = null;
+                if (sAdminAssignment && sAdminAssignment.user) {
+                    sAdmin = {
+                        id: sAdminAssignment.user.id,
+                        name: sAdminAssignment.user.name,
+                        email: sAdminAssignment.user.email,
+                        status: sAdminAssignment.user.emailVerified ? ("ACTIVE" as const) : ("INVITATION_PENDING" as const),
+                        roleName: "School Principal"
+                    };
+                }
+
+                return {
+                    id: s.id,
+                    name: s.name,
+                    type: "SCHOOL" as const,
+                    parentId: s.parentId,
+                    studentsCount: s._count?.studentEnrollments ?? 0,
+                    teachersCount: s._count?.teachers ?? 0,
+                    admin: sAdmin,
+                    schoolProfile: s.schoolProfile ? {
+                        address: s.schoolProfile.address || null,
+                        phoneNumber: s.schoolProfile.phoneNumber || null,
+                        contactEmail: s.schoolProfile.contactEmail || null,
+                        establishedYear: s.schoolProfile.establishedYear || null,
+                        status: s.schoolProfile.status || "ACTIVE"
+                    } : null
+                };
+            });
+
+            const schoolsCount = schools.length;
+            const studentsCount = children.reduce((acc, c) => acc + (c.studentsCount || 0), 0);
+            const teachersCount = children.reduce((acc, c) => acc + (c.teachersCount || 0), 0);
+
+            return {
+                node: {
+                    id: targetUnit.id,
+                    name: targetUnit.name,
+                    type: targetUnit.type,
+                    parentId: targetUnit.parentId,
+                    parentName: targetUnit.parent?.name || "Zonal Education Department"
+                },
+                counts: {
+                    schoolsCount,
+                    studentsCount,
+                    teachersCount
+                },
+                admin: unitAdmin,
+                schoolProfile: null,
+                breadcrumbs,
+                children
+            };
+        }
+
+        if (targetUnit.type === "SCHOOL") {
+            const [studentsCount, teachersCount] = await Promise.all([
+                prisma.studentEnrollment.count({ where: { organizationId: targetUnit.id } }).catch(() => 0),
+                prisma.teacher.count({ where: { organizationId: targetUnit.id } }).catch(() => 0)
+            ]);
+
+            return {
+                node: {
+                    id: targetUnit.id,
+                    name: targetUnit.name,
+                    type: targetUnit.type,
+                    parentId: targetUnit.parentId,
+                    parentName: targetUnit.parent?.name || "Woreda Education Office"
+                },
+                counts: {
+                    studentsCount,
+                    teachersCount
+                },
+                admin: unitAdmin,
+                schoolProfile: targetUnit.schoolProfile ? {
+                    address: targetUnit.schoolProfile.address || null,
+                    phoneNumber: targetUnit.schoolProfile.phoneNumber || null,
+                    contactEmail: targetUnit.schoolProfile.contactEmail || null,
+                    establishedYear: targetUnit.schoolProfile.establishedYear || null,
+                    status: targetUnit.schoolProfile.status || "ACTIVE"
+                } : null,
+                breadcrumbs,
+                children: []
+            };
+        }
+
+        throw new Error(`Unsupported organization unit type '${targetUnit.type}'.`);
+    }
+
+    /**
      * Assigns a Regional Administrator by recording user designation,
      * assigning the scoped role, generating invitation token, and auditing.
      */

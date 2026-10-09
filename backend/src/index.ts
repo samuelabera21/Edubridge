@@ -25,6 +25,11 @@ import aiLeadershipRoutes from "./modules/ai-leadership/ai-leadership.routes.js"
 import schoolSettingsRoutes from "./modules/school-settings/school-settings.routes.js";
 import hierarchyRoutes from "./modules/hierarchy/hierarchy.routes.js";
 import governanceRoutes from "./modules/governance/governance.routes.js";
+import directiveRoutes from "./modules/directive/directive.routes.js";
+import programRoutes from "./modules/program/program.routes.js";
+import hierarchicalReportRoutes from "./modules/hierarchical-reporting/hierarchical-report.routes.js";
+import dataRequestRoutes from "./modules/data-request/data-request.routes.js";
+import { GoogleFormsSyncPoller } from "./modules/data-request/google-forms-sync.poller.js";
 import storageRoutes from "./modules/storage/storage.routes.js";
 import { StorageService } from "./modules/storage/storage.service.js";
 import swaggerUi from "swagger-ui-express";
@@ -78,6 +83,10 @@ app.use("/api/ai-leadership", aiLeadershipRoutes);
 app.use("/api/school-settings", schoolSettingsRoutes);
 app.use("/api/hierarchy", hierarchyRoutes);
 app.use("/api/governance", governanceRoutes);
+app.use("/api/directives", directiveRoutes);
+app.use("/api/programs", programRoutes);
+app.use("/api/hierarchical-reports", hierarchicalReportRoutes);
+app.use("/api/data-requests", dataRequestRoutes);
 app.use("/api/storage", storageRoutes);
 
 app.get("/", (_req, res) => {
@@ -99,4 +108,6 @@ app.listen(PORT, () => {
     StorageService.ensureBucketExists().catch(err =>
         console.warn("[Storage] Bucket check failed:", err?.message)
     );
+    // Start automated background synchronization for active Google Forms
+    GoogleFormsSyncPoller.startPolling(30000);
 });

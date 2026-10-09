@@ -8,12 +8,53 @@ import {
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { randomUUID } from "crypto";
 
-// ─── Allowed MIME types ────────────────────────────────────────────────────
+// ─── Allowed MIME types & Extensions ─────────────────────────────────────────
 const ALLOWED_MIME_TYPES: Record<string, string> = {
+    // Images
     "image/jpeg": ".jpg",
     "image/jpg": ".jpg",
     "image/png": ".png",
+    "image/webp": ".webp",
+    "image/gif": ".gif",
+    "image/svg+xml": ".svg",
+
+    // Documents (PDF, Word, Text)
     "application/pdf": ".pdf",
+    "application/msword": ".doc",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document": ".docx",
+    "text/plain": ".txt",
+
+    // Spreadsheets (Excel, CSV)
+    "application/vnd.ms-excel": ".xls",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": ".xlsx",
+    "text/csv": ".csv",
+
+    // Presentations (PowerPoint)
+    "application/vnd.ms-powerpoint": ".ppt",
+    "application/vnd.openxmlformats-officedocument.presentationml.presentation": ".pptx",
+
+    // Archives
+    "application/zip": ".zip",
+    "application/x-zip-compressed": ".zip",
+};
+
+const EXTENSION_MAP: Record<string, { ext: string; mime: string }> = {
+    ".pdf": { ext: ".pdf", mime: "application/pdf" },
+    ".docx": { ext: ".docx", mime: "application/vnd.openxmlformats-officedocument.wordprocessingml.document" },
+    ".doc": { ext: ".doc", mime: "application/msword" },
+    ".xlsx": { ext: ".xlsx", mime: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" },
+    ".xls": { ext: ".xls", mime: "application/vnd.ms-excel" },
+    ".pptx": { ext: ".pptx", mime: "application/vnd.openxmlformats-officedocument.presentationml.presentation" },
+    ".ppt": { ext: ".ppt", mime: "application/vnd.ms-powerpoint" },
+    ".csv": { ext: ".csv", mime: "text/csv" },
+    ".txt": { ext: ".txt", mime: "text/plain" },
+    ".jpg": { ext: ".jpg", mime: "image/jpeg" },
+    ".jpeg": { ext: ".jpg", mime: "image/jpeg" },
+    ".png": { ext: ".png", mime: "image/png" },
+    ".webp": { ext: ".webp", mime: "image/webp" },
+    ".gif": { ext: ".gif", mime: "image/gif" },
+    ".svg": { ext: ".svg", mime: "image/svg+xml" },
+    ".zip": { ext: ".zip", mime: "application/zip" },
 };
 
 const BUCKET = process.env.MINIO_BUCKET || "edubridge-documents";
@@ -70,8 +111,8 @@ export class StorageService {
      * Generate a presigned PUT URL for the client to upload a file directly.
      *
      * @param originalFileName - Original filename from client (used for extension detection)
-     * @param contentType      - MIME type (e.g. "application/pdf", "image/jpeg")
-     * @param folder           - Logical folder inside the bucket (e.g. "students/documents")
+     * @param contentType      - MIME type (e.g. "application/pdf", "image/jpeg", "application/vnd.openxmlformats-officedocument.wordprocessingml.document")
+     * @param folder           - Logical folder inside the bucket (e.g. "students/documents", "programs/attachments")
      * @returns { presignedUrl, fileKey, publicUrl }
      */
     static async generatePresignedUploadUrl(
@@ -83,11 +124,21 @@ export class StorageService {
         fileKey: string;
         publicUrl: string;
     }> {
-        // 1. Validate MIME type
-        const extension = ALLOWED_MIME_TYPES[contentType.toLowerCase()];
+        // 1. Resolve extension and clean content type
+        const cleanType = (contentType || "").toLowerCase().trim();
+        const fileExt = originalFileName ? ("." + originalFileName.split(".").pop()?.toLowerCase()) : "";
+
+        let extension = ALLOWED_MIME_TYPES[cleanType];
+        let effectiveContentType = cleanType;
+
+        if (!extension && fileExt && EXTENSION_MAP[fileExt]) {
+            extension = EXTENSION_MAP[fileExt].ext;
+            effectiveContentType = EXTENSION_MAP[fileExt].mime;
+        }
+
         if (!extension) {
             throw new Error(
-                `File type "${contentType}" is not allowed. Accepted types: PDF, JPEG, PNG.`
+                `File type "${contentType || fileExt}" is not allowed. Accepted types: PDF, Word (.doc, .docx), Excel (.xls, .xlsx), PowerPoint (.ppt, .pptx), Text (.txt, .csv), Images (JPEG, PNG, WebP), ZIP.`
             );
         }
 
@@ -102,7 +153,7 @@ export class StorageService {
         const command = new PutObjectCommand({
             Bucket: BUCKET,
             Key: fileKey,
-            ContentType: contentType,
+            ContentType: effectiveContentType || contentType,
         });
 
         // 4. Sign using presignS3 so the Signature matches the browser's Host header

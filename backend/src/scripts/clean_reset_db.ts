@@ -1,9 +1,9 @@
 import { prisma } from "../infrastructure/prisma/client.js";
 import { hashPassword } from "better-auth/crypto";
 
-const FEDERAL_ADMIN_EMAIL = "federal.admin@edubridge.gov.et";
-const FEDERAL_ADMIN_PASSWORD = "Federal@2026!";
-const FEDERAL_ADMIN_NAME = "Federal Administrator";
+const FEDERAL_ADMIN_EMAIL = process.env.FEDERAL_ADMIN_EMAIL || "federal.admin@edubridge.gov.et";
+const FEDERAL_ADMIN_PASSWORD = process.env.FEDERAL_ADMIN_PASSWORD || process.env.DEFAULT_INITIAL_PASSWORD || "TestAdminPass2026!";
+const FEDERAL_ADMIN_NAME = process.env.FEDERAL_ADMIN_NAME || "Federal Administrator";
 
 async function main() {
     console.log("=========================================");

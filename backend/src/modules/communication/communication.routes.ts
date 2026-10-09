@@ -2,8 +2,12 @@ import { Router } from "express";
 import {
     createAnnouncement,
     getAnnouncements,
+    getAnnouncementRecipientsHierarchy,
     deleteAnnouncement,
     updateAnnouncement,
+    getAnnouncementStatus,
+    acknowledgeAnnouncement,
+    markAnnouncementRead,
     getMyNotifications,
     markNotificationRead,
     getUnreadNotificationCount,
@@ -18,15 +22,31 @@ import {
     sendTeacherParentMessage,
     getTeacherParentContacts
 } from "./communication.controller.js";
-import { requirePermission, requireScope } from "../authentication/authorization.middleware.js";
+import { requirePermission, requireScope, requireAuth } from "../authentication/authorization.middleware.js";
 
 const router = Router();
 
-// All communication routes require SCHOOL scope
+// ── Notifications (per-user, org-scoped, available to all scopes) ──
+// Every authenticated user (Federal, Region, Zone, Woreda, School) can access their own notifications.
+router.get("/notifications", requireAuth(), getMyNotifications);
+router.get("/notifications/unread-count", requireAuth(), getUnreadNotificationCount);
+router.patch("/notifications/:id/read", requireAuth(), markNotificationRead);
+
+// Announcement Acknowledgment & Read Actions (Accessible to any recipient user)
+router.post("/announcements/:id/acknowledge", requireAuth(), acknowledgeAnnouncement);
+router.post("/announcements/:id/read", requireAuth(), markAnnouncementRead);
+
+// Legacy path aliases (kept for backwards compat, deprecated)
+router.get("/notification", requireAuth(), getMyNotifications);
+router.patch("/notification/:id/read", requireAuth(), markNotificationRead);
+
+// All other school communication features require SCHOOL scope
 router.use(requireScope("SCHOOL"));
 
 // ── Announcements ──────────────────────────────────────
+router.get("/announcements/recipients-tree", requirePermission("COMMUNICATION:VIEW"), getAnnouncementRecipientsHierarchy);
 router.get("/announcements", requirePermission("COMMUNICATION:VIEW"), getAnnouncements);
+router.get("/announcements/:id/status", requirePermission("COMMUNICATION:VIEW"), getAnnouncementStatus);
 router.post("/announcements", requirePermission("COMMUNICATION:CREATE"), createAnnouncement);
 router.put("/announcements/:id", requirePermission("COMMUNICATION:CREATE"), updateAnnouncement);
 router.delete("/announcement/:id", requirePermission("COMMUNICATION:MANAGE"), deleteAnnouncement);
@@ -38,17 +58,6 @@ router.post("/notices", requirePermission("COMMUNICATION:CREATE"), createImporta
 router.put("/notices/:id", requirePermission("COMMUNICATION:CREATE"), updateImportantNotice);
 router.delete("/notices/:id", requirePermission("COMMUNICATION:MANAGE"), deleteImportantNotice);
 router.delete("/notice/:id", requirePermission("COMMUNICATION:MANAGE"), deleteImportantNotice);
-
-// ── Notifications (per-user, org-scoped) ──────────────
-// NOTE: No additional permission required — every authenticated school member
-// can read and manage their own notifications.
-router.get("/notifications", getMyNotifications);
-router.get("/notifications/unread-count", getUnreadNotificationCount);
-router.patch("/notifications/:id/read", markNotificationRead);
-
-// Legacy path aliases (kept for backwards compat, deprecated)
-router.get("/notification", getMyNotifications);
-router.patch("/notification/:id/read", markNotificationRead);
 
 // ── Direct Messages (org-scoped) ──────────────────────
 router.get("/messages", requirePermission("COMMUNICATION:VIEW"), getMyMessages);
