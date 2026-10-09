@@ -141,15 +141,15 @@ export default function TeacherUnifiedCommunicationPage() {
         loadAllData();
     }, [loadAllData]);
 
-    // Update tab from URL if changed
+    // Update tab / channel from URL if changed
+    const channelParam = searchParams?.get("channel")?.toUpperCase();
     useEffect(() => {
-        if (initialTab === "announcements") {
-            setActiveMainTab("announcements");
+        if (channelParam && ["STUDENT", "PARENT", "DEPARTMENT", "STAFF", "ALL"].includes(channelParam)) {
+            setSelectedChannel(channelParam as MessageChannel);
         } else if (initialTab === "parent") {
-            setActiveMainTab("messages");
             setSelectedChannel("PARENT");
         }
-    }, [initialTab]);
+    }, [channelParam, initialTab]);
 
     // Handle Confirm Receipt of Announcement
     const handleConfirmReceipt = async (announcementId: string) => {
@@ -276,7 +276,15 @@ export default function TeacherUnifiedCommunicationPage() {
         const q = searchQuery.toLowerCase().trim();
 
         // 1. Parent contacts list
-        const formattedParents = parentContacts.map(p => ({
+        const formattedParents: Array<{
+            id: string;
+            type: string;
+            enrollmentId?: string;
+            name: string;
+            subtext: string;
+            phone?: string;
+            roleName: string;
+        }> = parentContacts.map(p => ({
             id: `parent-${p.enrollmentId}`,
             type: "PARENT",
             enrollmentId: p.enrollmentId,
@@ -298,8 +306,10 @@ export default function TeacherUnifiedCommunicationPage() {
             return {
                 id: u.id,
                 type: userType,
+                enrollmentId: undefined as string | undefined,
                 name: u.name || u.email,
                 subtext: u.email || role,
+                phone: undefined as string | undefined,
                 roleName: role || "Staff Member"
             };
         });

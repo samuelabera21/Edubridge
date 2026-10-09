@@ -73,26 +73,24 @@ TEACHER
 │   ├── Monitor intervention
 │   └── Record outcome
 │
-├── 8. COMMUNICATION
-│   ├── Messages & Channels
-│   │   ├── Student communication
-│   │   ├── Parent communication
-│   │   ├── Department communication
-│   │   └── School & Staff communication
-│   └── School Announcements
-│       ├── View announcements
-│       ├── Filter notices & priorities
-│       ├── Attachment previews
-│       └── Confirm receipt (Acknowledge)
+├── 9. COMMUNICATION
+│   ├── Student communication
+│   ├── Parent communication
+│   ├── Department communication
+│   └── School communication
 │
-├── 9. PROFESSIONAL DEVELOPMENT
+├── 10. ANNOUNCEMENTS
+│   ├── School announcements
+│   └── Department announcements
+│
+├── 11. PROFESSIONAL DEVELOPMENT
 │   ├── View training
 │   ├── Join training
 │   ├── Track training
 │   ├── Record completion
 │   └── View certificates
 │
-├── 10. TEACHER REPORTS
+├── 12. TEACHER REPORTS
 │   ├── Class attendance
 │   ├── Assessment
 │   ├── Student performance
@@ -100,7 +98,7 @@ TEACHER
 │   ├── Curriculum progress
 │   └── Intervention progress
 │
-└── 11. AI TEACHER ASSISTANT
+└── 13. AI TEACHER ASSISTANT
     ├── Lesson planning assistance
     ├── Generate practice questions
     ├── Generate quiz drafts

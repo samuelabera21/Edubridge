@@ -9,7 +9,7 @@ import { fetchApi } from "../../lib/api";
 import StudentNavigation from "./student/StudentNavigation";
 import AdministrativeNavigation from "../../components/governance/AdministrativeNavigation";
 
-function TeacherBreadcrumbs({ pathname, currentTab, currentType }: { pathname: string; currentTab: string; currentType: string }) {
+function TeacherBreadcrumbs({ pathname, currentTab, currentType, currentChannel }: { pathname: string; currentTab: string; currentType: string; currentChannel?: string }) {
     if (pathname === "/dashboard/teacher") {
         return (
             <div className="flex items-center space-x-2 text-xs text-gray-500 mb-4 pb-2 border-b border-gray-200/70 select-none">
@@ -132,15 +132,24 @@ function TeacherBreadcrumbs({ pathname, currentTab, currentType }: { pathname: s
             subItemTitle = tabMap[currentTab];
         }
     } else if (pathname.startsWith("/dashboard/teacher/communication")) {
-        parentTitle = "Communication Hub";
+        parentTitle = "Communication";
         parentHref = "/dashboard/teacher/communication";
+        const target = (currentChannel || currentTab || "").toUpperCase();
         const tabMap: Record<string, string> = {
-            messages: "Messages & Channels",
-            announcements: "School Announcements",
-            parent: "Parent Messages",
-            students: "Student Messages",
-            department: "Department Collaboration",
-            staff: "Staff Collaboration"
+            STUDENT: "Student Communication",
+            PARENT: "Parent Communication",
+            DEPARTMENT: "Department Communication",
+            STAFF: "School Communication"
+        };
+        if (target && tabMap[target]) {
+            subItemTitle = tabMap[target];
+        }
+    } else if (pathname.startsWith("/dashboard/teacher/announcements")) {
+        parentTitle = "Announcements";
+        parentHref = "/dashboard/teacher/announcements";
+        const tabMap: Record<string, string> = {
+            school: "School Announcements",
+            department: "Department Announcements"
         };
         if (currentTab && tabMap[currentTab]) {
             subItemTitle = tabMap[currentTab];
@@ -241,6 +250,7 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
     const searchParams = useSearchParams();
     const currentTab = searchParams?.get("tab") || "";
     const currentType = searchParams?.get("type") || "";
+    const currentChannel = searchParams?.get("channel") || "";
 
     const [openMenus, setOpenMenus] = useState<Record<string, boolean>>({
         dashboard: pathname === "/dashboard",
@@ -255,6 +265,7 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
         teacherActivities: pathname.startsWith("/dashboard/teacher/learning"),
         teacherSupport: pathname.startsWith("/dashboard/teacher/support"),
         teacherComm: pathname.startsWith("/dashboard/teacher/communication"),
+        teacherAnnounce: pathname.startsWith("/dashboard/teacher/announcements"),
         teacherPD: pathname.startsWith("/dashboard/teacher/pd"),
         teacherReports: pathname.startsWith("/dashboard/teacher/reports"),
         assessment: pathname.startsWith("/dashboard/assessment"),
@@ -1019,7 +1030,7 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
                                     )}
                                 </div>
 
-                                {/* Section 8: COMMUNICATION */}
+                                {/* Section 9: COMMUNICATION */}
                                 <div className="pt-0.5">
                                     <button 
                                         onClick={() => !sidebarCollapsed ? toggleMenu("teacherComm") : router.push("/dashboard/teacher/communication")}
@@ -1034,8 +1045,31 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
                                     </button>
                                     {openMenus.teacherComm && !sidebarCollapsed && (
                                         <div className="pl-8 pr-2 py-1.5 space-y-1 bg-[#103454]/80 rounded-xl my-1 border-l-2 border-[#2c6da7]/50 shadow-inner">
-                                            <Link href="/dashboard/teacher/communication?tab=messages" className={`block py-1.5 px-2 rounded-lg text-xs transition-all duration-150 hover:translate-x-0.5 ${pathname.startsWith("/dashboard/teacher/communication") && (currentTab === "messages" || currentTab === "chat" || (!currentTab && !searchParams?.get("tab"))) ? "text-amber-300 font-semibold bg-[#0f2f4c] shadow-xs" : "text-blue-200/90 hover:text-amber-200 hover:bg-[#225785]/60"}`}>Messages & Channels</Link>
-                                            <Link href="/dashboard/teacher/communication?tab=announcements" className={`block py-1.5 px-2 rounded-lg text-xs transition-all duration-150 hover:translate-x-0.5 ${pathname.startsWith("/dashboard/teacher/communication") && currentTab === "announcements" ? "text-amber-300 font-semibold bg-[#0f2f4c] shadow-xs" : "text-blue-200/90 hover:text-amber-200 hover:bg-[#225785]/60"}`}>School Announcements</Link>
+                                            <Link href="/dashboard/teacher/communication?channel=STUDENT" className={`block py-1.5 px-2 rounded-lg text-xs transition-all duration-150 hover:translate-x-0.5 ${pathname.startsWith("/dashboard/teacher/communication") && searchParams?.get("channel") === "STUDENT" ? "text-amber-300 font-semibold bg-[#0f2f4c] shadow-xs" : "text-blue-200/90 hover:text-amber-200 hover:bg-[#225785]/60"}`}>Student Communication</Link>
+                                            <Link href="/dashboard/teacher/communication?channel=PARENT" className={`block py-1.5 px-2 rounded-lg text-xs transition-all duration-150 hover:translate-x-0.5 ${pathname.startsWith("/dashboard/teacher/communication") && searchParams?.get("channel") === "PARENT" ? "text-amber-300 font-semibold bg-[#0f2f4c] shadow-xs" : "text-blue-200/90 hover:text-amber-200 hover:bg-[#225785]/60"}`}>Parent Communication</Link>
+                                            <Link href="/dashboard/teacher/communication?channel=DEPARTMENT" className={`block py-1.5 px-2 rounded-lg text-xs transition-all duration-150 hover:translate-x-0.5 ${pathname.startsWith("/dashboard/teacher/communication") && searchParams?.get("channel") === "DEPARTMENT" ? "text-amber-300 font-semibold bg-[#0f2f4c] shadow-xs" : "text-blue-200/90 hover:text-amber-200 hover:bg-[#225785]/60"}`}>Department Communication</Link>
+                                            <Link href="/dashboard/teacher/communication?channel=STAFF" className={`block py-1.5 px-2 rounded-lg text-xs transition-all duration-150 hover:translate-x-0.5 ${pathname.startsWith("/dashboard/teacher/communication") && (searchParams?.get("channel") === "STAFF" || (!searchParams?.get("channel") && !searchParams?.get("tab"))) ? "text-amber-300 font-semibold bg-[#0f2f4c] shadow-xs" : "text-blue-200/90 hover:text-amber-200 hover:bg-[#225785]/60"}`}>School Communication</Link>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Section 10: ANNOUNCEMENTS */}
+                                <div className="pt-0.5">
+                                    <button 
+                                        onClick={() => !sidebarCollapsed ? toggleMenu("teacherAnnounce") : router.push("/dashboard/teacher/announcements")}
+                                        title="Announcements"
+                                        className={`w-full flex items-center ${sidebarCollapsed ? "justify-center px-2" : "justify-between px-3.5"} py-2 rounded-xl text-xs font-medium text-blue-50/90 hover:bg-[#225785] hover:text-white hover:translate-x-0.5 transition-all duration-150 group cursor-pointer ${pathname.startsWith("/dashboard/teacher/announcements") ? "bg-[#1d4c75] text-amber-200 font-semibold" : ""}`}
+                                    >
+                                        <div className={`flex items-center ${sidebarCollapsed ? "" : "space-x-3"}`}>
+                                            <Megaphone className="w-4 h-4 text-amber-300/90 group-hover:text-amber-200 group-hover:scale-105 transition-transform shrink-0" />
+                                            {!sidebarCollapsed && <span>Announcements</span>}
+                                        </div>
+                                        {!sidebarCollapsed && (openMenus.teacherAnnounce ? <ChevronDown className="w-3.5 h-3.5 text-blue-200 group-hover:text-white transition-colors" /> : <ChevronRight className="w-3.5 h-3.5 text-blue-300/80 group-hover:text-blue-100 transition-colors" />)}
+                                    </button>
+                                    {openMenus.teacherAnnounce && !sidebarCollapsed && (
+                                        <div className="pl-8 pr-2 py-1.5 space-y-1 bg-[#103454]/80 rounded-xl my-1 border-l-2 border-[#2c6da7]/50 shadow-inner">
+                                            <Link href="/dashboard/teacher/announcements?tab=school" className={`block py-1.5 px-2 rounded-lg text-xs transition-all duration-150 hover:translate-x-0.5 ${pathname.startsWith("/dashboard/teacher/announcements") && (currentTab === "school" || !currentTab) ? "text-amber-300 font-semibold bg-[#0f2f4c] shadow-xs" : "text-blue-200/90 hover:text-amber-200 hover:bg-[#225785]/60"}`}>School Announcements</Link>
+                                            <Link href="/dashboard/teacher/announcements?tab=department" className={`block py-1.5 px-2 rounded-lg text-xs transition-all duration-150 hover:translate-x-0.5 ${pathname.startsWith("/dashboard/teacher/announcements") && currentTab === "department" ? "text-amber-300 font-semibold bg-[#0f2f4c] shadow-xs" : "text-blue-200/90 hover:text-amber-200 hover:bg-[#225785]/60"}`}>Department Announcements</Link>
                                         </div>
                                     )}
                                 </div>
@@ -1720,7 +1754,7 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
                     {/* Page Content Padding */}
                     <div className={isTeacherRoute ? "p-4 md:p-6" : "p-6 md:p-8"}>
                         {isTeacherRoute && (
-                            <TeacherBreadcrumbs pathname={pathname} currentTab={currentTab} currentType={currentType} />
+                            <TeacherBreadcrumbs pathname={pathname} currentTab={currentTab} currentType={currentType} currentChannel={currentChannel} />
                         )}
                         {children}
                     </div>
