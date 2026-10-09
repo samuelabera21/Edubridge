@@ -12,8 +12,6 @@ TEACHER
 │   ├── Attendance tasks
 │   ├── Pending assessments
 │   ├── Pending assignments
-
-
 │   ├── Students requiring attention
 │   └── AI teaching insights
 │
@@ -75,27 +73,26 @@ TEACHER
 │   ├── Monitor intervention
 │   └── Record outcome
 │
-├── 9. PARENT COMMUNICATION
-│   ├── Send parent message
-│   ├── Attendance notification
-│   ├── Performance notification
-│   ├── Request parent meeting
-│   └── Provide teacher feedback
+├── 8. COMMUNICATION
+│   ├── Messages & Channels
+│   │   ├── Student communication
+│   │   ├── Parent communication
+│   │   ├── Department communication
+│   │   └── School & Staff communication
+│   └── School Announcements
+│       ├── View announcements
+│       ├── Filter notices & priorities
+│       ├── Attachment previews
+│       └── Confirm receipt (Acknowledge)
 │
-├── 10. TEACHER COMMUNICATION
-│   ├── School announcements
-│   ├── Academic communication
-│   ├── Department communication
-│   └── Staff communication
-│
-├── 11. PROFESSIONAL DEVELOPMENT
+├── 9. PROFESSIONAL DEVELOPMENT
 │   ├── View training
 │   ├── Join training
 │   ├── Track training
 │   ├── Record completion
 │   └── View certificates
 │
-├── 12. TEACHER REPORTS
+├── 10. TEACHER REPORTS
 │   ├── Class attendance
 │   ├── Assessment
 │   ├── Student performance
@@ -103,7 +100,7 @@ TEACHER
 │   ├── Curriculum progress
 │   └── Intervention progress
 │
-└── 13. AI TEACHER ASSISTANT
+└── 11. AI TEACHER ASSISTANT
     ├── Lesson planning assistance
     ├── Generate practice questions
     ├── Generate quiz drafts

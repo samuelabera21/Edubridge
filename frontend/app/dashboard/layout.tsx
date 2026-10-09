@@ -131,27 +131,16 @@ function TeacherBreadcrumbs({ pathname, currentTab, currentType }: { pathname: s
         if (currentTab && tabMap[currentTab]) {
             subItemTitle = tabMap[currentTab];
         }
-    } else if (pathname.startsWith("/dashboard/teacher/communication/parent")) {
-        parentTitle = "Parent Communication";
-        parentHref = "/dashboard/teacher/communication/parent";
+    } else if (pathname.startsWith("/dashboard/teacher/communication")) {
+        parentTitle = "Communication Hub";
+        parentHref = "/dashboard/teacher/communication";
         const tabMap: Record<string, string> = {
-            messages: "Direct Messages",
-            broadcasts: "Class Announcements",
-            conferences: "Parent Meetings",
-            logs: "Contact History"
-        };
-        if (currentTab && tabMap[currentTab]) {
-            subItemTitle = tabMap[currentTab];
-        }
-    } else if (pathname.startsWith("/dashboard/teacher/communication/staff")) {
-        parentTitle = "Staff Collaboration";
-        parentHref = "/dashboard/teacher/communication/staff";
-        const tabMap: Record<string, string> = {
-            departments: "Department Meetings",
-            "peer-sharing": "Lesson Sharing",
-            "internal-messages": "Internal Staff Messages",
-            committee: "Committee Work",
-            handover: "Shift & Coverage"
+            messages: "Messages & Channels",
+            announcements: "School Announcements",
+            parent: "Parent Messages",
+            students: "Student Messages",
+            department: "Department Collaboration",
+            staff: "Staff Collaboration"
         };
         if (currentTab && tabMap[currentTab]) {
             subItemTitle = tabMap[currentTab];
@@ -265,8 +254,7 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
         teacherAssessment: pathname.startsWith("/dashboard/teacher/assessment"),
         teacherActivities: pathname.startsWith("/dashboard/teacher/learning"),
         teacherSupport: pathname.startsWith("/dashboard/teacher/support"),
-        teacherParentComm: pathname.startsWith("/dashboard/teacher/communication/parent"),
-        teacherStaffComm: pathname.startsWith("/dashboard/teacher/communication/staff"),
+        teacherComm: pathname.startsWith("/dashboard/teacher/communication"),
         teacherPD: pathname.startsWith("/dashboard/teacher/pd"),
         teacherReports: pathname.startsWith("/dashboard/teacher/reports"),
         assessment: pathname.startsWith("/dashboard/assessment"),
@@ -726,9 +714,9 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
                     {isTeacherRoute && (
                         <div className="flex items-center space-x-3">
                             <button 
-                                onClick={() => router.push("/dashboard/teacher/communication/parent")}
+                                onClick={() => router.push("/dashboard/teacher/communication?tab=messages")}
                                 className="relative p-2 rounded-full hover:bg-gray-100 text-gray-600 transition-colors cursor-pointer" 
-                                title="Messages (Activity Submissions & Parent Requests)"
+                                title="Messages & Channels"
                             >
                                 <MessageSquare className="w-5 h-5 text-gray-600" />
                                 {headerCounts.messages > 0 && (
@@ -1031,44 +1019,23 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
                                     )}
                                 </div>
 
-                                {/* Section 8: PARENT COMMUNICATION */}
+                                {/* Section 8: COMMUNICATION */}
                                 <div className="pt-0.5">
                                     <button 
-                                        onClick={() => !sidebarCollapsed && toggleMenu("teacherParentComm")}
-                                        title="Parent Communication"
-                                        className={`w-full flex items-center ${sidebarCollapsed ? "justify-center px-2" : "justify-between px-3.5"} py-2 rounded-xl text-xs font-medium text-blue-50/90 hover:bg-[#225785] hover:text-white hover:translate-x-0.5 transition-all duration-150 group cursor-pointer`}
-                                    >
-                                        <div className={`flex items-center ${sidebarCollapsed ? "" : "space-x-3"}`}>
-                                            <Users className="w-4 h-4 text-amber-300/90 group-hover:text-amber-200 group-hover:scale-105 transition-transform shrink-0" />
-                                            {!sidebarCollapsed && <span>Parent Communication</span>}
-                                        </div>
-                                        {!sidebarCollapsed && (openMenus.teacherParentComm ? <ChevronDown className="w-3.5 h-3.5 text-blue-200 group-hover:text-white transition-colors" /> : <ChevronRight className="w-3.5 h-3.5 text-blue-300/80 group-hover:text-blue-100 transition-colors" />)}
-                                    </button>
-                                    {openMenus.teacherParentComm && !sidebarCollapsed && (
-                                        <div className="pl-8 pr-2 py-1.5 space-y-1 bg-[#103454]/80 rounded-xl my-1 border-l-2 border-[#2c6da7]/50 shadow-inner">
-                                            <Link href="/dashboard/teacher/communication/parent?tab=message" className={`block py-1.5 px-2 rounded-lg text-xs transition-all duration-150 hover:translate-x-0.5 ${pathname.includes("/communication/parent") && (currentTab === "message" || currentTab === "") ? "text-amber-300 font-semibold bg-[#0f2f4c] shadow-xs" : "text-blue-200/90 hover:text-amber-200 hover:bg-[#225785]/60"}`}>Send Parent Message</Link>
-                                            <Link href="/dashboard/teacher/communication/parent?tab=notifications" className={`block py-1.5 px-2 rounded-lg text-xs transition-all duration-150 hover:translate-x-0.5 ${pathname.includes("/communication/parent") && currentTab === "notifications" ? "text-amber-300 font-semibold bg-[#0f2f4c] shadow-xs" : "text-blue-200/90 hover:text-amber-200 hover:bg-[#225785]/60"}`}>Attendance Notifications</Link>
-                                        </div>
-                                    )}
-                                </div>
-
-                                {/* Section 9: STAFF COMMUNICATION */}
-                                <div className="pt-0.5">
-                                    <button 
-                                        onClick={() => !sidebarCollapsed && toggleMenu("teacherStaffComm")}
-                                        title="Teacher Communication"
-                                        className={`w-full flex items-center ${sidebarCollapsed ? "justify-center px-2" : "justify-between px-3.5"} py-2 rounded-xl text-xs font-medium text-blue-50/90 hover:bg-[#225785] hover:text-white hover:translate-x-0.5 transition-all duration-150 group cursor-pointer`}
+                                        onClick={() => !sidebarCollapsed ? toggleMenu("teacherComm") : router.push("/dashboard/teacher/communication")}
+                                        title="Communication"
+                                        className={`w-full flex items-center ${sidebarCollapsed ? "justify-center px-2" : "justify-between px-3.5"} py-2 rounded-xl text-xs font-medium text-blue-50/90 hover:bg-[#225785] hover:text-white hover:translate-x-0.5 transition-all duration-150 group cursor-pointer ${pathname.startsWith("/dashboard/teacher/communication") ? "bg-[#1d4c75] text-amber-200 font-semibold" : ""}`}
                                     >
                                         <div className={`flex items-center ${sidebarCollapsed ? "" : "space-x-3"}`}>
                                             <MessageSquare className="w-4 h-4 text-amber-300/90 group-hover:text-amber-200 group-hover:scale-105 transition-transform shrink-0" />
-                                            {!sidebarCollapsed && <span>Teacher Communication</span>}
+                                            {!sidebarCollapsed && <span>Communication</span>}
                                         </div>
-                                        {!sidebarCollapsed && (openMenus.teacherStaffComm ? <ChevronDown className="w-3.5 h-3.5 text-blue-200 group-hover:text-white transition-colors" /> : <ChevronRight className="w-3.5 h-3.5 text-blue-300/80 group-hover:text-blue-100 transition-colors" />)}
+                                        {!sidebarCollapsed && (openMenus.teacherComm ? <ChevronDown className="w-3.5 h-3.5 text-blue-200 group-hover:text-white transition-colors" /> : <ChevronRight className="w-3.5 h-3.5 text-blue-300/80 group-hover:text-blue-100 transition-colors" />)}
                                     </button>
-                                    {openMenus.teacherStaffComm && !sidebarCollapsed && (
+                                    {openMenus.teacherComm && !sidebarCollapsed && (
                                         <div className="pl-8 pr-2 py-1.5 space-y-1 bg-[#103454]/80 rounded-xl my-1 border-l-2 border-[#2c6da7]/50 shadow-inner">
-                                            <Link href="/dashboard/teacher/communication/staff?tab=announcements" className={`block py-1.5 px-2 rounded-lg text-xs transition-all duration-150 hover:translate-x-0.5 ${pathname.includes("/communication/staff") && (currentTab === "announcements" || currentTab === "") ? "text-amber-300 font-semibold bg-[#0f2f4c] shadow-xs" : "text-blue-200/90 hover:text-amber-200 hover:bg-[#225785]/60"}`}>School Announcements</Link>
-                                            <Link href="/dashboard/teacher/communication/staff?tab=department" className={`block py-1.5 px-2 rounded-lg text-xs transition-all duration-150 hover:translate-x-0.5 ${pathname.includes("/communication/staff") && currentTab === "department" ? "text-amber-300 font-semibold bg-[#0f2f4c] shadow-xs" : "text-blue-200/90 hover:text-amber-200 hover:bg-[#225785]/60"}`}>Department Communication</Link>
+                                            <Link href="/dashboard/teacher/communication?tab=messages" className={`block py-1.5 px-2 rounded-lg text-xs transition-all duration-150 hover:translate-x-0.5 ${pathname.startsWith("/dashboard/teacher/communication") && (currentTab === "messages" || currentTab === "chat" || (!currentTab && !searchParams?.get("tab"))) ? "text-amber-300 font-semibold bg-[#0f2f4c] shadow-xs" : "text-blue-200/90 hover:text-amber-200 hover:bg-[#225785]/60"}`}>Messages & Channels</Link>
+                                            <Link href="/dashboard/teacher/communication?tab=announcements" className={`block py-1.5 px-2 rounded-lg text-xs transition-all duration-150 hover:translate-x-0.5 ${pathname.startsWith("/dashboard/teacher/communication") && currentTab === "announcements" ? "text-amber-300 font-semibold bg-[#0f2f4c] shadow-xs" : "text-blue-200/90 hover:text-amber-200 hover:bg-[#225785]/60"}`}>School Announcements</Link>
                                         </div>
                                     )}
                                 </div>
