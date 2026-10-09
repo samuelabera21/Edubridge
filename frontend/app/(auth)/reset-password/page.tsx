@@ -158,7 +158,7 @@ function ResetPasswordForm() {
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
                             className="w-full border border-slate-300 rounded-lg p-2.5 pr-10 focus:ring-2 focus:ring-[#4085b3] focus:border-[#4085b3] transition-all text-sm"
-                            placeholder="At least 8 characters"
+                            placeholder="Enter new password"
                             required
                             disabled={loading}
                         />
@@ -201,8 +201,14 @@ function ResetPasswordForm() {
                             type={showConfirmPassword ? "text" : "password"}
                             value={confirmPassword}
                             onChange={(e) => setConfirmPassword(e.target.value)}
-                            className="w-full border border-slate-300 rounded-lg p-2.5 pr-10 focus:ring-2 focus:ring-[#4085b3] focus:border-[#4085b3] transition-all text-sm"
-                            placeholder="Repeat new password"
+                            className={`w-full border rounded-lg p-2.5 pr-10 transition-all text-sm ${
+                                confirmPassword.length > 0
+                                    ? password === confirmPassword
+                                        ? "border-emerald-400 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 bg-emerald-50/20"
+                                        : "border-red-300 focus:ring-2 focus:ring-red-400 focus:border-red-400 bg-red-50/20"
+                                    : "border-slate-300 focus:ring-2 focus:ring-[#4085b3] focus:border-[#4085b3]"
+                            }`}
+                            placeholder="Confirm new password"
                             required
                             disabled={loading}
                         />
@@ -214,12 +220,34 @@ function ResetPasswordForm() {
                             {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                         </button>
                     </div>
+
+                    {/* Match Indicator */}
+                    {confirmPassword.length > 0 && (
+                        <div className="mt-1.5 flex items-center text-xs">
+                            {password === confirmPassword ? (
+                                <span className="text-emerald-600 font-medium flex items-center">
+                                    <CheckCircle2 className="w-3.5 h-3.5 mr-1 text-emerald-500" /> Passwords match
+                                </span>
+                            ) : (
+                                <span className="text-red-500 font-medium flex items-center">
+                                    <AlertCircle className="w-3.5 h-3.5 mr-1 text-red-500" /> Passwords do not match
+                                </span>
+                            )}
+                        </div>
+                    )}
                 </div>
 
-                <div className="text-xs text-slate-500 space-y-1 bg-slate-50 p-3 rounded-lg border border-slate-200">
+                <div className="text-xs text-slate-500 space-y-1.5 bg-slate-50 p-3 rounded-lg border border-slate-200">
                     <p className="font-semibold text-slate-700 mb-1">Password Requirements:</p>
-                    <p className={password.length >= 8 ? "text-emerald-600 font-medium" : ""}>&bull; Minimum 8 characters long</p>
-                    <p className={/[0-9]/.test(password) && /[A-Za-z]/.test(password) ? "text-emerald-600 font-medium" : ""}>&bull; Contains both letters and numbers</p>
+                    <p className={`flex items-center ${password.length >= 8 ? "text-emerald-600 font-medium" : ""}`}>
+                        <span className="mr-1.5">{password.length >= 8 ? "✓" : "•"}</span> Minimum 8 characters long
+                    </p>
+                    <p className={`flex items-center ${/[0-9]/.test(password) && /[A-Za-z]/.test(password) ? "text-emerald-600 font-medium" : ""}`}>
+                        <span className="mr-1.5">{/[0-9]/.test(password) && /[A-Za-z]/.test(password) ? "✓" : "•"}</span> Contains both letters and numbers
+                    </p>
+                    <p className={`flex items-center ${password.length > 0 && confirmPassword.length > 0 && password === confirmPassword ? "text-emerald-600 font-medium" : ""}`}>
+                        <span className="mr-1.5">{password.length > 0 && confirmPassword.length > 0 && password === confirmPassword ? "✓" : "•"}</span> Passwords must match
+                    </p>
                 </div>
 
                 <button

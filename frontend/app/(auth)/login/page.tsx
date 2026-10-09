@@ -110,9 +110,31 @@ export default function LoginPage() {
         setError("");
         setGoogleLoading(true);
         try {
-            // Redirect to Better-Auth Google Social Sign-in endpoint
-            window.location.href = "/api/auth/sign-in/social?provider=google&callbackURL=/login";
-        } catch (err) {
+            const callbackURL = typeof window !== "undefined" ? `${window.location.origin}/login` : "/login";
+            const res = await fetchApi("/auth/sign-in/social", {
+                method: "POST",
+                body: JSON.stringify({
+                    provider: "google",
+                    callbackURL,
+                }),
+            });
+
+            if (!res.ok) {
+                const data = await res.json().catch(() => ({}));
+                setError(data.message || "Failed to initialize Google Sign-in. Please check your credentials.");
+                setGoogleLoading(false);
+                return;
+            }
+
+            const data = await res.json();
+            if (data?.url) {
+                window.location.href = data.url;
+                return;
+            } else {
+                setError("Unable to obtain Google login redirect URL.");
+                setGoogleLoading(false);
+            }
+        } catch (err: any) {
             console.error("Google sign-in redirection error:", err);
             setError("Failed to initialize Google Sign-in. Please try again.");
             setGoogleLoading(false);
@@ -207,13 +229,24 @@ export default function LoginPage() {
         }
 
         try {
-            const res = await fetchApi("/auth/forget-password", {
+            const redirectTo = typeof window !== "undefined" ? `${window.location.origin}/reset-password` : "/reset-password";
+            let res = await fetchApi("/auth/request-password-reset", {
                 method: "POST",
                 body: JSON.stringify({
                     email: targetEmail,
-                    redirectTo: "/reset-password",
+                    redirectTo,
                 }),
             });
+
+            if (!res.ok) {
+                res = await fetchApi("/auth/forget-password", {
+                    method: "POST",
+                    body: JSON.stringify({
+                        email: targetEmail,
+                        redirectTo,
+                    }),
+                });
+            }
 
             if (!res.ok) {
                 const data = await res.json().catch(() => ({}));
@@ -264,7 +297,7 @@ export default function LoginPage() {
                         value={username}
                         onChange={(e) => setUsername(e.target.value)}
                         className="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-[#4085b3] focus:border-[#4085b3] transition-colors text-sm"
-                        placeholder="e.g. admin@edubridge.com or username"
+                        placeholder="Enter your email or username"
                         required
                         disabled={loading || googleLoading}
                     />
@@ -414,7 +447,7 @@ export default function LoginPage() {
                                                 value={forgotInput}
                                                 onChange={(e) => setForgotInput(e.target.value)}
                                                 className="w-full border border-slate-300 rounded-lg p-2.5 pl-9 focus:ring-2 focus:ring-[#4085b3] focus:border-[#4085b3] transition-colors text-sm"
-                                                placeholder="e.g. yourname@gmail.com or woreda_admin"
+                                                placeholder="Enter your email or username"
                                                 required
                                                 disabled={forgotLoading}
                                             />
