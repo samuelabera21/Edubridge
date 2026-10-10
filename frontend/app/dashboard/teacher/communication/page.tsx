@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, useMemo, useCallback } from "react";
+import React, { useEffect, useState, useMemo, useCallback, useRef } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { fetchApi } from "@/lib/api";
 import { useAuth } from "@/hooks/useAuth";
@@ -31,7 +31,17 @@ import {
     Bookmark,
     BookOpen,
     Megaphone,
-    X
+    X,
+    Copy,
+    Check,
+    Reply,
+    Edit3,
+    Trash2,
+    Paperclip,
+    Download,
+    ExternalLink,
+    Image as ImageIcon,
+    File
 } from "lucide-react";
 import { LoadingState } from "@/components/ui/LoadingState";
 
@@ -103,6 +113,166 @@ export default function TeacherCommunicationPage() {
 
     // Parent specific selection
     const [selectedEnrollmentId, setSelectedEnrollmentId] = useState("");
+
+    // Message action states: Copy, Edit, Delete, Reply
+    const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
+    const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
+    const [editingContent, setEditingContent] = useState("");
+    const [isUpdatingMessage, setIsUpdatingMessage] = useState(false);
+    const [deletingMessageId, setDeletingMessageId] = useState<string | null>(null);
+    const [replyingTo, setReplyingTo] = useState<{ id: string; senderName: string; content: string } | null>(null);
+
+    // File attachment states
+    const fileInputRef = useRef<HTMLInputElement>(null);
+    const [attachedFile, setAttachedFile] = useState<{
+        file: File;
+        name: string;
+        size: number;
+        type: string;
+    } | null>(null);
+    const [uploadingAttachment, setUploadingAttachment] = useState(false);
+
+    const handleSelectAttachment = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        // Size check (max 25MB)
+        if (file.size > 25 * 1024 * 1024) {
+            alert("File size exceeds 25MB limit. Please select a smaller file.");
+            if (fileInputRef.current) fileInputRef.current.value = "";
+            return;
+        }
+
+        setAttachedFile({
+            file,
+            name: file.name,
+            size: file.size,
+            type: file.type || "application/octet-stream"
+        });
+    };
+
+    const handleRemoveAttachment = () => {
+        setAttachedFile(null);
+        if (fileInputRef.current) fileInputRef.current.value = "";
+    };
+
+    const uploadFileToStorage = async (fileItem: { file: File; name: string; type: string }): Promise<string> => {
+        // 1. Get presigned URL
+        const presignRes = await fetchApi("/storage/presign", {
+            method: "POST",
+            body: JSON.stringify({
+                fileName: fileItem.name,
+                contentType: fileItem.type || "application/octet-stream",
+                folder: "messages"
+            })
+        });
+
+        if (!presignRes.ok) {
+            const err = await presignRes.json().catch(() => ({}));
+            throw new Error(err.error || "Failed to generate upload URL for attachment");
+        }
+
+        const { presignedUrl, publicUrl } = await presignRes.json();
+
+        // 2. Upload file directly to MinIO
+        const uploadRes = await fetch(presignedUrl, {
+            method: "PUT",
+            headers: {
+                "Content-Type": fileItem.type || "application/octet-stream"
+            },
+            body: fileItem.file
+        });
+
+        if (!uploadRes.ok) {
+            throw new Error("Failed to upload attached file to storage server.");
+        }
+
+        return publicUrl;
+    };
+
+    const handleCopyMessage = async (content: string, id: string) => {
+        try {
+            await navigator.clipboard.writeText(content);
+            setCopiedMessageId(id);
+            setTimeout(() => setCopiedMessageId(null), 2000);
+        } catch (err) {
+            console.error("Failed to copy:", err);
+        }
+    };
+
+    const handleStartReply = (msg: any) => {
+        const senderName = (msg.senderId === currentUserId || msg.sender?.name?.includes("Teacher")) ? "You" : (msg.sender?.name || "Recipient");
+        setReplyingTo({
+            id: msg.id,
+            senderName,
+            content: msg.content
+        });
+        if (!messageSubject) {
+            setMessageSubject(`Re: ${msg.subject || 'Message'}`);
+        }
+    };
+
+    const handleStartEdit = (msg: any) => {
+        setEditingMessageId(msg.id);
+        setEditingContent(msg.content);
+    };
+
+    const handleCancelEdit = () => {
+        setEditingMessageId(null);
+        setEditingContent("");
+    };
+
+    const handleSaveEdit = async (msgId: string) => {
+        if (!editingContent.trim()) return;
+        try {
+            setIsUpdatingMessage(true);
+            if (!msgId.startsWith("broadcast-") && !msgId.startsWith("parent-broadcast-")) {
+                const res = await fetchApi(`/communication/messages/${msgId}`, {
+                    method: "PATCH",
+                    body: JSON.stringify({ content: editingContent })
+                });
+                if (!res.ok) {
+                    const errData = await res.json().catch(() => ({}));
+                    alert(errData.error || "Failed to update message");
+                    return;
+                }
+            }
+            setMessagesHistory(prev => prev.map(m => m.id === msgId ? { ...m, content: editingContent, isEdited: true } : m));
+            setEditingMessageId(null);
+            setEditingContent("");
+        } catch (err) {
+            console.error(err);
+            alert("Failed to update message");
+        } finally {
+            setIsUpdatingMessage(false);
+        }
+    };
+
+    const handleDeleteMessage = async (msgId: string) => {
+        if (!confirm("Are you sure you want to delete this message?")) return;
+        try {
+            setDeletingMessageId(msgId);
+            if (!msgId.startsWith("broadcast-") && !msgId.startsWith("parent-broadcast-")) {
+                const res = await fetchApi(`/communication/messages/${msgId}`, {
+                    method: "DELETE"
+                });
+                if (!res.ok) {
+                    const errData = await res.json().catch(() => ({}));
+                    alert(errData.error || "Failed to delete message");
+                    return;
+                }
+            }
+            setMessagesHistory(prev => prev.filter(m => m.id !== msgId));
+            if (replyingTo?.id === msgId) {
+                setReplyingTo(null);
+            }
+        } catch (err) {
+            console.error(err);
+            alert("Failed to delete message");
+        } finally {
+            setDeletingMessageId(null);
+        }
+    };
 
     // Load all data
     const loadData = useCallback(async (isRefresh = false) => {
@@ -529,13 +699,18 @@ export default function TeacherCommunicationPage() {
         }
 
         if (activeCategory === "STAFF") {
-            return schoolUsers
-                .filter((u: any) => {
-                    const role = (u.role?.name || u.roleName || "").toUpperCase();
-                    if (role.includes("STUDENT") || role.includes("PARENT")) return false;
-                    // Keep non-teacher leadership and school administrative personnel in STAFF
-                    return !role.includes("TEACHER");
-                })
+            const nonTeachers = schoolUsers.filter((u: any) => {
+                const role = (u.role?.name || u.roleName || "").toUpperCase();
+                if (role.includes("STUDENT") || role.includes("PARENT")) return false;
+                return !role.includes("TEACHER");
+            });
+
+            const candidates = nonTeachers.length > 0 ? nonTeachers : schoolUsers.filter((u: any) => {
+                const role = (u.role?.name || u.roleName || "").toUpperCase();
+                return !role.includes("STUDENT") && !role.includes("PARENT");
+            });
+
+            return candidates
                 .map((u: any): ContactItem => ({
                     id: u.id,
                     name: u.name || u.email,
@@ -597,10 +772,36 @@ export default function TeacherCommunicationPage() {
     // Send Message Handler
     const handleSendMessage = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!messageText.trim()) return;
+        if (!messageText.trim() && !attachedFile) return;
 
         try {
             setSending(true);
+
+            // Upload attachment if user selected a file
+            let uploadedAttachmentUrl: string | null = null;
+            let uploadedAttachmentName: string | null = null;
+            let uploadedAttachmentType: string | null = null;
+
+            if (attachedFile) {
+                setUploadingAttachment(true);
+                try {
+                    uploadedAttachmentUrl = await uploadFileToStorage(attachedFile);
+                    uploadedAttachmentName = attachedFile.name;
+                    uploadedAttachmentType = attachedFile.type;
+                } catch (uploadErr: any) {
+                    alert(uploadErr.message || "Failed to upload attached file. Message was not sent.");
+                    setUploadingAttachment(false);
+                    setSending(false);
+                    return;
+                } finally {
+                    setUploadingAttachment(false);
+                }
+            }
+
+            const baseText = messageText.trim() || (uploadedAttachmentName ? `Sent an attachment: ${uploadedAttachmentName}` : "");
+            const outgoingText = replyingTo
+                ? `> In reply to ${replyingTo.senderName}: "${replyingTo.content.slice(0, 80)}${replyingTo.content.length > 80 ? '...' : ''}"\n\n${baseText}`
+                : baseText;
 
             if (activeCategory === "STUDENT") {
                 const targetType = studentTargetMode === "SECTION"
@@ -611,10 +812,14 @@ export default function TeacherCommunicationPage() {
 
                 const targetUserId = selectedContact?.raw?.student?.userId || selectedContact?.raw?.userId || selectedContact?.id;
 
+                const studentMsgContent = uploadedAttachmentUrl
+                    ? `${outgoingText}\n\n📎 Attached File: ${uploadedAttachmentName} (${uploadedAttachmentUrl})`
+                    : outgoingText;
+
                 const payload: any = {
                     targetType,
                     subject: messageSubject || `${selectedContact?.name || 'Class'} Update`,
-                    content: messageText,
+                    content: studentMsgContent,
                     priority: messagePriority
                 };
 
@@ -649,13 +854,18 @@ export default function TeacherCommunicationPage() {
                         senderId: currentUserId,
                         sender: { name: authData?.user?.name || "Teacher" },
                         recipient: { name: selectedContact?.name || (targetType === "ALL_STUDENTS" ? "All Students" : "Section") },
-                        content: messageText,
+                        content: outgoingText,
                         subject: messageSubject,
+                        attachmentUrl: uploadedAttachmentUrl,
+                        attachmentName: uploadedAttachmentName,
+                        attachmentType: uploadedAttachmentType,
                         createdAt: new Date().toISOString()
                     };
                     setMessagesHistory(prev => [sentItem, ...prev]);
                     setMessageText("");
                     setMessageSubject("");
+                    setReplyingTo(null);
+                    handleRemoveAttachment();
 
                     const recipientCount = data.sentCount || selectedContact?.targetCount || 1;
                     setStatusBanner(`Successfully sent message to ${recipientCount} student${recipientCount === 1 ? '' : 's'}!`);
@@ -673,10 +883,14 @@ export default function TeacherCommunicationPage() {
 
                 const targetParentUserId = selectedContact?.parentUserId || selectedContact?.raw?.parentUserId;
 
+                const parentMsgContent = uploadedAttachmentUrl
+                    ? `${outgoingText}\n\n📎 Attached File: ${uploadedAttachmentName} (${uploadedAttachmentUrl})`
+                    : outgoingText;
+
                 const payload: any = {
                     targetType,
                     subject: messageSubject || (targetType === "ALL_PARENTS" ? "Broadcast to All Parents" : targetType === "SPECIFIC_SECTION" ? `Section Announcement: ${activeClassObj?.displayName || 'Parents'}` : "Message from Teacher"),
-                    content: messageText,
+                    content: parentMsgContent,
                     priority: messagePriority
                 };
 
@@ -712,13 +926,18 @@ export default function TeacherCommunicationPage() {
                         senderId: currentUserId,
                         sender: { name: authData?.user?.name || "Teacher" },
                         recipient: { name: selectedContact?.name || (targetType === "ALL_PARENTS" ? "All Parents" : "Section Parents") },
-                        content: messageText,
+                        content: outgoingText,
                         subject: messageSubject,
+                        attachmentUrl: uploadedAttachmentUrl,
+                        attachmentName: uploadedAttachmentName,
+                        attachmentType: uploadedAttachmentType,
                         createdAt: new Date().toISOString()
                     };
                     setMessagesHistory(prev => [sentItem, ...prev]);
                     setMessageText("");
                     setMessageSubject("");
+                    setReplyingTo(null);
+                    handleRemoveAttachment();
 
                     const recipientCount = data.recipientsCount || selectedContact?.targetCount || 1;
                     setStatusBanner(`Successfully sent message to ${recipientCount} parent${recipientCount === 1 ? '' : 's'}!`);
@@ -749,8 +968,11 @@ export default function TeacherCommunicationPage() {
                         recipientId: targetUserId,
                         receiverId: targetUserId,
                         subject: messageSubject || `${messageType} (${activeCategory})`,
-                        content: messageText,
-                        priority: messagePriority
+                        content: messageSubject ? `[${messageSubject}] ${outgoingText}` : outgoingText,
+                        priority: messagePriority,
+                        attachmentUrl: uploadedAttachmentUrl,
+                        attachmentName: uploadedAttachmentName,
+                        attachmentType: uploadedAttachmentType
                     })
                 });
 
@@ -761,17 +983,24 @@ export default function TeacherCommunicationPage() {
                         senderId: newMsg.senderId || currentUserId,
                         receiverId: newMsg.receiverId || targetUserId,
                         sender: newMsg.sender || { id: currentUserId, name: authData?.user?.name || "Teacher" },
-                        receiver: newMsg.receiver || { id: targetUserId, name: selectedContact.name }
+                        receiver: newMsg.receiver || { id: targetUserId, name: selectedContact.name },
+                        attachmentUrl: newMsg.attachmentUrl || uploadedAttachmentUrl,
+                        attachmentName: newMsg.attachmentName || uploadedAttachmentName,
+                        attachmentType: newMsg.attachmentType || uploadedAttachmentType
                     };
                     setMessagesHistory(prev => [formattedMsg, ...prev]);
                     setMessageText("");
                     setMessageSubject("");
+                    setReplyingTo(null);
+                    handleRemoveAttachment();
                     setStatusBanner(`Message successfully sent to ${selectedContact.name}!`);
                     setTimeout(() => setStatusBanner(null), 4000);
                 } else {
                     const data = await res.json().catch(() => ({}));
                     alert(data.error || "Failed to send direct message.");
                 }
+            } else {
+                alert("Please select a recipient from the directory on the left first.");
             }
         } catch (err: any) {
             alert(err.message || "Failed to send message.");
@@ -1576,21 +1805,193 @@ export default function TeacherCommunicationPage() {
                         ) : (
                             activeMessages.map((msg: any, idx: number) => {
                                 const isMe = msg.senderId === currentUserId || msg.sender?.name?.includes("Teacher");
+                                const isEditing = editingMessageId === msg.id;
+                                const isCopied = copiedMessageId === msg.id;
+                                const isDeleting = deletingMessageId === msg.id;
+
                                 return (
                                     <div
                                         key={msg.id || idx}
-                                        className={`flex flex-col ${isMe ? "items-end" : "items-start"}`}
+                                        className={`flex flex-col ${isMe ? "items-end" : "items-start"} group relative mb-2.5`}
                                     >
-                                        <div className={`max-w-lg p-3.5 rounded-2xl text-xs space-y-1 shadow-2xs ${
+                                        <div className={`max-w-lg p-3.5 rounded-2xl text-xs space-y-2 shadow-2xs transition-all relative ${
                                             isMe
                                                 ? "bg-[#143e66] text-white rounded-br-xs"
                                                 : "bg-white border border-slate-200 text-slate-800 rounded-bl-xs"
                                         }`}>
-                                            <div className="flex items-center justify-between space-x-3 text-[10px] opacity-75 font-semibold">
+                                            <div className="flex items-center justify-between space-x-3 text-[10px] opacity-80 font-semibold border-b pb-1.5 border-current/15">
                                                 <span>{isMe ? "You" : (msg.sender?.name || "Recipient")}</span>
-                                                <span>{new Date(msg.createdAt || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                                <div className="flex items-center gap-1.5">
+                                                    {msg.isEdited && <span className="italic text-[9px] opacity-90 font-normal">(edited)</span>}
+                                                    <span>{new Date(msg.createdAt || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                                </div>
                                             </div>
-                                            <p className="leading-relaxed whitespace-pre-wrap">{msg.content}</p>
+
+                                            {isEditing ? (
+                                                <div className="space-y-2 pt-1">
+                                                    <textarea
+                                                        value={editingContent}
+                                                        onChange={(e) => setEditingContent(e.target.value)}
+                                                        className={`w-full p-2.5 text-xs rounded-xl border resize-none focus:outline-hidden ${
+                                                            isMe
+                                                                ? "bg-[#0f2d4a] text-white border-blue-400 focus:ring-1 focus:ring-blue-300"
+                                                                : "bg-slate-50 text-slate-800 border-slate-300 focus:ring-1 focus:ring-blue-500"
+                                                        }`}
+                                                        rows={3}
+                                                        autoFocus
+                                                    />
+                                                    <div className="flex items-center justify-end gap-2">
+                                                        <button
+                                                            type="button"
+                                                            onClick={handleCancelEdit}
+                                                            className={`px-2.5 py-1 text-[11px] rounded-lg font-medium transition-colors ${
+                                                                isMe ? "text-slate-200 hover:bg-white/10" : "text-slate-600 hover:bg-slate-100"
+                                                            }`}
+                                                        >
+                                                            Cancel
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => handleSaveEdit(msg.id)}
+                                                            disabled={isUpdatingMessage || !editingContent.trim()}
+                                                            className="px-3 py-1 bg-amber-400 hover:bg-amber-500 text-slate-900 rounded-lg text-[11px] font-bold shadow-xs disabled:opacity-50 transition-colors"
+                                                        >
+                                                            {isUpdatingMessage ? "Saving..." : "Save"}
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <div className="space-y-1.5">
+                                                    {msg.content && <p className="leading-relaxed whitespace-pre-wrap break-words">{msg.content}</p>}
+
+                                                    {/* Attached File Display (Image / Document / PDF / Word) */}
+                                                    {msg.attachmentUrl && (
+                                                        <div className="pt-1">
+                                                            {(msg.attachmentType?.startsWith("image/") || msg.attachmentUrl.match(/\.(jpeg|jpg|png|webp|gif|svg)$/i)) ? (
+                                                                <div className="rounded-xl overflow-hidden border border-current/20 bg-black/10 max-w-xs mt-1">
+                                                                    <a
+                                                                        href={msg.attachmentUrl}
+                                                                        target="_blank"
+                                                                        rel="noopener noreferrer"
+                                                                        className="block relative group"
+                                                                    >
+                                                                        <img
+                                                                            src={msg.attachmentUrl}
+                                                                            alt={msg.attachmentName || "Attached Image"}
+                                                                            className="max-h-48 w-auto rounded-lg object-contain mx-auto"
+                                                                        />
+                                                                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity text-white text-[10px] font-bold gap-1">
+                                                                            <ExternalLink className="w-3.5 h-3.5" />
+                                                                            <span>View Full Image</span>
+                                                                        </div>
+                                                                    </a>
+                                                                </div>
+                                                            ) : (
+                                                                <div className={`p-2.5 rounded-xl border flex items-center justify-between gap-3 text-xs mt-1 ${
+                                                                    isMe ? "bg-white/10 border-white/20 text-white" : "bg-slate-50 border-slate-200 text-slate-800"
+                                                                }`}>
+                                                                    <div className="flex items-center gap-2 overflow-hidden">
+                                                                        <FileText className="w-4 h-4 shrink-0 text-amber-400" />
+                                                                        <div className="truncate">
+                                                                            <p className="truncate font-medium">{msg.attachmentName || "Attached Document"}</p>
+                                                                            <p className="text-[9px] opacity-70">Document File</p>
+                                                                        </div>
+                                                                    </div>
+                                                                    <a
+                                                                        href={msg.attachmentUrl}
+                                                                        target="_blank"
+                                                                        rel="noopener noreferrer"
+                                                                        download={msg.attachmentName || true}
+                                                                        className="px-2.5 py-1 rounded bg-white text-slate-900 font-bold text-[10px] hover:bg-slate-100 flex items-center gap-1 shrink-0 shadow-2xs transition-colors"
+                                                                    >
+                                                                        <Download className="w-3 h-3 text-[#143e66]" />
+                                                                        <span>Download</span>
+                                                                    </a>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            )}
+
+                                            {/* Action Options: Copy, Edit, Delete, Reply */}
+                                            {!isEditing && (
+                                                <div className={`flex items-center gap-1 pt-1.5 border-t ${
+                                                    isMe ? "border-white/15" : "border-slate-100"
+                                                }`}>
+                                                    {/* Copy Option */}
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleCopyMessage(msg.content, msg.id)}
+                                                        className={`px-2 py-0.5 rounded-md transition-colors flex items-center gap-1 text-[10px] font-medium cursor-pointer ${
+                                                            isMe
+                                                                ? "text-blue-100 hover:bg-white/15 hover:text-white"
+                                                                : "text-slate-500 hover:bg-slate-100 hover:text-slate-800"
+                                                        }`}
+                                                        title="Copy text"
+                                                    >
+                                                        {isCopied ? (
+                                                            <>
+                                                                <Check className="w-3 h-3 text-emerald-400" />
+                                                                <span className="text-[9px] text-emerald-400 font-bold">Copied</span>
+                                                            </>
+                                                        ) : (
+                                                            <>
+                                                                <Copy className="w-3 h-3" />
+                                                                <span className="text-[9px]">Copy</span>
+                                                            </>
+                                                        )}
+                                                    </button>
+
+                                                    {/* Reply Option */}
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleStartReply(msg)}
+                                                        className={`px-2 py-0.5 rounded-md transition-colors flex items-center gap-1 text-[10px] font-medium cursor-pointer ${
+                                                            isMe
+                                                                ? "text-blue-100 hover:bg-white/15 hover:text-white"
+                                                                : "text-slate-500 hover:bg-slate-100 hover:text-slate-800"
+                                                        }`}
+                                                        title="Reply to message"
+                                                    >
+                                                        <Reply className="w-3 h-3" />
+                                                        <span className="text-[9px]">Reply</span>
+                                                    </button>
+
+                                                    {/* Edit Option (allowed for sender's messages) */}
+                                                    {isMe && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => handleStartEdit(msg)}
+                                                            className={`px-2 py-0.5 rounded-md transition-colors flex items-center gap-1 text-[10px] font-medium cursor-pointer ${
+                                                                isMe
+                                                                    ? "text-blue-100 hover:bg-white/15 hover:text-white"
+                                                                    : "text-slate-500 hover:bg-slate-100 hover:text-slate-800"
+                                                            }`}
+                                                            title="Edit message"
+                                                        >
+                                                            <Edit3 className="w-3 h-3" />
+                                                            <span className="text-[9px]">Edit</span>
+                                                        </button>
+                                                    )}
+
+                                                    {/* Delete Option */}
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleDeleteMessage(msg.id)}
+                                                        disabled={isDeleting}
+                                                        className={`px-2 py-0.5 rounded-md transition-colors flex items-center gap-1 text-[10px] font-medium cursor-pointer ${
+                                                            isMe
+                                                                ? "text-rose-200 hover:bg-rose-500/20 hover:text-white"
+                                                                : "text-rose-500 hover:bg-rose-50 hover:text-rose-700"
+                                                        }`}
+                                                        title="Delete message"
+                                                    >
+                                                        <Trash2 className="w-3 h-3" />
+                                                        <span className="text-[9px]">{isDeleting ? "Deleting..." : "Delete"}</span>
+                                                    </button>
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
                                 );
@@ -1600,6 +2001,65 @@ export default function TeacherCommunicationPage() {
 
                     {/* Composer Form */}
                     <div className="p-4 border-t border-slate-200 bg-white space-y-3">
+                        {/* Hidden file input */}
+                        <input
+                            type="file"
+                            ref={fileInputRef}
+                            onChange={handleSelectAttachment}
+                            className="hidden"
+                            accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv"
+                        />
+
+                        {/* Replying Banner */}
+                        {replyingTo && (
+                            <div className="flex items-center justify-between px-3 py-2 bg-blue-50 border border-blue-200/90 rounded-xl text-xs text-blue-900 shadow-2xs">
+                                <div className="flex items-center gap-2 overflow-hidden">
+                                    <Reply className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                                    <div className="truncate">
+                                        <span className="font-bold">Replying to {replyingTo.senderName}: </span>
+                                        <span className="text-slate-600 truncate">{replyingTo.content.slice(0, 80)}{replyingTo.content.length > 80 ? '...' : ''}</span>
+                                    </div>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => setReplyingTo(null)}
+                                    className="p-1 text-slate-400 hover:text-slate-700 hover:bg-blue-100/70 rounded-md transition-colors shrink-0 ml-2 cursor-pointer"
+                                    title="Cancel reply"
+                                >
+                                    <X className="w-3.5 h-3.5" />
+                                </button>
+                            </div>
+                        )}
+
+                        {/* Selected File Attachment Preview */}
+                        {attachedFile && (
+                            <div className="flex items-center justify-between p-2.5 rounded-xl bg-amber-50 border border-amber-200/90 text-xs text-amber-950 shadow-2xs">
+                                <div className="flex items-center gap-2.5 overflow-hidden">
+                                    <div className="p-1.5 bg-amber-100 rounded-lg text-amber-800 shrink-0">
+                                        {attachedFile.type.startsWith("image/") ? (
+                                            <ImageIcon className="w-4 h-4 text-amber-700" />
+                                        ) : (
+                                            <FileText className="w-4 h-4 text-amber-700" />
+                                        )}
+                                    </div>
+                                    <div className="truncate">
+                                        <p className="font-bold truncate text-slate-900">{attachedFile.name}</p>
+                                        <p className="text-[10px] text-amber-800">
+                                            {(attachedFile.size / (1024 * 1024)).toFixed(2)} MB • {attachedFile.type.startsWith("image/") ? "Image" : "Document"}
+                                        </p>
+                                    </div>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={handleRemoveAttachment}
+                                    className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-md transition-colors shrink-0 ml-2 cursor-pointer"
+                                    title="Remove attachment"
+                                >
+                                    <X className="w-4 h-4" />
+                                </button>
+                            </div>
+                        )}
+
                         {/* Topic / Priority options */}
                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                             <input
@@ -1624,55 +2084,77 @@ export default function TeacherCommunicationPage() {
                             </select>
                         </div>
 
-                        {/* Textarea and Send */}
-                        <form onSubmit={handleSendMessage} className="flex gap-2">
-                            <textarea
-                                value={messageText}
-                                onChange={(e) => setMessageText(e.target.value)}
-                                placeholder={
-                                    activeCategory === "STUDENT" && studentTargetMode === "ALL"
-                                        ? `Write announcement to all ${studentsList.length} students across all your classes...`
-                                        : activeCategory === "STUDENT" && studentTargetMode === "SECTION"
-                                        ? `Write announcement for ${activeClassObj?.displayName || 'this section'}...`
-                                        : activeCategory === "PARENT" && parentTargetMode === "ALL"
-                                        ? `Write broadcast to all parents across all your classes...`
-                                        : activeCategory === "PARENT" && parentTargetMode === "SECTION"
-                                        ? `Write broadcast to parents of students in ${activeClassObj?.displayName || 'this section'}...`
-                                        : activeCategory === "PARENT" && selectedContact
-                                        ? `Write your message to ${selectedContact.name} (${selectedContact.studentName ? `${selectedContact.studentName}'s parent` : 'Parent'})...`
-                                        : selectedContact
-                                        ? `Write your message to ${selectedContact.name}...`
-                                        : `Type your message for this ${activeCategory.toLowerCase()} communication...`
-                                }
-                                className="flex-1 p-2.5 text-xs rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 resize-none h-20"
-                                required
-                            />
-                            <button
-                                type="submit"
-                                disabled={sending || !messageText.trim()}
-                                className={`px-5 font-bold rounded-xl disabled:opacity-50 transition-all flex flex-col items-center justify-center gap-1 shadow-xs shrink-0 active:scale-95 cursor-pointer ${
-                                    (activeCategory === "STUDENT" && studentTargetMode === "ALL") || (activeCategory === "PARENT" && parentTargetMode === "ALL")
-                                        ? "bg-blue-600 hover:bg-blue-700 text-white"
-                                        : (activeCategory === "STUDENT" && studentTargetMode === "SECTION") || (activeCategory === "PARENT" && parentTargetMode === "SECTION")
-                                        ? "bg-amber-600 hover:bg-amber-700 text-white"
-                                        : "bg-[#143e66] hover:bg-[#1a4f82] text-amber-300"
-                                }`}
-                            >
-                                {(activeCategory === "STUDENT" && studentTargetMode !== "STUDENT") || (activeCategory === "PARENT" && parentTargetMode !== "PARENT") ? (
-                                    <Megaphone className="w-4 h-4" />
-                                ) : (
-                                    <Send className="w-4 h-4" />
-                                )}
-                                <span className="text-[11px]">
-                                    {sending
-                                        ? "Sending..."
-                                        : (activeCategory === "STUDENT" && studentTargetMode === "ALL") || (activeCategory === "PARENT" && parentTargetMode === "ALL")
-                                        ? "Broadcast All"
-                                        : (activeCategory === "STUDENT" && studentTargetMode === "SECTION") || (activeCategory === "PARENT" && parentTargetMode === "SECTION")
-                                        ? "Broadcast Section"
-                                        : "Send"}
-                                </span>
-                            </button>
+                        {/* Textarea, Attachment button and Send */}
+                        <form onSubmit={handleSendMessage} className="space-y-2">
+                            <div className="flex gap-2">
+                                <textarea
+                                    value={messageText}
+                                    onChange={(e) => setMessageText(e.target.value)}
+                                    placeholder={
+                                        activeCategory === "STUDENT" && studentTargetMode === "ALL"
+                                            ? `Write announcement to all ${studentsList.length} students across all your classes...`
+                                            : activeCategory === "STUDENT" && studentTargetMode === "SECTION"
+                                            ? `Write announcement for ${activeClassObj?.displayName || 'this section'}...`
+                                            : activeCategory === "PARENT" && parentTargetMode === "ALL"
+                                            ? `Write broadcast to all parents across all your classes...`
+                                            : activeCategory === "PARENT" && parentTargetMode === "SECTION"
+                                            ? `Write broadcast to parents of students in ${activeClassObj?.displayName || 'this section'}...`
+                                            : activeCategory === "PARENT" && selectedContact
+                                            ? `Write your message to ${selectedContact.name} (${selectedContact.studentName ? `${selectedContact.studentName}'s parent` : 'Parent'})...`
+                                            : selectedContact
+                                            ? `Write your message to ${selectedContact.name}...`
+                                            : `Type your message for this ${activeCategory.toLowerCase()} communication...`
+                                    }
+                                    className="flex-1 p-2.5 text-xs rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 resize-none h-20"
+                                />
+                                <div className="flex flex-col gap-1.5 shrink-0">
+                                    {/* Paperclip Attach Button */}
+                                    <button
+                                        type="button"
+                                        onClick={() => fileInputRef.current?.click()}
+                                        disabled={sending || uploadingAttachment}
+                                        className={`px-3 py-2 rounded-xl border transition-all flex items-center justify-center gap-1.5 text-xs font-semibold cursor-pointer shadow-2xs ${
+                                            attachedFile
+                                                ? "bg-amber-100 border-amber-300 text-amber-900"
+                                                : "bg-slate-50 border-slate-200 hover:bg-slate-100 text-slate-700"
+                                        }`}
+                                        title="Attach Image, PDF, Word, or Document"
+                                    >
+                                        <Paperclip className="w-4 h-4 text-[#143e66]" />
+                                        <span className="text-[11px] font-bold">{attachedFile ? "Attached" : "Attach"}</span>
+                                    </button>
+
+                                    {/* Send Button */}
+                                    <button
+                                        type="submit"
+                                        disabled={sending || uploadingAttachment || (!messageText.trim() && !attachedFile)}
+                                        className={`flex-1 px-4 font-bold rounded-xl disabled:opacity-50 transition-all flex flex-col items-center justify-center gap-1 shadow-xs active:scale-95 cursor-pointer ${
+                                            (activeCategory === "STUDENT" && studentTargetMode === "ALL") || (activeCategory === "PARENT" && parentTargetMode === "ALL")
+                                                ? "bg-blue-600 hover:bg-blue-700 text-white"
+                                                : (activeCategory === "STUDENT" && studentTargetMode === "SECTION") || (activeCategory === "PARENT" && parentTargetMode === "SECTION")
+                                                ? "bg-amber-600 hover:bg-amber-700 text-white"
+                                                : "bg-[#143e66] hover:bg-[#1a4f82] text-amber-300"
+                                        }`}
+                                    >
+                                        {(activeCategory === "STUDENT" && studentTargetMode !== "STUDENT") || (activeCategory === "PARENT" && parentTargetMode !== "PARENT") ? (
+                                            <Megaphone className="w-4 h-4" />
+                                        ) : (
+                                            <Send className="w-4 h-4" />
+                                        )}
+                                        <span className="text-[11px]">
+                                            {uploadingAttachment
+                                                ? "Uploading..."
+                                                : sending
+                                                ? "Sending..."
+                                                : (activeCategory === "STUDENT" && studentTargetMode === "ALL") || (activeCategory === "PARENT" && parentTargetMode === "ALL")
+                                                ? "Broadcast"
+                                                : (activeCategory === "STUDENT" && studentTargetMode === "SECTION") || (activeCategory === "PARENT" && parentTargetMode === "SECTION")
+                                                ? "Broadcast"
+                                                : "Send"}
+                                        </span>
+                                    </button>
+                                </div>
+                            </div>
                         </form>
                     </div>
                 </div>
