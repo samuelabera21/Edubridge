@@ -73,18 +73,15 @@ TEACHER
 │   ├── Monitor intervention
 │   └── Record outcome
 │
-├── 9. PARENT COMMUNICATION
-│   ├── Send parent message
-│   ├── Attendance notification
-│   ├── Performance notification
-│   ├── Request parent meeting
-│   └── Provide teacher feedback
-│
-├── 10. TEACHER COMMUNICATION
-│   ├── School announcements
-│   ├── Academic communication
+├── 9. COMMUNICATION
+│   ├── Student communication
+│   ├── Parent communication
 │   ├── Department communication
-│   └── Staff communication
+│   └── School communication
+│
+├── 10. ANNOUNCEMENTS
+│   ├── School announcements
+│   └── Department announcements
 │
 ├── 11. PROFESSIONAL DEVELOPMENT
 │   ├── View training

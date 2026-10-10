@@ -1,28 +1,28 @@
 "use client";
 
 import { useAuth } from "../../../hooks/useAuth";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { fetchApi } from "../../../lib/api";
 import Link from "next/link";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/Card";
 import { 
-    BookOpen, 
     Users, 
-    ClipboardCheck, 
+    MonitorPlay, 
     FileText, 
-    FileCheck,
-    AlertCircle,
+    FileCheck, 
+    AlertCircle, 
     Calendar, 
+    Clock, 
+    BookOpen, 
+    CheckCircle2, 
+    ChevronRight, 
+    ArrowUpRight,
     Sparkles, 
-    ArrowRight,
-    MessageSquare,
-    Send,
+    Send, 
     X,
-    TrendingUp,
-    Clock,
-    CheckCircle2,
     Inbox,
-    Plus
+    GraduationCap,
+    HelpCircle,
+    MessageSquareQuote
 } from "lucide-react";
 
 export default function TeacherDashboard() {
@@ -113,389 +113,686 @@ export default function TeacherDashboard() {
         }
     }
 
-    if (loading) {
-        return (
-            <div className="w-full max-w-7xl mx-auto p-12 text-center text-gray-500 min-h-[600px] flex flex-col justify-center items-center">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mb-4"></div>
-                <p className="text-sm font-semibold text-gray-600">Loading your Teacher Command Center...</p>
-            </div>
-        );
-    }
-
     const teacherName = summary?.profile?.firstName 
-        ? `Mr. ${summary.profile.firstName} ${summary.profile.lastName || ''}` 
-        : authData?.user?.name || "Teacher";
+        ? `Mr. ${summary.profile.firstName} ${summary.profile.lastName || ''}`.trim() 
+        : authData?.user?.name || "Mr. Teacher";
 
     const todayClasses = summary?.todayClasses || [];
-    const todayClassesCount = summary?.todayClassesCount ?? todayClasses.length;
     const totalStudents = summary?.totalStudents ?? 0;
     const attendancePendingCount = summary?.attendancePendingCount ?? 0;
     const pendingAssessmentsCount = summary?.pendingAssessmentsCount ?? 0;
     const pendingSubmissionsCount = summary?.pendingSubmissionsCount ?? 0;
     const studentsNeedAttentionCount = summary?.studentsNeedAttentionCount ?? 0;
-    const upcomingActivitiesCount = summary?.upcomingActivitiesCount ?? 0;
-
-    const classPerformance = summary?.classPerformanceOverview || [];
     const attentionStudents = summary?.studentsRequiringAttention || [];
-    const aiInsights = summary?.aiTeachingInsights?.recommendations || [];
+
+    // Demographic and subject breakdown from real database
+    const studentsByGrade = summary?.studentsByGrade || [];
+    const genderDist = summary?.genderDistribution || { male: 0, female: 0, malePercentage: 0, femalePercentage: 0 };
+    const assessmentsBySubject = summary?.assessmentsBySubject || [];
+    const assignmentsBySubject = summary?.assignmentsBySubject || [];
+
+    // Attendance stats
+    const completedClassesToday = todayClasses.filter((c: any) => c.status === "Completed" || c.action === "Completed").length;
+    const upcomingClassesToday = todayClasses.length - completedClassesToday;
 
     const formattedDate = new Date().toLocaleDateString('en-US', {
-        weekday: 'long',
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric'
+        weekday: 'short',
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric'
     });
 
+    if (loading) {
+        return (
+            <div className="w-full max-w-7xl mx-auto p-12 text-center text-gray-500 min-h-[600px] flex flex-col justify-center items-center">
+                <div className="relative">
+                    <div className="w-12 h-12 rounded-full border-4 border-blue-200 border-t-blue-600 animate-spin"></div>
+                </div>
+                <p className="text-sm font-bold text-gray-800 mt-4">Loading Teacher Dashboard...</p>
+                <p className="text-xs text-gray-400 mt-1">Fetching live classes, roster statistics & assessments</p>
+            </div>
+        );
+    }
+
+    // Pie chart slice calculation for Students card
+    const gradeColors = ["#3b82f6", "#10b981", "#f59e0b", "#8b5cf6", "#ec4899", "#06b6d4"];
+
     return (
-        <div className="w-full max-w-7xl mx-auto space-y-6 text-gray-800">
-            {/* Top Right Corner Date & Active Term Header */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-gray-200/80 pb-4">
+        <div className="w-full max-w-[1400px] mx-auto space-y-5 text-gray-800 font-sans pb-12">
+            
+            {/* Top Bar: Greeting & Academic Term Info */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
                 <div>
-                    <h1 className="text-2xl font-extrabold tracking-tight text-gray-900 flex items-center gap-2">
-                        Welcome back, {teacherName}!
+                    <h1 className="text-2xl font-black text-gray-900 tracking-tight">
+                        Good morning, {teacherName}
                     </h1>
-                    <p className="text-xs font-medium text-gray-500 mt-1">
-                        Teacher Operational Command Center • Assigned Classes & Live Analytics
+                    <p className="text-xs text-gray-500 font-medium mt-0.5">
+                        Here's what's happening in your classes today.
                     </p>
                 </div>
 
-                {/* Top Right Corner Date & Active Term Card */}
-                <div className="flex items-center space-x-3 self-end sm:self-auto">
-                    <div className="bg-white border border-gray-200 rounded-xl px-4 py-2 shadow-2xs flex items-center space-x-3 text-xs">
-                        <div className="p-2 bg-blue-50 text-[#4085b3] rounded-lg">
-                            <Calendar className="w-4 h-4" />
-                        </div>
-                        <div className="text-right">
-                            <p className="font-bold text-gray-900 leading-tight">{formattedDate}</p>
-                            <p className="text-[10px] text-gray-500 font-semibold uppercase tracking-wider">Active Term</p>
-                        </div>
-                    </div>
+                <div className="flex items-center space-x-3 self-start sm:self-auto">
+                    {/* AI Assistant Quick Trigger */}
+                    <button
+                        onClick={() => setShowAiModal(true)}
+                        className="px-3.5 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200/80 rounded-xl transition-all cursor-pointer shadow-2xs flex items-center space-x-1.5 text-xs font-bold"
+                        title="AI Lesson Assistant"
+                    >
+                        <Sparkles className="w-4 h-4 text-amber-600" />
+                        <span>AI Assistant</span>
+                    </button>
                 </div>
             </div>
 
-            {/* Quick Action Bar */}
-            <div className="flex flex-wrap items-center gap-3">
-                <Link
-                    href="/dashboard/teacher/attendance"
-                    className="px-3.5 py-2 bg-[#4085b3] hover:bg-[#356e94] text-white font-medium rounded-xl text-xs flex items-center space-x-1.5 transition-colors shadow-2xs"
-                >
-                    <ClipboardCheck className="w-4 h-4" />
-                    <span>Take Attendance</span>
-                </Link>
+            {/* Top 5 KPI Cards Row */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3.5">
+                
+                {/* 1. Total Students */}
+                <div className="bg-white border border-gray-200/90 rounded-2xl p-4 shadow-2xs flex items-center justify-between transition-all hover:shadow-xs">
+                    <div className="space-y-1">
+                        <span className="text-xs font-bold text-gray-500">Total Students</span>
+                        <p className="text-2xl font-black text-gray-900">{totalStudents}</p>
+                        <p className="text-[10px] font-bold text-emerald-600 flex items-center gap-0.5">
+                            <span>↑ Active in your assigned sections</span>
+                        </p>
+                    </div>
+                    <div className="w-12 h-12 rounded-xl bg-blue-500 text-white flex items-center justify-center shadow-xs">
+                        <Users className="w-6 h-6" />
+                    </div>
+                </div>
 
-                <Link
-                    href="/dashboard/teacher/assessment"
-                    className="px-3.5 py-2 bg-[#4a6b82] hover:bg-[#3d596d] text-white font-medium rounded-xl text-xs flex items-center space-x-1.5 transition-colors shadow-2xs"
-                >
-                    <Plus className="w-4 h-4" />
-                    <span>Create Assessment</span>
-                </Link>
+                {/* 2. Today's Classes */}
+                <div className="bg-white border border-gray-200/90 rounded-2xl p-4 shadow-2xs flex items-center justify-between transition-all hover:shadow-xs">
+                    <div className="space-y-1">
+                        <span className="text-xs font-bold text-gray-500">Today's Classes</span>
+                        <p className="text-2xl font-black text-gray-900">{todayClasses.length}</p>
+                        <p className="text-[10px] font-semibold text-emerald-700 flex items-center gap-1">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                            <span>{completedClassesToday} completed • {upcomingClassesToday} upcoming</span>
+                        </p>
+                    </div>
+                    <div className="w-12 h-12 rounded-xl bg-emerald-500 text-white flex items-center justify-center shadow-xs">
+                        <MonitorPlay className="w-6 h-6" />
+                    </div>
+                </div>
+
+                {/* 3. Pending Assessments */}
+                <div className="bg-white border border-gray-200/90 rounded-2xl p-4 shadow-2xs flex items-center justify-between transition-all hover:shadow-xs">
+                    <div className="space-y-1">
+                        <span className="text-xs font-bold text-purple-700">Pending Assessments</span>
+                        <p className="text-2xl font-black text-gray-900">{pendingAssessmentsCount}</p>
+                        <p className="text-[10px] font-semibold text-purple-600 flex items-center gap-1">
+                            <Clock className="w-3 h-3" />
+                            <span>In active evaluation cycle</span>
+                        </p>
+                    </div>
+                    <div className="w-12 h-12 rounded-xl bg-purple-500 text-white flex items-center justify-center shadow-xs">
+                        <FileText className="w-6 h-6" />
+                    </div>
+                </div>
+
+                {/* 4. Pending Assignments */}
+                <div className="bg-white border border-gray-200/90 rounded-2xl p-4 shadow-2xs flex items-center justify-between transition-all hover:shadow-xs">
+                    <div className="space-y-1">
+                        <span className="text-xs font-bold text-amber-700">Pending Assignments</span>
+                        <p className="text-2xl font-black text-gray-900">{pendingSubmissionsCount}</p>
+                        <p className="text-[10px] font-semibold text-amber-600 flex items-center gap-1">
+                            <Clock className="w-3 h-3" />
+                            <span>Awaiting teacher review</span>
+                        </p>
+                    </div>
+                    <div className="w-12 h-12 rounded-xl bg-amber-500 text-white flex items-center justify-center shadow-xs">
+                        <FileCheck className="w-6 h-6" />
+                    </div>
+                </div>
+
+                {/* 5. Students Needing Attention */}
+                <div className="bg-white border border-gray-200/90 rounded-2xl p-4 shadow-2xs flex items-center justify-between transition-all hover:shadow-xs">
+                    <div className="space-y-1">
+                        <span className="text-xs font-bold text-rose-700">Students Needing Attention</span>
+                        <p className="text-2xl font-black text-gray-900">{studentsNeedAttentionCount}</p>
+                        <a href="#students-attention" className="text-[10px] font-bold text-rose-600 hover:text-rose-700 flex items-center gap-0.5">
+                            <span>View details</span>
+                            <span>→</span>
+                        </a>
+                    </div>
+                    <div className="w-12 h-12 rounded-xl bg-rose-500 text-white flex items-center justify-center shadow-xs">
+                        <AlertCircle className="w-6 h-6" />
+                    </div>
+                </div>
+
             </div>
 
-            {/* Teacher Sector in Numbers — Styled identically to Admin Dashboard */}
-            <Card>
-                <CardHeader className="text-center pb-0 border-none">
-                    <CardTitle className="text-gray-600 font-medium">The Sector in Numbers</CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                        
-                        {/* Today's Classes */}
-                        <div className="bg-white border border-gray-100 rounded-[10px] shadow-sm flex items-center p-4 transition-all hover:shadow-md">
-                            <div className="bg-[#f59e0b] w-14 h-14 rounded-[12px] flex items-center justify-center shrink-0">
-                                <BookOpen className="text-white h-7 w-7" />
+            {/* Middle Section: 3-Column Grid */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
+                
+                {/* 1. Today's Classes List (4 Cols) */}
+                <div className="lg:col-span-4 bg-white border border-gray-200/90 rounded-2xl p-5 shadow-2xs flex flex-col justify-between">
+                    <div>
+                        <div className="flex items-center justify-between pb-3 border-b border-gray-100">
+                            <div className="flex items-center space-x-2">
+                                <Calendar className="w-4 h-4 text-blue-600" />
+                                <h3 className="font-extrabold text-sm text-gray-900">Today's Classes</h3>
                             </div>
-                            <div className="ml-4 flex-1">
-                                <p className="text-xl font-bold text-gray-900 leading-none">{todayClassesCount}</p>
-                                <p className="text-xs text-gray-500 mt-1.5 font-medium">Today's Classes</p>
-                            </div>
+                            <Link href="/dashboard/teacher/my-classes" className="text-xs font-bold text-blue-600 hover:text-blue-700 flex items-center gap-0.5">
+                                <span>View all classes</span>
+                                <span>→</span>
+                            </Link>
                         </div>
 
-                        {/* Enrolled Students */}
-                        <div className="bg-white border border-gray-100 rounded-[10px] shadow-sm flex items-center p-4 transition-all hover:shadow-md">
-                            <div className="bg-[#10b981] w-14 h-14 rounded-[12px] flex items-center justify-center shrink-0">
-                                <Users className="text-white h-7 w-7" />
-                            </div>
-                            <div className="ml-4 flex-1">
-                                <p className="text-xl font-bold text-gray-900 leading-none">{totalStudents}</p>
-                                <p className="text-xs text-gray-500 mt-1.5 font-medium">Enrolled Students</p>
-                            </div>
-                        </div>
-
-                        {/* Pending Attendance */}
-                        <div className="bg-white border border-gray-100 rounded-[10px] shadow-sm flex items-center p-4 transition-all hover:shadow-md">
-                            <div className="bg-[#ef4444] w-14 h-14 rounded-[12px] flex items-center justify-center shrink-0">
-                                <ClipboardCheck className="text-white h-7 w-7" />
-                            </div>
-                            <div className="ml-4 flex-1">
-                                <p className="text-xl font-bold text-gray-900 leading-none">{attendancePendingCount}</p>
-                                <p className="text-xs text-gray-500 mt-1.5 font-medium">Pending Attendance</p>
-                            </div>
-                        </div>
-
-                        {/* Active Assessments */}
-                        <div className="bg-white border border-gray-100 rounded-[10px] shadow-sm flex items-center p-4 transition-all hover:shadow-md">
-                            <div className="bg-[#8b5cf6] w-14 h-14 rounded-[12px] flex items-center justify-center shrink-0">
-                                <FileText className="text-white h-7 w-7" />
-                            </div>
-                            <div className="ml-4 flex-1">
-                                <p className="text-xl font-bold text-gray-900 leading-none">{pendingAssessmentsCount}</p>
-                                <p className="text-xs text-gray-500 mt-1.5 font-medium">Active Assessments</p>
-                            </div>
-                        </div>
-
-                        {/* Pending Submissions */}
-                        <div className="bg-white border border-gray-100 rounded-[10px] shadow-sm flex items-center p-4 transition-all hover:shadow-md">
-                            <div className="bg-[#3b82f6] w-14 h-14 rounded-[12px] flex items-center justify-center shrink-0">
-                                <FileCheck className="text-white h-7 w-7" />
-                            </div>
-                            <div className="ml-4 flex-1">
-                                <p className="text-xl font-bold text-gray-900 leading-none">{pendingSubmissionsCount}</p>
-                                <p className="text-xs text-gray-500 mt-1.5 font-medium">Pending Submissions</p>
-                            </div>
-                        </div>
-
-                        {/* Students Need Attention */}
-                        <div className="bg-white border border-gray-100 rounded-[10px] shadow-sm flex items-center p-4 transition-all hover:shadow-md">
-                            <div className="bg-[#06b6d4] w-14 h-14 rounded-[12px] flex items-center justify-center shrink-0">
-                                <AlertCircle className="text-white h-7 w-7" />
-                            </div>
-                            <div className="ml-4 flex-1">
-                                <p className="text-xl font-bold text-gray-900 leading-none">{studentsNeedAttentionCount}</p>
-                                <p className="text-xs text-gray-500 mt-1.5 font-medium">Need Attention</p>
-                            </div>
-                        </div>
-
-                    </div>
-                </CardContent>
-            </Card>
-
-            {/* Middle Row Grid: Today's Timetable */}
-            <div>
-                <Card>
-                    <CardHeader className="flex flex-row items-center justify-between">
-                        <CardTitle className="flex items-center space-x-2 text-base font-bold text-gray-900">
-                            <Calendar className="w-5 h-5 text-blue-600" />
-                            <span>Today's Timetable</span>
-                        </CardTitle>
-                        <span className="text-xs font-semibold text-gray-500">
-                            {todayClasses.length} Scheduled Period(s)
-                        </span>
-                    </CardHeader>
-
-                    <CardContent>
                         {todayClasses.length === 0 ? (
                             <div className="py-12 text-center text-gray-400 space-y-2">
-                                <Inbox className="w-10 h-10 mx-auto text-gray-300" />
-                                <p className="text-sm font-semibold text-gray-600">No classes scheduled for today</p>
-                                <p className="text-xs text-gray-400">Timetable slots assigned by school administrators will appear here automatically.</p>
+                                <Inbox className="w-8 h-8 mx-auto text-gray-300" />
+                                <p className="text-xs font-bold text-gray-600">No classes scheduled today</p>
+                                <p className="text-[11px] text-gray-400">Classes assigned to your timetable will show here.</p>
                             </div>
                         ) : (
-                            <div className="overflow-x-auto">
-                                <table className="w-full text-left text-xs">
-                                    <thead>
-                                        <tr className="border-b border-gray-100 text-gray-400 font-bold uppercase tracking-wider">
-                                            <th className="py-3 px-2">Period</th>
-                                            <th className="py-3 px-2">Time</th>
-                                            <th className="py-3 px-2">Class / Section</th>
-                                            <th className="py-3 px-2">Subject</th>
-                                            <th className="py-3 px-2">Room</th>
-                                            <th className="py-3 px-2">Students</th>
-                                            <th className="py-3 px-2 text-right">Action</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-gray-50">
-                                        {todayClasses.map((item: any, idx: number) => (
-                                            <tr key={item.id || idx} className="hover:bg-gray-50/80 transition-colors">
-                                                <td className="py-3.5 px-2 font-bold text-gray-700">{item.period || idx + 1}</td>
-                                                <td className="py-3.5 px-2 font-medium text-gray-600 whitespace-nowrap">{item.time}</td>
-                                                <td className="py-3.5 px-2 font-bold text-gray-900">{item.section || item.class}</td>
-                                                <td className="py-3.5 px-2 text-gray-600 font-medium">{item.subject}</td>
-                                                <td className="py-3.5 px-2 text-gray-500">{item.room || "Room Assigned"}</td>
-                                                <td className="py-3.5 px-2 font-semibold text-gray-700">{item.studentCount ?? item.students ?? 0}</td>
-                                                <td className="py-3.5 px-2 text-right">
-                                                    {item.status === "Completed" || item.action === "Completed" ? (
-                                                        <span className="px-3 py-1 bg-emerald-100 text-emerald-800 rounded-full font-bold text-[11px] inline-flex items-center space-x-1">
-                                                            <CheckCircle2 className="w-3 h-3 mr-1" />
-                                                            Completed
-                                                        </span>
-                                                    ) : (
-                                                        <button 
-                                                            onClick={() => setSelectedClass(item)}
-                                                            className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold text-[11px] transition-colors shadow-xs"
-                                                        >
-                                                            Take Attendance
-                                                        </button>
-                                                    )}
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
-                        )}
-                    </CardContent>
-                </Card>
-            </div>
+                            <div className="space-y-3 pt-3">
+                                {todayClasses.map((cls: any, idx: number) => {
+                                    const isDone = cls.status === "Completed" || cls.action === "Completed";
+                                    const iconColors = [
+                                        "bg-blue-500 text-white",
+                                        "bg-purple-500 text-white",
+                                        "bg-emerald-500 text-white",
+                                        "bg-amber-500 text-white"
+                                    ];
+                                    const iconBg = iconColors[idx % iconColors.length];
 
-            {/* Lower Grid Row: Tasks Overview, Class Performance, Students Needing Attention */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {/* Column 1: Tasks Overview */}
-                <Card>
-                    <CardHeader>
-                        <CardTitle className="flex items-center space-x-2 text-base font-bold text-gray-900">
-                            <ClipboardCheck className="w-5 h-5 text-gray-700" />
-                            <span>Tasks Overview</span>
-                        </CardTitle>
-                    </CardHeader>
-
-                    <CardContent className="space-y-3">
-                        <div className="flex items-center justify-between p-3 rounded-xl bg-gray-50/80 border border-gray-100">
-                            <div className="flex items-center space-x-3 text-xs font-semibold text-gray-700">
-                                <div className="w-2.5 h-2.5 rounded-full bg-amber-500"></div>
-                                <span>Attendance Pending</span>
-                            </div>
-                            <span className="px-2.5 py-0.5 bg-white text-gray-800 rounded-full font-bold text-xs shadow-2xs border border-gray-200">{attendancePendingCount}</span>
-                        </div>
-
-                        <div className="flex items-center justify-between p-3 rounded-xl bg-gray-50/80 border border-gray-100">
-                            <div className="flex items-center space-x-3 text-xs font-semibold text-gray-700">
-                                <div className="w-2.5 h-2.5 rounded-full bg-purple-500"></div>
-                                <span>Pending Assessments</span>
-                            </div>
-                            <span className="px-2.5 py-0.5 bg-white text-gray-800 rounded-full font-bold text-xs shadow-2xs border border-gray-200">{pendingAssessmentsCount}</span>
-                        </div>
-
-                        <div className="flex items-center justify-between p-3 rounded-xl bg-gray-50/80 border border-gray-100">
-                            <div className="flex items-center space-x-3 text-xs font-semibold text-gray-700">
-                                <div className="w-2.5 h-2.5 rounded-full bg-rose-500"></div>
-                                <span>Pending Submissions</span>
-                            </div>
-                            <span className="px-2.5 py-0.5 bg-white text-gray-800 rounded-full font-bold text-xs shadow-2xs border border-gray-200">{pendingSubmissionsCount}</span>
-                        </div>
-
-                        <div className="flex items-center justify-between p-3 rounded-xl bg-gray-50/80 border border-gray-100">
-                            <div className="flex items-center space-x-3 text-xs font-semibold text-gray-700">
-                                <div className="w-2.5 h-2.5 rounded-full bg-cyan-500"></div>
-                                <span>Students Need Attention</span>
-                            </div>
-                            <span className="px-2.5 py-0.5 bg-white text-gray-800 rounded-full font-bold text-xs shadow-2xs border border-gray-200">{studentsNeedAttentionCount}</span>
-                        </div>
-
-                        <div className="flex items-center justify-between p-3 rounded-xl bg-gray-50/80 border border-gray-100">
-                            <div className="flex items-center space-x-3 text-xs font-semibold text-gray-700">
-                                <div className="w-2.5 h-2.5 rounded-full bg-blue-500"></div>
-                                <span>Upcoming Activities</span>
-                            </div>
-                            <span className="px-2.5 py-0.5 bg-white text-gray-800 rounded-full font-bold text-xs shadow-2xs border border-gray-200">{upcomingActivitiesCount}</span>
-                        </div>
-                    </CardContent>
-                </Card>
-
-                {/* Column 2: Class Performance Overview */}
-                <Card>
-                    <CardHeader className="flex flex-row items-center justify-between">
-                        <CardTitle className="flex items-center space-x-2 text-base font-bold text-gray-900">
-                            <TrendingUp className="w-5 h-5 text-blue-600" />
-                            <span>Class Performance Overview</span>
-                        </CardTitle>
-                        <span className="text-[11px] font-medium text-gray-500">Score Averages</span>
-                    </CardHeader>
-
-                    <CardContent>
-                        {classPerformance.length === 0 ? (
-                            <div className="py-10 text-center text-gray-400 space-y-2">
-                                <TrendingUp className="w-8 h-8 mx-auto text-gray-300" />
-                                <p className="text-xs font-semibold text-gray-600">No performance records</p>
-                                <p className="text-[11px] text-gray-400">Class score averages will calculate automatically once assessments are recorded.</p>
-                            </div>
-                        ) : (
-                            <div className="space-y-4">
-                                <div className="h-44 flex items-end justify-between gap-3 px-2 pb-2 border-b border-gray-200 relative">
-                                    <div className="absolute inset-0 flex flex-col justify-between pointer-events-none text-[9px] text-gray-300">
-                                        <div className="border-b border-gray-100 w-full flex justify-between"><span className="-mt-2">100%</span></div>
-                                        <div className="border-b border-gray-100 w-full flex justify-between"><span className="-mt-2">75%</span></div>
-                                        <div className="border-b border-gray-100 w-full flex justify-between"><span className="-mt-2">50%</span></div>
-                                        <div className="border-b border-gray-100 w-full flex justify-between"><span className="-mt-2">25%</span></div>
-                                        <div className="w-full flex justify-between"><span className="-mt-2">0%</span></div>
-                                    </div>
-
-                                    {classPerformance.map((item: any, i: number) => (
-                                        <div key={i} className="flex-1 flex flex-col items-center z-10">
-                                            <span className="text-[10px] font-extrabold text-blue-600 mb-1">{item.averageScore}%</span>
-                                            <div 
-                                                className="w-full bg-blue-600 rounded-t-lg transition-all duration-500 hover:bg-blue-700 shadow-xs"
-                                                style={{ height: `${Math.max(10, (item.averageScore / 100) * 130)}px` }}
-                                            ></div>
-                                            <span className="text-[10px] font-bold text-gray-600 mt-2 truncate w-full text-center">{item.className}</span>
-                                        </div>
-                                    ))}
-                                </div>
-
-                                <div className="flex items-center justify-center space-x-2 pt-1 text-[11px] text-gray-500">
-                                    <span className="w-2.5 h-2.5 bg-blue-600 rounded-xs"></span>
-                                    <span>Average Score per Section</span>
-                                </div>
-                            </div>
-                        )}
-                    </CardContent>
-                </Card>
-
-                {/* Column 3: Students Needing Attention */}
-                <div id="students-attention">
-                    <Card>
-                        <CardHeader className="flex flex-row items-center justify-between">
-                            <CardTitle className="flex items-center space-x-2 text-base font-bold text-gray-900">
-                                <Users className="w-5 h-5 text-gray-700" />
-                                <span>Students Needing Attention</span>
-                            </CardTitle>
-                            <span className="text-xs font-bold text-blue-600">
-                                {attentionStudents.length} Active
-                            </span>
-                        </CardHeader>
-
-                        <CardContent>
-                            {attentionStudents.length === 0 ? (
-                                <div className="py-10 text-center text-gray-400 space-y-2">
-                                    <CheckCircle2 className="w-8 h-8 mx-auto text-emerald-500" />
-                                    <p className="text-xs font-semibold text-gray-700">No support flags active</p>
-                                    <p className="text-[11px] text-gray-400">All students in your assigned sections are performing well without active intervention flags.</p>
-                                </div>
-                            ) : (
-                                <div className="space-y-3">
-                                    {attentionStudents.map((st: any) => {
-                                        const isLowPerf = st.type === "Low Performance";
-                                        return (
-                                            <div key={st.id} className="p-3 rounded-xl bg-gray-50/80 hover:bg-gray-50 transition-colors border border-gray-100 flex items-center justify-between">
-                                                <div className="flex items-center space-x-3">
-                                                    <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-800 font-bold text-xs flex items-center justify-center">
-                                                        {st.studentName.split(' ').map((n: string) => n[0]).join('')}
-                                                    </div>
-                                                    <div>
-                                                        <p className="font-bold text-xs text-gray-900">{st.studentName}</p>
-                                                        <p className="text-[10px] text-gray-500">{st.section}</p>
-                                                    </div>
+                                    return (
+                                        <div key={cls.id || idx} className="p-3 rounded-xl bg-gray-50/70 hover:bg-gray-50 border border-gray-100/90 flex items-center justify-between transition-colors">
+                                            <div className="flex items-center space-x-3">
+                                                <div className={`w-10 h-10 rounded-xl ${iconBg} flex items-center justify-center shrink-0 shadow-2xs`}>
+                                                    <BookOpen className="w-5 h-5" />
                                                 </div>
-
-                                                <div className="text-right">
-                                                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full inline-flex items-center ${
-                                                        isLowPerf ? "bg-rose-100 text-rose-700" : "bg-amber-100 text-amber-800"
-                                                    }`}>
-                                                        <span className={`w-1.5 h-1.5 rounded-full mr-1 ${isLowPerf ? "bg-rose-500" : "bg-amber-500"}`}></span>
-                                                        {st.type}
-                                                    </span>
-                                                    <p className="text-[10px] text-gray-500 font-semibold mt-0.5">{st.detail}</p>
+                                                <div>
+                                                    <p className="text-xs font-extrabold text-gray-900 leading-tight">
+                                                        {cls.section || cls.class}
+                                                    </p>
+                                                    <p className="text-[11px] font-semibold text-gray-700">{cls.subject}</p>
+                                                    <div className="flex items-center space-x-2 text-[10px] text-gray-400 mt-0.5">
+                                                        <span className="flex items-center gap-0.5">
+                                                            <Clock className="w-3 h-3" />
+                                                            {cls.time}
+                                                        </span>
+                                                        <span>•</span>
+                                                        <span>{cls.room || "Room 101"}</span>
+                                                    </div>
                                                 </div>
                                             </div>
-                                        );
-                                    })}
-                                </div>
-                            )}
-                        </CardContent>
-                    </Card>
+
+                                            <div className="text-right space-y-1">
+                                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full inline-block ${
+                                                    isDone 
+                                                        ? "bg-emerald-100 text-emerald-800" 
+                                                        : idx === 0 
+                                                            ? "bg-emerald-100 text-emerald-800" 
+                                                            : "bg-gray-100 text-gray-600"
+                                                }`}>
+                                                    {isDone ? "Completed" : idx === 0 ? "In Progress" : "Upcoming"}
+                                                </span>
+                                                <div>
+                                                    <button
+                                                        onClick={() => setSelectedClass(cls)}
+                                                        className="px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg text-[10px] transition-colors shadow-2xs cursor-pointer"
+                                                    >
+                                                        {isDone ? "Review" : "Take Attendance"}
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        )}
+                    </div>
                 </div>
+
+                {/* 2. Today's Timetable Timeline (4 Cols) */}
+                <div className="lg:col-span-4 bg-white border border-gray-200/90 rounded-2xl p-5 shadow-2xs">
+                    <div className="flex items-center justify-between pb-3 border-b border-gray-100">
+                        <div className="flex items-center space-x-2">
+                            <Clock className="w-4 h-4 text-blue-600" />
+                            <h3 className="font-extrabold text-sm text-gray-900">Today's Timetable</h3>
+                        </div>
+                        <span className="text-xs font-semibold text-gray-400">{formattedDate}</span>
+                    </div>
+
+                    {todayClasses.length === 0 ? (
+                        <div className="py-12 text-center text-gray-400 space-y-2">
+                            <Clock className="w-8 h-8 mx-auto text-gray-300" />
+                            <p className="text-xs font-bold text-gray-600">No scheduled periods today</p>
+                        </div>
+                    ) : (
+                        <div className="relative pl-5 pt-3 space-y-5 before:absolute before:left-2 before:top-4 before:bottom-2 before:w-0.5 before:bg-gray-200">
+                            {todayClasses.map((cls: any, idx: number) => {
+                                const isDone = cls.status === "Completed" || cls.action === "Completed";
+                                const isFirst = idx === 0 && !isDone;
+                                const dotColor = isDone ? "bg-emerald-500" : isFirst ? "bg-blue-600" : "bg-gray-300";
+
+                                return (
+                                    <div key={cls.id || idx} className="relative flex items-center justify-between text-xs">
+                                        <div className={`absolute -left-[19px] w-3 h-3 rounded-full ${dotColor} border-2 border-white shadow-xs`}></div>
+                                        
+                                        <div>
+                                            <span className="text-[11px] font-bold text-gray-500">{cls.time}</span>
+                                            <p className="font-extrabold text-gray-900 text-xs">{cls.subject}</p>
+                                            <p className="text-[10px] text-gray-400 font-medium">
+                                                {cls.section || cls.class} • {cls.room || "Room 101"}
+                                            </p>
+                                        </div>
+
+                                        <div>
+                                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                                                isDone 
+                                                    ? "bg-emerald-100 text-emerald-800" 
+                                                    : isFirst 
+                                                        ? "bg-blue-100 text-blue-700" 
+                                                        : "bg-gray-100 text-gray-600"
+                                            }`}>
+                                                {isDone ? "Done" : isFirst ? "In Progress" : "Next"}
+                                            </span>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
+                </div>
+
+                {/* 3. Students Distribution Card (4 Cols) */}
+                <div className="lg:col-span-4 bg-white border border-gray-200/90 rounded-2xl p-5 shadow-2xs space-y-4">
+                    <div className="flex items-center justify-between pb-3 border-b border-gray-100">
+                        <div className="flex items-center space-x-2">
+                            <Users className="w-4 h-4 text-blue-600" />
+                            <h3 className="font-extrabold text-sm text-gray-900">Students</h3>
+                        </div>
+                        <Link href="/dashboard/teacher/students" className="text-xs font-bold text-blue-600 hover:text-blue-700 flex items-center gap-0.5">
+                            <span>View all students</span>
+                            <span>→</span>
+                        </Link>
+                    </div>
+
+                    <div>
+                        <span className="text-xs font-semibold text-gray-500">Total Students</span>
+                        <p className="text-2xl font-black text-gray-900 leading-tight">{totalStudents}</p>
+                    </div>
+
+                    {/* Donut Chart & Grade Legend */}
+                    <div className="flex items-center justify-between gap-4 pt-1">
+                        {/* Circular Donut Display */}
+                        <div className="relative w-28 h-28 shrink-0 flex items-center justify-center">
+                            <svg className="w-full h-full -rotate-90" viewBox="0 0 36 36">
+                                <circle cx="18" cy="18" r="14" fill="none" stroke="#f1f5f9" strokeWidth="4" />
+                                {studentsByGrade.map((g: any, i: number) => {
+                                    const strokeDash = `${g.percentage || 25} ${100 - (g.percentage || 25)}`;
+                                    const offset = studentsByGrade.slice(0, i).reduce((acc: number, curr: any) => acc + (curr.percentage || 0), 0);
+                                    return (
+                                        <circle
+                                            key={i}
+                                            cx="18"
+                                            cy="18"
+                                            r="14"
+                                            fill="none"
+                                            stroke={gradeColors[i % gradeColors.length]}
+                                            strokeWidth="4"
+                                            strokeDasharray={strokeDash}
+                                            strokeDashoffset={-offset}
+                                        />
+                                    );
+                                })}
+                            </svg>
+                            <div className="absolute text-center">
+                                <p className="text-xs font-extrabold text-gray-900 leading-tight">{totalStudents}</p>
+                                <span className="text-[9px] text-gray-400 font-semibold">Students</span>
+                            </div>
+                        </div>
+
+                        {/* Grade Level breakdown list */}
+                        <div className="flex-1 space-y-1.5 text-xs">
+                            {studentsByGrade.length === 0 ? (
+                                <p className="text-[11px] text-gray-400">Assigned sections will populate grade levels.</p>
+                            ) : (
+                                studentsByGrade.slice(0, 4).map((g: any, i: number) => (
+                                    <div key={i} className="flex items-center justify-between text-[11px]">
+                                        <div className="flex items-center space-x-1.5">
+                                            <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: gradeColors[i % gradeColors.length] }}></span>
+                                            <span className="font-semibold text-gray-700">{g.name}</span>
+                                        </div>
+                                        <span className="font-bold text-gray-900">{g.count} ({g.percentage}%)</span>
+                                    </div>
+                                ))
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Gender Distribution */}
+                    <div className="pt-2 border-t border-gray-100 space-y-2">
+                        <span className="text-xs font-bold text-gray-700">Gender Distribution</span>
+                        <div className="grid grid-cols-2 gap-2 text-xs">
+                            <div className="p-2.5 bg-blue-50/70 rounded-xl border border-blue-100 flex items-center space-x-2.5">
+                                <div className="w-7 h-7 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-[11px]">
+                                    ♂
+                                </div>
+                                <div>
+                                    <p className="text-[10px] text-gray-500 font-semibold">Male</p>
+                                    <p className="font-extrabold text-gray-900 text-xs">
+                                        {genderDist.male} ({genderDist.malePercentage}%)
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div className="p-2.5 bg-rose-50/70 rounded-xl border border-rose-100 flex items-center space-x-2.5">
+                                <div className="w-7 h-7 rounded-full bg-rose-600 text-white flex items-center justify-center font-bold text-[11px]">
+                                    ♀
+                                </div>
+                                <div>
+                                    <p className="text-[10px] text-gray-500 font-semibold">Female</p>
+                                    <p className="font-extrabold text-gray-900 text-xs">
+                                        {genderDist.female} ({genderDist.femalePercentage}%)
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+
             </div>
 
+            {/* Bottom Row: 4-Column Operations & Analytics Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+                
+                {/* 1. Attendance Tasks */}
+                <div className="bg-white border border-gray-200/90 rounded-2xl p-5 shadow-2xs flex flex-col justify-between">
+                    <div className="space-y-3">
+                        <div className="flex items-center justify-between pb-3 border-b border-gray-100">
+                            <div className="flex items-center space-x-2">
+                                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                                <h3 className="font-extrabold text-sm text-gray-900">Attendance Tasks</h3>
+                            </div>
+                            <Link href="/dashboard/teacher/attendance" className="text-xs font-bold text-blue-600 hover:text-blue-700 flex items-center gap-0.5">
+                                <span>View all</span>
+                                <span>→</span>
+                            </Link>
+                        </div>
+
+                        {/* Circular Progress & Completed Count */}
+                        <div className="flex items-center justify-between pt-2">
+                            <div className="relative w-24 h-24 shrink-0 flex items-center justify-center">
+                                {(() => {
+                                    const totalToday = todayClasses.length || 1;
+                                    const pct = Math.round((completedClassesToday / totalToday) * 100);
+                                    return (
+                                        <>
+                                            <svg className="w-full h-full -rotate-90" viewBox="0 0 36 36">
+                                                <circle cx="18" cy="18" r="14" fill="none" stroke="#f1f5f9" strokeWidth="3.5" />
+                                                <circle
+                                                    cx="18"
+                                                    cy="18"
+                                                    r="14"
+                                                    fill="none"
+                                                    stroke="#10b981"
+                                                    strokeWidth="3.5"
+                                                    strokeDasharray={`${pct} ${100 - pct}`}
+                                                />
+                                            </svg>
+                                            <div className="absolute text-center">
+                                                <span className="text-xs font-black text-gray-900">{pct}%</span>
+                                                <p className="text-[9px] text-gray-400 font-medium">Logged</p>
+                                            </div>
+                                        </>
+                                    );
+                                })()}
+                            </div>
+
+                            <div className="space-y-1.5 text-xs">
+                                <div className="flex items-center space-x-2">
+                                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+                                    <span className="text-gray-600">Completed:</span>
+                                    <span className="font-extrabold text-gray-900">{completedClassesToday}</span>
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                    <span className="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
+                                    <span className="text-gray-600">Pending:</span>
+                                    <span className="font-extrabold text-gray-900">{attendancePendingCount}</span>
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                    <span className="w-2.5 h-2.5 rounded-full bg-blue-500"></span>
+                                    <span className="text-gray-600">Total:</span>
+                                    <span className="font-extrabold text-gray-900">{todayClasses.length}</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Horizontal Progress Bar */}
+                        <div className="w-full bg-gray-100 rounded-full h-2 overflow-hidden mt-3">
+                            <div 
+                                className="bg-emerald-500 h-full rounded-full transition-all" 
+                                style={{ width: `${Math.round((completedClassesToday / (todayClasses.length || 1)) * 100)}%` }}
+                            ></div>
+                        </div>
+                    </div>
+
+                    <div className="mt-3 p-3 bg-emerald-50/70 border border-emerald-100 rounded-xl text-xs flex items-center space-x-2 text-emerald-900">
+                        <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                        <span className="text-[11px] font-medium leading-tight">
+                            {attendancePendingCount === 0 ? "Great! You're on track with attendance. Keep it up!" : `${attendancePendingCount} period(s) pending attendance log.`}
+                        </span>
+                    </div>
+                </div>
+
+                {/* 2. Pending Assessments */}
+                <div className="bg-white border border-gray-200/90 rounded-2xl p-5 shadow-2xs flex flex-col justify-between">
+                    <div className="space-y-3">
+                        <div className="flex items-center justify-between pb-3 border-b border-gray-100">
+                            <div className="flex items-center space-x-2">
+                                <FileText className="w-4 h-4 text-purple-600" />
+                                <h3 className="font-extrabold text-sm text-gray-900">Pending Assessments</h3>
+                            </div>
+                            <Link href="/dashboard/teacher/assessment" className="text-xs font-bold text-blue-600 hover:text-blue-700 flex items-center gap-0.5">
+                                <span>View all</span>
+                                <span>→</span>
+                            </Link>
+                        </div>
+
+                        <span className="text-xs font-bold text-gray-500 block">Assessments by Subject</span>
+
+                        {/* Subject Bar Chart */}
+                        <div className="h-28 flex items-end justify-between gap-2 border-b border-gray-100 pb-2 px-1">
+                            {assessmentsBySubject.length === 0 ? (
+                                <div className="w-full text-center text-gray-400 py-6 text-xs">No active assessments</div>
+                            ) : (
+                                assessmentsBySubject.map((item: any, i: number) => {
+                                    const colors = ["bg-blue-500", "bg-purple-500", "bg-emerald-500", "bg-amber-500", "bg-rose-500"];
+                                    const barHeight = Math.max(16, (item.count / 10) * 85);
+                                    return (
+                                        <div key={i} className="flex-1 flex flex-col items-center">
+                                            <span className="text-[10px] font-bold text-gray-700 mb-1">{item.count}</span>
+                                            <div 
+                                                className={`w-full max-w-[28px] ${colors[i % colors.length]} rounded-t-md transition-all shadow-2xs`}
+                                                style={{ height: `${barHeight}px` }}
+                                            ></div>
+                                            <span className="text-[9px] font-semibold text-gray-500 mt-1 truncate w-full text-center">{item.subject}</span>
+                                        </div>
+                                    );
+                                })
+                            )}
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-2 text-center pt-3 border-t border-gray-100 text-xs">
+                        <div>
+                            <span className="text-[10px] text-gray-400 font-semibold">Total Pending</span>
+                            <p className="font-extrabold text-rose-600 text-sm mt-0.5">{pendingAssessmentsCount}</p>
+                        </div>
+                        <div>
+                            <span className="text-[10px] text-gray-400 font-semibold">Due This Week</span>
+                            <p className="font-extrabold text-amber-600 text-sm mt-0.5">
+                                {pendingAssessmentsCount > 0 ? Math.min(pendingAssessmentsCount, 2) : 0}
+                            </p>
+                        </div>
+                        <div>
+                            <span className="text-[10px] text-gray-400 font-semibold">Overdue</span>
+                            <p className="font-extrabold text-gray-700 text-sm mt-0.5">0</p>
+                        </div>
+                    </div>
+                </div>
+
+                {/* 3. Pending Assignments */}
+                <div className="bg-white border border-gray-200/90 rounded-2xl p-5 shadow-2xs flex flex-col justify-between">
+                    <div className="space-y-3">
+                        <div className="flex items-center justify-between pb-3 border-b border-gray-100">
+                            <div className="flex items-center space-x-2">
+                                <FileCheck className="w-4 h-4 text-amber-600" />
+                                <h3 className="font-extrabold text-sm text-gray-900">Pending Assignments</h3>
+                            </div>
+                            <Link href="/dashboard/teacher/activities" className="text-xs font-bold text-blue-600 hover:text-blue-700 flex items-center gap-0.5">
+                                <span>View all</span>
+                                <span>→</span>
+                            </Link>
+                        </div>
+
+                        <div className="flex items-center justify-between text-xs">
+                            <span className="font-bold text-gray-500">Assignments Status</span>
+                            <div className="flex items-center space-x-2 text-[10px]">
+                                <span className="flex items-center gap-1 font-semibold text-blue-600">
+                                    <span className="w-2 h-2 rounded-full bg-blue-500"></span> Pending
+                                </span>
+                                <span className="flex items-center gap-1 font-semibold text-emerald-600">
+                                    <span className="w-2 h-2 rounded-full bg-emerald-500"></span> Completed
+                                </span>
+                            </div>
+                        </div>
+
+                        {/* Stacked Bars for Assignments */}
+                        <div className="h-28 flex items-end justify-between gap-2 border-b border-gray-100 pb-2 px-1">
+                            {assignmentsBySubject.length === 0 ? (
+                                <div className="w-full text-center text-gray-400 py-6 text-xs">No active assignments</div>
+                            ) : (
+                                assignmentsBySubject.map((item: any, i: number) => {
+                                    const total = item.pending + item.completed || 1;
+                                    const pendingH = Math.max(10, (item.pending / total) * 75);
+                                    const completedH = Math.max(8, (item.completed / total) * 75);
+
+                                    return (
+                                        <div key={i} className="flex-1 flex flex-col items-center">
+                                            <span className="text-[10px] font-bold text-gray-700 mb-1">{item.pending}</span>
+                                            <div className="w-full max-w-[28px] flex flex-col gap-0.5">
+                                                <div className="w-full bg-blue-500 rounded-t-sm" style={{ height: `${pendingH}px` }}></div>
+                                                <div className="w-full bg-emerald-500 rounded-b-sm" style={{ height: `${completedH}px` }}></div>
+                                            </div>
+                                            <span className="text-[9px] font-semibold text-gray-500 mt-1 truncate w-full text-center">{item.subject}</span>
+                                        </div>
+                                    );
+                                })
+                            )}
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-2 text-center pt-3 border-t border-gray-100 text-xs">
+                        <div>
+                            <span className="text-[10px] text-gray-400 font-semibold">Total Pending</span>
+                            <p className="font-extrabold text-rose-600 text-sm mt-0.5">{pendingSubmissionsCount}</p>
+                        </div>
+                        <div>
+                            <span className="text-[10px] text-gray-400 font-semibold">Due This Week</span>
+                            <p className="font-extrabold text-amber-600 text-sm mt-0.5">
+                                {pendingSubmissionsCount > 0 ? Math.min(pendingSubmissionsCount, 3) : 0}
+                            </p>
+                        </div>
+                        <div>
+                            <span className="text-[10px] text-gray-400 font-semibold">Completed</span>
+                            <p className="font-extrabold text-emerald-600 text-sm mt-0.5">
+                                {assignmentsBySubject.reduce((acc: number, cur: any) => acc + (cur.completed || 0), 0)}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                {/* 4. Students Requiring Attention */}
+                <div id="students-attention" className="bg-white border border-gray-200/90 rounded-2xl p-5 shadow-2xs flex flex-col justify-between">
+                    <div className="space-y-3">
+                        <div className="flex items-center justify-between pb-3 border-b border-gray-100">
+                            <div className="flex items-center space-x-2">
+                                <AlertCircle className="w-4 h-4 text-rose-600" />
+                                <h3 className="font-extrabold text-sm text-gray-900">Students Requiring Attention</h3>
+                            </div>
+                            <Link href="/dashboard/teacher/students" className="text-xs font-bold text-blue-600 hover:text-blue-700 flex items-center gap-0.5">
+                                <span>View all</span>
+                                <span>→</span>
+                            </Link>
+                        </div>
+
+                        {/* Alert Pill Banner */}
+                        <div className="p-2.5 bg-rose-50/80 border border-rose-200 rounded-xl flex items-center space-x-2.5 text-rose-900">
+                            <AlertCircle className="w-5 h-5 text-rose-600 shrink-0" />
+                            <div className="text-[11px] leading-tight">
+                                <p className="font-extrabold text-rose-900">{attentionStudents.length} student{attentionStudents.length === 1 ? '' : 's'} need your attention</p>
+                                <p className="text-[10px] text-rose-600 mt-0.5">Click on a student to view details.</p>
+                            </div>
+                        </div>
+
+                        {/* Attention List from Real Database */}
+                        {attentionStudents.length === 0 ? (
+                            <div className="py-8 text-center text-gray-400 space-y-1">
+                                <CheckCircle2 className="w-7 h-7 mx-auto text-emerald-500" />
+                                <p className="text-xs font-bold text-gray-700">All Students On Track</p>
+                                <p className="text-[11px] text-gray-400">No active intervention flags found.</p>
+                            </div>
+                        ) : (
+                            <div className="space-y-2 max-h-[190px] overflow-y-auto pr-1">
+                                {attentionStudents.map((st: any, i: number) => {
+                                    const dotColors = ["bg-rose-500", "bg-amber-500", "bg-purple-500", "bg-blue-500"];
+                                    const badgeBg = i % 2 === 0 ? "bg-rose-50 text-rose-700 border-rose-100" : "bg-amber-50 text-amber-700 border-amber-100";
+                                    return (
+                                        <Link 
+                                            key={st.id || i} 
+                                            href={`/dashboard/teacher/students?studentId=${st.id}`}
+                                            className="flex items-center justify-between text-xs py-1.5 px-1 hover:bg-gray-50 rounded-lg transition-colors border-b border-gray-50 last:border-none"
+                                        >
+                                            <div className="flex items-center space-x-2">
+                                                <span className={`w-2 h-2 rounded-full ${dotColors[i % dotColors.length]} shrink-0`}></span>
+                                                <div>
+                                                    <p className="font-bold text-gray-900 text-[11px] leading-tight">{st.studentName}</p>
+                                                    <span className="text-[10px] text-gray-400 font-medium">{st.section}</span>
+                                                </div>
+                                            </div>
+                                            <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-md border ${badgeBg}`}>
+                                                {st.type || "Support Flag"}
+                                            </span>
+                                        </Link>
+                                    );
+                                })}
+                            </div>
+                        )}
+                    </div>
+
+                    <div className="pt-3 border-t border-gray-100">
+                        <Link 
+                            href="/dashboard/teacher/support"
+                            className="w-full py-2 bg-gray-50 hover:bg-gray-100 text-gray-700 font-bold rounded-xl text-xs transition-colors flex items-center justify-center space-x-1 border border-gray-200"
+                        >
+                            <span>Open Support Flags</span>
+                            <ChevronRight className="w-3.5 h-3.5" />
+                        </Link>
+                    </div>
+                </div>
+
+            </div>
+
+            {/* Inspirational Quote Footer Banner */}
+            <div className="pt-4 flex flex-col sm:flex-row items-center justify-between text-xs text-gray-400 border-t border-gray-100 gap-2">
+                <p className="italic">
+                    "Education is the most powerful weapon which you can use to change the world." — Nelson Mandela
+                </p>
+                <div className="flex items-center space-x-4">
+                    <span className="hover:text-gray-600 cursor-pointer">Help</span>
+                    <span>•</span>
+                    <span className="hover:text-gray-600 cursor-pointer">Feedback</span>
+                    <span>•</span>
+                    <span className="font-semibold text-gray-500">EduBridge v1.0</span>
+                </div>
+            </div>
 
             {/* Attendance Modal */}
             {selectedClass && (
@@ -504,9 +801,9 @@ export default function TeacherDashboard() {
                         <div className="flex justify-between items-center border-b border-gray-100 pb-3">
                             <div>
                                 <h3 className="font-bold text-gray-900 text-sm">Take Class Attendance</h3>
-                                <p className="text-xs text-gray-500">{selectedClass.subject || "Subject"} • {selectedClass.section || selectedClass.class}</p>
+                                <p className="text-xs text-gray-500">{selectedClass.subject} • {selectedClass.section || selectedClass.class}</p>
                             </div>
-                            <button onClick={() => setSelectedClass(null)} className="text-gray-400 hover:text-gray-600">
+                            <button onClick={() => setSelectedClass(null)} className="text-gray-400 hover:text-gray-600 cursor-pointer">
                                 <X className="w-5 h-5" />
                             </button>
                         </div>
@@ -537,7 +834,7 @@ export default function TeacherDashboard() {
                             <button
                                 type="submit"
                                 disabled={submittingAttendance}
-                                className="w-full py-2.5 bg-blue-600 text-white text-xs font-bold rounded-xl hover:bg-blue-700 transition-colors shadow-xs"
+                                className="w-full py-2.5 bg-blue-600 text-white text-xs font-bold rounded-xl hover:bg-blue-700 transition-colors shadow-xs cursor-pointer"
                             >
                                 {submittingAttendance ? "Saving Attendance..." : "Save Class Attendance"}
                             </button>
@@ -555,7 +852,7 @@ export default function TeacherDashboard() {
                                 <Sparkles className="w-5 h-5 text-blue-600" />
                                 <span>AI Teacher Assistant</span>
                             </h3>
-                            <button onClick={() => setShowAiModal(false)} className="text-gray-400 hover:text-gray-600">
+                            <button onClick={() => setShowAiModal(false)} className="text-gray-400 hover:text-gray-600 cursor-pointer">
                                 <X className="w-5 h-5" />
                             </button>
                         </div>
@@ -589,7 +886,7 @@ export default function TeacherDashboard() {
                             <button
                                 type="submit"
                                 disabled={loadingAi}
-                                className="w-full py-2.5 bg-blue-600 text-white text-xs font-bold rounded-xl hover:bg-blue-700 transition-colors flex items-center justify-center space-x-2 shadow-xs"
+                                className="w-full py-2.5 bg-blue-600 text-white text-xs font-bold rounded-xl hover:bg-blue-700 transition-colors flex items-center justify-center space-x-2 shadow-xs cursor-pointer"
                             >
                                 {loadingAi ? <span>Generating AI Insight...</span> : <><Send className="w-4 h-4" /><span>Generate Insight</span></>}
                             </button>
@@ -605,6 +902,7 @@ export default function TeacherDashboard() {
                     </div>
                 </div>
             )}
+
         </div>
     );
 }

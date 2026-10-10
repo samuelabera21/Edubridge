@@ -1195,18 +1195,24 @@ export class CommunicationService {
     static async getUsersForMessaging(userId: string, organizationId: string) {
         const assignments = await prisma.roleAssignment.findMany({
             where: { scopeId: organizationId, userId: { not: userId } },
-            select: { user: { select: { id: true, name: true, email: true } } },
+            select: {
+                role: { select: { id: true, name: true, description: true } },
+                user: { select: { id: true, name: true, email: true } }
+            },
             take: 100
         });
 
         const seen = new Set<string>();
-        return assignments
-            .map(a => a.user)
-            .filter(u => {
-                if (seen.has(u.id)) return false;
-                seen.add(u.id);
-                return true;
+        const users = [];
+        for (const a of assignments) {
+            if (seen.has(a.user.id)) continue;
+            seen.add(a.user.id);
+            users.push({
+                ...a.user,
+                role: a.role
             });
+        }
+        return users;
     }
 
     // =========================================================
@@ -1309,24 +1315,31 @@ export class CommunicationService {
                         id: true,
                         firstName: true,
                         lastName: true,
+                        studentId: true,
                         parents: {
                             include: {
-                                parent: { select: { id: true, userId: true, firstName: true, lastName: true } }
+                                parent: { select: { id: true, userId: true, firstName: true, lastName: true, phoneNumber: true } }
                             }
                         }
                     }
                 },
                 section: { select: { id: true, name: true } },
-                schoolGrade: { include: { grade: { select: { name: true } } } }
+                schoolGrade: { include: { grade: { select: { id: true, name: true } } } }
             }
         });
 
         const contacts: Array<{
             parentUserId: string;
             parentName: string;
+            parentPhone?: string | null;
+            relationship?: string;
+            studentDbId: string;
+            studentCode: string;
             studentName: string;
             enrollmentId: string;
+            sectionId: string | null;
             sectionName: string | null;
+            schoolGradeId: string;
             gradeName: string;
         }> = [];
 
@@ -1336,9 +1349,15 @@ export class CommunicationService {
                 contacts.push({
                     parentUserId: ps.parent.userId,
                     parentName: `${ps.parent.firstName} ${ps.parent.lastName}`,
+                    parentPhone: ps.parent.phoneNumber ?? null,
+                    relationship: ps.relationship || "Guardian",
+                    studentDbId: enroll.student.id,
+                    studentCode: enroll.student.studentId,
                     studentName: `${enroll.student.firstName} ${enroll.student.lastName}`,
                     enrollmentId: enroll.id,
+                    sectionId: enroll.section?.id ?? null,
                     sectionName: enroll.section?.name ?? null,
+                    schoolGradeId: enroll.schoolGradeId,
                     gradeName: enroll.schoolGrade.grade.name
                 });
             }
@@ -1351,5 +1370,380 @@ export class CommunicationService {
             seen.add(key);
             return true;
         });
+    }
+
+    /**
+     * Teacher Broadcast / Direct message dispatch to students:
+     * - SPECIFIC_STUDENT: sends to 1 student
+     * - SPECIFIC_SECTION: sends to all students enrolled in a specific section
+     * - ALL_STUDENTS: sends to all students in teacher's assigned classes
+     */
+    static async sendTeacherStudentBroadcast(data: {
+        teacherUserId: string;
+        organizationId: string;
+        targetType: "SPECIFIC_STUDENT" | "SPECIFIC_SECTION" | "ALL_STUDENTS";
+        sectionId?: string;
+        studentId?: string;
+        receiverId?: string;
+        subject?: string;
+        content: string;
+        priority?: "NORMAL" | "HIGH" | "URGENT";
+    }) {
+        if (!data.content?.trim()) {
+            throw new Error("Message content is required");
+        }
+
+        // 1. Resolve teacher
+        let teacher = await prisma.teacher.findFirst({
+            where: { userId: data.teacherUserId, organizationId: data.organizationId },
+            include: { assignments: true }
+        });
+        if (!teacher) {
+            teacher = await prisma.teacher.findFirst({
+                where: { organizationId: data.organizationId },
+                include: { assignments: true }
+            });
+        }
+        if (!teacher) {
+            throw new Error("Teacher profile not found");
+        }
+
+        const teacherAssignments = teacher.assignments || [];
+        const teacherSectionIds = teacherAssignments.map(a => a.sectionId).filter(Boolean) as string[];
+        const teacherGradeIds = teacherAssignments.map(a => a.schoolGradeId).filter(Boolean) as string[];
+
+        // 2. Identify target enrollments / students
+        const targetUserIds: string[] = [];
+        const targetStudentNames: string[] = [];
+
+        if (data.targetType === "SPECIFIC_STUDENT") {
+            let studentUserId = data.receiverId;
+            if (!studentUserId && data.studentId) {
+                const enrollment = await prisma.studentEnrollment.findFirst({
+                    where: {
+                        organizationId: data.organizationId,
+                        student: {
+                            OR: [{ id: data.studentId }, { studentId: data.studentId }, { userId: data.studentId }]
+                        }
+                    },
+                    include: {
+                        student: {
+                            select: { id: true, userId: true, firstName: true, lastName: true }
+                        }
+                    }
+                });
+                if (enrollment?.student?.userId) {
+                    studentUserId = enrollment.student.userId;
+                    targetStudentNames.push(`${enrollment.student.firstName} ${enrollment.student.lastName}`);
+                }
+            }
+            if (!studentUserId) {
+                throw new Error("Student portal user account not found or not specified");
+            }
+            targetUserIds.push(studentUserId);
+        } else if (data.targetType === "SPECIFIC_SECTION") {
+            if (!data.sectionId) {
+                throw new Error("sectionId is required for section broadcast");
+            }
+            const enrollments = await prisma.studentEnrollment.findMany({
+                where: {
+                    organizationId: data.organizationId,
+                    sectionId: data.sectionId,
+                    status: { in: ["ENROLLED", "ACTIVE"] }
+                },
+                include: {
+                    student: { select: { id: true, userId: true, firstName: true, lastName: true } }
+                }
+            });
+
+            enrollments.forEach(e => {
+                if (e.student?.userId && !targetUserIds.includes(e.student.userId)) {
+                    targetUserIds.push(e.student.userId);
+                    targetStudentNames.push(`${e.student.firstName} ${e.student.lastName}`);
+                }
+            });
+        } else if (data.targetType === "ALL_STUDENTS") {
+            const whereClause: any = {
+                organizationId: data.organizationId,
+                status: { in: ["ENROLLED", "ACTIVE"] }
+            };
+            if (teacherSectionIds.length > 0 || teacherGradeIds.length > 0) {
+                whereClause.OR = [
+                    ...(teacherSectionIds.length > 0 ? [{ sectionId: { in: teacherSectionIds } }] : []),
+                    ...(teacherGradeIds.length > 0 ? [{ schoolGradeId: { in: teacherGradeIds } }] : [])
+                ];
+            }
+            const enrollments = await prisma.studentEnrollment.findMany({
+                where: whereClause,
+                include: {
+                    student: { select: { id: true, userId: true, firstName: true, lastName: true } }
+                }
+            });
+
+            enrollments.forEach(e => {
+                if (e.student?.userId && !targetUserIds.includes(e.student.userId)) {
+                    targetUserIds.push(e.student.userId);
+                    targetStudentNames.push(`${e.student.firstName} ${e.student.lastName}`);
+                }
+            });
+        }
+
+        if (targetUserIds.length === 0) {
+            throw new Error("No active student portal accounts found for this target selection");
+        }
+
+        const fullContent = data.subject ? `[${data.subject}]\n\n${data.content}` : data.content;
+
+        // 3. Dispatch messages & notifications
+        let sentCount = 0;
+        for (const recipientUserId of targetUserIds) {
+            if (recipientUserId === data.teacherUserId) continue;
+
+            // Direct message record
+            await prisma.message.create({
+                data: {
+                    organizationId: data.organizationId,
+                    senderId: data.teacherUserId,
+                    receiverId: recipientUserId,
+                    content: fullContent
+                }
+            });
+
+            // Notification
+            await prisma.notification.create({
+                data: {
+                    userId: recipientUserId,
+                    organizationId: data.organizationId,
+                    title: data.subject || (data.targetType === "SPECIFIC_STUDENT" ? "Teacher Message" : "Class Announcement"),
+                    content: data.content.slice(0, 300),
+                    link: "/dashboard/student/communication"
+                }
+            });
+
+            sentCount++;
+        }
+
+        // 4. Also register Section Announcement if broadcast to section
+        if (data.targetType === "SPECIFIC_SECTION" && data.sectionId) {
+            try {
+                await this.createAnnouncement(data.organizationId, {
+                    title: data.subject || "Section Announcement",
+                    content: data.content,
+                    category: "ACADEMIC",
+                    priority: data.priority === "URGENT" ? "URGENT" : data.priority === "HIGH" ? "HIGH" : "NORMAL",
+                    target: AnnouncementTarget.SPECIFIC_SECTION,
+                    targetId: data.sectionId,
+                    authorId: data.teacherUserId
+                });
+            } catch (annErr) {
+                console.warn("Section announcement creation skipped:", annErr);
+            }
+        }
+
+        return {
+            success: true,
+            targetType: data.targetType,
+            sentCount,
+            totalRecipients: targetUserIds.length,
+            recipientNames: targetStudentNames.slice(0, 10)
+        };
+    }
+
+    /**
+     * Teacher Broadcast / Direct message dispatch to parents:
+     * - SPECIFIC_PARENT: sends to 1 student's parent (resolves via receiverId, enrollmentId, or studentId)
+     * - SPECIFIC_SECTION: sends to all parents of students in a specific section
+     * - ALL_PARENTS: sends to all parents of students across all teacher's assigned classes
+     */
+    static async sendTeacherParentBroadcast(data: {
+        teacherUserId: string;
+        organizationId: string;
+        targetType: "SPECIFIC_PARENT" | "SPECIFIC_SECTION" | "ALL_PARENTS";
+        sectionId?: string;
+        studentId?: string;
+        enrollmentId?: string;
+        receiverId?: string;
+        subject?: string;
+        content: string;
+        priority?: "NORMAL" | "HIGH" | "URGENT";
+    }) {
+        if (!data.content?.trim()) {
+            throw new Error("Message content is required");
+        }
+
+        // 1. Resolve teacher
+        let teacher = await prisma.teacher.findFirst({
+            where: { userId: data.teacherUserId, organizationId: data.organizationId },
+            include: { assignments: true }
+        });
+        if (!teacher) {
+            teacher = await prisma.teacher.findFirst({
+                where: { organizationId: data.organizationId },
+                include: { assignments: true }
+            });
+        }
+        if (!teacher) {
+            throw new Error("Teacher profile not found");
+        }
+
+        const teacherAssignments = teacher.assignments || [];
+        const teacherSectionIds = teacherAssignments.map(a => a.sectionId).filter(Boolean) as string[];
+        const teacherGradeIds = teacherAssignments.map(a => a.schoolGradeId).filter(Boolean) as string[];
+
+        // 2. Identify target parent user IDs
+        const targetParentUserIds: string[] = [];
+
+        if (data.targetType === "SPECIFIC_PARENT") {
+            let parentUserId = data.receiverId;
+            if (!parentUserId && (data.enrollmentId || data.studentId)) {
+                const enrollment = await prisma.studentEnrollment.findFirst({
+                    where: {
+                        organizationId: data.organizationId,
+                        ...(data.enrollmentId ? { id: data.enrollmentId } : { studentId: data.studentId })
+                    },
+                    include: {
+                        student: {
+                            include: {
+                                parents: {
+                                    include: {
+                                        parent: { select: { id: true, userId: true, firstName: true, lastName: true } }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+
+                const parentLink = enrollment?.student.parents.find(ps => !!ps.parent.userId);
+                if (parentLink?.parent.userId) {
+                    parentUserId = parentLink.parent.userId;
+                }
+            }
+
+            if (!parentUserId && data.studentId) {
+                const enrollment = await prisma.studentEnrollment.findFirst({
+                    where: {
+                        organizationId: data.organizationId,
+                        student: {
+                            OR: [{ id: data.studentId }, { studentId: data.studentId }]
+                        }
+                    },
+                    include: {
+                        student: {
+                            include: {
+                                parents: {
+                                    include: {
+                                        parent: { select: { id: true, userId: true } }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+                const pLink = enrollment?.student.parents.find(ps => !!ps.parent.userId);
+                if (pLink?.parent.userId) {
+                    parentUserId = pLink.parent.userId;
+                }
+            }
+
+            if (!parentUserId) {
+                throw new Error("Parent portal user account not found for the selected student");
+            }
+            targetParentUserIds.push(parentUserId);
+        } else if (data.targetType === "SPECIFIC_SECTION") {
+            if (!data.sectionId) {
+                throw new Error("sectionId is required for section broadcast");
+            }
+            const enrollments = await prisma.studentEnrollment.findMany({
+                where: {
+                    organizationId: data.organizationId,
+                    sectionId: data.sectionId,
+                    status: { in: ["ENROLLED", "ACTIVE"] }
+                },
+                include: {
+                    student: {
+                        include: {
+                            parents: {
+                                include: {
+                                    parent: { select: { id: true, userId: true } }
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+
+            for (const enroll of enrollments) {
+                for (const ps of enroll.student.parents) {
+                    if (ps.parent.userId) {
+                        targetParentUserIds.push(ps.parent.userId);
+                    }
+                }
+            }
+        } else if (data.targetType === "ALL_PARENTS") {
+            const enrollments = await prisma.studentEnrollment.findMany({
+                where: {
+                    organizationId: data.organizationId,
+                    status: { in: ["ENROLLED", "ACTIVE"] },
+                    OR: [
+                        ...(teacherSectionIds.length > 0 ? [{ sectionId: { in: teacherSectionIds } }] : []),
+                        ...(teacherGradeIds.length > 0 ? [{ schoolGradeId: { in: teacherGradeIds } }] : [])
+                    ]
+                },
+                include: {
+                    student: {
+                        include: {
+                            parents: {
+                                include: {
+                                    parent: { select: { id: true, userId: true } }
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+
+            for (const enroll of enrollments) {
+                for (const ps of enroll.student.parents) {
+                    if (ps.parent.userId) {
+                        targetParentUserIds.push(ps.parent.userId);
+                    }
+                }
+            }
+        }
+
+        const uniqueUserIds = Array.from(new Set(targetParentUserIds.filter(Boolean)));
+        if (uniqueUserIds.length === 0) {
+            throw new Error("No active parent accounts found for this target selection");
+        }
+
+        // 3. Dispatch messages & in-app notifications
+        const sentMessages = [];
+        for (const pUserId of uniqueUserIds) {
+            const msg = await this.sendMessage({
+                organizationId: data.organizationId,
+                senderId: data.teacherUserId,
+                receiverId: pUserId,
+                content: data.content
+            });
+            sentMessages.push(msg);
+
+            await prisma.notification.create({
+                data: {
+                    userId: pUserId,
+                    organizationId: data.organizationId,
+                    title: data.subject || (data.targetType === "SPECIFIC_PARENT" ? "Message from Teacher" : "Teacher Announcement for Parents"),
+                    content: data.content.slice(0, 200),
+                    link: "/dashboard/parent/communication"
+                }
+            }).catch(() => null);
+        }
+
+        return {
+            success: true,
+            targetType: data.targetType,
+            recipientsCount: uniqueUserIds.length,
+            messagesCount: sentMessages.length
+        };
     }
 }

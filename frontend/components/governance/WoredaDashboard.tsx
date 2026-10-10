@@ -475,7 +475,7 @@ export default function WoredaDashboard() {
 
             const resJson = await res.json().catch(() => ({}));
             if (!res.ok) {
-                throw new Error(resJson.message || "Failed to register School");
+                throw new Error(resJson.message || resJson.error || "Failed to register School");
             }
 
             setCreateSchoolMessage({
