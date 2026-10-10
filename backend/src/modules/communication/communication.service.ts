@@ -1119,6 +1119,9 @@ export class CommunicationService {
         senderId: string;
         receiverId: string;
         content: string;
+        attachmentUrl?: string | null;
+        attachmentName?: string | null;
+        attachmentType?: string | null;
     }) {
         if (data.senderId === data.receiverId) {
             throw new Error("Cannot send a message to yourself");
@@ -1135,7 +1138,10 @@ export class CommunicationService {
                 organizationId: data.organizationId,
                 senderId: data.senderId,
                 receiverId: data.receiverId,
-                content: data.content
+                content: data.content,
+                attachmentUrl: data.attachmentUrl || null,
+                attachmentName: data.attachmentName || null,
+                attachmentType: data.attachmentType || null
             },
             include: {
                 sender: { select: { id: true, name: true, email: true } },
@@ -1187,6 +1193,25 @@ export class CommunicationService {
         if (!message) throw new Error("Message not found or unauthorized");
 
         return prisma.message.delete({ where: { id: messageId } });
+    }
+
+    static async updateMessage(organizationId: string, userId: string, messageId: string, content: string) {
+        if (!content || !content.trim()) {
+            throw new Error("Message content cannot be empty");
+        }
+        const message = await prisma.message.findFirst({
+            where: {
+                id: messageId,
+                organizationId,
+                senderId: userId
+            }
+        });
+        if (!message) throw new Error("Message not found or you are not authorized to edit it");
+
+        return prisma.message.update({
+            where: { id: messageId },
+            data: { content: content.trim() }
+        });
     }
 
     /**
