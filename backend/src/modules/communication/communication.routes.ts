@@ -20,7 +20,8 @@ import {
     updateImportantNotice,
     deleteImportantNotice,
     sendTeacherParentMessage,
-    getTeacherParentContacts
+    getTeacherParentContacts,
+    sendTeacherStudentBroadcast
 } from "./communication.controller.js";
 import { requirePermission, requireScope, requireAuth } from "../authentication/authorization.middleware.js";
 
@@ -77,5 +78,8 @@ router.post("/message", requirePermission("COMMUNICATION:CREATE"), sendMessage);
 // /api/teacher/parent-message endpoint is preserved separately.
 router.get("/teacher/parent-contacts", requirePermission("COMMUNICATION:VIEW"), getTeacherParentContacts);
 router.post("/teacher/parent-message", requirePermission("COMMUNICATION:CREATE"), sendTeacherParentMessage);
+
+// ── Teacher → Student Messaging & Broadcast ─────────────
+router.post("/teacher/student-broadcast", requirePermission("COMMUNICATION:CREATE"), sendTeacherStudentBroadcast);
 
 export default router;

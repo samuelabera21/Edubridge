@@ -24,7 +24,11 @@ async function main() {
             enrollments: {
                 include: {
                     organization: true,
-                    schoolGrade: true,
+                    schoolGrade: {
+                        include: {
+                            grade: true
+                        }
+                    },
                     section: true
                 }
             },
@@ -121,7 +125,11 @@ async function main() {
             enrollments: {
                 include: {
                     organization: true,
-                    schoolGrade: true,
+                    schoolGrade: {
+                        include: {
+                            grade: true
+                        }
+                    },
                     section: true
                 }
             }
@@ -132,7 +140,7 @@ async function main() {
     console.log(`🎉 CLEANUP COMPLETE! Remaining Students: ${remainingStudents.length}`);
     console.log("==================================================");
     for (const s of remainingStudents) {
-        const enrollDesc = s.enrollments.map(e => `${e.organization.name} (${e.schoolGrade?.name || 'No Grade'} - ${e.section?.name || 'No Section'})`).join(", ") || "No Enrollment";
+        const enrollDesc = s.enrollments.map(e => `${e.organization.name} (${e.schoolGrade?.grade?.name || 'No Grade'} - ${e.section?.name || 'No Section'})`).join(", ") || "No Enrollment";
         console.log(`  👤 [${s.studentId}] ${s.firstName} ${s.fatherName || ''} ${s.lastName} | Enrolled in: ${enrollDesc}`);
     }
 }

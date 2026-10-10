@@ -45,9 +45,9 @@ async function main() {
         parentLinksCount
     ] = await Promise.all([
         prisma.studentEnrollment.count({ where: { studentId: { in: seededIds } } }),
-        prisma.studentAttendanceRecord.count({ where: { studentId: { in: seededIds } } }),
-        prisma.assessmentGrade.count({ where: { studentId: { in: seededIds } } }),
-        prisma.studentSupportFlag.count({ where: { studentId: { in: seededIds } } }),
+        prisma.studentAttendance.count({ where: { enrollment: { studentId: { in: seededIds } } } }),
+        prisma.studentResult.count({ where: { enrollment: { studentId: { in: seededIds } } } }),
+        prisma.supportFlag.count({ where: { enrollment: { studentId: { in: seededIds } } } }),
         prisma.studentDocument.count({ where: { studentId: { in: seededIds } } }),
         prisma.parentStudent.count({ where: { studentId: { in: seededIds } } })
     ]);

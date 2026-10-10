@@ -2,7 +2,7 @@
 
 import { useState, useEffect, Suspense } from "react";
 import { useAuth } from "../../hooks/useAuth";
-import { Loader2, BookOpen, LogOut, LayoutDashboard, Building, Search, Lock, ChevronDown, ChevronRight, Calendar, Users, GraduationCap, ClipboardCheck, FileText, Settings, User, Megaphone, Bell, MessageSquare, Package, AlertOctagon, TrendingUp, HeartHandshake, BarChart2, Sparkles, Menu, Brain, Landmark } from "lucide-react";
+import { Loader2, BookOpen, LogOut, LayoutDashboard, Building, Lock, ChevronDown, ChevronRight, Calendar, Users, GraduationCap, ClipboardCheck, FileText, Settings, User, Megaphone, Bell, MessageSquare, Package, AlertOctagon, TrendingUp, HeartHandshake, BarChart2, Sparkles, Menu, Brain, Landmark } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { fetchApi } from "../../lib/api";
@@ -560,16 +560,6 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
                 </div>
 
                 <div className="hidden md:flex items-center space-x-5">
-                    {/* Search Input */}
-                    <div className="relative">
-                        <input 
-                            type="text" 
-                            placeholder={isTeacherRoute ? "Search (students, classes, assignments...)" : isAdministrativeTier ? "Search administrative units, staff..." : "Search ..."} 
-                            className="bg-gray-100 border border-gray-200 text-xs rounded-xl pl-9 pr-4 py-2 focus:ring-2 focus:ring-blue-500 outline-none w-64 md:w-80 text-gray-700 placeholder-gray-400"
-                        />
-                        <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
-                    </div>
-
                     {/* In-App Notifications Bell for All Roles */}
                     <div className="relative">
                         <button 

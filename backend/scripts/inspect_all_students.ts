@@ -6,7 +6,11 @@ async function main() {
             enrollments: {
                 include: {
                     organization: true,
-                    schoolGrade: true,
+                    schoolGrade: {
+                        include: {
+                            grade: true
+                        }
+                    },
                     section: true
                 }
             },
@@ -27,7 +31,7 @@ async function main() {
             enrollments: s.enrollments.map(e => ({
                 id: e.id,
                 school: e.organization?.name,
-                grade: e.schoolGrade?.name,
+                grade: e.schoolGrade?.grade?.name,
                 section: e.section?.name,
                 status: e.status
             }))

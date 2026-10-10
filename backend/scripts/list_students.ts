@@ -5,7 +5,11 @@ async function main() {
         include: {
             enrollments: {
                 include: {
-                    schoolGrade: true,
+                    schoolGrade: {
+                        include: {
+                            grade: true
+                        }
+                    },
                     section: true,
                     organization: true
                 }
@@ -16,7 +20,7 @@ async function main() {
 
     console.log(`\n=== TOTAL STUDENTS FOUND: ${students.length} ===\n`);
     for (const s of students) {
-        const enrollInfo = s.enrollments.map(e => `${e.organization.name} | ${e.schoolGrade?.name || 'No Grade'} - ${e.section?.name || 'No Section'}`).join("; ");
+        const enrollInfo = s.enrollments.map(e => `${e.organization.name} | ${e.schoolGrade?.grade?.name || 'No Grade'} - ${e.section?.name || 'No Section'}`).join("; ");
         console.log(`ID: ${s.id} | StudentID: ${s.studentId} | Name: ${s.firstName} ${s.lastName} | UserEmail: ${s.user?.email || 'N/A'} | Enrolled: [${enrollInfo}]`);
     }
 }
