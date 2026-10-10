@@ -40,6 +40,7 @@ type CommunicationCategory = "STUDENT" | "PARENT" | "DEPARTMENT" | "STAFF";
 interface ContactItem {
     id: string;
     studentId?: string;
+    studentName?: string;
     enrollmentId?: string;
     parentUserId?: string;
     name: string;
@@ -84,6 +85,7 @@ export default function TeacherCommunicationPage() {
     const [myClasses, setMyClasses] = useState<any[]>([]);
     const [selectedClassId, setSelectedClassId] = useState<string>("ALL");
     const [studentTargetMode, setStudentTargetMode] = useState<"STUDENT" | "SECTION" | "ALL">("STUDENT");
+    const [parentTargetMode, setParentTargetMode] = useState<"PARENT" | "SECTION" | "ALL">("PARENT");
     const [parentContacts, setParentContacts] = useState<any[]>([]);
     const [schoolUsers, setSchoolUsers] = useState<any[]>([]);
     const [messagesHistory, setMessagesHistory] = useState<any[]>([]);
@@ -266,6 +268,7 @@ export default function TeacherCommunicationPage() {
         setSelectedContact(null);
         setSelectedClassId("ALL");
         setStudentTargetMode("STUDENT");
+        setParentTargetMode("PARENT");
         setSearchQuery("");
         setMessageText("");
         setMessageSubject("");
@@ -327,6 +330,62 @@ export default function TeacherCommunicationPage() {
                 name: `Section: ${cls.displayName}`,
                 subtitle: `Broadcast to all ${cls.studentCount} students in ${cls.displayName}`,
                 type: "STUDENT",
+                isBroadcast: true,
+                targetCount: cls.studentCount,
+                raw: { targetType: "SPECIFIC_SECTION", sectionId: cls.sectionId, classId: cls.id }
+            });
+        }
+    };
+
+    // Handle parent target mode change between 1 Parent (via student), 1 Section Parents, All Parents
+    const handleParentTargetModeChange = (mode: "PARENT" | "SECTION" | "ALL") => {
+        setParentTargetMode(mode);
+        setMessageText("");
+        setMessageSubject("");
+
+        if (mode === "PARENT") {
+            setSelectedClassId("ALL");
+            setSelectedContact(null);
+        } else if (mode === "SECTION") {
+            const firstClass = (selectedClassId !== "ALL" && assignedClasses.find(c => c.id === selectedClassId))
+                ? assignedClasses.find(c => c.id === selectedClassId)!
+                : assignedClasses[0] || null;
+
+            if (firstClass) {
+                setSelectedClassId(firstClass.id);
+                setSelectedContact({
+                    id: `parent-section-${firstClass.id}`,
+                    name: `Section Parents: ${firstClass.displayName}`,
+                    subtitle: `Broadcast to parents of all ${firstClass.studentCount} students in ${firstClass.displayName}`,
+                    type: "PARENT",
+                    isBroadcast: true,
+                    targetCount: firstClass.studentCount,
+                    raw: { targetType: "SPECIFIC_SECTION", sectionId: firstClass.sectionId, classId: firstClass.id }
+                });
+            }
+        } else if (mode === "ALL") {
+            setSelectedClassId("ALL");
+            setSelectedContact({
+                id: "broadcast-all-parents",
+                name: "All Students' Parents",
+                subtitle: `Group broadcast to parents of all ${parentContacts.length || studentsList.length} students across all your classes`,
+                type: "PARENT",
+                isBroadcast: true,
+                targetCount: parentContacts.length,
+                raw: { targetType: "ALL_PARENTS" }
+            });
+        }
+    };
+
+    const handleParentSectionChange = (clsId: string) => {
+        setSelectedClassId(clsId);
+        const cls = assignedClasses.find(c => c.id === clsId);
+        if (cls) {
+            setSelectedContact({
+                id: `parent-section-${cls.id}`,
+                name: `Section Parents: ${cls.displayName}`,
+                subtitle: `Broadcast to parents of all ${cls.studentCount} students in ${cls.displayName}`,
+                type: "PARENT",
                 isBroadcast: true,
                 targetCount: cls.studentCount,
                 raw: { targetType: "SPECIFIC_SECTION", sectionId: cls.sectionId, classId: cls.id }
@@ -403,18 +462,53 @@ export default function TeacherCommunicationPage() {
 
         if (activeCategory === "PARENT") {
             return parentContacts
-                .map((p: any): ContactItem => ({
-                    id: `parent-${p.enrollmentId}`,
-                    enrollmentId: p.enrollmentId,
-                    parentUserId: p.parentUserId,
-                    name: `${p.parentName} (${p.studentName}'s Guardian)`,
-                    subtitle: `Student: ${p.studentName} • Grade: ${p.gradeName}${p.sectionName ? ` (${p.sectionName})` : ""}`,
-                    phone: p.parentPhone,
-                    type: "PARENT",
-                    raw: p
-                }))
-                .filter(c => !q || c.name.toLowerCase().includes(q) || c.subtitle.toLowerCase().includes(q))
-                .sort((a, b) => a.name.localeCompare(b.name));
+                .filter((p: any) => {
+                    if (!activeClassObj) return true;
+
+                    const targetSecId = (activeClassObj.sectionId || "").trim();
+                    const pSecId = (p.sectionId || "").trim();
+                    if (targetSecId && pSecId) return targetSecId === pSecId;
+
+                    const targetSecName = normalizeSection(activeClassObj.sectionName || "");
+                    const pSecName = normalizeSection(p.sectionName || "");
+                    if (targetSecName && pSecName) return targetSecName === pSecName;
+
+                    const targetGradeId = (activeClassObj.schoolGradeId || "").trim();
+                    const pGradeId = (p.schoolGradeId || "").trim();
+                    if (targetGradeId && pGradeId) return targetGradeId === pGradeId;
+
+                    return true;
+                })
+                .map((p: any): ContactItem => {
+                    const studentDisplay = p.studentName || "Student";
+                    const parentDisplay = p.parentName || "Parent";
+                    const relation = p.relationship || "Guardian";
+                    const studentCode = p.studentCode || p.studentId || "";
+
+                    return {
+                        id: `parent-${p.enrollmentId || p.parentUserId}`,
+                        enrollmentId: p.enrollmentId,
+                        parentUserId: p.parentUserId,
+                        studentId: studentCode,
+                        studentName: studentDisplay,
+                        name: parentDisplay,
+                        subtitle: `Student: ${studentDisplay} (${relation}) • Grade: ${p.gradeName || ""}${p.sectionName ? ` - ${p.sectionName}` : ""}`,
+                        phone: p.parentPhone,
+                        type: "PARENT",
+                        raw: p
+                    };
+                })
+                .filter(c => {
+                    if (!q) return true;
+                    return (
+                        c.name.toLowerCase().includes(q) ||
+                        c.subtitle.toLowerCase().includes(q) ||
+                        (c.studentName && c.studentName.toLowerCase().includes(q)) ||
+                        (c.studentId && c.studentId.toLowerCase().includes(q)) ||
+                        (c.phone && c.phone.toLowerCase().includes(q))
+                    );
+                })
+                .sort((a, b) => (a.studentName || a.name).localeCompare(b.studentName || b.name));
         }
 
         if (activeCategory === "DEPARTMENT") {
@@ -426,7 +520,7 @@ export default function TeacherCommunicationPage() {
                 .map((u: any): ContactItem => ({
                     id: u.id,
                     name: u.name || u.email,
-                    subtitle: u.department || u.email || "Faculty Peer",
+                    subtitle: u.department || u.role?.description || u.role?.name || "Faculty Peer",
                     roleName: u.role?.description || u.role?.name || "Teacher / Department Peer",
                     type: "DEPARTMENT",
                     raw: u
@@ -438,12 +532,14 @@ export default function TeacherCommunicationPage() {
             return schoolUsers
                 .filter((u: any) => {
                     const role = (u.role?.name || u.roleName || "").toUpperCase();
-                    return !role.includes("STUDENT") && !role.includes("PARENT");
+                    if (role.includes("STUDENT") || role.includes("PARENT")) return false;
+                    // Keep non-teacher leadership and school administrative personnel in STAFF
+                    return !role.includes("TEACHER");
                 })
                 .map((u: any): ContactItem => ({
                     id: u.id,
                     name: u.name || u.email,
-                    subtitle: u.role?.description || u.email || "School Staff",
+                    subtitle: u.role?.description || u.role?.name || "School Administration",
                     roleName: u.role?.description || u.role?.name || "Staff Member",
                     type: "STAFF",
                     raw: u
@@ -454,26 +550,49 @@ export default function TeacherCommunicationPage() {
         return [];
     }, [activeCategory, studentsList, parentContacts, schoolUsers, searchQuery, activeClassObj]);
 
-    // Conversation messages for active contact
+    // Conversation messages for active contact (strictly scoped to channel and recipient)
     const activeMessages = useMemo(() => {
         if (!selectedContact) {
-            return messagesHistory.slice(0, 10);
+            return [];
         }
+
         if (selectedContact.isBroadcast) {
-            return messagesHistory.filter((m: any) =>
-                m.recipient?.name?.includes("Broadcast") ||
-                m.recipient?.name?.includes("Section") ||
-                (selectedContact.name && m.recipient?.name?.includes(selectedContact.name)) ||
-                m.id?.startsWith("broadcast-")
-            );
+            if (activeCategory === "STUDENT") {
+                return messagesHistory.filter((m: any) =>
+                    (m.id?.startsWith("broadcast-") && !m.id?.startsWith("parent-broadcast-")) ||
+                    (m.recipient?.name?.includes("Student") || m.recipient?.name?.includes("Section") || m.subject?.includes("Student") || m.subject?.includes("Section"))
+                );
+            }
+            if (activeCategory === "PARENT") {
+                return messagesHistory.filter((m: any) =>
+                    m.id?.startsWith("parent-broadcast-") ||
+                    (m.recipient?.name?.includes("Parent") || m.recipient?.name?.includes("Guardian") || m.subject?.includes("Parent"))
+                );
+            }
+            return [];
         }
-        return messagesHistory.filter((m: any) =>
-            (m.senderId === selectedContact.id && m.recipientId === currentUserId) ||
-            (m.senderId === currentUserId && m.recipientId === selectedContact.id) ||
-            (m.recipient?.name?.includes(selectedContact.name)) ||
-            (selectedContact.name && m.content?.includes(selectedContact.name))
-        );
-    }, [messagesHistory, selectedContact, currentUserId]);
+
+        const targetUserId =
+            selectedContact.parentUserId ||
+            selectedContact.raw?.parentUserId ||
+            selectedContact.raw?.parent?.userId ||
+            selectedContact.raw?.student?.userId ||
+            selectedContact.raw?.userId ||
+            (selectedContact.id?.startsWith("parent-") || selectedContact.id?.startsWith("section-") || selectedContact.id?.startsWith("broadcast-") ? null : selectedContact.id);
+
+        if (!targetUserId) {
+            return [];
+        }
+
+        return messagesHistory.filter((m: any) => {
+            const sId = m.senderId || m.sender?.id;
+            const rId = m.receiverId || m.recipientId || m.receiver?.id;
+            return (
+                (sId === currentUserId && rId === targetUserId) ||
+                (sId === targetUserId && rId === currentUserId)
+            );
+        });
+    }, [messagesHistory, selectedContact, currentUserId, activeCategory]);
 
     // Send Message Handler
     const handleSendMessage = async (e: React.FormEvent) => {
@@ -545,36 +664,85 @@ export default function TeacherCommunicationPage() {
                     const data = await res.json().catch(() => ({}));
                     alert(data.error || "Failed to dispatch message to student(s).");
                 }
-            } else if (activeCategory === "PARENT" && selectedContact?.enrollmentId) {
-                // Send Parent Message API
-                const res = await fetchApi("/communication/teacher/parent-message", {
+            } else if (activeCategory === "PARENT") {
+                const targetType = parentTargetMode === "ALL"
+                    ? "ALL_PARENTS"
+                    : parentTargetMode === "SECTION"
+                    ? "SPECIFIC_SECTION"
+                    : "SPECIFIC_PARENT";
+
+                const targetParentUserId = selectedContact?.parentUserId || selectedContact?.raw?.parentUserId;
+
+                const payload: any = {
+                    targetType,
+                    subject: messageSubject || (targetType === "ALL_PARENTS" ? "Broadcast to All Parents" : targetType === "SPECIFIC_SECTION" ? `Section Announcement: ${activeClassObj?.displayName || 'Parents'}` : "Message from Teacher"),
+                    content: messageText,
+                    priority: messagePriority
+                };
+
+                if (targetType === "SPECIFIC_PARENT") {
+                    if (!targetParentUserId && !selectedContact?.enrollmentId && !selectedContact?.raw?.studentDbId && !selectedContact?.studentId) {
+                        alert("Please select a student from the list first to message their parent.");
+                        setSending(false);
+                        return;
+                    }
+                    payload.receiverId = targetParentUserId;
+                    payload.enrollmentId = selectedContact?.enrollmentId;
+                    payload.studentId = selectedContact?.raw?.studentDbId || selectedContact?.studentId;
+                } else if (targetType === "SPECIFIC_SECTION") {
+                    const secId = activeClassObj?.sectionId || (selectedClassId !== "ALL" ? selectedClassId : assignedClasses[0]?.sectionId);
+                    if (!secId) {
+                        alert("Please select a section to broadcast to.");
+                        setSending(false);
+                        return;
+                    }
+                    payload.sectionId = secId;
+                }
+
+                // Call backend teacher parent broadcast endpoint
+                const res = await fetchApi("/communication/teacher/parent-broadcast", {
                     method: "POST",
-                    body: JSON.stringify({
-                        enrollmentId: selectedContact.enrollmentId,
-                        content: messageText
-                    })
+                    body: JSON.stringify(payload)
                 });
 
                 if (res.ok) {
+                    const data = await res.json();
                     const sentItem = {
-                        id: `temp-${Date.now()}`,
+                        id: `parent-broadcast-${Date.now()}`,
                         senderId: currentUserId,
                         sender: { name: authData?.user?.name || "Teacher" },
-                        recipient: { name: selectedContact.name },
+                        recipient: { name: selectedContact?.name || (targetType === "ALL_PARENTS" ? "All Parents" : "Section Parents") },
                         content: messageText,
+                        subject: messageSubject,
                         createdAt: new Date().toISOString()
                     };
                     setMessagesHistory(prev => [sentItem, ...prev]);
                     setMessageText("");
-                    setStatusBanner(`Message successfully sent to ${selectedContact.name}!`);
-                    setTimeout(() => setStatusBanner(null), 4000);
+                    setMessageSubject("");
+
+                    const recipientCount = data.recipientsCount || selectedContact?.targetCount || 1;
+                    setStatusBanner(`Successfully sent message to ${recipientCount} parent${recipientCount === 1 ? '' : 's'}!`);
+                    setTimeout(() => setStatusBanner(null), 5000);
                 } else {
                     const data = await res.json().catch(() => ({}));
-                    alert(data.error || "Failed to send message to parent.");
+                    alert(data.error || "Failed to dispatch message to parent(s).");
                 }
             } else if (selectedContact?.id) {
                 // Direct User Message API
-                const targetUserId = selectedContact.raw?.userId || selectedContact.id;
+                const targetUserId =
+                    selectedContact.parentUserId ||
+                    selectedContact.raw?.parentUserId ||
+                    selectedContact.raw?.parent?.userId ||
+                    selectedContact.raw?.student?.userId ||
+                    selectedContact.raw?.userId ||
+                    (selectedContact.id?.startsWith("parent-") || selectedContact.id?.startsWith("section-") || selectedContact.id?.startsWith("broadcast-") ? null : selectedContact.id);
+
+                if (!targetUserId) {
+                    alert("Unable to resolve recipient user account for direct messaging.");
+                    setSending(false);
+                    return;
+                }
+
                 const res = await fetchApi("/communication/messages", {
                     method: "POST",
                     body: JSON.stringify({
@@ -588,7 +756,14 @@ export default function TeacherCommunicationPage() {
 
                 if (res.ok) {
                     const newMsg = await res.json();
-                    setMessagesHistory(prev => [newMsg, ...prev]);
+                    const formattedMsg = {
+                        ...newMsg,
+                        senderId: newMsg.senderId || currentUserId,
+                        receiverId: newMsg.receiverId || targetUserId,
+                        sender: newMsg.sender || { id: currentUserId, name: authData?.user?.name || "Teacher" },
+                        receiver: newMsg.receiver || { id: targetUserId, name: selectedContact.name }
+                    };
+                    setMessagesHistory(prev => [formattedMsg, ...prev]);
                     setMessageText("");
                     setMessageSubject("");
                     setStatusBanner(`Message successfully sent to ${selectedContact.name}!`);
@@ -607,6 +782,50 @@ export default function TeacherCommunicationPage() {
 
     // Auto-select contact matching current filtered list
     useEffect(() => {
+        if (activeCategory === "PARENT") {
+            if (parentTargetMode === "ALL") {
+                setSelectedContact({
+                    id: "broadcast-all-parents",
+                    name: "All Students' Parents",
+                    subtitle: `Group broadcast to parents of all ${parentContacts.length || studentsList.length} students across all your classes`,
+                    type: "PARENT",
+                    isBroadcast: true,
+                    targetCount: parentContacts.length,
+                    raw: { targetType: "ALL_PARENTS" }
+                });
+            } else if (parentTargetMode === "SECTION") {
+                const firstClass = (selectedClassId !== "ALL" && assignedClasses.find(c => c.id === selectedClassId))
+                    ? assignedClasses.find(c => c.id === selectedClassId)!
+                    : assignedClasses[0] || null;
+
+                if (firstClass) {
+                    setSelectedContact({
+                        id: `parent-section-${firstClass.id}`,
+                        name: `Section Parents: ${firstClass.displayName}`,
+                        subtitle: `Broadcast to parents of all ${firstClass.studentCount} students in ${firstClass.displayName}`,
+                        type: "PARENT",
+                        isBroadcast: true,
+                        targetCount: firstClass.studentCount,
+                        raw: { targetType: "SPECIFIC_SECTION", sectionId: firstClass.sectionId, classId: firstClass.id }
+                    });
+                }
+            } else {
+                // parentTargetMode === "PARENT"
+                if (currentCategoryContacts.length > 0) {
+                    const isCurrentInList = selectedContact && !selectedContact.isBroadcast && currentCategoryContacts.some(c => c.id === selectedContact.id);
+                    if (!isCurrentInList) {
+                        setSelectedContact(currentCategoryContacts[0]);
+                        if (currentCategoryContacts[0].enrollmentId) {
+                            setSelectedEnrollmentId(currentCategoryContacts[0].enrollmentId);
+                        }
+                    }
+                } else {
+                    setSelectedContact(null);
+                }
+            }
+            return;
+        }
+
         if (activeCategory !== "STUDENT") {
             if (currentCategoryContacts.length > 0) {
                 const isCurrentInList = selectedContact && currentCategoryContacts.some(c => c.id === selectedContact.id);
@@ -719,11 +938,10 @@ export default function TeacherCommunicationPage() {
                 {/* Left: Contact Directory (4 Cols) */}
                 <div className="lg:col-span-4 bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden flex flex-col min-h-[580px]">
                     <div className="p-3.5 border-b border-slate-100 bg-slate-50/80 space-y-2.5">
-                        {/* Header for Non-Student Categories */}
-                        {activeCategory !== "STUDENT" && (
+                        {/* Header for Department & Staff Categories */}
+                        {activeCategory !== "STUDENT" && activeCategory !== "PARENT" && (
                             <div className="flex items-center justify-between">
                                 <span className="text-xs font-extrabold text-slate-800 flex items-center gap-1.5">
-                                    {activeCategory === "PARENT" && "Student Guardians"}
                                     {activeCategory === "DEPARTMENT" && "Department Faculty"}
                                     {activeCategory === "STAFF" && "School Staff & Leadership"}
                                 </span>
@@ -745,14 +963,23 @@ export default function TeacherCommunicationPage() {
                                         </span>
                                     </label>
                                     <div className="relative">
+                                        <div className="absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none">
+                                            {studentTargetMode === "ALL" ? (
+                                                <Megaphone className="w-3.5 h-3.5 text-blue-600" />
+                                            ) : studentTargetMode === "SECTION" ? (
+                                                <BookOpen className="w-3.5 h-3.5 text-amber-600" />
+                                            ) : (
+                                                <User className="w-3.5 h-3.5 text-emerald-600" />
+                                            )}
+                                        </div>
                                         <select
                                             value={studentTargetMode}
                                             onChange={(e) => handleTargetModeChange(e.target.value as any)}
-                                            className="w-full pl-2.5 pr-8 py-2 text-xs font-extrabold text-slate-900 bg-white border border-blue-200 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 shadow-2xs cursor-pointer appearance-none"
+                                            className="w-full pl-8 pr-8 py-2 text-xs font-extrabold text-slate-900 bg-white border border-blue-200 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 shadow-2xs cursor-pointer appearance-none"
                                         >
-                                            <option value="STUDENT">👤 Specific Student (ለአንድ ተማሪ)</option>
-                                            <option value="SECTION">🏫 Specific Section (ለአንድ ሴክሽን)</option>
-                                            <option value="ALL">📢 All My Students (ለሁሉም ተማሪዎቼ)</option>
+                                            <option value="STUDENT">Specific Student (ለአንድ ተማሪ)</option>
+                                            <option value="SECTION">Specific Section (ለአንድ ሴክሽን)</option>
+                                            <option value="ALL">All My Students (ለሁሉም ተማሪዎቼ)</option>
                                         </select>
                                         <ChevronDown className="w-4 h-4 text-slate-500 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                                     </div>
@@ -844,8 +1071,130 @@ export default function TeacherCommunicationPage() {
                             </div>
                         )}
 
-                        {/* Search Bar (For Guardians, Faculty & Staff) */}
-                        {activeCategory !== "STUDENT" && (
+                        {/* Target Selection Dropdowns for Parent Communication */}
+                        {activeCategory === "PARENT" && (
+                            <div className="space-y-2.5">
+                                {/* Dropdown 1: Main Target Mode for Parents */}
+                                <div className="space-y-1">
+                                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider flex items-center justify-between">
+                                        <span className="flex items-center gap-1">
+                                            <Users className="w-3 h-3 text-[#143e66]" />
+                                            Recipient Mode / የመልእክት አይነት:
+                                        </span>
+                                    </label>
+                                    <div className="relative">
+                                        <div className="absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none">
+                                            {parentTargetMode === "ALL" ? (
+                                                <Megaphone className="w-3.5 h-3.5 text-blue-600" />
+                                            ) : parentTargetMode === "SECTION" ? (
+                                                <BookOpen className="w-3.5 h-3.5 text-amber-600" />
+                                            ) : (
+                                                <User className="w-3.5 h-3.5 text-emerald-600" />
+                                            )}
+                                        </div>
+                                        <select
+                                            value={parentTargetMode}
+                                            onChange={(e) => handleParentTargetModeChange(e.target.value as any)}
+                                            className="w-full pl-8 pr-8 py-2 text-xs font-extrabold text-slate-900 bg-white border border-blue-200 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 shadow-2xs cursor-pointer appearance-none"
+                                        >
+                                            <option value="PARENT">Specific Parent (ለአንድ ወላጅ - በተማሪ ስም)</option>
+                                            <option value="SECTION">Specific Section (ለአንድ ሴክሽን ወላጆች)</option>
+                                            <option value="ALL">All My Parents (ለሁሉም ወላጆች)</option>
+                                        </select>
+                                        <ChevronDown className="w-4 h-4 text-slate-500 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                                    </div>
+                                </div>
+
+                                {/* Dropdown 2: Appears when Specific Parent is chosen (Filter by Class) */}
+                                {parentTargetMode === "PARENT" && (
+                                    <div className="space-y-1">
+                                        <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider flex items-center justify-between">
+                                            <span className="flex items-center gap-1">
+                                                <BookOpen className="w-3 h-3 text-[#143e66]" />
+                                                Filter by Class / ክፍል ይምረጡ:
+                                            </span>
+                                            {assignedClasses.length > 0 && (
+                                                <span className="text-[10px] font-medium text-slate-400">
+                                                    {assignedClasses.length} {assignedClasses.length === 1 ? "class" : "classes"}
+                                                </span>
+                                            )}
+                                        </label>
+                                        <div className="relative">
+                                            <select
+                                                value={selectedClassId}
+                                                onChange={(e) => {
+                                                    setSelectedClassId(e.target.value);
+                                                    setSelectedContact(null);
+                                                }}
+                                                className="w-full pl-2.5 pr-8 py-2 text-xs font-semibold text-slate-800 bg-white border border-slate-200 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 shadow-2xs cursor-pointer appearance-none"
+                                            >
+                                                <option value="ALL">
+                                                    All Assigned Classes ({assignedClasses.reduce((s, c) => s + c.studentCount, 0)} Students)
+                                                </option>
+                                                {assignedClasses.map((cls) => (
+                                                    <option key={cls.id} value={cls.id}>
+                                                        {cls.displayName} ({cls.studentCount} {cls.studentCount === 1 ? "Student" : "Students"})
+                                                    </option>
+                                                ))}
+                                            </select>
+                                            <ChevronDown className="w-4 h-4 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Dropdown 2: Appears when Specific Section is chosen */}
+                                {parentTargetMode === "SECTION" && (
+                                    <div className="space-y-1">
+                                        <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider flex items-center justify-between">
+                                            <span className="flex items-center gap-1">
+                                                <BookOpen className="w-3 h-3 text-[#143e66]" />
+                                                Select Section / ክፍል ይምረጡ:
+                                            </span>
+                                            <span className="text-[10px] font-extrabold text-amber-600">
+                                                Section Target
+                                            </span>
+                                        </label>
+                                        <div className="relative">
+                                            <select
+                                                value={selectedClassId}
+                                                onChange={(e) => handleParentSectionChange(e.target.value)}
+                                                className="w-full pl-2.5 pr-8 py-2 text-xs font-bold text-slate-900 bg-amber-50/60 border border-amber-300 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 shadow-2xs cursor-pointer appearance-none"
+                                            >
+                                                {assignedClasses.map((cls) => (
+                                                    <option key={cls.id} value={cls.id}>
+                                                        {cls.displayName} ({cls.studentCount} {cls.studentCount === 1 ? "Student" : "Students"})
+                                                    </option>
+                                                ))}
+                                            </select>
+                                            <ChevronDown className="w-4 h-4 text-slate-500 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Summary Card when All Parents mode is active */}
+                                {parentTargetMode === "ALL" && (
+                                    <div className="p-2.5 bg-blue-50/70 border border-blue-200/90 rounded-xl text-left space-y-1">
+                                        <div className="flex items-center justify-between">
+                                            <span className="text-xs font-extrabold text-[#143e66] flex items-center gap-1.5">
+                                                <Megaphone className="w-3.5 h-3.5 text-blue-600" />
+                                                Target: All Students' Parents
+                                            </span>
+                                            <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-blue-100 text-blue-800">
+                                                {parentContacts.length || studentsList.length} Parents
+                                            </span>
+                                        </div>
+                                        <p className="text-[11px] text-slate-600 leading-tight">
+                                            Message will be sent to all parents across all your classes.
+                                        </p>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        {/* Search Bar (When in 1-on-1 mode or staff/dept) */}
+                        {((activeCategory === "STUDENT" && studentTargetMode === "STUDENT") ||
+                          (activeCategory === "PARENT" && parentTargetMode === "PARENT") ||
+                          (activeCategory !== "STUDENT" && activeCategory !== "PARENT")) && (
                             <div className="space-y-1">
                                 <div className="relative w-full">
                                     <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
@@ -853,7 +1202,11 @@ export default function TeacherCommunicationPage() {
                                         type="text"
                                         value={searchQuery}
                                         onChange={(e) => setSearchQuery(e.target.value)}
-                                        placeholder="Search by name or details..."
+                                        placeholder={
+                                            activeCategory === "PARENT"
+                                                ? "Search by student name or parent..."
+                                                : "Search by name or details..."
+                                        }
                                         className="w-full pl-8 pr-8 py-1.5 text-xs bg-white border border-slate-200 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 shadow-2xs"
                                     />
                                     {searchQuery && (
@@ -908,6 +1261,47 @@ export default function TeacherCommunicationPage() {
                                 </div>
                             </div>
                         </div>
+                    ) : activeCategory === "PARENT" && parentTargetMode === "SECTION" ? (
+                        <div className="p-4 space-y-3 flex-1 overflow-y-auto">
+                            <div className="space-y-1.5">
+                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                                    Section Parents Roster ({currentCategoryContacts.length} parents):
+                                </span>
+                                <div className="divide-y divide-slate-100 border border-slate-200 rounded-xl bg-slate-50/50 max-h-80 overflow-y-auto">
+                                    {currentCategoryContacts.map((p) => (
+                                        <div key={p.id} className="p-2.5 text-xs flex items-center justify-between text-slate-700">
+                                            <div>
+                                                <span className="font-extrabold text-slate-800">{p.studentName || p.name}</span>
+                                                <span className="text-[10px] text-slate-500 block">Parent: {p.name} ({p.raw?.relationship || 'Guardian'})</span>
+                                            </div>
+                                            {p.studentId && (
+                                                <span className="font-mono text-[10px] px-1.5 py-0.5 bg-white border border-slate-200 rounded text-slate-600">
+                                                    {p.studentId}
+                                                </span>
+                                            )}
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                    ) : activeCategory === "PARENT" && parentTargetMode === "ALL" ? (
+                        <div className="p-4 space-y-3 flex-1 overflow-y-auto">
+                            <div className="space-y-1.5">
+                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                                    Assigned Classes Breakdown:
+                                </span>
+                                <div className="divide-y divide-slate-100 border border-slate-200 rounded-xl bg-slate-50/50">
+                                    {assignedClasses.map((cls) => (
+                                        <div key={cls.id} className="p-2.5 text-xs flex items-center justify-between text-slate-700">
+                                            <span className="font-bold text-slate-800">{cls.displayName}</span>
+                                            <span className="text-[11px] font-semibold text-amber-700">
+                                                {cls.studentCount} {cls.studentCount === 1 ? "student's parents" : "students' parents"}
+                                            </span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
                     ) : (
                         <>
                             {/* Subheader for 1-on-1 Student Selection */}
@@ -918,17 +1312,25 @@ export default function TeacherCommunicationPage() {
                                 </div>
                             )}
 
+                            {/* Subheader for 1-on-1 Parent Selection via Student */}
+                            {activeCategory === "PARENT" && currentCategoryContacts.length > 0 && (
+                                <div className="px-3.5 py-2 bg-amber-50/50 border-b border-amber-100 flex items-center justify-between text-[10px] font-bold text-amber-900 uppercase tracking-wider">
+                                    <span>Select Student to Message Parent ({currentCategoryContacts.length})</span>
+                                    <span className="text-[9px] text-amber-700 font-normal lowercase">1-on-1 parent chat</span>
+                                </div>
+                            )}
+
                             {/* Contacts List */}
                             <div className="flex-1 overflow-y-auto max-h-[460px] divide-y divide-slate-100">
                                 {currentCategoryContacts.length === 0 ? (
                                     <div className="p-8 text-center text-slate-400 space-y-2">
                                         <Inbox className="w-8 h-8 mx-auto stroke-1 text-slate-300" />
-                                        <p className="text-xs font-semibold">No students found.</p>
+                                        <p className="text-xs font-semibold">No contacts found.</p>
                                         <p className="text-[11px] text-slate-400">
                                             {searchQuery
-                                                ? "No students match your search query."
+                                                ? "No contacts match your search query."
                                                 : selectedClassId !== "ALL"
-                                                    ? "No enrolled students in this specific class."
+                                                    ? "No enrolled students/parents in this specific class."
                                                     : "No registered contacts in this group."}
                                         </p>
                                         {(searchQuery || selectedClassId !== "ALL") && (
@@ -979,15 +1381,36 @@ export default function TeacherCommunicationPage() {
                                                         )}
                                                     </div>
                                                     <div className="space-y-1 overflow-hidden">
-                                                        <p className="text-xs font-extrabold text-slate-900 truncate">{contact.name}</p>
-                                                        <p className="text-[11px] text-slate-500 truncate">{contact.subtitle}</p>
+                                                        {activeCategory === "PARENT" && contact.studentName ? (
+                                                            <>
+                                                                <p className="text-xs font-extrabold text-slate-900 truncate flex items-center gap-1.5">
+                                                                    <span>{contact.studentName}</span>
+                                                                    <span className="text-[9px] font-bold px-1.5 py-0.2 bg-blue-50 text-blue-700 rounded border border-blue-200/60 uppercase">Student</span>
+                                                                </p>
+                                                                <p className="text-[11px] font-semibold text-amber-900 truncate">
+                                                                    Parent: {contact.name} ({contact.raw?.relationship || "Guardian"})
+                                                                </p>
+                                                                <p className="text-[10px] text-slate-500 truncate">
+                                                                    {contact.raw?.gradeName ? `${contact.raw.gradeName}${contact.raw?.sectionName ? ` - ${contact.raw.sectionName}` : ""}` : contact.subtitle}
+                                                                </p>
+                                                            </>
+                                                        ) : (
+                                                            <>
+                                                                <p className="text-xs font-extrabold text-slate-900 truncate">{contact.name}</p>
+                                                                <p className="text-[11px] text-slate-500 truncate">{contact.subtitle}</p>
+                                                            </>
+                                                        )}
                                                         {contact.studentId && (
                                                             <div className="flex items-center gap-1.5 pt-0.5">
                                                                 <span className="inline-block text-[10px] font-mono font-bold px-1.5 py-0.5 bg-slate-100 text-slate-700 rounded border border-slate-200/80">
                                                                     {contact.studentId}
                                                                 </span>
-                                                                <span className="inline-block text-[9px] font-extrabold px-1.5 py-0.5 bg-emerald-50 text-emerald-700 rounded border border-emerald-200/60">
-                                                                    Assigned
+                                                                <span className={`inline-block text-[9px] font-extrabold px-1.5 py-0.5 rounded border ${
+                                                                    activeCategory === "PARENT"
+                                                                        ? "bg-amber-50 text-amber-800 border-amber-200/60"
+                                                                        : "bg-emerald-50 text-emerald-700 border-emerald-200/60"
+                                                                }`}>
+                                                                    {activeCategory === "PARENT" ? "Linked Parent" : "Assigned"}
                                                                 </span>
                                                             </div>
                                                         )}
@@ -1009,19 +1432,19 @@ export default function TeacherCommunicationPage() {
                     <div className="p-4 border-b border-slate-100 bg-slate-50/60 flex items-center justify-between">
                         <div className="flex items-center space-x-3">
                             <div className={`p-2.5 rounded-xl text-white shrink-0 shadow-2xs ${
-                                activeCategory === "STUDENT" && studentTargetMode === "ALL"
+                                (activeCategory === "STUDENT" && studentTargetMode === "ALL") || (activeCategory === "PARENT" && parentTargetMode === "ALL")
                                     ? "bg-blue-600 shadow-blue-600/20"
-                                    : activeCategory === "STUDENT" && studentTargetMode === "SECTION"
+                                    : (activeCategory === "STUDENT" && studentTargetMode === "SECTION") || (activeCategory === "PARENT" && parentTargetMode === "SECTION")
                                     ? "bg-amber-600 shadow-amber-600/20"
                                     : activeCategory === "STUDENT"
                                     ? "bg-emerald-600 shadow-emerald-600/20"
                                     : activeCategory === "PARENT"
-                                    ? "bg-amber-600"
+                                    ? "bg-amber-600 shadow-amber-600/20"
                                     : activeCategory === "DEPARTMENT"
                                     ? "bg-purple-600"
                                     : "bg-[#143e66]"
                             }`}>
-                                {activeCategory === "STUDENT" && studentTargetMode !== "STUDENT" ? (
+                                {(activeCategory === "STUDENT" && studentTargetMode !== "STUDENT") || (activeCategory === "PARENT" && parentTargetMode !== "PARENT") ? (
                                     <Megaphone className="w-4 h-4" />
                                 ) : activeCategory === "STUDENT" ? (
                                     <GraduationCap className="w-4 h-4" />
@@ -1033,9 +1456,15 @@ export default function TeacherCommunicationPage() {
                                 <div className="flex items-center space-x-2 flex-wrap gap-y-1">
                                     <h2 className="text-sm font-extrabold text-slate-900">
                                         {activeCategory === "STUDENT" && studentTargetMode === "ALL"
-                                            ? "📢 Broadcast to All Students"
+                                            ? "Broadcast to All Students"
                                             : activeCategory === "STUDENT" && studentTargetMode === "SECTION"
-                                            ? `📢 Section Broadcast: ${activeClassObj?.displayName || "Section"}`
+                                            ? `Section Broadcast: ${activeClassObj?.displayName || "Section"}`
+                                            : activeCategory === "PARENT" && parentTargetMode === "ALL"
+                                            ? "Broadcast to All Parents"
+                                            : activeCategory === "PARENT" && parentTargetMode === "SECTION"
+                                            ? `Section Parents Broadcast: ${activeClassObj?.displayName || "Section"}`
+                                            : activeCategory === "PARENT" && selectedContact
+                                            ? `Parent: ${selectedContact.name} (${selectedContact.raw?.relationship || 'Guardian'})`
                                             : selectedContact
                                             ? selectedContact.name
                                             : `Select a contact from the ${activeCategory.toLowerCase()} directory`}
@@ -1052,9 +1481,26 @@ export default function TeacherCommunicationPage() {
                                             {activeClassObj?.studentCount || 0} Students in Section
                                         </span>
                                     )}
+                                    {activeCategory === "PARENT" && parentTargetMode === "ALL" && (
+                                        <span className="px-2 py-0.5 bg-blue-100 text-blue-900 border border-blue-300 rounded text-[10px] font-extrabold flex items-center gap-1">
+                                            <Users className="w-3 h-3" />
+                                            All Students' Parents
+                                        </span>
+                                    )}
+                                    {activeCategory === "PARENT" && parentTargetMode === "SECTION" && (
+                                        <span className="px-2 py-0.5 bg-amber-100 text-amber-900 border border-amber-300 rounded text-[10px] font-extrabold flex items-center gap-1">
+                                            <Megaphone className="w-3 h-3" />
+                                            Parents of {activeClassObj?.studentCount || 0} Students
+                                        </span>
+                                    )}
                                     {activeCategory === "STUDENT" && studentTargetMode === "STUDENT" && selectedContact?.studentId && (
                                         <span className="px-2 py-0.5 bg-emerald-50 text-emerald-800 border border-emerald-200 rounded text-[10px] font-mono font-bold">
                                             {selectedContact.studentId}
+                                        </span>
+                                    )}
+                                    {activeCategory === "PARENT" && parentTargetMode === "PARENT" && selectedContact?.studentName && (
+                                        <span className="px-2 py-0.5 bg-amber-50 text-amber-900 border border-amber-200 rounded text-[10px] font-bold">
+                                            Student: {selectedContact.studentName}
                                         </span>
                                     )}
                                 </div>
@@ -1063,6 +1509,12 @@ export default function TeacherCommunicationPage() {
                                         ? `Message will be delivered to all ${studentsList.length} students across all your classes.`
                                         : activeCategory === "STUDENT" && studentTargetMode === "SECTION"
                                         ? `Message will be delivered directly to all students in ${activeClassObj?.displayName || 'this section'}.`
+                                        : activeCategory === "PARENT" && parentTargetMode === "ALL"
+                                        ? `Message will be delivered to parents of all enrolled students across all your classes.`
+                                        : activeCategory === "PARENT" && parentTargetMode === "SECTION"
+                                        ? `Message will be delivered directly to parents of students in ${activeClassObj?.displayName || 'this section'}.`
+                                        : activeCategory === "PARENT" && selectedContact
+                                        ? `Guardian of student ${selectedContact.studentName || selectedContact.raw?.studentName || ''} • ${selectedContact.subtitle}`
                                         : selectedContact
                                         ? (selectedContact.subtitle || selectedContact.roleName)
                                         : "Click any contact on the left to view records and communicate"}
@@ -1071,7 +1523,7 @@ export default function TeacherCommunicationPage() {
                         </div>
 
                         <span className={`px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider ${
-                            activeCategory === "STUDENT" && studentTargetMode !== "STUDENT"
+                            (activeCategory === "STUDENT" && studentTargetMode !== "STUDENT") || (activeCategory === "PARENT" && parentTargetMode !== "PARENT")
                                 ? "bg-amber-100 text-amber-900 border border-amber-200"
                                 : "bg-slate-100 text-slate-700"
                         }`}>
@@ -1079,6 +1531,10 @@ export default function TeacherCommunicationPage() {
                                 ? "All Students Broadcast"
                                 : activeCategory === "STUDENT" && studentTargetMode === "SECTION"
                                 ? "Section Broadcast"
+                                : activeCategory === "PARENT" && parentTargetMode === "ALL"
+                                ? "All Parents Broadcast"
+                                : activeCategory === "PARENT" && parentTargetMode === "SECTION"
+                                ? "Section Parents Broadcast"
                                 : `${activeCategory} Channel`}
                         </span>
                     </div>
@@ -1103,11 +1559,17 @@ export default function TeacherCommunicationPage() {
                                             Type your announcement below. It will be dispatched directly to all {activeClassObj?.studentCount ?? 0} students in {activeClassObj?.displayName || "this section"}.
                                         </p>
                                     </>
+                                ) : !selectedContact ? (
+                                    <>
+                                        <MessageCircle className="w-8 h-8 mx-auto stroke-1 text-slate-300" />
+                                        <p className="text-xs font-semibold text-slate-700">No recipient selected</p>
+                                        <p className="text-[11px] text-slate-400">Choose a contact from the directory on the left to view messages and communicate.</p>
+                                    </>
                                 ) : (
                                     <>
                                         <MessageCircle className="w-8 h-8 mx-auto stroke-1 text-slate-300" />
-                                        <p className="text-xs font-semibold">No recent messages in this session.</p>
-                                        <p className="text-[11px] text-slate-400">Use the form below to compose and send a message.</p>
+                                        <p className="text-xs font-semibold text-slate-700">No recent messages with {selectedContact.name}</p>
+                                        <p className="text-[11px] text-slate-400">Use the form below to compose and send a message directly.</p>
                                     </>
                                 )}
                             </div>
@@ -1143,7 +1605,7 @@ export default function TeacherCommunicationPage() {
                             <input
                                 type="text"
                                 placeholder={
-                                    activeCategory === "STUDENT" && studentTargetMode !== "STUDENT"
+                                    (activeCategory === "STUDENT" && studentTargetMode !== "STUDENT") || (activeCategory === "PARENT" && parentTargetMode !== "PARENT")
                                         ? "Announcement Topic / Subject..."
                                         : "Subject / Communication topic..."
                                 }
@@ -1172,6 +1634,12 @@ export default function TeacherCommunicationPage() {
                                         ? `Write announcement to all ${studentsList.length} students across all your classes...`
                                         : activeCategory === "STUDENT" && studentTargetMode === "SECTION"
                                         ? `Write announcement for ${activeClassObj?.displayName || 'this section'}...`
+                                        : activeCategory === "PARENT" && parentTargetMode === "ALL"
+                                        ? `Write broadcast to all parents across all your classes...`
+                                        : activeCategory === "PARENT" && parentTargetMode === "SECTION"
+                                        ? `Write broadcast to parents of students in ${activeClassObj?.displayName || 'this section'}...`
+                                        : activeCategory === "PARENT" && selectedContact
+                                        ? `Write your message to ${selectedContact.name} (${selectedContact.studentName ? `${selectedContact.studentName}'s parent` : 'Parent'})...`
                                         : selectedContact
                                         ? `Write your message to ${selectedContact.name}...`
                                         : `Type your message for this ${activeCategory.toLowerCase()} communication...`
@@ -1183,14 +1651,14 @@ export default function TeacherCommunicationPage() {
                                 type="submit"
                                 disabled={sending || !messageText.trim()}
                                 className={`px-5 font-bold rounded-xl disabled:opacity-50 transition-all flex flex-col items-center justify-center gap-1 shadow-xs shrink-0 active:scale-95 cursor-pointer ${
-                                    activeCategory === "STUDENT" && studentTargetMode === "ALL"
+                                    (activeCategory === "STUDENT" && studentTargetMode === "ALL") || (activeCategory === "PARENT" && parentTargetMode === "ALL")
                                         ? "bg-blue-600 hover:bg-blue-700 text-white"
-                                        : activeCategory === "STUDENT" && studentTargetMode === "SECTION"
+                                        : (activeCategory === "STUDENT" && studentTargetMode === "SECTION") || (activeCategory === "PARENT" && parentTargetMode === "SECTION")
                                         ? "bg-amber-600 hover:bg-amber-700 text-white"
                                         : "bg-[#143e66] hover:bg-[#1a4f82] text-amber-300"
                                 }`}
                             >
-                                {activeCategory === "STUDENT" && studentTargetMode !== "STUDENT" ? (
+                                {(activeCategory === "STUDENT" && studentTargetMode !== "STUDENT") || (activeCategory === "PARENT" && parentTargetMode !== "PARENT") ? (
                                     <Megaphone className="w-4 h-4" />
                                 ) : (
                                     <Send className="w-4 h-4" />
@@ -1198,9 +1666,9 @@ export default function TeacherCommunicationPage() {
                                 <span className="text-[11px]">
                                     {sending
                                         ? "Sending..."
-                                        : activeCategory === "STUDENT" && studentTargetMode === "ALL"
+                                        : (activeCategory === "STUDENT" && studentTargetMode === "ALL") || (activeCategory === "PARENT" && parentTargetMode === "ALL")
                                         ? "Broadcast All"
-                                        : activeCategory === "STUDENT" && studentTargetMode === "SECTION"
+                                        : (activeCategory === "STUDENT" && studentTargetMode === "SECTION") || (activeCategory === "PARENT" && parentTargetMode === "SECTION")
                                         ? "Broadcast Section"
                                         : "Send"}
                                 </span>

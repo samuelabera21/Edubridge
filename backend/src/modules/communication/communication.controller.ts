@@ -427,3 +427,33 @@ export const sendTeacherStudentBroadcast = async (req: Request, res: Response) =
     }
 };
 
+export const sendTeacherParentBroadcast = async (req: Request, res: Response) => {
+    try {
+        const teacherUserId = req.user?.id;
+        const organizationId = (req as any).accessScope?.id;
+        if (!teacherUserId || !organizationId) return res.status(401).json({ error: "Unauthorized" });
+
+        const { targetType, sectionId, studentId, enrollmentId, receiverId, subject, content, priority } = req.body;
+        if (!targetType || !content) {
+            return res.status(400).json({ error: "targetType and content are required" });
+        }
+
+        const result = await CommunicationService.sendTeacherParentBroadcast({
+            teacherUserId,
+            organizationId,
+            targetType,
+            sectionId,
+            studentId,
+            enrollmentId,
+            receiverId,
+            subject,
+            content,
+            priority
+        });
+
+        return res.status(201).json(result);
+    } catch (error: any) {
+        return res.status(400).json({ error: error.message || "Failed to dispatch broadcast to parents" });
+    }
+};
+

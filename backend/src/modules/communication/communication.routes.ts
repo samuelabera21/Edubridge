@@ -21,7 +21,8 @@ import {
     deleteImportantNotice,
     sendTeacherParentMessage,
     getTeacherParentContacts,
-    sendTeacherStudentBroadcast
+    sendTeacherStudentBroadcast,
+    sendTeacherParentBroadcast
 } from "./communication.controller.js";
 import { requirePermission, requireScope, requireAuth } from "../authentication/authorization.middleware.js";
 
@@ -76,8 +77,10 @@ router.post("/message", requirePermission("COMMUNICATION:CREATE"), sendMessage);
 // client code can reach them via /api/communication/teacher/parent-contacts
 // and /api/communication/teacher/message. The teacher module's legacy
 // /api/teacher/parent-message endpoint is preserved separately.
+// ── Teacher → Parent Messaging & Broadcast ─────────────
 router.get("/teacher/parent-contacts", requirePermission("COMMUNICATION:VIEW"), getTeacherParentContacts);
 router.post("/teacher/parent-message", requirePermission("COMMUNICATION:CREATE"), sendTeacherParentMessage);
+router.post("/teacher/parent-broadcast", requirePermission("COMMUNICATION:CREATE"), sendTeacherParentBroadcast);
 
 // ── Teacher → Student Messaging & Broadcast ─────────────
 router.post("/teacher/student-broadcast", requirePermission("COMMUNICATION:CREATE"), sendTeacherStudentBroadcast);
