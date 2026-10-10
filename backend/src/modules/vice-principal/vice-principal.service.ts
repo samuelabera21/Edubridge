@@ -452,7 +452,9 @@ export async function getCommunicationOverview(organizationId: string) {
             id: m.id,
             from: m.sender.name,
             to: m.receiver.name,
+            subject: m.content.slice(0, 80),
             preview: m.content.slice(0, 100),
+            content: m.content,
             date: m.createdAt.toISOString().split("T")[0],
             isRead: m.isRead
         }))
