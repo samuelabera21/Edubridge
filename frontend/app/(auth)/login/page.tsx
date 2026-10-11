@@ -121,7 +121,12 @@ export default function LoginPage() {
 
             if (!res.ok) {
                 const data = await res.json().catch(() => ({}));
-                setError(data.message || "Failed to initialize Google Sign-in. Please check your credentials.");
+                const rawMsg = data.message || data.error || "";
+                if (rawMsg.toLowerCase().includes("client id") || rawMsg.toLowerCase().includes("client secret") || rawMsg.toLowerCase().includes("missing")) {
+                    setError("Google Sign-In is not configured yet. Please set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET in your .env file.");
+                } else {
+                    setError(rawMsg || "Failed to initialize Google Sign-in. Please check your credentials.");
+                }
                 setGoogleLoading(false);
                 return;
             }
