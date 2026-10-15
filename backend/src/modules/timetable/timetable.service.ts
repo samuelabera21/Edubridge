@@ -846,7 +846,7 @@ export class TimetableService {
                 where: {
                     studentId: student.id,
                     organizationId,
-                    status: "ENROLLED",
+                    status: { in: ["ENROLLED", "ACTIVE"] },
                     academicYear: { status: "ACTIVE" }
                 },
                 include: {
@@ -858,7 +858,7 @@ export class TimetableService {
                 where: {
                     studentId: student.id,
                     organizationId,
-                    status: "ENROLLED"
+                    status: { in: ["ENROLLED", "ACTIVE"] }
                 },
                 orderBy: { createdAt: "desc" },
                 include: {

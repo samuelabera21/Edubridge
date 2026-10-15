@@ -34,6 +34,8 @@ import {
     Paperclip,
     Filter,
     Bell,
+    KeyRound,
+    Copy,
     ChevronLeft,
     Compass,
     BarChart3
@@ -252,6 +254,10 @@ export default function FederalDashboard() {
     // Action state for resend/cancel
     const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
     const [toastMessage, setToastMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+    const [resetAdminCredentials, setResetAdminCredentials] = useState<{
+        email: string;
+        temporaryPassword: string;
+    } | null>(null);
 
     const loadFederalData = async () => {
         setLoading(true);
@@ -634,6 +640,25 @@ export default function FederalDashboard() {
             }
         } catch (err: any) {
             showToast("error", err.message || "Failed to resend invitation");
+        } finally {
+            setActionLoadingId(null);
+        }
+    };
+
+    const handleResetRegionalAdminPassword = async (regionId: string) => {
+        if (!confirm("Reset this Regional Administrator's password? Their active sessions will be ended.")) return;
+        setActionLoadingId(regionId);
+        try {
+            const res = await fetchApi(`/hierarchy/regions/${regionId}/reset-admin-password`, {
+                method: "POST"
+            });
+            const result = await res.json();
+            if (!res.ok) throw new Error(result.message || "Failed to reset Regional Administrator password");
+
+            setResetAdminCredentials({ email: result.email, temporaryPassword: result.temporaryPassword });
+            showToast("success", "Password reset. Share the temporary password privately.");
+        } catch (err: any) {
+            showToast("error", err.message || "Failed to reset Regional Administrator password");
         } finally {
             setActionLoadingId(null);
         }
@@ -1994,6 +2019,16 @@ export default function FederalDashboard() {
                                                         </button>
                                                     )}
                                                     <button
+                                                        onClick={() => handleResetRegionalAdminPassword(regionId)}
+                                                        disabled={actionLoadingId === regionId}
+                                                        className="px-2.5 py-1 text-blue-700 hover:text-blue-900 border border-blue-200 hover:bg-blue-50 rounded text-[11px] font-semibold transition-colors cursor-pointer disabled:opacity-50"
+                                                    >
+                                                        <span className="inline-flex items-center gap-1">
+                                                            <KeyRound className="w-3 h-3" />
+                                                            {actionLoadingId === regionId ? "Resetting..." : "Reset Password"}
+                                                        </span>
+                                                    </button>
+                                                    <button
                                                         onClick={() => handleCancelInvitation(regionId)}
                                                         disabled={actionLoadingId === regionId}
                                                         className="px-2.5 py-1 text-rose-600 hover:text-rose-800 border border-rose-200 hover:bg-rose-50 rounded text-[11px] font-semibold transition-colors cursor-pointer"
@@ -2386,6 +2421,48 @@ export default function FederalDashboard() {
                                 className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold rounded-lg cursor-pointer"
                             >
                                 Close
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+            {resetAdminCredentials && (
+                <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-900/50 p-4">
+                    <div className="w-full max-w-md space-y-4 rounded-lg border border-slate-200 bg-white p-6 shadow-xl">
+                        <div className="flex items-start justify-between gap-4">
+                            <div>
+                                <h3 className="text-base font-bold text-slate-900">Temporary Password</h3>
+                                <p className="mt-1 text-xs text-slate-600">For {resetAdminCredentials.email}. It must be changed at next sign-in.</p>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => setResetAdminCredentials(null)}
+                                aria-label="Close temporary password"
+                                className="rounded p-1 text-slate-500 hover:bg-slate-100"
+                            >
+                                <X className="h-4 w-4" />
+                            </button>
+                        </div>
+                        <input
+                            readOnly
+                            value={resetAdminCredentials.temporaryPassword}
+                            className="w-full rounded border border-slate-300 bg-slate-50 px-3 py-2 font-mono text-sm text-slate-900"
+                            onFocus={event => event.currentTarget.select()}
+                        />
+                        <div className="flex justify-end gap-2">
+                            <button
+                                type="button"
+                                onClick={() => navigator.clipboard.writeText(resetAdminCredentials.temporaryPassword)}
+                                className="inline-flex items-center gap-2 rounded border border-slate-300 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                            >
+                                <Copy className="h-3.5 w-3.5" /> Copy password
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setResetAdminCredentials(null)}
+                                className="rounded bg-slate-800 px-3 py-2 text-xs font-semibold text-white hover:bg-slate-700"
+                            >
+                                Done
                             </button>
                         </div>
                     </div>

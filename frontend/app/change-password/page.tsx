@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { fetchApi } from "../../lib/api";
+import { getPrimaryAccess } from "../../lib/auth-access";
 import { 
     Key, 
     Lock, 
@@ -98,16 +99,26 @@ export default function ChangePasswordPage() {
             let targetPath = "/dashboard/admin";
             if (meRes.ok) {
                 const meData = await meRes.json();
-                const roleName = meData.access?.[0]?.role?.name;
-                switch (roleName) {
-                    case "ADMIN":
-                    case "SCHOOL_ADMIN":
-                    case "ADMINISTRATOR": targetPath = "/dashboard/admin"; break;
-                    case "TEACHER": targetPath = "/dashboard/teacher"; break;
-                    case "STUDENT": targetPath = "/dashboard/student"; break;
-                    case "PARENT": targetPath = "/dashboard/parent"; break;
-                    case "VICE_PRINCIPAL": targetPath = "/dashboard/vice-principal"; break;
-                    default: targetPath = "/dashboard/admin"; break;
+                const primaryAccess = getPrimaryAccess(meData.access);
+                const scopeType = primaryAccess?.scope?.type;
+                const roleName = primaryAccess?.role?.name;
+
+                switch (scopeType) {
+                    case "FEDERAL": targetPath = "/dashboard/federal"; break;
+                    case "REGION": targetPath = "/dashboard/region"; break;
+                    case "ZONE": targetPath = "/dashboard/zone"; break;
+                    case "WOREDA": targetPath = "/dashboard/woreda"; break;
+                    default:
+                        switch (roleName) {
+                            case "ADMIN":
+                            case "SCHOOL_ADMIN":
+                            case "ADMINISTRATOR": targetPath = "/dashboard/admin"; break;
+                            case "TEACHER": targetPath = "/dashboard/teacher"; break;
+                            case "STUDENT": targetPath = "/dashboard/student"; break;
+                            case "PARENT": targetPath = "/dashboard/parent"; break;
+                            case "VICE_PRINCIPAL": targetPath = "/dashboard/vice-principal"; break;
+                            default: targetPath = "/dashboard/admin"; break;
+                        }
                 }
             }
 

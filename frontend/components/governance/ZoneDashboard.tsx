@@ -451,8 +451,23 @@ export default function ZoneDashboard() {
     // Handle Create Woreda Submit
     const handleCreateWoredaSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        const effectiveZoneId = data?.zoneId || targetOrgId;
-        if (!newWoredaName.trim() || !effectiveZoneId) return;
+        const effectiveZoneId = targetOrgId || data?.zoneId || (drilldownData?.node?.type === "ZONE" ? drilldownData.node.id : null);
+
+        if (!newWoredaName.trim()) {
+            setCreateWoredaMessage({
+                type: "error",
+                text: "Woreda name is required."
+            });
+            return;
+        }
+
+        if (!effectiveZoneId) {
+            setCreateWoredaMessage({
+                type: "error",
+                text: "No active zone is selected. Please open a zone dashboard before creating a Woreda."
+            });
+            return;
+        }
 
         setCreatingWoreda(true);
         setCreateWoredaMessage(null);

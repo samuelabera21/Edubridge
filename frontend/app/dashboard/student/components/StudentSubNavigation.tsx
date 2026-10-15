@@ -19,36 +19,38 @@ type StudentSubNavigationProps = {
     group: StudentNavGroup;
     isOpen: boolean;
     pathname: string;
+    collapsed: boolean;
     onToggle: (key: string) => void;
 };
 
-export default function StudentSubNavigation({ group, isOpen, pathname, onToggle }: StudentSubNavigationProps) {
+export default function StudentSubNavigation({ group, isOpen, pathname, collapsed, onToggle }: StudentSubNavigationProps) {
     const Icon = group.icon;
-    const isActive = (href: string) => pathname === href || pathname.startsWith(`${href}/`);
+    const isActive = (href: string) => pathname === href;
 
     return (
         <div className="pt-2">
             <button
                 type="button"
                 onClick={() => onToggle(group.key)}
-                className="w-full flex items-center justify-between px-3 py-2 text-xs font-bold text-gray-800 hover:bg-gray-100 rounded-lg transition-colors"
+                title={group.label}
+                className={`w-full flex items-center ${collapsed ? "justify-center px-2" : "justify-between px-3"} py-2 rounded-lg text-xs font-medium text-blue-50/90 hover:bg-[#225785] hover:text-white transition-colors ${collapsed ? "text-center" : ""}`}
             >
-                <span className="flex items-center space-x-2.5">
-                    <Icon className="w-4 h-4 text-[#006b3f]" />
-                    <span>{group.label}</span>
+                <span className={`flex items-center ${collapsed ? "" : "space-x-2.5"}`}>
+                    <Icon className="w-4 h-4 shrink-0 text-amber-300/90" />
+                    {!collapsed && <span>{group.label}</span>}
                 </span>
-                {isOpen ? <ChevronDown className="w-3.5 h-3.5 text-gray-400" /> : <ChevronRight className="w-3.5 h-3.5 text-gray-400" />}
+                {!collapsed && (isOpen ? <ChevronDown className="w-3.5 h-3.5 text-blue-200" /> : <ChevronRight className="w-3.5 h-3.5 text-blue-300" />)}
             </button>
-            {isOpen && (
+            {isOpen && !collapsed && (
                 <div className="pl-6 pt-1 space-y-1">
                     {group.links.map((link) => (
                         <Link
                             href={link.href}
                             key={`${group.key}-${link.label}`}
-                            className={`block px-3 py-1.5 rounded-lg text-xs font-medium ${
+                            className={`block px-3 py-1.5 rounded-lg text-xs transition-all ${
                                 isActive(link.href)
-                                    ? "bg-emerald-50 text-[#006b3f] font-bold"
-                                    : "text-gray-600 hover:bg-gray-50"
+                                    ? "bg-[#0f2f4c] text-amber-300 font-semibold shadow-xs"
+                                    : "text-blue-200/90 hover:bg-[#225785]/60 hover:text-amber-200"
                             }`}
                         >
                             {link.label}
