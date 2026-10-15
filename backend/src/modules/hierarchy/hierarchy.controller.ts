@@ -428,6 +428,28 @@ export async function resendRegionalAdminInvitationHandler(req: Request, res: Re
     }
 }
 
+export async function resetRegionalAdminPasswordHandler(req: Request, res: Response) {
+    try {
+        const actorScope = await resolveActorScope(req);
+        const userId = (req as any).user?.id;
+        const result = await HierarchyService.resetRegionalAdminPassword(
+            String(req.params.regionId),
+            actorScope,
+            userId
+        );
+        return res.status(200).json(result);
+    } catch (error: any) {
+        console.error("Error in resetRegionalAdminPasswordHandler:", error);
+        const isForbidden = error.message?.startsWith("Forbidden");
+        const isNotFound = error.message?.includes("not found");
+        const status = isForbidden ? 403 : isNotFound ? 404 : 500;
+        return res.status(status).json({
+            success: false,
+            message: error.message || "Failed to reset Regional Administrator password"
+        });
+    }
+}
+
 export async function cancelRegionalAdminInvitationHandler(req: Request, res: Response) {
     try {
         const regionId = String(req.params.regionId);
@@ -580,8 +602,9 @@ export async function getZoneOverviewHandler(req: Request, res: Response) {
         });
     } catch (error: any) {
         console.error("Error in getZoneOverviewHandler:", error);
-        const isNotFound = error.message?.includes("not found");
-        const status = isNotFound ? 404 : 500;
+        const isForbidden = error.message?.startsWith("Forbidden");
+        const isNotFound = error.message?.includes("not found") || error.message?.startsWith("No zones found");
+        const status = isForbidden ? 403 : isNotFound ? 404 : 500;
         return res.status(status).json({
             success: false,
             message: error.message || "Failed to fetch Zone Overview"

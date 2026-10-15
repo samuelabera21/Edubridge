@@ -1,3 +1,5 @@
+import { randomBytes } from "node:crypto";
+import { hashPassword } from "better-auth/crypto";
 import { prisma } from "../../infrastructure/prisma/client.js";
 import { OrganizationUnitType, OrganizationUnit } from "../../generated/prisma/client.js";
 import { HierarchyScopeService } from "./hierarchy-scope.service.js";
@@ -1191,6 +1193,75 @@ export class HierarchyService {
         };
     }
 
+    static async resetRegionalAdminPassword(
+        regionId: string,
+        actorScope: { id: string; type: OrganizationUnitType; name: string } | null,
+        actorUserId?: string
+    ) {
+        if (!actorScope || actorScope.type !== "FEDERAL") {
+            throw new Error("Forbidden: Only Federal Administrators can reset Regional Administrator passwords.");
+        }
+
+        const region = await prisma.organizationUnit.findUnique({
+            where: { id: regionId },
+            include: { assignments: { include: { user: true, role: true } } }
+        });
+        if (!region || region.type !== "REGION") {
+            throw new Error("Region not found.");
+        }
+
+        const adminAssignment = region.assignments.find(
+            assignment => ["ADMIN", "REGIONAL_ADMIN", "REGION_ADMIN"].includes(assignment.role.name)
+        );
+        if (!adminAssignment?.user) {
+            throw new Error("No administrator assigned to this Region.");
+        }
+
+        const passwordPrefix = ["Aa", "1!"].join("");
+        const temporaryPassword = `${passwordPrefix}${randomBytes(24).toString("base64url")}`;
+        const hashedPassword = await hashPassword(temporaryPassword);
+        const credentialUpdate = await prisma.account.updateMany({
+            where: { userId: adminAssignment.user.id, providerId: "credential" },
+            data: { password: hashedPassword, updatedAt: new Date() }
+        });
+
+        if (credentialUpdate.count === 0) {
+            await prisma.account.create({
+                data: {
+                    id: `acc_${randomBytes(12).toString("hex")}`,
+                    userId: adminAssignment.user.id,
+                    accountId: adminAssignment.user.id,
+                    providerId: "credential",
+                    password: hashedPassword,
+                    createdAt: new Date(),
+                    updatedAt: new Date()
+                }
+            });
+        }
+
+        await prisma.user.update({
+            where: { id: adminAssignment.user.id },
+            data: { isActive: true, requiresPasswordChange: true }
+        });
+        await prisma.session.deleteMany({ where: { userId: adminAssignment.user.id } });
+        await prisma.auditLog.create({
+            data: {
+                organizationId: regionId,
+                userId: actorUserId || null,
+                action: "REGIONAL_ADMIN_PASSWORD_RESET",
+                resource: "ORGANIZATION_UNIT",
+                resourceId: regionId,
+                newValue: { userId: adminAssignment.user.id, email: adminAssignment.user.email }
+            }
+        });
+
+        return {
+            success: true,
+            email: adminAssignment.user.email,
+            temporaryPassword
+        };
+    }
+
     /**
      * Cancels invitation for an assigned Regional Administrator.
      */
@@ -1669,9 +1740,15 @@ export class HierarchyService {
 
         if (!targetId) {
             const firstZone = await prisma.organizationUnit.findFirst({
-                where: { type: "ZONE" }
+                where: {
+                    type: "ZONE",
+                    ...(actorScope?.type === "REGION" ? { parentId: actorScope.id } : {})
+                }
             });
             if (!firstZone) {
+                if (actorScope?.type === "REGION") {
+                    throw new Error(`No zones found within your authorized region (${actorScope.name}). Create a Zone under this region first.`);
+                }
                 return {
                     zoneId: null,
                     zoneName: "Zonal Education Department",
@@ -1690,6 +1767,19 @@ export class HierarchyService {
 
         if (!zone || zone.type !== "ZONE") {
             throw new Error(`Zone with ID '${targetId}' not found.`);
+        }
+
+        if (!actorScope) {
+            throw new Error("Forbidden: An authorized hierarchy scope is required to view Zone data.");
+        }
+        if (actorScope.type === "REGION" && zone.parentId !== actorScope.id) {
+            throw new Error(`Forbidden: Zone '${zone.name}' is outside your administrative scope (${actorScope.name}).`);
+        }
+        if (actorScope.type === "ZONE" && zone.id !== actorScope.id) {
+            throw new Error(`Forbidden: Zone '${zone.name}' is outside your administrative scope (${actorScope.name}).`);
+        }
+        if (actorScope.type !== "FEDERAL" && actorScope.type !== "REGION" && actorScope.type !== "ZONE") {
+            throw new Error("Forbidden: Your administrative scope cannot access Zone data.");
         }
 
         // Fetch child Woredas with role assignments and users

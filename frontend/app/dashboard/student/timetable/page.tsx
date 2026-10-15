@@ -12,6 +12,7 @@ type StudentDashboardData = {
     schoolGrade: { grade: { name: string } };
     section: { id: string; name: string } | null;
   };
+  weeklyClasses: TimetableEntry[];
 };
 
 type TimetableEntry = {
@@ -79,17 +80,7 @@ export default function StudentTimetablePage() {
         const dashboardData: StudentDashboardData = await dashboardRes.json();
         setDashboard(dashboardData);
 
-        const sectionId = dashboardData.enrollment?.section?.id;
-        if (!sectionId) {
-          setTimetable([]);
-          return;
-        }
-
-        const timetableRes = await fetchApi(`/timetable/section/${sectionId}?academicYearId=${dashboardData.enrollment.academicYear.id}`);
-        if (!timetableRes.ok) throw new Error("Timetable request failed");
-
-        const timetableData = await timetableRes.json();
-        setTimetable(Array.isArray(timetableData) ? timetableData : []);
+        setTimetable(Array.isArray(dashboardData.weeklyClasses) ? dashboardData.weeklyClasses : []);
       } catch (err) {
         console.error(err);
         setError("We could not load your timetable right now.");

@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { 
     createResource, getResources, updateResource, deleteResource,
+    createDigitalResource, getDigitalResources,
     reportIssue, getIssues, updateIssueStatus,
     createImprovementPlan, getImprovementPlans, updateImprovementPlanStatus
 } from "./operational.controller.js";
@@ -31,6 +32,8 @@ router.post("/resource", requireScope("SCHOOL"), requirePermission("OPERATIONAL:
  *       - cookieAuth: []
  */
 router.get("/resource", requireScope("SCHOOL"), requirePermission("OPERATIONAL:VIEW"), getResources);
+router.post("/digital-resource", requireScope("SCHOOL"), requirePermission("OPERATIONAL:CREATE"), createDigitalResource);
+router.get("/digital-resource", requireScope("SCHOOL"), requirePermission("OPERATIONAL:VIEW"), getDigitalResources);
 
 /**
  * @openapi
