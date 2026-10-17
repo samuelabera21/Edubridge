@@ -203,15 +203,15 @@ export class DirectiveService {
                         data: Array.from(notifMap.values()).map(item => {
                             let link = "/dashboard/directives";
                             if (item.scopeType === "REGION") {
-                                link = "/dashboard/region?tab=directives";
+                                link = `/dashboard/region?tab=directives&subTab=INCOMING&directiveId=${directive.id}`;
                             } else if (item.scopeType === "ZONE") {
-                                link = "/dashboard/zone?tab=directives";
+                                link = `/dashboard/zone?tab=directives&subTab=INCOMING&directiveId=${directive.id}`;
                             } else if (item.scopeType === "WOREDA") {
-                                link = "/dashboard/woreda?tab=directives";
+                                link = `/dashboard/woreda?tab=directives&subTab=INCOMING&directiveId=${directive.id}`;
                             } else if (item.scopeType === "FEDERAL") {
-                                link = "/dashboard/federal?tab=directives";
+                                link = `/dashboard/federal?tab=directives&directiveId=${directive.id}`;
                             } else if (item.scopeType === "SCHOOL") {
-                                link = "/dashboard/communication/announcements";
+                                link = `/dashboard/communication/announcements?tab=directives&directiveId=${directive.id}`;
                             }
 
                             return {
@@ -826,6 +826,37 @@ export class DirectiveService {
                 acknowledgmentNotes: notes?.trim() || null
             }
         });
+
+        // In-App Notification to Directive Author / Issuer
+        try {
+            if (directive.authorId && directive.issuerOrganizationId) {
+                let creatorLink = `/dashboard/federal?tab=directives&directiveId=${directive.id}`;
+                const issuerOrg = await prisma.organizationUnit.findUnique({
+                    where: { id: directive.issuerOrganizationId },
+                    select: { type: true }
+                });
+                if (issuerOrg?.type === "REGION") {
+                    creatorLink = `/dashboard/region?tab=directives&subTab=ISSUED&directiveId=${directive.id}`;
+                } else if (issuerOrg?.type === "ZONE") {
+                    creatorLink = `/dashboard/zone?tab=directives&subTab=ISSUED&directiveId=${directive.id}`;
+                } else if (issuerOrg?.type === "WOREDA") {
+                    creatorLink = `/dashboard/woreda?tab=directives&subTab=ISSUED&directiveId=${directive.id}`;
+                }
+
+                await prisma.notification.create({
+                    data: {
+                        userId: directive.authorId,
+                        organizationId: directive.issuerOrganizationId,
+                        title: `Directive Confirmed: ${directive.title}`,
+                        content: `${actorScope.name} has officially accepted and confirmed receipt of "${directive.title}".${notes ? ` Remarks: ${notes.trim()}` : ""}`,
+                        link: creatorLink,
+                        isRead: false
+                    }
+                });
+            }
+        } catch (notifErr) {
+            console.warn("[DirectiveService] Creator notification failed:", notifErr);
+        }
 
         // Audit log
         try {

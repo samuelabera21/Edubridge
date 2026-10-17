@@ -403,6 +403,11 @@ export async function sendPasswordResetEmail(payload: PasswordResetEmailPayload)
     }
 
     // Fallback to Resend
+    if (!resend) {
+        console.warn(`[EmailService] Neither SMTP nor RESEND_API_KEY is configured. Skipping password reset email dispatch to ${recipientEmail}.`);
+        return;
+    }
+
     console.log(`[EmailService] Sending password reset email via Resend to ${recipientEmail}...`);
     const { error } = await resend.emails.send({
         from: fromAddress,

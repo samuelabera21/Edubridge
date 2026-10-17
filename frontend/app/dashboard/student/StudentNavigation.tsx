@@ -10,7 +10,6 @@ import {
     CalendarDays,
     ClipboardCheck,
     FileText,
-    GraduationCap,
     HeartHandshake,
     LayoutDashboard,
     MessageSquare,
@@ -46,7 +45,7 @@ const studentNavGroups: StudentNavGroup[] = [
         icon: ClipboardCheck,
         links: [
             { label: "Attendance History", href: "/dashboard/student/attendance" },
-            { label: "Absence Records", href: "/dashboard/student/attendance" },
+            { label: "Absence Records", href: "/dashboard/student/attendance/absence" },
             { label: "Submit Explanation", href: "/dashboard/student/attendance/explanation" },
         ],
     },
@@ -65,8 +64,8 @@ const studentNavGroups: StudentNavGroup[] = [
         label: "My Learning Activities",
         icon: Activity,
         links: [
-            { label: "Assignments", href: "/dashboard/student/learning" },
-            { label: "Practice and Quizzes", href: "/dashboard/student/learning" },
+            { label: "Assignments", href: "/dashboard/student/learning/assignments" },
+            { label: "Practice and Quizzes", href: "/dashboard/student/learning/practice" },
             { label: "Submitted Work", href: "/dashboard/student/learning/submissions" },
         ],
     },
@@ -75,9 +74,10 @@ const studentNavGroups: StudentNavGroup[] = [
         label: "My Support",
         icon: HeartHandshake,
         links: [
-            { label: "Recommendations", href: "/dashboard/student/support" },
-            { label: "Remedial Activities", href: "/dashboard/student/support" },
-            { label: "Progress", href: "/dashboard/student/support" },
+            { label: "Recommendations", href: "/dashboard/student/support/recommendations" },
+            { label: "Remedial Activities", href: "/dashboard/student/support/remedial" },
+            { label: "Enrichment Activities", href: "/dashboard/student/support/enrichment" },
+            { label: "Intervention & Progress", href: "/dashboard/student/support/progress" },
         ],
     },
     {
@@ -85,8 +85,9 @@ const studentNavGroups: StudentNavGroup[] = [
         label: "Communication",
         icon: MessageSquare,
         links: [
-            { label: "School Announcements", href: "/dashboard/student/communication" },
-            { label: "Notifications", href: "/dashboard/student/communication" },
+            { label: "Teacher Messages", href: "/dashboard/student/communication/messages" },
+            { label: "School Announcements", href: "/dashboard/student/communication/announcements" },
+            { label: "Communication Overview", href: "/dashboard/student/communication" },
         ],
     },
     {
@@ -111,7 +112,7 @@ const studentNavGroups: StudentNavGroup[] = [
     },
 ];
 
-export default function StudentNavigation() {
+export default function StudentNavigation({ collapsed, onToggleCollapse }: { collapsed: boolean; onToggleCollapse: () => void }) {
     const pathname = usePathname();
     const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
         profile: pathname.startsWith("/dashboard/student/profile"),
@@ -126,47 +127,64 @@ export default function StudentNavigation() {
     });
 
     const toggleGroup = (key: string) => {
-        setOpenGroups((current) => ({ ...current, [key]: !current[key] }));
+        setOpenGroups((current) => {
+            const willOpen = !current[key];
+            return Object.fromEntries(Object.keys(current).map((groupKey) => [groupKey, groupKey === key && willOpen])) as Record<string, boolean>;
+        });
     };
 
     const isActive = (href: string) => pathname === href || pathname.startsWith(`${href}/`);
 
     return (
-        <aside className="w-64 bg-white border-r border-gray-200 flex flex-col hidden md:flex overflow-y-auto text-gray-800">
-            <div className="p-4 flex-1">
-                <div className="mb-5 p-3.5 bg-emerald-50 rounded-2xl border border-emerald-100 flex items-center space-x-3">
-                    <div className="w-10 h-10 rounded-full bg-[#006b3f] flex items-center justify-center text-white shadow-sm">
-                        <GraduationCap className="w-5 h-5" />
-                    </div>
-                    <div className="min-w-0">
-                        <p className="text-xs font-bold text-gray-900 truncate">Student Workspace</p>
-                        <p className="text-[10px] text-emerald-700 font-medium">Learning portal</p>
-                    </div>
-                </div>
+        <aside className={`bg-[#184973] border-r border-[#265e8e] flex flex-col hidden md:flex overflow-y-auto text-blue-100 font-sans shadow-lg shrink-0 transition-all duration-300 ease-in-out ${collapsed ? "w-16" : "w-64"}`} style={{ scrollbarWidth: "none", msOverflowStyle: "none" } as React.CSSProperties}>
+            <div className="flex items-center justify-between px-3 pt-4 pb-2 border-b border-[#265e8e]/50">
+                {!collapsed && <p className="text-[10px] text-blue-200/90 font-bold uppercase tracking-widest px-1">Student Workspace</p>}
+                <button
+                    type="button"
+                    onClick={onToggleCollapse}
+                    title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+                    aria-label={collapsed ? "Expand student sidebar" : "Collapse student sidebar"}
+                    className={`flex items-center justify-center w-7 h-7 rounded-lg bg-[#225785] hover:bg-[#2c6da7] text-blue-100 hover:text-amber-300 transition-all cursor-pointer shadow-xs ${collapsed ? "mx-auto" : "ml-auto"}`}
+                >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        {collapsed
+                            ? <><polyline points="13 17 18 12 13 7"/><polyline points="6 17 11 12 6 7"/></>
+                            : <><polyline points="11 17 6 12 11 7"/><polyline points="18 17 13 12 18 7"/></>
+                        }
+                    </svg>
+                </button>
+            </div>
 
+            <div className="p-3 pt-3 flex-1">
                 <nav className="space-y-1">
                     <Link
                         href="/dashboard/student"
-                        className={`flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all ${
+                        title="My Dashboard"
+                        className={`flex items-center ${collapsed ? "justify-center px-2" : "justify-between px-3.5"} py-2 rounded-xl text-xs font-medium transition-all duration-150 cursor-pointer ${
                             pathname === "/dashboard/student"
-                                ? "bg-[#006b3f] text-white shadow-sm"
-                                : "text-gray-700 hover:bg-gray-100"
+                                ? "bg-[#0f2f4c] text-amber-300 font-semibold border-l-2 border-amber-400 shadow-xs"
+                                : "text-blue-50/90 hover:bg-[#225785] hover:text-white hover:translate-x-0.5"
                         }`}
                     >
-                        <LayoutDashboard className="w-4 h-4" />
-                        <span>My Dashboard</span>
+                        <div className={`flex items-center ${collapsed ? "" : "space-x-3"}`}>
+                            <LayoutDashboard className="w-4 h-4 shrink-0 text-amber-300/90" />
+                            {!collapsed && <span>My Dashboard</span>}
+                        </div>
                     </Link>
 
                     <Link
                         href="/dashboard/student/timetable"
-                        className={`flex items-center space-x-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all ${
+                        title="Timetable"
+                        className={`flex items-center ${collapsed ? "justify-center px-2" : "justify-between px-3.5"} py-2 rounded-xl text-xs font-medium transition-all duration-150 cursor-pointer ${
                             isActive("/dashboard/student/timetable")
-                                ? "bg-emerald-50 text-[#006b3f]"
-                                : "text-gray-700 hover:bg-gray-100"
+                                ? "bg-[#0f2f4c] text-amber-300 font-semibold border-l-2 border-amber-400 shadow-xs"
+                                : "text-blue-50/90 hover:bg-[#225785] hover:text-white hover:translate-x-0.5"
                         }`}
                     >
-                        <CalendarDays className="w-4 h-4" />
-                        <span>Timetable</span>
+                        <div className={`flex items-center ${collapsed ? "" : "space-x-3"}`}>
+                            <CalendarDays className="w-4 h-4 shrink-0 text-amber-300/90" />
+                            {!collapsed && <span>Timetable</span>}
+                        </div>
                     </Link>
 
                     {studentNavGroups.map((group) => (
@@ -175,20 +193,24 @@ export default function StudentNavigation() {
                             group={group}
                             isOpen={openGroups[group.key]}
                             pathname={pathname}
+                            collapsed={collapsed}
                             onToggle={toggleGroup}
                         />
                     ))}
 
                     <Link
                         href="/dashboard/student/notifications"
-                        className={`flex items-center space-x-3 px-3.5 py-2.5 mt-2 rounded-xl text-xs font-bold transition-all ${
+                        title="Notifications"
+                        className={`flex items-center ${collapsed ? "justify-center px-2" : "justify-between px-3.5"} py-2 rounded-xl text-xs font-medium transition-all duration-150 cursor-pointer mt-2 ${
                             isActive("/dashboard/student/notifications")
-                                ? "bg-emerald-50 text-[#006b3f]"
-                                : "text-gray-700 hover:bg-gray-100"
+                                ? "bg-[#0f2f4c] text-amber-300 font-semibold border-l-2 border-amber-400 shadow-xs"
+                                : "text-blue-50/90 hover:bg-[#225785] hover:text-white hover:translate-x-0.5"
                         }`}
                     >
-                        <Bell className="w-4 h-4" />
-                        <span>Notifications</span>
+                        <div className={`flex items-center ${collapsed ? "" : "space-x-3"}`}>
+                            <Bell className="w-4 h-4 shrink-0 text-amber-300/90" />
+                            {!collapsed && <span>Notifications</span>}
+                        </div>
                     </Link>
                 </nav>
             </div>

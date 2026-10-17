@@ -4,6 +4,7 @@ import {
     GetObjectCommand,
     HeadBucketCommand,
     CreateBucketCommand,
+    PutBucketPolicyCommand,
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { randomUUID } from "crypto";
@@ -104,6 +105,31 @@ export class StorageService {
             } else {
                 console.warn("[Storage] Could not verify bucket:", err?.message || err);
             }
+        }
+
+        // Ensure bucket has public read policy so uploaded documents can be viewed/downloaded
+        try {
+            const policy = JSON.stringify({
+                Version: "2012-10-17",
+                Statement: [
+                    {
+                        Action: ["s3:GetBucketLocation", "s3:ListBucket"],
+                        Effect: "Allow",
+                        Principal: { AWS: ["*"] },
+                        Resource: [`arn:aws:s3:::${BUCKET}`],
+                    },
+                    {
+                        Action: ["s3:GetObject"],
+                        Effect: "Allow",
+                        Principal: { AWS: ["*"] },
+                        Resource: [`arn:aws:s3:::${BUCKET}/*`],
+                    },
+                ],
+            });
+            await internalS3.send(new PutBucketPolicyCommand({ Bucket: BUCKET, Policy: policy }));
+            console.log(`[Storage] Public read policy configured for bucket "${BUCKET}".`);
+        } catch (policyErr: any) {
+            console.warn("[Storage] Could not set bucket policy:", policyErr?.message || policyErr);
         }
     }
 

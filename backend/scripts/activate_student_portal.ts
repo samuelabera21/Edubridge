@@ -3,8 +3,9 @@ import { prisma } from "../src/infrastructure/prisma/client.js";
 import { assignRoleToUser } from "../src/modules/authentication/authorization.service.js";
 
 async function main() {
-    const studentId = "STU-2610-8276";
-    const password = "ChangeMe123!";
+    const studentId = "STU-2610-1223";
+const password = "ChangeMe123!";
+
 
     const student = await prisma.student.findFirst({
         where: { studentId: { equals: studentId, mode: "insensitive" } },

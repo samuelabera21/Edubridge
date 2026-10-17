@@ -1,12 +1,13 @@
 "use client";
 
 import { useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import DirectivesRecipientView from "../../../components/governance/DirectivesRecipientView";
 import { useAuth } from "../../../hooks/useAuth";
 
 export default function DirectivesPage() {
     const router = useRouter();
+    const searchParams = useSearchParams();
     const { authData, loading } = useAuth();
 
     const activeScope = authData?.access?.[0]?.scope;
@@ -14,23 +15,26 @@ export default function DirectivesPage() {
     const unitName = activeScope?.name || "Institution";
     const unitType = (activeScope?.type || "SCHOOL") as any;
 
+    const directiveId = searchParams?.get("directiveId") || searchParams?.get("id");
+    const directiveParam = directiveId ? `&directiveId=${directiveId}` : "";
+
     useEffect(() => {
         if (loading) return;
 
         if (unitType === "REGION" || roleName === "REGION_ADMIN") {
-            router.replace("/dashboard/region?tab=directives");
+            router.replace(`/dashboard/region?tab=directives&subTab=INCOMING${directiveParam}`);
         } else if (unitType === "ZONE" || roleName === "ZONE_ADMIN") {
-            router.replace("/dashboard/zone?tab=directives");
+            router.replace(`/dashboard/zone?tab=directives&subTab=INCOMING${directiveParam}`);
         } else if (unitType === "WOREDA" || roleName === "WOREDA_ADMIN") {
-            router.replace("/dashboard/woreda?tab=directives");
+            router.replace(`/dashboard/woreda?tab=directives&subTab=INCOMING${directiveParam}`);
         } else if (unitType === "FEDERAL" || roleName === "FEDERAL_ADMIN") {
-            router.replace("/dashboard/federal?tab=directives");
+            router.replace(`/dashboard/federal?tab=directives${directiveParam}`);
         } else if (roleName === "TEACHER") {
-            router.replace("/dashboard/teacher/communication/staff");
+            router.replace(`/dashboard/teacher/communication/staff${directiveParam}`);
         } else if (roleName === "STUDENT") {
-            router.replace("/dashboard/student/communication");
+            router.replace(`/dashboard/student/communication${directiveParam}`);
         }
-    }, [unitType, roleName, loading, router]);
+    }, [unitType, roleName, loading, router, directiveParam]);
 
     return (
         <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-6">
@@ -38,6 +42,7 @@ export default function DirectivesPage() {
                 tierName={unitName}
                 tierType={unitType}
                 organizationId={activeScope?.id}
+                initialDirectiveId={directiveId}
             />
         </div>
     );

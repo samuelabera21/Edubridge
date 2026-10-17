@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
+import { getPrimaryAccess } from "@/lib/auth-access";
 import { Loader2 } from "lucide-react";
 
 export default function DashboardRootPage() {
@@ -17,7 +18,7 @@ export default function DashboardRootPage() {
             return;
         }
 
-        const primaryAccess = authData.access?.[0];
+        const primaryAccess = getPrimaryAccess(authData.access);
         const roleName = primaryAccess?.role?.name;
         const scopeType = primaryAccess?.scope?.type;
 
