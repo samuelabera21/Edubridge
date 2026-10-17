@@ -133,21 +133,52 @@ export default function DataRequestCreateView({
     const [isGoogleConnected, setIsGoogleConnected] = useState<boolean>(false);
 
     // Check Google Connection status
-    useEffect(() => {
-        async function checkGoogleStatus() {
-            try {
-                const res = await fetchApi("/data-requests/google-oauth/url");
-                if (res.ok) {
-                    const json = await res.json();
-                    setGoogleAuthUrl(json.data?.authUrl || null);
-                    setIsGoogleConnected(Boolean(json.data?.isConnected));
-                }
-            } catch (err) {
-                console.warn("Failed to check Google OAuth status:", err);
+    const checkGoogleStatus = async () => {
+        try {
+            const currentPath = typeof window !== "undefined" ? window.location.pathname + window.location.search : "";
+            const res = await fetchApi(`/data-requests/google-oauth/url${currentPath ? `?state=${encodeURIComponent(currentPath)}` : ""}`);
+            if (res.ok) {
+                const json = await res.json();
+                setGoogleAuthUrl(json.data?.authUrl || null);
+                setIsGoogleConnected(Boolean(json.data?.isConnected));
             }
+        } catch (err) {
+            console.warn("Failed to check Google OAuth status:", err);
         }
+    };
+
+    useEffect(() => {
         checkGoogleStatus();
+
+        if (typeof window !== "undefined" && window.location.search.includes("googleOAuth=success")) {
+            setIsGoogleConnected(true);
+        }
+
+        const handleMessage = (event: MessageEvent) => {
+            if (event.data?.type === "GOOGLE_OAUTH_SUCCESS") {
+                setIsGoogleConnected(true);
+                setError(null);
+                checkGoogleStatus();
+            }
+        };
+
+        window.addEventListener("message", handleMessage);
+        return () => window.removeEventListener("message", handleMessage);
     }, []);
+
+    const handleConnectGoogle = (e: React.MouseEvent) => {
+        e.preventDefault();
+        if (!googleAuthUrl) return;
+        const width = 600;
+        const height = 700;
+        const left = window.screenX + (window.outerWidth - width) / 2;
+        const top = window.screenY + (window.outerHeight - height) / 2;
+        window.open(
+            googleAuthUrl,
+            "google_oauth_popup",
+            `width=${width},height=${height},left=${left},top=${top},status=no,resizable=yes`
+        );
+    };
 
     // Load available recipients tree
     useEffect(() => {
@@ -390,6 +421,12 @@ export default function DataRequestCreateView({
             return;
         }
 
+        if (!isGoogleConnected) {
+            setError("Google OAuth account is not connected yet. Please click 'Connect Google Account' above to authorize live Google Forms creation.");
+            window.scrollTo({ top: 0, behavior: "smooth" });
+            return;
+        }
+
         setSubmitting(true);
         try {
             setProgressStatus("Saving Data Request in EduBridge...");
@@ -577,13 +614,14 @@ export default function DataRequestCreateView({
                         </div>
                     </div>
                     {googleAuthUrl && (
-                        <a
-                            href={googleAuthUrl}
+                        <button
+                            type="button"
+                            onClick={handleConnectGoogle}
                             className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-amber-600 hover:bg-amber-700 text-white font-semibold rounded-xl transition-colors cursor-pointer shrink-0 shadow-sm"
                         >
                             <Link2 className="w-3.5 h-3.5" />
                             <span>Connect Google Account</span>
-                        </a>
+                        </button>
                     )}
                 </div>
             ) : (
@@ -691,48 +729,63 @@ export default function DataRequestCreateView({
 
                 {/* Cascading Picker */}
                 <div className="space-y-4">
-                    <div className="flex items-center gap-1.5 p-1 bg-slate-100 rounded-xl overflow-x-auto">
-                        {allowedCategories.map((cat) => (
-                            <button
-                                key={cat}
-                                type="button"
-                                onClick={() => {
-                                    setTargetCategory(cat);
-                                    if (cat === "REGION") {
-                                        setFilterRegionId("");
-                                        setFilterZoneId("");
-                                        setFilterWoredaId("");
-                                    } else if (cat === "ZONE") {
-                                        setFilterZoneId("");
-                                        setFilterWoredaId("");
-                                    } else if (cat === "WOREDA") {
-                                        setFilterWoredaId("");
-                                    }
-                                }}
-                                className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
-                                    targetCategory === cat
-                                        ? "bg-white text-slate-900 shadow-xs"
-                                        : "text-slate-600 hover:text-slate-900"
-                                }`}
-                            >
-                                {cat}s
-                            </button>
-                        ))}
-                    </div>
-
-                    {/* Hierarchy Parent Filters */}
+                    {/* Unified Cascading Dropdowns Toolbar */}
                     {(() => {
                         const showRegionFilter = actorTier === "FEDERAL" && targetCategory !== "REGION";
                         const showZoneFilter = (actorTier === "FEDERAL" || actorTier === "REGION") && (targetCategory === "WOREDA" || targetCategory === "SCHOOL");
                         const showWoredaFilter = targetCategory === "SCHOOL" && (actorTier === "FEDERAL" || actorTier === "REGION" || actorTier === "ZONE");
 
-                        if (!showRegionFilter && !showZoneFilter && !showWoredaFilter) return null;
+                        // Calculate grid columns dynamically
+                        const totalFilters = 1 + (showRegionFilter ? 1 : 0) + (showZoneFilter ? 1 : 0) + (showWoredaFilter ? 1 : 0);
+                        const gridClass = totalFilters === 4 
+                            ? "grid-cols-1 sm:grid-cols-2 lg:grid-cols-4" 
+                            : totalFilters === 3 
+                            ? "grid-cols-1 sm:grid-cols-3" 
+                            : totalFilters === 2 
+                            ? "grid-cols-1 sm:grid-cols-2" 
+                            : "grid-cols-1";
 
                         return (
-                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 p-3.5 bg-slate-50 border border-slate-200 rounded-xl">
+                            <div className={`grid ${gridClass} gap-3 p-3.5 bg-slate-50 border border-slate-200 rounded-xl shadow-2xs`}>
+                                {/* 1. Target Level Dropdown */}
+                                <div>
+                                    <label className="block text-[11px] font-semibold text-slate-700 mb-1 flex items-center gap-1.5">
+                                        <Layers className="w-3.5 h-3.5 text-blue-600" />
+                                        <span>Target Level</span>
+                                    </label>
+                                    <select
+                                        value={targetCategory}
+                                        onChange={(e) => {
+                                            const cat = e.target.value as any;
+                                            setTargetCategory(cat);
+                                            if (cat === "REGION") {
+                                                setFilterRegionId("");
+                                                setFilterZoneId("");
+                                                setFilterWoredaId("");
+                                            } else if (cat === "ZONE") {
+                                                setFilterZoneId("");
+                                                setFilterWoredaId("");
+                                            } else if (cat === "WOREDA") {
+                                                setFilterWoredaId("");
+                                            }
+                                        }}
+                                        className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs font-semibold text-slate-800 focus:outline-blue-500 cursor-pointer shadow-2xs"
+                                    >
+                                        {allowedCategories.map((cat) => (
+                                            <option key={cat} value={cat}>
+                                                {cat === "REGION" ? "Regions" : cat === "ZONE" ? "Zones" : cat === "WOREDA" ? "Woredas" : "Schools"}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                {/* 2. Region Parent Filter */}
                                 {showRegionFilter && (
                                     <div>
-                                        <label className="block text-[11px] font-semibold text-slate-600 mb-1">Filter by Region</label>
+                                        <label className="block text-[11px] font-semibold text-slate-700 mb-1 flex items-center gap-1.5">
+                                            <Building2 className="w-3.5 h-3.5 text-indigo-600" />
+                                            <span>Filter by Region</span>
+                                        </label>
                                         <select
                                             value={filterRegionId}
                                             onChange={(e) => {
@@ -740,7 +793,7 @@ export default function DataRequestCreateView({
                                                 setFilterZoneId("");
                                                 setFilterWoredaId("");
                                             }}
-                                            className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs text-slate-800 focus:outline-blue-500 shadow-2xs"
+                                            className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs font-medium text-slate-800 focus:outline-blue-500 cursor-pointer shadow-2xs"
                                         >
                                             <option value="">All Regions</option>
                                             {availableRegions.map((r: any) => (
@@ -750,18 +803,22 @@ export default function DataRequestCreateView({
                                     </div>
                                 )}
 
+                                {/* 3. Zone Parent Filter */}
                                 {showZoneFilter && (
                                     <div>
-                                        <label className="block text-[11px] font-semibold text-slate-600 mb-1">Filter by Zone</label>
+                                        <label className="block text-[11px] font-semibold text-slate-700 mb-1 flex items-center gap-1.5">
+                                            <MapPin className="w-3.5 h-3.5 text-amber-600" />
+                                            <span>Filter by Zone</span>
+                                        </label>
                                         <select
                                             value={filterZoneId}
                                             onChange={(e) => {
                                                 setFilterZoneId(e.target.value);
                                                 setFilterWoredaId("");
                                             }}
-                                            className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs text-slate-800 focus:outline-blue-500 shadow-2xs"
+                                            className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs font-medium text-slate-800 focus:outline-blue-500 cursor-pointer shadow-2xs"
                                         >
-                                            <option value="">All Zones</option>
+                                            <option value="">All Zones {filterRegionId ? "in Region" : ""}</option>
                                             {availableZones.map((z: any) => (
                                                 <option key={z.id} value={z.id}>{z.name}</option>
                                             ))}
@@ -769,15 +826,19 @@ export default function DataRequestCreateView({
                                     </div>
                                 )}
 
+                                {/* 4. Woreda Parent Filter */}
                                 {showWoredaFilter && (
                                     <div>
-                                        <label className="block text-[11px] font-semibold text-slate-600 mb-1">Filter by Woreda</label>
+                                        <label className="block text-[11px] font-semibold text-slate-700 mb-1 flex items-center gap-1.5">
+                                            <School className="w-3.5 h-3.5 text-emerald-600" />
+                                            <span>Filter by Woreda</span>
+                                        </label>
                                         <select
                                             value={filterWoredaId}
                                             onChange={(e) => setFilterWoredaId(e.target.value)}
-                                            className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs text-slate-800 focus:outline-blue-500 shadow-2xs"
+                                            className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs font-medium text-slate-800 focus:outline-blue-500 cursor-pointer shadow-2xs"
                                         >
-                                            <option value="">All Woredas</option>
+                                            <option value="">All Woredas {filterZoneId ? "in Zone" : ""}</option>
                                             {availableWoredas.map((w: any) => (
                                                 <option key={w.id} value={w.id}>{w.name}</option>
                                             ))}
@@ -789,7 +850,7 @@ export default function DataRequestCreateView({
                     })()}
 
                     {/* Search and Action Bar */}
-                    <div className="flex items-center justify-between gap-3">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                         <div className="relative flex-1 max-w-sm">
                             <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                             <input
@@ -801,7 +862,7 @@ export default function DataRequestCreateView({
                             />
                         </div>
 
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
                             <button
                                 type="button"
                                 onClick={selectAllCurrentUnits}
@@ -809,8 +870,17 @@ export default function DataRequestCreateView({
                             >
                                 Select/Deselect All in List
                             </button>
-                            <span className="text-xs text-slate-500 font-medium">
-                                ({selectedUnitIds.length} total selected)
+                            {selectedUnitIds.length > 0 && (
+                                <button
+                                    type="button"
+                                    onClick={() => setSelectedUnitIds([])}
+                                    className="px-2.5 py-1.5 text-xs text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors cursor-pointer font-semibold"
+                                >
+                                    Clear Selection
+                                </button>
+                            )}
+                            <span className="text-xs text-blue-700 bg-blue-50 border border-blue-200 px-2.5 py-1 rounded-lg font-bold">
+                                {selectedUnitIds.length} selected
                             </span>
                         </div>
                     </div>

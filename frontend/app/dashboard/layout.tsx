@@ -369,9 +369,26 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
     };
 
     useEffect(() => {
-        if (authData) {
+        if (!authData) return;
+        loadNotifications();
+
+        // 1. Periodic poll every 10 seconds for real-time notification delivery without requiring manual page refresh
+        const intervalId = setInterval(() => {
             loadNotifications();
-        }
+        }, 10000);
+
+        // 2. Refresh on window focus and custom notification-updated event
+        const handleRefresh = () => {
+            loadNotifications();
+        };
+        window.addEventListener("focus", handleRefresh);
+        window.addEventListener("notification-updated", handleRefresh);
+
+        return () => {
+            clearInterval(intervalId);
+            window.removeEventListener("focus", handleRefresh);
+            window.removeEventListener("notification-updated", handleRefresh);
+        };
     }, [authData, pathname]);
 
     useEffect(() => {
@@ -627,36 +644,119 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
                                         </div>
                                     ) : (
                                         notificationsList.slice(0, 8).map(n => {
-                                            const getDirectivesOrAnnouncementsUrl = () => {
-                                                if (pathname.startsWith("/dashboard/student") || roleName === "STUDENT") {
-                                                    return "/dashboard/student/communication";
+                                            const extractDirectiveId = (link?: string | null) => {
+                                                if (!link) return null;
+                                                try {
+                                                    const dummyUrl = new URL(link, "http://localhost");
+                                                    return dummyUrl.searchParams.get("directiveId") || dummyUrl.searchParams.get("id");
+                                                } catch {
+                                                    return null;
                                                 }
-                                                if (pathname.startsWith("/dashboard/teacher") || roleName === "TEACHER" || isTeacherRoute) {
-                                                    return "/dashboard/teacher/communication/staff";
-                                                }
-                                                if (pathname.startsWith("/dashboard/region") || scopeType === "REGION" || roleName === "REGION_ADMIN") {
-                                                    return "/dashboard/region?tab=directives";
-                                                }
-                                                if (pathname.startsWith("/dashboard/zone") || scopeType === "ZONE" || roleName === "ZONE_ADMIN") {
-                                                    return "/dashboard/zone?tab=directives";
-                                                }
-                                                if (pathname.startsWith("/dashboard/woreda") || scopeType === "WOREDA" || roleName === "WOREDA_ADMIN") {
-                                                    return "/dashboard/woreda?tab=directives";
-                                                }
-                                                if (pathname.startsWith("/dashboard/federal") || scopeType === "FEDERAL" || roleName === "FEDERAL_ADMIN") {
-                                                    return "/dashboard/federal?tab=directives";
-                                                }
-                                                return "/dashboard/communication/announcements";
                                             };
 
-                                            const resolvedLink = (!n.link || n.link === "/dashboard/directives") 
-                                                ? getDirectivesOrAnnouncementsUrl() 
-                                                : n.link;
+                                            const extractedId = extractDirectiveId(n.link);
+
+                                            const getDirectivesOrAnnouncementsUrl = (targetId?: string | null) => {
+                                                const idParam = targetId ? `&directiveId=${targetId}` : "";
+                                                if (pathname.startsWith("/dashboard/student") || roleName === "STUDENT") {
+                                                    return `/dashboard/student/communication${targetId ? `?id=${targetId}` : ""}`;
+                                                }
+                                                if (pathname.startsWith("/dashboard/teacher") || roleName === "TEACHER" || isTeacherRoute) {
+                                                    return `/dashboard/teacher/communication/staff${targetId ? `?id=${targetId}` : ""}`;
+                                                }
+                                                if (pathname.startsWith("/dashboard/region") || scopeType === "REGION" || roleName === "REGION_ADMIN") {
+                                                    return `/dashboard/region?tab=directives&subTab=INCOMING${idParam}`;
+                                                }
+                                                if (pathname.startsWith("/dashboard/zone") || scopeType === "ZONE" || roleName === "ZONE_ADMIN") {
+                                                    return `/dashboard/zone?tab=directives&subTab=INCOMING${idParam}`;
+                                                }
+                                                if (pathname.startsWith("/dashboard/woreda") || scopeType === "WOREDA" || roleName === "WOREDA_ADMIN") {
+                                                    return `/dashboard/woreda?tab=directives&subTab=INCOMING${idParam}`;
+                                                }
+                                                if (pathname.startsWith("/dashboard/federal") || scopeType === "FEDERAL" || roleName === "FEDERAL_ADMIN") {
+                                                    return `/dashboard/federal?tab=directives${idParam}`;
+                                                }
+                                                return `/dashboard/communication/announcements?tab=directives${idParam}`;
+                                            };
+
+                                            const isProgramRelated = (n.title || "").toLowerCase().includes("initiative") || 
+                                                (n.title || "").toLowerCase().includes("program") || 
+                                                (n.link || "").includes("/programs") || 
+                                                (n.link || "").includes("tab=programs");
+
+                                            const extractProgramId = (link?: string | null) => {
+                                                if (!link) return null;
+                                                try {
+                                                    const dummyUrl = new URL(link, "http://localhost");
+                                                    return dummyUrl.searchParams.get("programId") || dummyUrl.searchParams.get("id");
+                                                } catch {
+                                                    return null;
+                                                }
+                                            };
+
+                                            const extractProgramTitle = (title?: string | null) => {
+                                                if (!title) return null;
+                                                const match = title.match(/(?:Initiative|Program(?:\s+Status\s+Update(?:\s*\([^)]*\))?)?|Program\s+Acknowledged)\s*[:\-–]\s*(.+)$/i);
+                                                if (match) return match[1].trim();
+                                                const colonIdx = title.indexOf(":");
+                                                if (colonIdx !== -1 && colonIdx < title.length - 1) {
+                                                    return title.substring(colonIdx + 1).trim();
+                                                }
+                                                return title.trim();
+                                            };
+
+                                            const progId = extractProgramId(n.link);
+                                            const progTitle = extractProgramTitle(n.title);
+
+                                            const getProgramUrl = () => {
+                                                const params = new URLSearchParams();
+                                                if (progId) params.set("programId", progId);
+                                                if (progTitle) params.set("programTitle", progTitle);
+                                                const paramStr = params.toString() ? `&${params.toString()}` : "";
+                                                const questionParamStr = params.toString() ? `?${params.toString()}` : "";
+
+                                                if (pathname.startsWith("/dashboard/region") || scopeType === "REGION" || roleName === "REGION_ADMIN") {
+                                                    return `/dashboard/region?tab=programs${paramStr}`;
+                                                }
+                                                if (pathname.startsWith("/dashboard/zone") || scopeType === "ZONE" || roleName === "ZONE_ADMIN") {
+                                                    return `/dashboard/zone?tab=programs${paramStr}`;
+                                                }
+                                                if (pathname.startsWith("/dashboard/woreda") || scopeType === "WOREDA" || roleName === "WOREDA_ADMIN") {
+                                                    return `/dashboard/woreda?tab=programs${paramStr}`;
+                                                }
+                                                if (pathname.startsWith("/dashboard/federal") || scopeType === "FEDERAL" || roleName === "FEDERAL_ADMIN") {
+                                                    return `/dashboard/federal?tab=programs${paramStr}`;
+                                                }
+                                                return `/dashboard/programs${questionParamStr}`;
+                                            };
+
+                                            const isDirectiveRelated = !isProgramRelated && ((n.title || "").toLowerCase().includes("directive") || (n.title || "").toLowerCase().includes("policy") || (n.title || "").toLowerCase().includes("announcement"));
+
+                                            const isDirectivesRoute = !isProgramRelated && (!n.link || n.link === "/dashboard/directives" || n.link.startsWith("/dashboard/directives?") || (isDirectiveRelated && (n.link === "/dashboard/communication/announcements" || n.link.startsWith("/dashboard/communication/announcements?id="))));
+
+                                            let resolvedLink = n.link;
+                                            if (isProgramRelated) {
+                                                resolvedLink = getProgramUrl();
+                                            } else if (isDirectivesRoute) {
+                                                resolvedLink = getDirectivesOrAnnouncementsUrl(extractedId);
+                                            }
 
                                             return (
                                                 <div
                                                     key={n.id}
-                                                    onClick={() => markNotificationAsRead(n.id, resolvedLink)}
+                                                    onClick={() => {
+                                                        markNotificationAsRead(n.id, resolvedLink);
+                                                        if (isProgramRelated && typeof window !== "undefined") {
+                                                            window.dispatchEvent(new CustomEvent("open-program-detail", {
+                                                                detail: { programId: progId, programTitle: progTitle }
+                                                            }));
+                                                            setTimeout(() => {
+                                                                window.dispatchEvent(new CustomEvent("open-program-detail", {
+                                                                    detail: { programId: progId, programTitle: progTitle }
+                                                                }));
+                                                            }, 120);
+                                                        }
+                                                    }}
                                                     className={`p-3 hover:bg-gray-50 transition-colors cursor-pointer ${
                                                         !n.isRead ? "bg-blue-50/40" : ""
                                                     }`}

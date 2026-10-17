@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useMemo, useCallback } from "react";
+import { useSearchParams } from "next/navigation";
 import { fetchApi } from "@/lib/api";
 import { useAuth } from "@/hooks/useAuth";
 import { 
@@ -49,8 +50,21 @@ export default function SchoolAnnouncementsPage() {
     const { authData } = useAuth();
     const currentUserId = authData?.user?.id;
     const activeScope = authData?.access?.[0]?.scope;
+    const searchParams = useSearchParams();
+    const tabParam = searchParams?.get("tab");
+    const directiveIdParam = searchParams?.get("directiveId");
 
-    const [mainTab, setMainTab] = useState<"internal" | "directives">("internal");
+    const [mainTab, setMainTab] = useState<"internal" | "directives">(
+        tabParam === "directives" || directiveIdParam ? "directives" : "internal"
+    );
+
+    useEffect(() => {
+        if (tabParam === "directives" || directiveIdParam) {
+            setMainTab("directives");
+        } else if (tabParam === "internal") {
+            setMainTab("internal");
+        }
+    }, [tabParam, directiveIdParam]);
     const [viewMode, setViewMode] = useState<"list" | "publish">("list");
     const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
@@ -190,6 +204,9 @@ export default function SchoolAnnouncementsPage() {
                 setActiveAckPromptId(null);
                 setAcknowledgmentNotes("");
                 await loadData();
+                if (typeof window !== "undefined") {
+                    window.dispatchEvent(new Event("notification-updated"));
+                }
                 if (statusModalAnnouncement?.id === announcementId) {
                     await handleOpenStatusModal(statusModalAnnouncement);
                 }
@@ -376,6 +393,7 @@ export default function SchoolAnnouncementsPage() {
                     tierName={activeScope?.name || "School"}
                     tierType="SCHOOL"
                     organizationId={activeScope?.id}
+                    initialDirectiveId={directiveIdParam}
                 />
             ) : (
                 <>
