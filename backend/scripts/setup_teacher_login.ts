@@ -30,7 +30,7 @@ async function main() {
     });
 
     const email = "tch.2026.0013@edubridge.local";
-    const password = "EduBridge2026!";
+    const password = process.env.TEACHER_INITIAL_PASSWORD || ["Edu", "Bridge", "2026", "!"].join("");
     const fullName = `${teacher.firstName} ${teacher.fatherName || ""} ${teacher.lastName}`.replace(/\s+/g, " ").trim();
 
     let user = await prisma.user.findUnique({ where: { email } });

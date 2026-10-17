@@ -7,7 +7,7 @@ export const createAssessment = async (req: Request, res: Response) => {
         const organizationId = (req as any).accessScope?.id;
         if (!organizationId) return res.status(403).json({ error: "Missing school scope" });
 
-        const { academicYearId, teachingAssignmentId, title, description, type, maxScore, passingScore, dueDate } = req.body;
+        const { academicYearId, teachingAssignmentId, title, description, type, maxScore, passingScore, dueDate, durationMinutes, scheduledDate, status } = req.body;
         
         if (!academicYearId || !teachingAssignmentId || !title || maxScore === undefined) {
             return res.status(400).json({ error: "academicYearId, teachingAssignmentId, title, and maxScore are required" });
@@ -21,7 +21,10 @@ export const createAssessment = async (req: Request, res: Response) => {
             type: type as AssessmentType || AssessmentType.EXAM,
             maxScore: Number(maxScore),
             passingScore: passingScore ? Number(passingScore) : undefined,
-            dueDate
+            dueDate,
+            durationMinutes: durationMinutes !== undefined ? Number(durationMinutes) : 60,
+            scheduledDate,
+            status
         });
 
         return res.status(201).json(assessment);
@@ -58,6 +61,19 @@ export const getAssessmentWithResults = async (req: Request, res: Response) => {
         return res.json(data);
     } catch (error: any) {
         return res.status(404).json({ error: error.message || "Assessment not found" });
+    }
+};
+
+export const deleteAssessment = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        if (!organizationId) return res.status(403).json({ error: "Missing school scope" });
+
+        const { id } = req.params;
+        await AssessmentService.deleteAssessment(organizationId, id as string);
+        return res.json({ message: "Assessment deleted successfully" });
+    } catch (error: any) {
+        return res.status(400).json({ error: error.message || "Failed to delete assessment" });
     }
 };
 

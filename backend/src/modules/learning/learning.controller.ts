@@ -7,7 +7,7 @@ export const createActivity = async (req: Request, res: Response) => {
         const organizationId = (req as any).accessScope?.id;
         if (!organizationId) return res.status(403).json({ error: "Missing school scope" });
 
-        const { academicYearId, teachingAssignmentId, title, description, type, dueDate } = req.body;
+        const { academicYearId, teachingAssignmentId, title, description, type, dueDate, supportCategory, targetEnrollmentIds } = req.body;
         
         if (!academicYearId || !teachingAssignmentId || !title) {
             return res.status(400).json({ error: "academicYearId, teachingAssignmentId, and title are required" });
@@ -19,7 +19,10 @@ export const createActivity = async (req: Request, res: Response) => {
             title,
             description,
             type: type as ActivityType || ActivityType.HOMEWORK,
-            dueDate
+            dueDate,
+            supportCategory,
+            targetEnrollmentIds: Array.isArray(targetEnrollmentIds) ? targetEnrollmentIds : [],
+            userId: req.user?.id
         });
 
         return res.status(201).json(activity);

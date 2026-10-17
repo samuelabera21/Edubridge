@@ -2,27 +2,43 @@
 
 import { useEffect, useState } from "react";
 import { fetchApi } from "@/lib/api";
-import { useAuth } from "@/hooks/useAuth";
 import { 
     BookOpen, 
     Plus, 
-    Search, 
     Sparkles, 
     Calendar, 
-    Clock, 
-    Users, 
-    X,
-    CheckCircle2
+    X
 } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { LoadingState } from "@/components/ui/LoadingState";
 
+type Enrollment = {
+    id: string;
+    status: string;
+    student: { firstName: string; lastName: string };
+    schoolGrade?: { grade?: { level?: string | number; name?: string } };
+    section?: { name: string } | null;
+};
+
+type RemedialProgram = {
+    id: string;
+    programTitle: string;
+    subjectName: string;
+    gradeName: string;
+    leadTeacher: string;
+    scheduleTime: string;
+    enrolledCount: number;
+    maxCapacity: number;
+    _count?: { assignments: number };
+};
+
 export default function RemedialProgramsPage() {
-    const { authData } = useAuth();
     const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
-    const [programs, setPrograms] = useState<any[]>([]);
+    const [programs, setPrograms] = useState<RemedialProgram[]>([]);
+    const [enrollments, setEnrollments] = useState<Enrollment[]>([]);
+    const [selectedEnrollmentIds, setSelectedEnrollmentIds] = useState<string[]>([]);
     const [isModalOpen, setIsModalOpen] = useState(false);
 
     const [form, setForm] = useState({
@@ -36,15 +52,21 @@ export default function RemedialProgramsPage() {
 
     const loadPrograms = async () => {
         try {
-            setLoading(true);
-            const res = await fetchApi("/support/remedial");
+            const [res, enrollmentResponse] = await Promise.all([
+                fetchApi("/support/remedial"),
+                fetchApi("/student/enrollments")
+            ]);
             if (res.ok) {
                 const data = await res.json();
-                setPrograms(Array.isArray(data) ? data : []);
+                setPrograms(Array.isArray(data) ? data as RemedialProgram[] : []);
             } else {
                 setPrograms([]);
             }
-        } catch (err: any) {
+            if (enrollmentResponse.ok) {
+                const data = await enrollmentResponse.json();
+                setEnrollments(Array.isArray(data) ? (data as Enrollment[]).filter((item) => ["ACTIVE", "ENROLLED"].includes(item.status)) : []);
+            }
+        } catch (err: unknown) {
             console.error(err);
             setPrograms([]);
         } finally {
@@ -53,7 +75,7 @@ export default function RemedialProgramsPage() {
     };
 
     useEffect(() => {
-        loadPrograms();
+        void Promise.resolve().then(loadPrograms);
     }, []);
 
     const handleCreateProgram = async (e: React.FormEvent) => {
@@ -64,11 +86,12 @@ export default function RemedialProgramsPage() {
             setSubmitting(true);
             const res = await fetchApi("/support/remedial", {
                 method: "POST",
-                body: JSON.stringify(form)
+                body: JSON.stringify({ ...form, enrollmentIds: selectedEnrollmentIds })
             });
 
             if (res.ok) {
                 setIsModalOpen(false);
+                setSelectedEnrollmentIds([]);
                 setForm({
                     programTitle: "",
                     subjectName: "",
@@ -79,7 +102,7 @@ export default function RemedialProgramsPage() {
                 });
                 loadPrograms();
             }
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error(err);
         } finally {
             setSubmitting(false);
@@ -135,7 +158,7 @@ export default function RemedialProgramsPage() {
                         <div className="p-12 text-center text-gray-500">
                             <BookOpen className="w-12 h-12 mx-auto text-emerald-300 mb-2" />
                             <p className="font-semibold text-gray-800">No active remedial programs found in database</p>
-                            <p className="text-xs text-gray-400 mt-1">Click "Create Remedial Class" above to set up Saturday or after-school tutorial classes.</p>
+                            <p className="text-xs text-gray-400 mt-1">Click &quot;Create Remedial Class&quot; above to set up Saturday or after-school tutorial classes.</p>
                         </div>
                     ) : (
                         <div className="overflow-x-auto">
@@ -159,7 +182,7 @@ export default function RemedialProgramsPage() {
                                             <td className="px-6 py-4 text-xs font-medium text-gray-800">{p.leadTeacher}</td>
                                             <td className="px-6 py-4 text-xs text-gray-600">{p.scheduleTime}</td>
                                             <td className="px-6 py-4 text-xs font-bold text-purple-700">
-                                                {p.enrolledCount} / {p.maxCapacity} Enrolled
+                                                {p._count?.assignments ?? p.enrolledCount} / {p.maxCapacity} Enrolled
                                             </td>
                                         </tr>
                                     ))}
@@ -238,6 +261,24 @@ export default function RemedialProgramsPage() {
                                     placeholder="Saturday 9:00 AM - 11:30 AM"
                                     className="w-full border border-gray-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-[#006b3f]"
                                 />
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-semibold text-gray-700 uppercase mb-1">Assign to Students *</label>
+                                <select
+                                    multiple
+                                    required
+                                    value={selectedEnrollmentIds}
+                                    onChange={(event) => setSelectedEnrollmentIds(Array.from(event.target.selectedOptions, (option) => option.value))}
+                                    className="w-full min-h-32 border border-gray-300 rounded-lg p-2.5 text-sm"
+                                >
+                                    {enrollments.map((enrollment) => (
+                                        <option key={enrollment.id} value={enrollment.id}>
+                                            {enrollment.student.firstName} {enrollment.student.lastName} · Grade {enrollment.schoolGrade?.grade?.level ?? enrollment.schoolGrade?.grade?.name ?? ""} · {enrollment.section?.name ?? "No section"}
+                                        </option>
+                                    ))}
+                                </select>
+                                <p className="mt-1 text-xs text-gray-500">Only selected students will see this remedial program in My Support.</p>
                             </div>
 
                             <div className="flex justify-end space-x-3 pt-3 border-t">

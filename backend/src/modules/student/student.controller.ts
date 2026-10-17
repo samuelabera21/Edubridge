@@ -1,42 +1,8 @@
 import { Request, Response } from "express";
 import { StudentService } from "./student.service.js";
-import { EnrollmentStatus, DocumentVerificationStatus } from "../../generated/prisma/enums.js";
+import { EnrollmentStatus } from "../../generated/prisma/enums.js";
 
-// Step 4: Atomic Student Registration & Intake Handler
-export const registerStudentIntake = async (req: Request, res: Response) => {
-    try {
-        const organizationId = (req as any).accessScope?.id;
-        if (!organizationId) {
-            return res.status(403).json({ error: "Missing school scope" });
-        }
-
-        const result = await StudentService.registerStudentIntake(organizationId, req.body, req.user?.id);
-        return res.status(201).json(result);
-    } catch (error: any) {
-        console.error("Student intake error:", error);
-        return res.status(400).json({ error: error.message || "Failed to register student" });
-    }
-};
-
-// Step 4: Existing Student Search (Duplicate Detection & Returning Lookup)
-export const searchStudents = async (req: Request, res: Response) => {
-    try {
-        const { search, studentId, firstName, fatherName, dateOfBirth } = req.query;
-        const results = await StudentService.searchExistingStudents({
-            search: search as string,
-            studentId: studentId as string,
-            firstName: firstName as string,
-            fatherName: fatherName as string,
-            dateOfBirth: dateOfBirth as string
-        });
-        return res.json(results);
-    } catch (error) {
-        console.error("Student search error:", error);
-        return res.status(500).json({ error: "Internal server error during student search" });
-    }
-};
-
-// Create a global student identity (legacy endpoint preserved)
+// Create a global student identity
 export const createStudent = async (req: Request, res: Response) => {
     try {
         const { firstName, lastName } = req.body;
@@ -47,7 +13,10 @@ export const createStudent = async (req: Request, res: Response) => {
         }
 
         if (!studentId) {
-            studentId = await StudentService.generateStudentId();
+            // Auto-generate a Student ID (e.g., STU-YYYYMM-XXXX)
+            const randomCode = Math.floor(1000 + Math.random() * 9000);
+            const dateStr = new Date().toISOString().slice(2, 7).replace("-", ""); // YYMM
+            studentId = `STU-${dateStr}-${randomCode}`;
         }
 
         const student = await StudentService.createStudent({
@@ -57,30 +26,13 @@ export const createStudent = async (req: Request, res: Response) => {
         });
         
         return res.status(201).json(student);
-    } catch (error: any) {
-        return res.status(400).json({ error: error.message || "Failed to create student. Student ID might already exist." });
+    } catch (error) {
+        return res.status(400).json({ error: "Failed to create student. Student ID might already exist." });
     }
 };
 
-// Get students directory (Tenant-isolated when school scope is attached)
 export const getStudents = async (req: Request, res: Response) => {
     try {
-        const organizationId = (req as any).accessScope?.id;
-        if (organizationId) {
-            const { search, gender, schoolGradeId, status, page, limit, sortBy, sortOrder } = req.query;
-            const result = await StudentService.getSchoolStudents(organizationId, {
-                search: search as string,
-                gender: gender as string,
-                schoolGradeId: schoolGradeId as string,
-                status: status as EnrollmentStatus,
-                page: page ? Number(page) : undefined,
-                limit: limit ? Number(limit) : undefined,
-                sortBy: sortBy as string,
-                sortOrder: sortOrder as "asc" | "desc"
-            });
-            return res.json(result);
-        }
-
         const students = await StudentService.getStudents();
         return res.json(students);
     } catch (error) {
@@ -100,25 +52,59 @@ export const getStudentById = async (req: Request, res: Response) => {
     }
 };
 
+// Full student intake registration (Step 4 atomic transaction: identity, guardians, enrollment, documents)
+export const registerStudent = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        if (!organizationId) return res.status(403).json({ error: "Missing school scope" });
+
+        const operatorUserId = (req as any).user?.id;
+        const result = await StudentService.registerStudentIntake(organizationId, req.body, operatorUserId);
+        return res.status(201).json(result);
+    } catch (error: any) {
+        return res.status(400).json({ error: error.message || "Failed to register student" });
+    }
+};
+
+// Verify or reject student evidence document
+export const verifyStudentDocument = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        if (!organizationId) return res.status(403).json({ error: "Missing school scope" });
+
+        const { documentId } = req.params;
+        const { verificationStatus, verificationNotes } = req.body;
+        const verifierUserId = (req as any).user?.id;
+
+        if (!verificationStatus) {
+            return res.status(400).json({ error: "verificationStatus is required" });
+        }
+
+        const updated = await StudentService.verifyDocument(
+            organizationId,
+            documentId as string,
+            verificationStatus,
+            verificationNotes,
+            verifierUserId
+        );
+        return res.json(updated);
+    } catch (error: any) {
+        return res.status(400).json({ error: error.message || "Failed to verify document" });
+    }
+};
+
 // Enroll a student in a specific school and academic year
 export const enrollStudent = async (req: Request, res: Response) => {
     try {
         const organizationId = (req as any).accessScope?.id;
         if (!organizationId) return res.status(403).json({ error: "Missing school scope" });
 
-        const { studentId, academicYearId, schoolGradeId, sectionId, enrollmentType } = req.body;
+        const { studentId, academicYearId, schoolGradeId, sectionId } = req.body;
         if (!studentId || !academicYearId || !schoolGradeId) {
             return res.status(400).json({ error: "studentId, academicYearId, and schoolGradeId are required" });
         }
 
-        const enrollment = await StudentService.enrollStudent(
-            organizationId, 
-            studentId, 
-            academicYearId, 
-            schoolGradeId, 
-            sectionId, 
-            enrollmentType
-        );
+        const enrollment = await StudentService.enrollStudent(organizationId, studentId, academicYearId, schoolGradeId, sectionId);
         return res.status(201).json(enrollment);
     } catch (error: any) {
         return res.status(400).json({ error: error.message || "Failed to enroll student" });
@@ -179,32 +165,6 @@ export const updateStudentStatus = async (req: Request, res: Response) => {
     }
 };
 
-// Verify Document
-export const verifyDocumentHandler = async (req: Request, res: Response) => {
-    try {
-        const organizationId = (req as any).accessScope?.id;
-        if (!organizationId) return res.status(403).json({ error: "Missing school scope" });
-
-        const { id: documentId } = req.params;
-        const { verificationStatus, notes } = req.body;
-
-        if (!verificationStatus) {
-            return res.status(400).json({ error: "verificationStatus is required" });
-        }
-
-        const updated = await StudentService.verifyDocument(
-            organizationId, 
-            documentId as string, 
-            verificationStatus as DocumentVerificationStatus, 
-            notes, 
-            req.user?.id
-        );
-        return res.json(updated);
-    } catch (error: any) {
-        return res.status(400).json({ error: error.message || "Failed to verify document" });
-    }
-};
-
 export const getStudentProfile = async (req: Request, res: Response) => {
     try {
         const organizationId = (req as any).accessScope?.id;
@@ -232,6 +192,201 @@ export const getStudentDashboard = async (req: Request, res: Response) => {
         return res.json(dashboard);
     } catch (error) {
         console.error("Error fetching student dashboard:", error);
+        return res.status(500).json({ error: "Internal server error" });
+    }
+};
+
+export const getMyStudentAttendance = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        const userId = req.user?.id;
+        if (!organizationId || !userId) return res.status(403).json({ error: "Missing school scope or authentication" });
+
+        const { startDate, endDate } = req.query;
+        const attendance = await StudentService.getStudentAttendance(userId, organizationId, startDate as string, endDate as string);
+        if (!attendance) return res.status(404).json({ error: "Student attendance data not found" });
+        return res.json(attendance);
+    } catch (error) {
+        console.error("Error fetching student attendance:", error);
+        return res.status(500).json({ error: "Internal server error" });
+    }
+};
+
+export const getMyStudentAssessments = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        const userId = req.user?.id;
+        if (!organizationId || !userId) return res.status(403).json({ error: "Missing school scope or authentication" });
+
+        const assessments = await StudentService.getStudentAssessments(userId, organizationId);
+        if (!assessments) return res.status(404).json({ error: "Student assessment data not found" });
+        return res.json(assessments);
+    } catch (error) {
+        console.error("Error fetching student assessments:", error);
+        return res.status(500).json({ error: "Internal server error" });
+    }
+};
+
+export const getMyLearningActivities = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        const userId = req.user?.id;
+        if (!organizationId || !userId) return res.status(403).json({ error: "Missing school scope or authentication" });
+
+        const activities = await StudentService.getStudentLearningActivities(userId, organizationId);
+        if (!activities) return res.status(404).json({ error: "Student learning activity data not found" });
+        return res.json(activities);
+    } catch (error) {
+        console.error("Error fetching student learning activities:", error);
+        return res.status(500).json({ error: "Internal server error" });
+    }
+};
+
+export const getMyLearningSubmissions = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        const userId = req.user?.id;
+        if (!organizationId || !userId) return res.status(403).json({ error: "Missing school scope or authentication" });
+
+        const submissions = await StudentService.getStudentLearningSubmissions(userId, organizationId);
+        if (!submissions) return res.status(404).json({ error: "Student learning submissions not found" });
+        return res.json(submissions);
+    } catch (error) {
+        console.error("Error fetching student learning submissions:", error);
+        return res.status(500).json({ error: "Internal server error" });
+    }
+};
+
+export const getMySupportActivities = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        const userId = req.user?.id;
+        if (!organizationId || !userId) return res.status(403).json({ error: "Missing school scope or authentication" });
+
+        const activities = await StudentService.getStudentSupportActivities(userId, organizationId);
+        if (!activities) return res.status(404).json({ error: "Student support data not found" });
+        return res.json(activities);
+    } catch (error) {
+        console.error("Error fetching student support activities:", error);
+        return res.status(500).json({ error: "Internal server error" });
+    }
+};
+
+export const getMyAttendanceTeachers = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        const userId = req.user?.id;
+        if (!organizationId || !userId) return res.status(403).json({ error: "Missing school scope or authentication" });
+        const teachers = await StudentService.getStudentAttendanceTeachers(userId, organizationId);
+        if (!teachers) return res.status(404).json({ error: "Student enrollment not found" });
+        return res.json(teachers);
+    } catch (error) {
+        return res.status(500).json({ error: "Internal server error" });
+    }
+};
+
+export const getMyDigitalResources = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        const userId = req.user?.id;
+        if (!organizationId || !userId) return res.status(403).json({ error: "Missing school scope or authentication" });
+        const resources = await StudentService.getStudentDigitalResources(userId, organizationId);
+        if (!resources) return res.status(404).json({ error: "Student enrollment not found" });
+        return res.json(resources);
+    } catch {
+        return res.status(500).json({ error: "Internal server error" });
+    }
+};
+
+export const getMyCommunicationTeachers = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        const userId = req.user?.id;
+        if (!organizationId || !userId) return res.status(403).json({ error: "Missing school scope or authentication" });
+        const teachers = await StudentService.getStudentCommunicationTeachers(userId, organizationId);
+        if (!teachers) return res.status(404).json({ error: "Student enrollment not found" });
+        return res.json(teachers);
+    } catch (error) {
+        return res.status(500).json({ error: "Internal server error" });
+    }
+};
+
+export const getMyAnnouncements = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        const userId = req.user?.id;
+        if (!organizationId || !userId) return res.status(403).json({ error: "Missing school scope or authentication" });
+        const announcements = await StudentService.getStudentAnnouncements(userId, organizationId);
+        if (!announcements) return res.status(404).json({ error: "Student enrollment not found" });
+        return res.json(announcements);
+    } catch (error) {
+        return res.status(500).json({ error: "Internal server error" });
+    }
+};
+
+export const getMyCommunicationMessages = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        const userId = req.user?.id;
+        if (!organizationId || !userId) return res.status(403).json({ error: "Missing school scope or authentication" });
+        const messages = await StudentService.getStudentMessages(userId, organizationId, req.query.otherUserId as string | undefined);
+        if (!messages) return res.status(404).json({ error: "Student enrollment not found" });
+        return res.json(messages);
+    } catch (error: any) {
+        return res.status(403).json({ error: error.message || "Unable to load messages" });
+    }
+};
+
+export const sendMyCommunicationMessage = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        const userId = req.user?.id;
+        const receiverId = typeof req.body.receiverId === "string" ? req.body.receiverId : "";
+        const content = typeof req.body.content === "string" ? req.body.content.trim() : "";
+        if (!organizationId || !userId) return res.status(403).json({ error: "Missing school scope or authentication" });
+        if (!receiverId || !content) return res.status(400).json({ error: "receiverId and content are required" });
+        const message = await StudentService.sendStudentMessage(userId, organizationId, receiverId, content);
+        if (!message) return res.status(404).json({ error: "Student enrollment not found" });
+        return res.status(201).json(message);
+    } catch (error: any) {
+        return res.status(403).json({ error: error.message || "Unable to send message" });
+    }
+};
+
+export const getMyNotifications = async (req: Request, res: Response) => {
+    try {
+        const userId = req.user?.id;
+        if (!userId) return res.status(403).json({ error: "Missing authentication" });
+        return res.json(await StudentService.getStudentNotifications(userId));
+    } catch {
+        return res.status(500).json({ error: "Internal server error" });
+    }
+};
+
+export const submitMyAttendanceExplanation = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        const userId = req.user?.id;
+        const absenceDate = typeof req.body.absenceDate === "string" ? req.body.absenceDate : "";
+        const recipientTeacherId = typeof req.body.recipientTeacherId === "string" ? req.body.recipientTeacherId : "";
+        const description = typeof req.body.description === "string" ? req.body.description.trim() : "";
+        const attachmentData = typeof req.body.attachmentData === "string" ? req.body.attachmentData : undefined;
+        const attachmentName = typeof req.body.attachmentName === "string" ? req.body.attachmentName.trim() : undefined;
+        if (!organizationId || !userId) return res.status(403).json({ error: "Missing school scope or authentication" });
+        if (!absenceDate || !recipientTeacherId || !description) return res.status(400).json({ error: "absenceDate, recipientTeacherId, and description are required" });
+        if (attachmentData) {
+            const attachmentMatch = attachmentData.match(/^data:(image\/(?:jpeg|png|webp)|application\/pdf);base64,([A-Za-z0-9+/=]+)$/);
+            if (!attachmentMatch) return res.status(400).json({ error: "Attachment must be a JPG, PNG, WEBP, or PDF file." });
+            if (Buffer.byteLength(attachmentMatch[2], "base64") > 5 * 1024 * 1024) {
+                return res.status(400).json({ error: "Attachment must be 5 MB or smaller." });
+            }
+        }
+
+        const explanation = await StudentService.submitAttendanceExplanation(userId, organizationId, absenceDate, recipientTeacherId, description, attachmentData, attachmentName);
+        if (!explanation) return res.status(404).json({ error: "Student enrollment not found" });
+        return res.status(201).json(explanation);
+    } catch (error) {
+        console.error("Error submitting attendance explanation:", error);
         return res.status(500).json({ error: "Internal server error" });
     }
 };
@@ -283,3 +438,4 @@ export const createApprovalHandler = async (req: Request, res: Response) => {
         return res.status(500).json({ error: "Internal server error" });
     }
 };
+

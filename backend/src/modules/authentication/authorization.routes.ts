@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { randomUUID } from "node:crypto";
 import { fromNodeHeaders } from "better-auth/node";
 import { hashPassword } from "better-auth/crypto";
 import { auth } from "../authentication/auth.js";
@@ -11,18 +12,13 @@ import {
 
 import {
     getUserAccess,
-    getCallerSchoolScope,
     assignRoleToUser,
-    assignRoleToUserByScopeId,
     assignPermissionToRole,
     validatePasswordStrength,
 } from "./authorization.service.js";
 
 const router = Router();
 
-// ============================================================================
-// 1. RESOLVE USERNAME (Public / Auth)
-// ============================================================================
 router.post("/resolve-username", async (req, res) => {
     try {
         const { username } = req.body;
@@ -59,6 +55,10 @@ router.post("/resolve-username", async (req, res) => {
             }
         });
         if (student) {
+            if (student.userId) {
+                const linkedUser = await prisma.user.findUnique({ where: { id: student.userId } });
+                if (linkedUser) return res.json({ email: linkedUser.email });
+            }
             const studentUser = await prisma.user.findFirst({
                 where: {
                     OR: [
@@ -95,48 +95,45 @@ router.post("/resolve-username", async (req, res) => {
     }
 });
 
-// ============================================================================
-// 2. ME / CURRENT USER SESSION
-// ============================================================================
-router.get("/me", async (req, res) => {
-    const session = await auth.api.getSession({
-        headers: fromNodeHeaders(req.headers),
-    });
-
-    if (!session) {
-        return res.status(401).json({
-            message: "Unauthorized",
+router.get(
+    "/me",
+    async (req, res) => {
+        const session = await auth.api.getSession({
+            headers: fromNodeHeaders(req.headers),
         });
-    }
 
-    const dbUser = await prisma.user.findUnique({
-        where: { id: session.user.id }
-    });
+        if (!session) {
+            return res.status(401).json({
+                message: "Unauthorized",
+            });
+        }
 
-    if (!dbUser || dbUser.isActive === false) {
-        return res.status(403).json({
-            message: "Your account is currently inactive. Please contact your administrator.",
-            isActive: false
+        const dbUser = await prisma.user.findUnique({
+            where: { id: session.user.id }
         });
-    }
 
-    const access = await getUserAccess(session.user.id);
+        if (!dbUser || dbUser.isActive === false) {
+            return res.status(403).json({
+                message: "Your account is currently inactive. Please contact your administrator.",
+                isActive: false
+            });
+        }
 
-    return res.json({
-        user: {
-            ...session.user,
+        const access = await getUserAccess(session.user.id);
+
+        return res.json({
+            user: {
+                ...session.user,
+                requiresPasswordChange: dbUser.requiresPasswordChange ?? false,
+                isActive: dbUser.isActive ?? true
+            },
+            access,
             requiresPasswordChange: dbUser.requiresPasswordChange ?? false,
             isActive: dbUser.isActive ?? true
-        },
-        access,
-        requiresPasswordChange: dbUser.requiresPasswordChange ?? false,
-        isActive: dbUser.isActive ?? true
-    });
-});
+        });
+    }
+);
 
-// ============================================================================
-// 3. CHANGE PASSWORD (Self-Service)
-// ============================================================================
 router.post("/change-password", async (req, res) => {
     try {
         const session = await auth.api.getSession({
@@ -204,333 +201,181 @@ router.post("/change-password", async (req, res) => {
     }
 });
 
-// ============================================================================
-// 4. GET USERS (Tenant-Scoped Account Directory with Server-Side Filters)
-// ============================================================================
-router.get("/users", async (req, res) => {
+async function getInvitationRecord(token: string) {
+    if (!token || typeof token !== "string") {
+        return null;
+    }
+
+    const verification = await prisma.verification.findFirst({
+        where: {
+            value: token.trim(),
+            identifier: {
+                startsWith: "invitation:"
+            }
+        }
+    });
+
+    if (!verification) {
+        return null;
+    }
+
+    if (verification.expiresAt < new Date()) {
+        return { verification, expired: true };
+    }
+
+    const [prefix, userId, ...scopeParts] = verification.identifier.split(":");
+    if (prefix !== "invitation" || !userId || scopeParts.length === 0) {
+        return null;
+    }
+
+    const scopeId = scopeParts.join(":");
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    const scope = scopeId ? await prisma.organizationUnit.findUnique({ where: { id: scopeId } }) : null;
+
+    return {
+        verification,
+        user,
+        scope,
+        expired: false
+    };
+}
+
+router.get("/validate-invitation", async (req, res) => {
     try {
-        const session = await auth.api.getSession({
-            headers: fromNodeHeaders(req.headers),
-        });
+        const token = String(req.query.token ?? "").trim();
 
-        if (!session) {
-            return res.status(401).json({ message: "Unauthorized" });
-        }
-
-        const callerScope = await getCallerSchoolScope(session.user.id);
-        if (!callerScope.isSchoolAdmin && !callerScope.isPlatformAdmin) {
-            return res.status(403).json({ message: "Forbidden: Only administrators can view institutional accounts." });
-        }
-
-        const organizationId = callerScope.organizationId;
-        const { search, role, status, page = "1", pageSize = "20" } = req.query;
-
-        const pageNum = Math.max(1, parseInt(page as string, 10) || 1);
-        const limitNum = Math.max(1, Math.min(100, parseInt(pageSize as string, 10) || 20));
-        const skip = (pageNum - 1) * limitNum;
-
-        const andConditions: any[] = [];
-
-        // Tenant scope condition
-        if (!callerScope.isPlatformAdmin && organizationId) {
-            andConditions.push({
-                OR: [
-                    { roleAssignments: { some: { scopeId: organizationId } } },
-                    { teacher: { organizationId } },
-                    { student: { enrollments: { some: { organizationId } } } },
-                    { parent: { children: { some: { student: { enrollments: { some: { organizationId } } } } } } }
-                ]
+        if (!token) {
+            return res.status(400).json({
+                valid: false,
+                message: "No invitation token was provided. Please use the link from your invitation email."
             });
         }
 
-        // Account status filter
-        if (status === "ACTIVE") {
-            andConditions.push({ isActive: true });
-        } else if (status === "DEACTIVATED") {
-            andConditions.push({ isActive: false });
-        }
+        const invitation = await getInvitationRecord(token);
 
-        // Search filter
-        if (search && typeof search === "string" && search.trim() !== "") {
-            const q = search.trim();
-            andConditions.push({
-                OR: [
-                    { name: { contains: q, mode: "insensitive" } },
-                    { email: { contains: q, mode: "insensitive" } },
-                    { teacher: { employeeId: { contains: q, mode: "insensitive" } } },
-                    { student: { studentId: { contains: q, mode: "insensitive" } } }
-                ]
+        if (!invitation || invitation.expired || !invitation.user) {
+            return res.status(200).json({
+                valid: false,
+                message: "This invitation link is invalid or has expired."
             });
         }
 
-        // Role filter
-        if (role && typeof role === "string" && role.trim() !== "" && role.trim().toUpperCase() !== "ALL") {
-            const r = role.trim().toUpperCase();
-            if (r === "ADMINISTRATORS" || r === "ADMIN_LEADERSHIP" || r === "LEADERSHIP") {
-                andConditions.push({
-                    roleAssignments: {
-                        some: {
-                            role: { name: { in: ["ADMIN", "SCHOOL_ADMIN", "ADMINISTRATOR", "VICE_PRINCIPAL"] } }
-                        }
-                    }
-                });
-            } else if (r === "TEACHER") {
-                andConditions.push({
-                    OR: [
-                        { roleAssignments: { some: { role: { name: { equals: "TEACHER", mode: "insensitive" } } } } },
-                        { teacher: { isNot: null } }
-                    ]
-                });
-            } else if (r === "STUDENT") {
-                andConditions.push({
-                    OR: [
-                        { roleAssignments: { some: { role: { name: { equals: "STUDENT", mode: "insensitive" } } } } },
-                        { student: { isNot: null } }
-                    ]
-                });
-            } else if (r === "PARENT") {
-                andConditions.push({
-                    OR: [
-                        { roleAssignments: { some: { role: { name: { equals: "PARENT", mode: "insensitive" } } } } },
-                        { parent: { isNot: null } }
-                    ]
-                });
-            } else if (r === "SUPPORT_STAFF" || r === "STAFF" || r === "SCHOOL_SUPPORT_STAFF") {
-                andConditions.push({
-                    roleAssignments: {
-                        some: {
-                            role: { name: { in: ["SCHOOL_SUPPORT_STAFF", "SUPPORT_STAFF", "STAFF"] } }
-                        }
-                    }
-                });
-            } else {
-                andConditions.push({
-                    roleAssignments: {
-                        some: {
-                            role: { name: { equals: r, mode: "insensitive" } }
-                        }
-                    }
-                });
-            }
+        if (invitation.user.emailVerified) {
+            return res.status(200).json({
+                valid: false,
+                alreadyActivated: true,
+                message: "This invitation has already been activated."
+            });
         }
 
-        const baseWhere = andConditions.length > 0 ? { AND: andConditions } : {};
-
-        // Execute total count & paginated query
-        const [total, users] = await Promise.all([
-            prisma.user.count({ where: baseWhere }),
-            prisma.user.findMany({
-                where: baseWhere,
-                include: {
-                    roleAssignments: {
-                        include: {
-                            role: true,
-                            scope: true
-                        }
-                    },
-                    teacher: {
-                        select: {
-                            id: true,
-                            employeeId: true,
-                            jobTitle: true,
-                            qualification: true,
-                            employmentStatus: true
-                        }
-                    },
-                    student: {
-                        select: {
-                            id: true,
-                            studentId: true,
-                            enrollments: {
-                                where: organizationId ? { organizationId } : undefined,
-                                select: {
-                                    status: true,
-                                    schoolGrade: { include: { grade: { select: { name: true } } } },
-                                    section: { select: { name: true } }
-                                },
-                                take: 1,
-                                orderBy: { createdAt: "desc" }
-                            }
-                        }
-                    },
-                    parent: {
-                        select: {
-                            id: true,
-                            phoneNumber: true,
-                            children: {
-                                select: {
-                                    id: true,
-                                    student: {
-                                        select: {
-                                            firstName: true,
-                                            lastName: true,
-                                            studentId: true
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                },
-                orderBy: { createdAt: "desc" },
-                skip,
-                take: limitNum
-            })
-        ]);
-
-        const totalPages = Math.max(1, Math.ceil(total / limitNum));
-
-        // Format user records for clean administrative display
-        const formatted = users.map(u => {
-            let entityInfo: any = null;
-            if (u.teacher) {
-                entityInfo = {
-                    type: "TEACHER",
-                    id: u.teacher.id,
-                    identifier: u.teacher.employeeId || "Faculty",
-                    jobTitle: u.teacher.jobTitle || "Teacher",
-                    qualification: u.teacher.qualification || undefined
-                };
-            } else if (u.student) {
-                const latestEnrollment = u.student.enrollments?.[0];
-                entityInfo = {
-                    type: "STUDENT",
-                    id: u.student.id,
-                    identifier: u.student.studentId || "Student",
-                    gradeName: latestEnrollment?.schoolGrade?.grade?.name || undefined,
-                    sectionName: latestEnrollment?.section?.name || undefined
-                };
-            } else if (u.parent) {
-                entityInfo = {
-                    type: "PARENT",
-                    id: u.parent.id,
-                    identifier: u.parent.phoneNumber || "Guardian",
-                    linkedStudentsCount: u.parent.children?.length || 0
-                };
-            }
-
-            const roles = u.roleAssignments.map(ra => ra.role.name);
-            if (u.teacher && !roles.includes("TEACHER")) roles.push("TEACHER");
-            if (u.student && !roles.includes("STUDENT")) roles.push("STUDENT");
-            if (u.parent && !roles.includes("PARENT")) roles.push("PARENT");
-            if (roles.length === 0) roles.push("USER");
-
-            return {
-                id: u.id,
-                name: u.name,
-                email: u.email,
-                isActive: u.isActive ?? true,
-                requiresPasswordChange: u.requiresPasswordChange ?? false,
-                createdAt: u.createdAt,
-                roles,
-                primaryRole: roles[0] || "USER",
-                accountType: u.teacher ? "TEACHER" : u.student ? "STUDENT" : u.parent ? "PARENT" : "USER",
-                scopeName: u.roleAssignments[0]?.scope?.name || callerScope.scopeName || "School",
-                entityInfo
-            };
-        });
-
-        // Compute real summary metrics from DB within tenant scope
-        const [activeCount, deactivatedCount] = await Promise.all([
-            prisma.user.count({
-                where: {
-                    ...baseWhere,
-                    isActive: true
-                }
-            }),
-            prisma.user.count({
-                where: {
-                    ...baseWhere,
-                    isActive: false
-                }
-            })
-        ]);
-
-        return res.json({
-            users: formatted,
-            items: formatted,
-            page: pageNum,
-            pageSize: limitNum,
-            total,
-            totalPages,
-            pagination: {
-                page: pageNum,
-                pageSize: limitNum,
-                total,
-                totalPages
-            },
-            summary: {
-                total,
-                active: activeCount,
-                deactivated: deactivatedCount
-            }
+        return res.status(200).json({
+            valid: true,
+            name: invitation.user.name,
+            email: invitation.user.email,
+            organizationName: invitation.scope?.name ?? null,
+            organizationType: invitation.scope?.type ?? null
         });
     } catch (error: any) {
-        console.error("Error fetching users:", error);
-        return res.status(500).json({ message: error.message || "Failed to fetch users." });
+        return res.status(500).json({
+            valid: false,
+            message: error?.message || "Unable to validate invitation."
+        });
     }
 });
 
-// ============================================================================
-// 5. UNLINKED ENTITIES (Tenant-Scoped)
-// ============================================================================
-router.get("/unlinked-entities", async (req, res) => {
+router.post("/activate-invitation", async (req, res) => {
     try {
-        const session = await auth.api.getSession({
-            headers: fromNodeHeaders(req.headers),
+        const { token, password, confirmPassword } = req.body ?? {};
+
+        if (!token || typeof token !== "string") {
+            return res.status(400).json({ message: "Invitation token is required." });
+        }
+
+        const invitation = await getInvitationRecord(token);
+
+        if (!invitation || invitation.expired || !invitation.user) {
+            return res.status(400).json({ message: "This invitation link is invalid or has expired." });
+        }
+
+        if (invitation.user.emailVerified) {
+            return res.status(400).json({ message: "This invitation has already been activated." });
+        }
+
+        if (!password || !confirmPassword) {
+            return res.status(400).json({ message: "Password and confirmation are required." });
+        }
+
+        if (password !== confirmPassword) {
+            return res.status(400).json({ message: "Passwords do not match." });
+        }
+
+        const strength = validatePasswordStrength(password);
+        if (!strength.valid) {
+            return res.status(400).json({ message: strength.message });
+        }
+
+        const hashedPassword = await hashPassword(password);
+        const credential = await prisma.account.findFirst({
+            where: {
+                userId: invitation.user.id,
+                providerId: "credential"
+            }
         });
 
-        if (!session) {
-            return res.status(401).json({ message: "Unauthorized" });
+        if (credential) {
+            await prisma.account.update({
+                where: { id: credential.id },
+                data: {
+                    password: hashedPassword,
+                    updatedAt: new Date()
+                }
+            });
+        } else {
+            await prisma.account.create({
+                data: {
+                    id: `acc_${randomUUID()}`,
+                    userId: invitation.user.id,
+                    accountId: invitation.user.id,
+                    providerId: "credential",
+                    password: hashedPassword,
+                    createdAt: new Date(),
+                    updatedAt: new Date()
+                }
+            });
         }
 
-        const callerScope = await getCallerSchoolScope(session.user.id);
-        if (!callerScope.isSchoolAdmin && !callerScope.isPlatformAdmin) {
-            return res.status(403).json({ message: "Forbidden: Only administrators can view unlinked entities." });
-        }
+        await prisma.user.update({
+            where: { id: invitation.user.id },
+            data: {
+                emailVerified: true,
+                isActive: true,
+                requiresPasswordChange: false,
+                updatedAt: new Date()
+            }
+        });
 
-        const organizationId = callerScope.organizationId;
+        await prisma.verification.deleteMany({
+            where: {
+                identifier: invitation.verification.identifier
+            }
+        });
 
-        const [teachers, students, parents] = await Promise.all([
-            prisma.teacher.findMany({
-                where: {
-                    ...(organizationId ? { organizationId } : {}),
-                    userId: null
-                },
-                select: { id: true, firstName: true, lastName: true, employeeId: true, email: true },
-                orderBy: { lastName: "asc" }
-            }),
-            prisma.student.findMany({
-                where: {
-                    userId: null,
-                    ...(organizationId ? { enrollments: { some: { organizationId } } } : {})
-                },
-                select: { id: true, firstName: true, lastName: true, studentId: true },
-                orderBy: { lastName: "asc" }
-            }),
-            prisma.parent.findMany({
-                where: {
-                    userId: null,
-                    ...(organizationId ? { children: { some: { student: { enrollments: { some: { organizationId } } } } } } : {})
-                },
-                select: { id: true, firstName: true, lastName: true, phoneNumber: true, email: true },
-                orderBy: { lastName: "asc" }
-            })
-        ]);
+        await prisma.session.deleteMany({
+            where: { userId: invitation.user.id }
+        });
 
-        return res.json({
-            teachers: teachers.map(t => ({ id: t.id, name: `${t.firstName} ${t.lastName}`, identifier: t.employeeId || t.email })),
-            students: students.map(s => ({ id: s.id, name: `${s.firstName} ${s.lastName}`, identifier: s.studentId })),
-            parents: parents.map(p => ({ id: p.id, name: `${p.firstName} ${p.lastName}`, identifier: p.phoneNumber || p.email }))
+        return res.status(200).json({
+            success: true,
+            email: invitation.user.email,
+            message: "Account activated successfully."
         });
     } catch (error: any) {
-        return res.status(500).json({ message: error.message || "Failed to fetch unlinked entities." });
+        return res.status(400).json({
+            message: error?.message || "Failed to activate account."
+        });
     }
 });
 
-// ============================================================================
-// 6. CREATE / PROVISION USER (Tenant-Scoped & Role-Hierarchy-Protected)
-// ============================================================================
 router.post("/create-user", async (req, res) => {
     try {
         const session = await auth.api.getSession({
@@ -541,44 +386,16 @@ router.post("/create-user", async (req, res) => {
             return res.status(401).json({ message: "Unauthorized" });
         }
 
-        const callerScope = await getCallerSchoolScope(session.user.id);
-        if (!callerScope.isSchoolAdmin && !callerScope.isPlatformAdmin) {
+        const userAccess = await getUserAccess(session.user.id);
+        const isAdmin = userAccess.some(a => ["ADMIN", "SCHOOL_ADMIN", "ADMINISTRATOR"].includes(a.role.name));
+        if (!isAdmin) {
             return res.status(403).json({ message: "Forbidden: Only administrators can create institutional users." });
         }
 
-        const { name, email, password, roleName, teacherEntityId, studentEntityId, parentEntityId } = req.body;
+        const { name, email, password, roleName, scopeName, scopeType, teacherEntityId, studentEntityId, parentEntityId } = req.body;
 
         if (!name || !roleName) {
             return res.status(400).json({ message: "Name and roleName are required." });
-        }
-
-        // SECURITY: Role Hierarchy Validation
-        // A School Admin can only assign school-level roles; cannot assign platform-level ADMIN
-        if (!callerScope.isPlatformAdmin && roleName.toUpperCase() === "ADMIN") {
-            return res.status(403).json({ message: "Forbidden: School administrators cannot grant the platform ADMIN role." });
-        }
-
-        const targetScopeId = callerScope.organizationId;
-        if (!targetScopeId) {
-            return res.status(400).json({ message: "No authorized school scope found for provisioning." });
-        }
-
-        // Verify linked domain entities belong to caller's school
-        if (teacherEntityId) {
-            const teacher = await prisma.teacher.findFirst({
-                where: { id: teacherEntityId, organizationId: targetScopeId }
-            });
-            if (!teacher) return res.status(400).json({ message: "Teacher record not found in this school." });
-        } else if (studentEntityId) {
-            const student = await prisma.student.findFirst({
-                where: { id: studentEntityId, enrollments: { some: { organizationId: targetScopeId } } }
-            });
-            if (!student) return res.status(400).json({ message: "Student record not found in this school." });
-        } else if (parentEntityId) {
-            const parent = await prisma.parent.findFirst({
-                where: { id: parentEntityId, children: { some: { student: { enrollments: { some: { organizationId: targetScopeId } } } } } }
-            });
-            if (!parent) return res.status(400).json({ message: "Parent record not found in this school." });
         }
 
         const count = await prisma.user.count();
@@ -589,8 +406,7 @@ router.post("/create-user", async (req, res) => {
             PARENT: "prn",
             VICE_PRINCIPAL: "vp",
             ADMIN: "adm",
-            SCHOOL_ADMIN: "adm",
-            SCHOOL_SUPPORT_STAFF: "stf"
+            SCHOOL_ADMIN: "adm"
         };
         const prefix = prefixMap[roleName?.toUpperCase()] || "usr";
         const autoUsername = `${prefix}.2026.${seq}@edubridge.local`;
@@ -625,7 +441,7 @@ router.post("/create-user", async (req, res) => {
             }
         });
 
-        // Link to existing domain entity
+        // Link to existing domain entity if provided
         if (teacherEntityId) {
             await prisma.teacher.update({
                 where: { id: teacherEntityId },
@@ -643,21 +459,50 @@ router.post("/create-user", async (req, res) => {
             });
         }
 
-        // Assign role scoped to target school
-        await assignRoleToUserByScopeId(
+        let targetScopeName = scopeName;
+        let targetScopeType = scopeType || "SCHOOL";
+
+        if (!targetScopeName && studentEntityId) {
+            const studentEnrollment = await prisma.studentEnrollment.findFirst({
+                where: { studentId: studentEntityId },
+                include: { organization: true },
+                orderBy: { createdAt: "desc" }
+            });
+            if (studentEnrollment?.organization) {
+                targetScopeName = studentEnrollment.organization.name;
+                targetScopeType = studentEnrollment.organization.type;
+            }
+        } else if (!targetScopeName && teacherEntityId) {
+            const teacher = await prisma.teacher.findUnique({
+                where: { id: teacherEntityId },
+                include: { organization: true }
+            });
+            if (teacher?.organization) {
+                targetScopeName = teacher.organization.name;
+                targetScopeType = teacher.organization.type;
+            }
+        }
+
+        if (!targetScopeName) {
+            const adminScope = userAccess.find(a => ["SCHOOL_ADMIN", "ADMIN"].includes(a.role.name) && a.scope);
+            targetScopeName = adminScope?.scope?.name || "EduBridge Demo School";
+            targetScopeType = adminScope?.scope?.type || "SCHOOL";
+        }
+
+        await assignRoleToUser(
             newUserId,
             roleName,
-            targetScopeId
+            targetScopeName,
+            targetScopeType
         );
 
         await prisma.auditLog.create({
             data: {
                 userId: session.user.id,
-                organizationId: targetScopeId,
                 action: "USER_CREATED",
                 resource: "User",
                 resourceId: newUserId,
-                newValue: { email: targetEmail, name, roleName, requiresPasswordChange: true }
+                newValue: { email, name, roleName, requiresPasswordChange: true }
             }
         });
 
@@ -678,9 +523,226 @@ router.post("/create-user", async (req, res) => {
     }
 });
 
-// ============================================================================
-// 7. TOGGLE USER STATUS (Tenant-Scoped & Self-Protection Guard)
-// ============================================================================
+router.post("/assign-role", async (req, res) => {
+    // SECURITY: Development/Provisioning only endpoint
+    if (process.env.NODE_ENV === "production" && req.headers["x-provisioning-secret"] !== process.env.PROVISIONING_SECRET) {
+        return res.status(403).json({ message: "Forbidden: Provisioning disabled" });
+    }
+
+    try {
+        const { userId, roleName, scopeName, scopeType } = req.body;
+
+        const assignment = await assignRoleToUser(
+            userId,
+            roleName,
+            scopeName,
+            scopeType
+        );
+
+        return res.status(201).json(assignment);
+    } catch (error) {
+        console.error(error);
+
+        return res.status(500).json({
+            message: "Failed to assign role",
+        });
+    }
+});
+
+router.post("/assign-permission", async (req, res) => {
+    // SECURITY: Development/Provisioning only endpoint
+    if (process.env.NODE_ENV === "production" && req.headers["x-provisioning-secret"] !== process.env.PROVISIONING_SECRET) {
+        return res.status(403).json({ message: "Forbidden: Provisioning disabled" });
+    }
+
+    try {
+        const { roleName, permissionName, description } = req.body;
+
+        const result = await assignPermissionToRole(
+            roleName,
+            permissionName,
+            description
+        );
+
+        return res.status(201).json(result);
+    } catch (error) {
+        console.error(error);
+
+        return res.status(500).json({
+            message: "Failed to assign permission",
+        });
+    }
+});
+
+/**
+ * GET /api/auth/unlinked-entities
+ * Returns Teachers, Students, and Parents who do not have a User login account yet.
+ */
+router.get("/unlinked-entities", async (req, res) => {
+    try {
+        const session = await auth.api.getSession({
+            headers: fromNodeHeaders(req.headers),
+        });
+
+        if (!session) {
+            return res.status(401).json({ message: "Unauthorized" });
+        }
+
+        const teachers = await prisma.teacher.findMany({
+            where: { userId: null },
+            select: { id: true, firstName: true, lastName: true, employeeId: true, email: true }
+        });
+
+        const students = await prisma.student.findMany({
+            where: { userId: null },
+            select: { id: true, firstName: true, lastName: true, studentId: true }
+        });
+
+        const parents = await prisma.parent.findMany({
+            where: { userId: null },
+            select: { id: true, firstName: true, lastName: true, phoneNumber: true, email: true }
+        });
+
+        return res.json({
+            teachers: teachers.map(t => ({ id: t.id, name: `${t.firstName} ${t.lastName}`, identifier: t.employeeId || t.email })),
+            students: students.map(s => ({ id: s.id, name: `${s.firstName} ${s.lastName}`, identifier: s.studentId })),
+            parents: parents.map(p => ({ id: p.id, name: `${p.firstName} ${p.lastName}`, identifier: p.phoneNumber || p.email }))
+        });
+    } catch (error: any) {
+        return res.status(500).json({ message: error.message || "Failed to fetch unlinked entities." });
+    }
+});
+
+/**
+ * GET /api/auth/users
+ * Lists users in the school scope for Admin User Management.
+ * Supports optional ?role= and ?search= query params.
+ */
+router.get("/users", async (req, res) => {
+    try {
+        const session = await auth.api.getSession({
+            headers: fromNodeHeaders(req.headers),
+        });
+
+        if (!session) {
+            return res.status(401).json({ message: "Unauthorized" });
+        }
+
+        const userAccess = await getUserAccess(session.user.id);
+        const isAdmin = userAccess.some(a => ["ADMIN", "SCHOOL_ADMIN", "ADMINISTRATOR"].includes(a.role.name));
+        if (!isAdmin) {
+            return res.status(403).json({ message: "Forbidden: Only administrators can view institutional users." });
+        }
+
+        const { search, role } = req.query;
+
+        const whereClause: any = {};
+        if (search && typeof search === "string" && search.trim() !== "") {
+            const query = search.trim();
+            whereClause.OR = [
+                { name: { contains: query, mode: "insensitive" } },
+                { email: { contains: query, mode: "insensitive" } }
+            ];
+        }
+
+        if (role && typeof role === "string" && role.trim() !== "" && role.trim().toUpperCase() !== "ALL") {
+            const r = role.trim().toUpperCase();
+            if (r === "TEACHER") {
+                whereClause.AND = [
+                    ...(whereClause.AND || []),
+                    {
+                        OR: [
+                            { roleAssignments: { some: { role: { name: { equals: "TEACHER", mode: "insensitive" } } } } },
+                            { teacher: { isNot: null } }
+                        ]
+                    }
+                ];
+            } else if (r === "STUDENT") {
+                whereClause.AND = [
+                    ...(whereClause.AND || []),
+                    {
+                        OR: [
+                            { roleAssignments: { some: { role: { name: { equals: "STUDENT", mode: "insensitive" } } } } },
+                            { student: { isNot: null } }
+                        ]
+                    }
+                ];
+            } else if (r === "PARENT") {
+                whereClause.AND = [
+                    ...(whereClause.AND || []),
+                    {
+                        OR: [
+                            { roleAssignments: { some: { role: { name: { equals: "PARENT", mode: "insensitive" } } } } },
+                            { parent: { isNot: null } }
+                        ]
+                    }
+                ];
+            } else {
+                whereClause.roleAssignments = {
+                    some: {
+                        role: {
+                            name: { equals: r, mode: "insensitive" }
+                        }
+                    }
+                };
+            }
+        }
+
+        const users = await prisma.user.findMany({
+            where: whereClause,
+            include: {
+                roleAssignments: {
+                    include: {
+                        role: true,
+                        scope: true
+                    }
+                },
+                teacher: true,
+                student: true,
+                parent: true
+            },
+            orderBy: { createdAt: "desc" }
+        });
+
+        const formatted = users.map(u => {
+            let entityInfo = null;
+            if (u.teacher) {
+                entityInfo = { type: "TEACHER", id: u.teacher.id, identifier: u.teacher.employeeId || "Teacher" };
+            } else if (u.student) {
+                entityInfo = { type: "STUDENT", id: u.student.id, identifier: u.student.studentId || "Student" };
+            } else if (u.parent) {
+                entityInfo = { type: "PARENT", id: u.parent.id, identifier: u.parent.phoneNumber || "Parent" };
+            }
+
+            const roles = u.roleAssignments.map(ra => ra.role.name);
+            if (u.teacher && !roles.includes("TEACHER")) roles.push("TEACHER");
+            if (u.student && !roles.includes("STUDENT")) roles.push("STUDENT");
+            if (u.parent && !roles.includes("PARENT")) roles.push("PARENT");
+            if (roles.length === 0) roles.push("USER");
+
+            return {
+                id: u.id,
+                name: u.name,
+                email: u.email,
+                isActive: u.isActive ?? true,
+                requiresPasswordChange: u.requiresPasswordChange ?? false,
+                createdAt: u.createdAt,
+                roles,
+                scopeName: u.roleAssignments[0]?.scope?.name || "EduBridge Demo School",
+                entityInfo
+            };
+        });
+
+        return res.json({ users: formatted });
+    } catch (error: any) {
+        return res.status(500).json({ message: error.message || "Failed to fetch users." });
+    }
+});
+
+/**
+ * PATCH /api/auth/users/:id/status
+ * Toggles user active status (isActive: true/false).
+ */
 router.patch("/users/:id/status", async (req, res) => {
     try {
         const session = await auth.api.getSession({
@@ -691,24 +753,15 @@ router.patch("/users/:id/status", async (req, res) => {
             return res.status(401).json({ message: "Unauthorized" });
         }
 
-        const callerScope = await getCallerSchoolScope(session.user.id);
-        if (!callerScope.isSchoolAdmin && !callerScope.isPlatformAdmin) {
+        const userAccess = await getUserAccess(session.user.id);
+        const isAdmin = userAccess.some(a => ["ADMIN", "SCHOOL_ADMIN", "ADMINISTRATOR"].includes(a.role.name));
+        if (!isAdmin) {
             return res.status(403).json({ message: "Forbidden: Only administrators can update user status." });
         }
 
-        const targetUserId = req.params.id as string;
+        const targetUserId = req.params.id;
         if (targetUserId === session.user.id) {
             return res.status(400).json({ message: "You cannot deactivate your own admin account." });
-        }
-
-        // SECURITY: Tenant Scoping Check
-        if (!callerScope.isPlatformAdmin && callerScope.organizationId) {
-            const membership = await prisma.roleAssignment.findFirst({
-                where: { userId: targetUserId, scopeId: callerScope.organizationId }
-            });
-            if (!membership) {
-                return res.status(403).json({ message: "Forbidden: Target user does not belong to your school." });
-            }
         }
 
         const { isActive } = req.body;
@@ -721,15 +774,9 @@ router.patch("/users/:id/status", async (req, res) => {
             data: { isActive }
         });
 
-        // If deactivating, revoke active sessions
-        if (!isActive) {
-            await prisma.session.deleteMany({ where: { userId: targetUserId } });
-        }
-
         await prisma.auditLog.create({
             data: {
                 userId: session.user.id,
-                organizationId: callerScope.organizationId || undefined,
                 action: "USER_STATUS_UPDATED",
                 resource: "User",
                 resourceId: targetUserId,
@@ -747,9 +794,10 @@ router.patch("/users/:id/status", async (req, res) => {
     }
 });
 
-// ============================================================================
-// 8. RESET PASSWORD (Tenant-Scoped, Session Revocation & Forced Password Change)
-// ============================================================================
+/**
+ * POST /api/auth/users/:id/reset-password
+ * Resets user password back to default temporary password (Admin@1234) and sets requiresPasswordChange = true.
+ */
 router.post("/users/:id/reset-password", async (req, res) => {
     try {
         const session = await auth.api.getSession({
@@ -760,24 +808,15 @@ router.post("/users/:id/reset-password", async (req, res) => {
             return res.status(401).json({ message: "Unauthorized" });
         }
 
-        const callerScope = await getCallerSchoolScope(session.user.id);
-        if (!callerScope.isSchoolAdmin && !callerScope.isPlatformAdmin) {
+        const userAccess = await getUserAccess(session.user.id);
+        const isAdmin = userAccess.some(a => ["ADMIN", "SCHOOL_ADMIN", "ADMINISTRATOR"].includes(a.role.name));
+        if (!isAdmin) {
             return res.status(403).json({ message: "Forbidden: Only administrators can reset user passwords." });
         }
 
-        const targetUserId = req.params.id as string;
-
-        // SECURITY: Tenant Scoping Check
-        if (!callerScope.isPlatformAdmin && callerScope.organizationId) {
-            const membership = await prisma.roleAssignment.findFirst({
-                where: { userId: targetUserId, scopeId: callerScope.organizationId }
-            });
-            if (!membership) {
-                return res.status(403).json({ message: "Forbidden: Target user does not belong to your school." });
-            }
-        }
-
+        const targetUserId = req.params.id;
         const tempPassword = req.body.password || process.env.DEFAULT_INITIAL_PASSWORD || "Admin@1234";
+
         const hashedPassword = await hashPassword(tempPassword);
 
         await prisma.account.updateMany({
@@ -790,15 +829,9 @@ router.post("/users/:id/reset-password", async (req, res) => {
             data: { requiresPasswordChange: true }
         });
 
-        // CRITICAL: Revoke all active sessions so user is forced to sign in with temp pass
-        await prisma.session.deleteMany({
-            where: { userId: targetUserId }
-        });
-
         await prisma.auditLog.create({
             data: {
                 userId: session.user.id,
-                organizationId: callerScope.organizationId || undefined,
                 action: "USER_PASSWORD_RESET",
                 resource: "User",
                 resourceId: targetUserId,
@@ -808,268 +841,11 @@ router.post("/users/:id/reset-password", async (req, res) => {
 
         return res.json({
             success: true,
-            message: "Temporary password reset successfully and active sessions revoked.",
+            message: "Temporary password reset successfully.",
             temporaryPassword: tempPassword
         });
     } catch (error: any) {
         return res.status(400).json({ message: error.message || "Failed to reset password." });
-    }
-});
-
-// ============================================================================
-// 9. ROLES & PERMISSIONS (Live Database Query with Real Account Distribution)
-// ============================================================================
-router.get("/roles-and-permissions", async (req, res) => {
-    try {
-        const session = await auth.api.getSession({
-            headers: fromNodeHeaders(req.headers),
-        });
-
-        if (!session) {
-            return res.status(401).json({ message: "Unauthorized" });
-        }
-
-        const callerScope = await getCallerSchoolScope(session.user.id);
-        const organizationId = callerScope.organizationId;
-
-        const roles = await prisma.role.findMany({
-            include: {
-                permissions: {
-                    include: {
-                        permission: true
-                    }
-                },
-                assignments: {
-                    where: organizationId ? { scopeId: organizationId } : undefined,
-                    select: { id: true, userId: true }
-                }
-            },
-            orderBy: { name: "asc" }
-        });
-
-        const formatted = roles.map(r => ({
-            id: r.id,
-            name: r.name,
-            description: r.description,
-            activeUsersCount: r.assignments.length,
-            permissions: r.permissions.map(rp => ({
-                id: rp.permission.id,
-                name: rp.permission.name,
-                description: rp.permission.description
-            }))
-        }));
-
-        return res.json({ roles: formatted });
-    } catch (error: any) {
-        return res.status(500).json({ message: error.message || "Failed to fetch roles and permissions." });
-    }
-});
-
-// ============================================================================
-// 10. PROVISIONING UTILITIES (Development / Initialization)
-// ============================================================================
-router.post("/assign-role", async (req, res) => {
-    if (process.env.NODE_ENV === "production" && req.headers["x-provisioning-secret"] !== process.env.PROVISIONING_SECRET) {
-        return res.status(403).json({ message: "Forbidden: Provisioning disabled" });
-    }
-
-    try {
-        const { userId, roleName, scopeName, scopeType } = req.body;
-        const assignment = await assignRoleToUser(
-            userId,
-            roleName,
-            scopeName,
-            scopeType
-        );
-        return res.status(201).json(assignment);
-    } catch (error) {
-        return res.status(500).json({ message: "Failed to assign role" });
-    }
-});
-
-router.post("/assign-permission", async (req, res) => {
-    if (process.env.NODE_ENV === "production" && req.headers["x-provisioning-secret"] !== process.env.PROVISIONING_SECRET) {
-        return res.status(403).json({ message: "Forbidden: Provisioning disabled" });
-    }
-
-    try {
-        const { roleName, permissionName, description } = req.body;
-        const result = await assignPermissionToRole(
-            roleName,
-            permissionName,
-            description
-        );
-        return res.status(201).json(result);
-    } catch (error) {
-        return res.status(500).json({ message: "Failed to assign permission" });
-    }
-});
-
-// ============================================================================
-// ACTIVATE INVITATION — Public endpoint (no session required)
-// Validates invitation token, sets password, marks account active
-// ============================================================================
-router.post("/activate-invitation", async (req, res) => {
-    try {
-        const { token, password, confirmPassword } = req.body;
-
-        if (!token || !password) {
-            return res.status(400).json({ message: "Invitation token and new password are required." });
-        }
-
-        if (password !== confirmPassword) {
-            return res.status(400).json({ message: "Passwords do not match." });
-        }
-
-        const strength = validatePasswordStrength(password);
-        if (!strength.valid) {
-            return res.status(400).json({ message: strength.message });
-        }
-
-        // 1. Find verification record by token value
-        const verification = await prisma.verification.findFirst({
-            where: {
-                value: token,
-                identifier: { startsWith: "invitation:" }
-            }
-        });
-
-        if (!verification) {
-            return res.status(400).json({ message: "Invalid or expired invitation link. Please contact your administrator." });
-        }
-
-        if (verification.expiresAt < new Date()) {
-            return res.status(400).json({ message: "This invitation link has expired. Please request a new invitation." });
-        }
-
-        // 2. Parse identifier: "invitation:{userId}:{regionId}"
-        const parts = verification.identifier.split(":");
-        if (parts.length < 3) {
-            return res.status(400).json({ message: "Malformed invitation token." });
-        }
-        const userId = parts[1] as string;
-
-        // 3. Find user
-        const user = await prisma.user.findUnique({ where: { id: userId } });
-        if (!user) {
-            return res.status(404).json({ message: "User account not found." });
-        }
-
-        // 4. Set the user's password via Better Auth
-        const hashedPassword = await hashPassword(password);
-
-        // Check if account record exists
-        const existingAccount = await prisma.account.findFirst({
-            where: { userId, providerId: "credential" }
-        });
-
-        if (existingAccount) {
-            await prisma.account.update({
-                where: { id: existingAccount.id },
-                data: { password: hashedPassword }
-            });
-        } else {
-            await prisma.account.create({
-                data: {
-                    id: "acc_" + Date.now() + "_" + Math.random().toString(36).substring(2, 7),
-                    userId,
-                    accountId: userId,
-                    providerId: "credential",
-                    password: hashedPassword,
-                    createdAt: new Date(),
-                    updatedAt: new Date()
-                }
-            });
-        }
-
-        // 5. Mark email verified, clear requiresPasswordChange, activate
-        await prisma.user.update({
-            where: { id: userId },
-            data: {
-                emailVerified: true,
-                requiresPasswordChange: false,
-                isActive: true
-            }
-        });
-
-        // 6. Consume (delete) the invitation token
-        await prisma.verification.delete({ where: { id: verification.id } });
-
-        // 7. Audit log
-        try {
-            await prisma.auditLog.create({
-                data: {
-                    userId,
-                    action: "ACCOUNT_ACTIVATED",
-                    resource: "User",
-                    resourceId: userId,
-                    newValue: { activatedViaInvitation: true }
-                }
-            });
-        } catch (e) {}
-
-        return res.json({
-            success: true,
-            message: "Account activated successfully. You may now sign in.",
-            email: user.email
-        });
-
-    } catch (error: any) {
-        console.error("[ActivateInvitation] Error:", error);
-        return res.status(500).json({ message: error.message || "Failed to activate account." });
-    }
-});
-
-// Validate invitation token (public — called on page load)
-router.get("/validate-invitation", async (req, res) => {
-    try {
-        const { token } = req.query;
-        if (!token || typeof token !== "string") {
-            return res.status(400).json({ valid: false, message: "Token is required." });
-        }
-
-        const verification = await prisma.verification.findFirst({
-            where: {
-                value: token,
-                identifier: { startsWith: "invitation:" }
-            }
-        });
-
-        if (!verification) {
-            return res.json({ valid: false, message: "Invalid invitation link." });
-        }
-
-        if (verification.expiresAt < new Date()) {
-            return res.json({ valid: false, message: "This invitation has expired." });
-        }
-
-        const parts = verification.identifier.split(":");
-        const userId = parts[1];
-        const scopeId = parts[2];
-
-        const [user, scope] = await Promise.all([
-            prisma.user.findUnique({ where: { id: userId }, select: { name: true, email: true, emailVerified: true } }),
-            scopeId ? prisma.organizationUnit.findUnique({ where: { id: scopeId }, select: { name: true, type: true } }) : null
-        ]);
-
-        if (!user) {
-            return res.json({ valid: false, message: "User account not found." });
-        }
-
-        if (user.emailVerified) {
-            return res.json({ valid: false, alreadyActivated: true, message: "This account has already been activated." });
-        }
-
-        return res.json({
-            valid: true,
-            name: user.name,
-            email: user.email,
-            organizationName: scope?.name || null,
-            organizationType: scope?.type || null
-        });
-
-    } catch (error: any) {
-        return res.status(500).json({ valid: false, message: "Failed to validate invitation." });
     }
 });
 

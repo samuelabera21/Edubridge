@@ -653,6 +653,39 @@ export const createAssessmentWithResults = async (req: Request, res: Response) =
     }
 };
 
+export const updateAssessmentStatus = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        const userId = req.user?.id;
+        if (!organizationId || !userId) return res.status(403).json({ error: "Missing school scope or authentication" });
+
+        const { id } = req.params;
+        const { status } = req.body;
+        if (!status || !["SCHEDULED", "RELEASED", "CLOSED"].includes(status)) {
+            return res.status(400).json({ error: "Invalid status. Must be SCHEDULED, RELEASED, or CLOSED" });
+        }
+
+        const updated = await TeacherService.updateAssessmentStatus(userId, organizationId, id as string, status);
+        return res.json(updated);
+    } catch (error: any) {
+        return res.status(400).json({ error: error.message || "Failed to update assessment status" });
+    }
+};
+
+export const getAssessmentSessionMonitor = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        const userId = req.user?.id;
+        if (!organizationId || !userId) return res.status(403).json({ error: "Missing school scope or authentication" });
+
+        const { id } = req.params;
+        const sessionData = await TeacherService.getAssessmentSessionMonitor(userId, organizationId, id as string);
+        return res.json(sessionData);
+    } catch (error: any) {
+        return res.status(400).json({ error: error.message || "Failed to fetch session monitor data" });
+    }
+};
+
 export const gradeActivitySubmission = async (req: Request, res: Response) => {
     try {
         const organizationId = (req as any).accessScope?.id;

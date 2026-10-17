@@ -39,6 +39,9 @@ backend/prisma/seed-teacher-demo.ts
 prisma/seed-teacher-demo.ts
 **/seed-teacher-demo.ts
 *seed-teacher-demo*
+backend/scripts/register_students_12ab.ts
+**/register_students_12ab.ts
+*register*student*12ab*
 
 # Logs & Debug
 *.log

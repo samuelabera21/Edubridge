@@ -227,7 +227,6 @@ export class SchoolDashboardService {
             include: {
                 grade: true,
                 sections: {
-                    where: { status: "ACTIVE" },
                     orderBy: { name: "asc" }
                 }
             },
@@ -306,19 +305,18 @@ export class SchoolDashboardService {
         const activeTeachers = await prisma.teacher.findMany({
             where: {
                 organizationId,
-                employmentStatus: "ACTIVE"
+                status: "ACTIVE"
             },
             select: { id: true }
         });
 
         const totalActiveTeachers = activeTeachers.length;
 
-        // Teaching Assignments for selected academic year
+        // Teaching assignments have no status field in the current schema.
         const assignments = await prisma.teachingAssignment.findMany({
             where: {
                 academicYearId: yearId,
-                teacher: { organizationId },
-                status: "ACTIVE"
+                teacher: { organizationId }
             },
             include: {
                 teacher: true,

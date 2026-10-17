@@ -4,6 +4,11 @@ import { HierarchyScopeService } from "./hierarchy-scope.service.js";
 import { prisma } from "../../infrastructure/prisma/client.js";
 import { OrganizationUnitType } from "../../generated/prisma/client.js";
 import * as authService from "../authentication/authorization.service.js";
+import { sendAdminInvitationEmail } from "../email/email.service.js";
+
+vi.mock("../email/email.service.js", () => ({
+    sendAdminInvitationEmail: vi.fn().mockResolvedValue(undefined)
+}));
 
 vi.mock("../../infrastructure/prisma/client.js", () => ({
     prisma: {
@@ -34,6 +39,13 @@ vi.mock("../../infrastructure/prisma/client.js", () => ({
         },
         verification: {
             create: vi.fn(),
+            deleteMany: vi.fn()
+        },
+        account: {
+            updateMany: vi.fn(),
+            create: vi.fn()
+        },
+        session: {
             deleteMany: vi.fn()
         }
     }
@@ -185,6 +197,23 @@ describe("H5: Administrative Hierarchy Authority & School Registration", () => {
                     "user-sch-a1"
                 )
             ).rejects.toThrow(/Forbidden: School administrators are not authorized to manage the organizational hierarchy/i);
+        });
+
+        it("1.8 Region Admin cannot load a Zone outside its authorized Region", async () => {
+            const regionScope = { id: "reg-a", type: "REGION" as OrganizationUnitType, name: "Tigray" };
+
+            await expect(
+                HierarchyService.getZoneOverview("zone-b1", regionScope)
+            ).rejects.toThrow(/Forbidden: Zone .* outside your administrative scope \(Tigray\)/i);
+        });
+
+        it("1.9 Region Admin can load a Zone within its authorized Region", async () => {
+            const regionScope = { id: "reg-a", type: "REGION" as OrganizationUnitType, name: "Region A" };
+            (prisma.organizationUnit.findMany as any).mockResolvedValueOnce([]).mockResolvedValueOnce([]);
+
+            await expect(
+                HierarchyService.getZoneOverview("zone-a1", regionScope)
+            ).resolves.toMatchObject({ zoneId: "zone-a1" });
         });
     });
 
@@ -390,6 +419,31 @@ describe("H5: Administrative Hierarchy Authority & School Registration", () => {
             );
         });
 
+        it("4.1b Email delivery failure does not undo the administrator assignment", async () => {
+            const federalScope = { id: "fed-1", type: "FEDERAL" as OrganizationUnitType, name: "Federal Ministry" };
+            (prisma.user.findUnique as any).mockResolvedValue(null);
+            (prisma.user.create as any).mockResolvedValue({
+                id: "usr-reg-1",
+                name: "Samuel Example",
+                email: "samuel@example.com",
+                emailVerified: false,
+                requiresPasswordChange: true,
+                isActive: true
+            });
+            (authService.assignRoleToUserByScopeId as any).mockResolvedValue({});
+            (sendAdminInvitationEmail as any).mockRejectedValue(new Error("Email delivery is not configured"));
+
+            const result = await HierarchyService.assignRegionalAdmin(
+                "reg-a",
+                { name: "Samuel Example", email: "samuel@example.com" },
+                federalScope,
+                "user-fed-1"
+            );
+
+            expect(result.email).toBe("samuel@example.com");
+            expect(authService.assignRoleToUserByScopeId).toHaveBeenCalledWith("usr-reg-1", "ADMIN", "reg-a");
+        });
+
         it("4.2 Non-Federal Admin CANNOT assign a Regional Administrator", async () => {
             const regionScope = { id: "reg-a", type: "REGION" as OrganizationUnitType, name: "Addis Ababa Region" };
 
@@ -426,6 +480,44 @@ describe("H5: Administrative Hierarchy Authority & School Registration", () => {
 
             expect(result.success).toBe(true);
             expect(prisma.verification.create).toHaveBeenCalled();
+        });
+
+        it("4.3b Federal Admin can reset a Regional Administrator password", async () => {
+            const federalScope = { id: "fed-1", type: "FEDERAL" as OrganizationUnitType, name: "Federal Ministry" };
+            (prisma.organizationUnit.findUnique as any).mockResolvedValue({
+                id: "reg-a",
+                name: "Addis Ababa Region",
+                type: "REGION",
+                assignments: [{
+                    role: { name: "ADMIN" },
+                    user: { id: "usr-reg-1", email: "samuel@example.com" }
+                }]
+            });
+            (prisma.account.updateMany as any).mockResolvedValue({ count: 1 });
+
+            const result = await HierarchyService.resetRegionalAdminPassword(
+                "reg-a",
+                federalScope,
+                "user-fed-1"
+            );
+
+            expect(result.email).toBe("samuel@example.com");
+            expect(result.temporaryPassword).toMatch(/^Aa1!/);
+            expect(prisma.account.updateMany).toHaveBeenCalledWith(expect.objectContaining({
+                where: { userId: "usr-reg-1", providerId: "credential" }
+            }));
+            expect(prisma.user.update).toHaveBeenCalledWith(expect.objectContaining({
+                data: { isActive: true, requiresPasswordChange: true }
+            }));
+            expect(prisma.session.deleteMany).toHaveBeenCalledWith({ where: { userId: "usr-reg-1" } });
+        });
+
+        it("4.3c Non-Federal Admin cannot reset a Regional Administrator password", async () => {
+            await expect(HierarchyService.resetRegionalAdminPassword(
+                "reg-a",
+                { id: "reg-a", type: "REGION" as OrganizationUnitType, name: "Addis Ababa Region" },
+                "user-reg-1"
+            )).rejects.toThrow(/Forbidden: Only Federal Administrators/);
         });
 
         it("4.4 Federal Admin can cancel invitation", async () => {

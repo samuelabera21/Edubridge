@@ -84,7 +84,7 @@ export async function getDashboardOverview(organizationId: string) {
     const attendanceTotal = await prisma.studentAttendance.count({ where: { organizationId } });
     const attendancePresent = await prisma.studentAttendance.count({ where: { organizationId, status: "PRESENT" } });
     const totalAssessments = await prisma.assessment.count({ where: { organizationId } });
-    const publishedAssessments = await prisma.assessment.count({ where: { organizationId, status: "PUBLISHED" } });
+    const publishedAssessments = await prisma.assessment.count({ where: { organizationId, status: "RELEASED" } });
     const atRiskStudents = await prisma.interventionPlan.count({ where: { organizationId } });
     const activeSIP = await prisma.improvementPlan.count({ where: { organizationId } });
 
