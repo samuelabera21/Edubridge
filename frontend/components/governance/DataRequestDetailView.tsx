@@ -542,6 +542,21 @@ export default function DataRequestDetailView({
                             />
                         </div>
 
+                        {/* Status Filter Dropdown */}
+                        <div className="relative w-full sm:w-44">
+                            <select
+                                value={statusFilter}
+                                onChange={(e) => setStatusFilter(e.target.value as any)}
+                                aria-label="Filter submissions by status"
+                                className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-semibold text-slate-700 hover:bg-white focus:bg-white focus:outline-blue-500 cursor-pointer transition-colors"
+                            >
+                                <option value="ALL">All Statuses ({totalTargets})</option>
+                                <option value="SUBMITTED">Submitted ({submittedTargets})</option>
+                                <option value="ACCEPTED">Accepted ({acceptedTargets})</option>
+                                <option value="PENDING">Pending ({pendingTargets})</option>
+                            </select>
+                        </div>
+
                         <div className="flex items-center gap-1.5 shrink-0">
                             <button
                                 type="button"
@@ -564,54 +579,6 @@ export default function DataRequestDetailView({
                             </button>
                         </div>
                     </div>
-                </div>
-
-                {/* Filter Tabs Strip */}
-                <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
-                    <button
-                        type="button"
-                        onClick={() => setStatusFilter("ALL")}
-                        className={`px-3 py-1 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
-                            statusFilter === "ALL"
-                                ? "bg-slate-900 text-white shadow-2xs"
-                                : "bg-slate-100 text-slate-600 hover:text-slate-900"
-                        }`}
-                    >
-                        All Units ({totalTargets})
-                    </button>
-                    <button
-                        type="button"
-                        onClick={() => setStatusFilter("SUBMITTED")}
-                        className={`px-3 py-1 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
-                            statusFilter === "SUBMITTED"
-                                ? "bg-slate-900 text-white shadow-2xs"
-                                : "bg-slate-100 text-slate-600 hover:text-slate-900"
-                        }`}
-                    >
-                        Submitted ({submittedTargets})
-                    </button>
-                    <button
-                        type="button"
-                        onClick={() => setStatusFilter("ACCEPTED")}
-                        className={`px-3 py-1 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
-                            statusFilter === "ACCEPTED"
-                                ? "bg-slate-900 text-white shadow-2xs"
-                                : "bg-slate-100 text-slate-600 hover:text-slate-900"
-                        }`}
-                    >
-                        Accepted ({acceptedTargets})
-                    </button>
-                    <button
-                        type="button"
-                        onClick={() => setStatusFilter("PENDING")}
-                        className={`px-3 py-1 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
-                            statusFilter === "PENDING"
-                                ? "bg-slate-900 text-white shadow-2xs"
-                                : "bg-slate-100 text-slate-600 hover:text-slate-900"
-                        }`}
-                    >
-                        Pending ({pendingTargets})
-                    </button>
                 </div>
 
                 {/* Main Clean Data Table */}

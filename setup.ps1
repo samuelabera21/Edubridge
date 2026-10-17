@@ -69,14 +69,33 @@ $pgPass     = $envValues["POSTGRES_PASSWORD"]
 $pgDb       = $envValues["POSTGRES_DB"]
 $dbPort     = $envValues["DB_PORT"]
 $authSec    = $envValues["BETTER_AUTH_SECRET"]
+$dbUrl      = "postgresql://${pgUser}:${pgPass}@localhost:${dbPort}/${pgDb}"
 
-$backendEnvContent = @"
-DATABASE_URL="postgresql://${pgUser}:${pgPass}@localhost:${dbPort}/${pgDb}"
+if (-not (Test-Path $BackendEnv)) {
+    if (Test-Path "backend\.env.example") {
+        Copy-Item "backend\.env.example" $BackendEnv
+    } else {
+        New-Item -ItemType File -Path $BackendEnv -Force | Out-Null
+    }
+}
+
+$backendRaw = Get-Content $BackendEnv -Raw
+if ($backendRaw -match "DATABASE_URL=") {
+    $backendRaw = $backendRaw -replace "(?m)^DATABASE_URL=.*$", "DATABASE_URL=`"$dbUrl`""
+    $backendRaw = $backendRaw -replace "(?m)^BETTER_AUTH_SECRET=.*$", "BETTER_AUTH_SECRET=`"$authSec`""
+    $backendRaw = $backendRaw -replace "(?m)^DEFAULT_INITIAL_PASSWORD=.*$", "DEFAULT_INITIAL_PASSWORD=`"$defaultPass`""
+    $backendRaw = $backendRaw -replace "(?m)^ADMIN_PASSWORD=.*$", "ADMIN_PASSWORD=`"$defaultPass`""
+    Set-Content -Path $BackendEnv -Value $backendRaw -NoNewline
+} else {
+    $backendEnvContent = @"
+DATABASE_URL="$dbUrl"
 BETTER_AUTH_SECRET="${authSec}"
 BETTER_AUTH_URL="http://localhost:5000"
+DEFAULT_INITIAL_PASSWORD=${defaultPass}
+ADMIN_PASSWORD=${defaultPass}
 "@
-
-Set-Content -Path $BackendEnv -Value $backendEnvContent
+    Set-Content -Path $BackendEnv -Value $backendEnvContent
+}
 Write-Host "  backend/.env synced with database credentials." -ForegroundColor Green
 
 Write-Host ""

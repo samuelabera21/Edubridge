@@ -15,6 +15,7 @@ services:
   minio:
     image: elestio/minio@sha256:25348a257f1ece1b192f25f6cd9854618fa86422ac87b494b5d4e629c556d4bd
     container_name: edubridge_minio
+    user: root
     command: server /data --console-address ":9001"
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:-edubridge_minio}

@@ -257,17 +257,17 @@ export class ProgramService {
                         const notifPrefix = actorScope.type === "FEDERAL" ? "National" : `${actorScope.name}`;
                         await prisma.notification.createMany({
                             data: Array.from(notifMap.values()).map(item => {
-                                let link = "/dashboard/programs";
+                                let link = `/dashboard/programs?programId=${program.id}`;
                                 if (item.scopeType === "REGION") {
-                                    link = "/dashboard/region?tab=programs";
+                                    link = `/dashboard/region?tab=programs&programId=${program.id}`;
                                 } else if (item.scopeType === "ZONE") {
-                                    link = "/dashboard/zone?tab=programs";
+                                    link = `/dashboard/zone?tab=programs&programId=${program.id}`;
                                 } else if (item.scopeType === "WOREDA") {
-                                    link = "/dashboard/woreda?tab=programs";
+                                    link = `/dashboard/woreda?tab=programs&programId=${program.id}`;
                                 } else if (item.scopeType === "FEDERAL") {
-                                    link = "/dashboard/federal?tab=programs";
+                                    link = `/dashboard/federal?tab=programs&programId=${program.id}`;
                                 } else if (item.scopeType === "SCHOOL") {
-                                    link = "/dashboard/programs";
+                                    link = `/dashboard/programs?programId=${program.id}`;
                                 }
 
                                 return {
@@ -729,8 +729,8 @@ export class ProgramService {
         try {
             if (prisma.notification?.create) {
                 const creatorLink = program.createdOrganization?.type === "FEDERAL"
-                    ? "/dashboard/federal?tab=programs"
-                    : "/dashboard/programs";
+                    ? `/dashboard/federal?tab=programs&programId=${program.id}`
+                    : `/dashboard/programs?programId=${program.id}`;
 
                 await prisma.notification.create({
                     data: {
@@ -866,8 +866,8 @@ export class ProgramService {
         try {
             if (prisma.notification?.create) {
                 const creatorLink = program.createdOrganization?.type === "FEDERAL"
-                    ? "/dashboard/federal?tab=programs"
-                    : "/dashboard/programs";
+                    ? `/dashboard/federal?tab=programs&programId=${program.id}`
+                    : `/dashboard/programs?programId=${program.id}`;
 
                 const statusLabel = input.status.replace("_", " ");
                 await prisma.notification.create({

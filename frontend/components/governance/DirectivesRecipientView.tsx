@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
+import { useSearchParams } from "next/navigation";
 import { fetchApi } from "../../lib/api";
 import {
     FileText,
@@ -20,7 +21,8 @@ import {
     Info,
     RefreshCw,
     Building2,
-    Image as ImageIcon
+    Image as ImageIcon,
+    ChevronRight
 } from "lucide-react";
 
 export interface RecipientDirectiveItem {
@@ -69,19 +71,25 @@ interface DirectivesRecipientViewProps {
     tierName?: string; // e.g. "Amhara Regional Education Bureau"
     tierType?: "REGION" | "ZONE" | "WOREDA" | "SCHOOL";
     organizationId?: string;
+    initialDirectiveId?: string | null;
 }
 
 export default function DirectivesRecipientView({
     tierName = "Regional Bureau",
     tierType = "REGION",
-    organizationId
+    organizationId,
+    initialDirectiveId
 }: DirectivesRecipientViewProps) {
+    const searchParams = useSearchParams();
+    const targetDirectiveId = initialDirectiveId || searchParams?.get("directiveId");
+
     const [directives, setDirectives] = useState<RecipientDirectiveItem[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
     // Filters
     const [searchQuery, setSearchQuery] = useState("");
+    const [sourceFilter, setSourceFilter] = useState<"ALL" | "FEDERAL" | "REGION" | "ZONE" | "WOREDA">("ALL");
     const [typeFilter, setTypeFilter] = useState<"ALL" | "POLICY" | "DIRECTIVE">("ALL");
     const [priorityFilter, setPriorityFilter] = useState<string>("ALL");
     const [ackFilter, setAckFilter] = useState<"ALL" | "PENDING" | "ACKNOWLEDGED" | "UNREAD">("ALL");
@@ -135,6 +143,15 @@ export default function DirectivesRecipientView({
     useEffect(() => {
         loadDirectives();
     }, [typeFilter, priorityFilter, organizationId]);
+
+    useEffect(() => {
+        if (targetDirectiveId && directives.length > 0 && !selectedDirective) {
+            const match = directives.find(d => d.id === targetDirectiveId);
+            if (match) {
+                openDirectiveDetails(match);
+            }
+        }
+    }, [targetDirectiveId, directives]);
 
     const openDirectiveDetails = async (d: RecipientDirectiveItem) => {
         setSelectedDirective(d);
@@ -196,6 +213,9 @@ export default function DirectivesRecipientView({
             if (res.ok) {
                 const data = await res.json();
                 showToast(data.message || "Directive officially acknowledged and recorded.", "success");
+                if (typeof window !== "undefined") {
+                    window.dispatchEvent(new Event("notification-updated"));
+                }
             } else {
                 const errData = await res.json().catch(() => ({}));
                 showToast(errData.error || errData.message || "Failed to submit acknowledgment.", "error");
@@ -249,6 +269,17 @@ export default function DirectivesRecipientView({
         }
     };
 
+    // Tier classifier helper
+    const getDirectiveTier = (d: RecipientDirectiveItem): "FEDERAL" | "REGION" | "ZONE" | "WOREDA" | "OTHER" => {
+        const type = (d.issuer?.type || d.issuerOrganization?.type || "").toUpperCase();
+        const name = (d.issuer?.name || d.issuerOrganization?.name || "").toLowerCase();
+        if (type === "FEDERAL" || name.includes("federal") || name.includes("ministry")) return "FEDERAL";
+        if (type === "REGION" || name.includes("region") || name.includes("bureau")) return "REGION";
+        if (type === "ZONE" || name.includes("zone") || name.includes("department")) return "ZONE";
+        if (type === "WOREDA" || name.includes("woreda") || name.includes("office") || name.includes("district")) return "WOREDA";
+        return "OTHER";
+    };
+
     // Filtered list
     const filteredDirectives = useMemo(() => {
         return directives.filter(d => {
@@ -258,6 +289,11 @@ export default function DirectivesRecipientView({
                 const matchContent = d.content?.toLowerCase().includes(q);
                 const matchCode = d.code?.toLowerCase().includes(q);
                 if (!matchTitle && !matchContent && !matchCode) return false;
+            }
+
+            if (sourceFilter !== "ALL") {
+                const tier = getDirectiveTier(d);
+                if (tier !== sourceFilter) return false;
             }
 
             if (ackFilter === "PENDING") {
@@ -270,7 +306,13 @@ export default function DirectivesRecipientView({
 
             return true;
         });
-    }, [directives, searchQuery, ackFilter]);
+    }, [directives, searchQuery, sourceFilter, ackFilter]);
+
+    // Source level counts
+    const federalCount = useMemo(() => directives.filter(d => getDirectiveTier(d) === "FEDERAL").length, [directives]);
+    const regionCount = useMemo(() => directives.filter(d => getDirectiveTier(d) === "REGION").length, [directives]);
+    const zoneCount = useMemo(() => directives.filter(d => getDirectiveTier(d) === "ZONE").length, [directives]);
+    const woredaCount = useMemo(() => directives.filter(d => getDirectiveTier(d) === "WOREDA").length, [directives]);
 
     // KPI Rollups
     const totalReceived = directives.length;
@@ -326,12 +368,12 @@ export default function DirectivesRecipientView({
                 <div
                     className={`fixed bottom-5 right-5 z-50 flex items-center gap-2.5 px-4 py-3 rounded-xl border text-sm font-semibold shadow-xl transition-all duration-300 animate-in fade-in slide-in-from-bottom-3 ${
                         toastMessage.type === "success"
-                            ? "bg-emerald-50 text-emerald-800 border-emerald-200"
+                            ? "bg-blue-50 text-blue-800 border-blue-200"
                             : "bg-rose-50 text-rose-800 border-rose-200"
                     }`}
                 >
                     {toastMessage.type === "success" ? (
-                        <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                        <CheckCircle2 className="w-4 h-4 text-blue-600 shrink-0" />
                     ) : (
                         <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
                     )}
@@ -365,9 +407,16 @@ export default function DirectivesRecipientView({
                 </div>
             </div>
 
-            {/* Stat Summary Cards - Clean Neutral Style */}
+            {/* Stat Summary Cards - Clean Interactive Neutral/Blue Style */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
-                <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-xs">
+                <div
+                    onClick={() => {
+                        setSourceFilter("ALL");
+                        setAckFilter("ALL");
+                        setPriorityFilter("ALL");
+                    }}
+                    className="bg-white rounded-xl p-4 border border-slate-200 shadow-xs hover:border-blue-300 transition-all cursor-pointer"
+                >
                     <div className="flex items-center justify-between text-slate-500 mb-2">
                         <span className="text-xs font-medium">Total Received</span>
                         <FileText className="w-4 h-4 text-slate-400" />
@@ -375,7 +424,14 @@ export default function DirectivesRecipientView({
                     <div className="text-2xl font-bold text-slate-900">{totalReceived}</div>
                 </div>
 
-                <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-xs">
+                <div
+                    onClick={() => setAckFilter(ackFilter === "PENDING" ? "ALL" : "PENDING")}
+                    className={`bg-white rounded-xl p-4 border shadow-xs transition-all cursor-pointer ${
+                        ackFilter === "PENDING"
+                            ? "border-amber-400 bg-amber-50/20 ring-2 ring-amber-400/20"
+                            : "border-slate-200 hover:border-amber-300"
+                    }`}
+                >
                     <div className="flex items-center justify-between text-slate-500 mb-2">
                         <span className="text-xs font-medium">Action Required</span>
                         <AlertCircle className={`w-4 h-4 ${pendingAckCount > 0 ? "text-amber-500" : "text-slate-400"}`} />
@@ -390,7 +446,14 @@ export default function DirectivesRecipientView({
                     </div>
                 </div>
 
-                <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-xs">
+                <div
+                    onClick={() => setPriorityFilter(priorityFilter === "HIGH" ? "ALL" : "HIGH")}
+                    className={`bg-white rounded-xl p-4 border shadow-xs transition-all cursor-pointer ${
+                        priorityFilter === "HIGH"
+                            ? "border-rose-400 bg-rose-50/20 ring-2 ring-rose-400/20"
+                            : "border-slate-200 hover:border-rose-300"
+                    }`}
+                >
                     <div className="flex items-center justify-between text-slate-500 mb-2">
                         <span className="text-xs font-medium">High / Critical Priority</span>
                         <Shield className={`w-4 h-4 ${urgentCount > 0 ? "text-rose-500" : "text-slate-400"}`} />
@@ -398,323 +461,432 @@ export default function DirectivesRecipientView({
                     <div className="text-2xl font-bold text-slate-900">{urgentCount}</div>
                 </div>
 
-                <div className="bg-white rounded-xl p-4 border border-slate-200 shadow-xs">
+                <div
+                    onClick={() => setAckFilter(ackFilter === "ACKNOWLEDGED" ? "ALL" : "ACKNOWLEDGED")}
+                    className={`bg-white rounded-xl p-4 border shadow-xs transition-all cursor-pointer ${
+                        ackFilter === "ACKNOWLEDGED"
+                            ? "border-blue-400 bg-blue-50/20 ring-2 ring-blue-400/20"
+                            : "border-slate-200 hover:border-blue-300"
+                    }`}
+                >
                     <div className="flex items-center justify-between text-slate-500 mb-2">
                         <span className="text-xs font-medium">Acknowledged</span>
-                        <CheckSquare className="w-4 h-4 text-emerald-500" />
+                        <CheckSquare className="w-4 h-4 text-blue-600" />
                     </div>
                     <div className="text-2xl font-bold text-slate-900">{acknowledgedCount}</div>
                 </div>
             </div>
 
-            {/* Filter Bar & Search */}
-            <div className="bg-white rounded-xl p-3.5 border border-slate-200 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-2.5">
-                <div className="flex flex-wrap items-center gap-2 flex-1">
-                    <div className="relative flex-1 min-w-[200px]">
-                        <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                        <input
-                            type="text"
-                            value={searchQuery}
-                            onChange={e => setSearchQuery(e.target.value)}
-                            onKeyDown={e => e.key === "Enter" && loadDirectives()}
-                            placeholder="Search by title, code, or content..."
-                            className="w-full pl-9 pr-3 py-1.5 text-xs rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-slate-400/20 focus:border-slate-400 transition-all text-slate-800 placeholder-slate-400"
-                        />
+            {/* Clean Filter Toolbar */}
+            <div className="bg-white rounded-xl p-3 border border-slate-200 shadow-xs">
+                <div className="flex flex-wrap items-center justify-between gap-2.5">
+                    <div className="flex flex-wrap items-center gap-2 w-full lg:w-auto flex-1">
+                        {/* Search input */}
+                        <div className="relative w-full sm:w-60">
+                            <Search className="w-3.5 h-3.5 absolute left-3 top-2.5 text-slate-400" />
+                            <input
+                                type="text"
+                                placeholder="Search by title, code, or content..."
+                                value={searchQuery}
+                                onChange={e => setSearchQuery(e.target.value)}
+                                onKeyDown={e => e.key === "Enter" && loadDirectives()}
+                                className="w-full pl-8 pr-3 py-1.5 border border-slate-200 rounded-lg text-xs focus:outline-none focus:border-slate-400 text-slate-800 placeholder-slate-400 bg-white"
+                            />
+                            {searchQuery && (
+                                <button
+                                    onClick={() => setSearchQuery("")}
+                                    className="absolute right-2.5 top-2 text-slate-400 hover:text-slate-600"
+                                >
+                                    <X className="w-3 h-3" />
+                                </button>
+                            )}
+                        </div>
+
+                        {/* Source Filter Dropdown */}
+                        <div className="w-full sm:w-44">
+                            <select
+                                value={sourceFilter}
+                                onChange={e => setSourceFilter(e.target.value as any)}
+                                className="w-full px-2.5 py-1.5 border border-slate-200 rounded-lg text-xs font-medium text-slate-700 bg-white focus:outline-none focus:border-slate-400 cursor-pointer"
+                            >
+                                <option value="ALL">All Sources ({directives.length})</option>
+                                <option value="FEDERAL">Federal Ministry ({federalCount})</option>
+                                <option value="REGION">Regional Bureau ({regionCount})</option>
+                                <option value="ZONE">Zonal Dept ({zoneCount})</option>
+                                <option value="WOREDA">Woreda Office ({woredaCount})</option>
+                            </select>
+                        </div>
+
+                        {/* Status Filter Dropdown */}
+                        <div className="w-full sm:w-40">
+                            <select
+                                value={ackFilter}
+                                onChange={e => setAckFilter(e.target.value as any)}
+                                className="w-full px-2.5 py-1.5 border border-slate-200 rounded-lg text-xs font-medium text-slate-700 bg-white focus:outline-none focus:border-slate-400 cursor-pointer"
+                            >
+                                <option value="ALL">All Status</option>
+                                <option value="PENDING">Action Required ({pendingAckCount})</option>
+                                <option value="ACKNOWLEDGED">Confirmed ({acknowledgedCount})</option>
+                            </select>
+                        </div>
+
+                        {/* Priority Filter Dropdown */}
+                        <div className="w-full sm:w-36">
+                            <select
+                                value={priorityFilter}
+                                onChange={e => setPriorityFilter(e.target.value as any)}
+                                className="w-full px-2.5 py-1.5 border border-slate-200 rounded-lg text-xs font-medium text-slate-700 bg-white focus:outline-none focus:border-slate-400 cursor-pointer"
+                            >
+                                <option value="ALL">All Priorities</option>
+                                <option value="CRITICAL">Critical</option>
+                                <option value="URGENT">Urgent</option>
+                                <option value="HIGH">High</option>
+                                <option value="NORMAL">Normal</option>
+                                <option value="LOW">Low</option>
+                            </select>
+                        </div>
+
+                        {/* Reset button if filters active */}
+                        {(typeFilter !== "ALL" || sourceFilter !== "ALL" || ackFilter !== "ALL" || priorityFilter !== "ALL" || searchQuery.trim() !== "") && (
+                            <button
+                                onClick={() => {
+                                    setTypeFilter("ALL");
+                                    setSourceFilter("ALL");
+                                    setAckFilter("ALL");
+                                    setPriorityFilter("ALL");
+                                    setSearchQuery("");
+                                }}
+                                className="px-2.5 py-1.5 text-xs text-slate-500 hover:text-slate-800 font-medium hover:bg-slate-100 rounded-lg transition-colors cursor-pointer flex items-center gap-1"
+                            >
+                                <X className="w-3 h-3" />
+                                <span>Clear</span>
+                            </button>
+                        )}
                     </div>
 
-                    <select
-                        value={typeFilter}
-                        onChange={e => setTypeFilter(e.target.value as any)}
-                        className="px-2.5 py-1.5 text-xs rounded-lg border border-slate-200 bg-white font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-slate-400/20"
-                    >
-                        <option value="ALL">All Types</option>
-                        <option value="POLICY">Policies</option>
-                        <option value="DIRECTIVE">Directives</option>
-                    </select>
-
-                    <select
-                        value={priorityFilter}
-                        onChange={e => setPriorityFilter(e.target.value)}
-                        className="px-2.5 py-1.5 text-xs rounded-lg border border-slate-200 bg-white font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-slate-400/20"
-                    >
-                        <option value="ALL">All Priorities</option>
-                        <option value="CRITICAL">Critical</option>
-                        <option value="URGENT">Urgent</option>
-                        <option value="HIGH">High</option>
-                        <option value="NORMAL">Normal</option>
-                        <option value="LOW">Low</option>
-                    </select>
-
-                    <select
-                        value={ackFilter}
-                        onChange={e => setAckFilter(e.target.value as any)}
-                        className="px-2.5 py-1.5 text-xs rounded-lg border border-slate-200 bg-white font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-slate-400/20"
-                    >
-                        <option value="ALL">All Status</option>
-                        <option value="PENDING">Pending Acknowledgment</option>
-                        <option value="ACKNOWLEDGED">Acknowledged</option>
-                        <option value="UNREAD">Unread</option>
-                    </select>
+                    {/* Type Filter Tabs */}
+                    <div className="flex items-center gap-1 bg-slate-100 p-0.5 rounded-lg text-xs font-semibold">
+                        <button
+                            type="button"
+                            onClick={() => setTypeFilter("ALL")}
+                            className={`px-3 py-1 rounded-md transition-colors cursor-pointer ${
+                                typeFilter === "ALL"
+                                    ? "bg-white text-slate-900 shadow-2xs"
+                                    : "text-slate-500 hover:text-slate-800"
+                            }`}
+                        >
+                            All
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setTypeFilter("POLICY")}
+                            className={`px-3 py-1 rounded-md transition-colors cursor-pointer ${
+                                typeFilter === "POLICY"
+                                    ? "bg-white text-slate-900 shadow-2xs"
+                                    : "text-slate-500 hover:text-slate-800"
+                            }`}
+                        >
+                            Policies
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setTypeFilter("DIRECTIVE")}
+                            className={`px-3 py-1 rounded-md transition-colors cursor-pointer ${
+                                typeFilter === "DIRECTIVE"
+                                    ? "bg-white text-slate-900 shadow-2xs"
+                                    : "text-slate-500 hover:text-slate-800"
+                            }`}
+                        >
+                            Directives
+                        </button>
+                    </div>
                 </div>
             </div>
 
-            {/* Directives Table View */}
+            {/* Directives Content (Rectangle Card Grid) */}
             {loading ? (
                 <div className="bg-white rounded-xl border border-slate-200 p-12 text-center shadow-xs">
-                    <RefreshCw className="w-6 h-6 animate-spin text-slate-400 mx-auto mb-2" />
+                    <RefreshCw className="w-6 h-6 animate-spin text-blue-600 mx-auto mb-2" />
                     <p className="text-xs font-semibold text-slate-700">Loading directives...</p>
                 </div>
             ) : filteredDirectives.length === 0 ? (
                 <div className="bg-white rounded-xl border border-dashed border-slate-200 p-12 text-center shadow-xs">
                     <Shield className="w-8 h-8 text-slate-300 mx-auto mb-2" />
-                    <h3 className="text-sm font-semibold text-slate-800">No National Policies or Directives</h3>
+                    <h3 className="text-sm font-semibold text-slate-800">No Directives Found</h3>
                     <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
-                        There are currently no active policies or directives targeted to your administrative jurisdiction.
+                        No policies or directives match your current source or status filter criteria.
                     </p>
                 </div>
             ) : (
-                <div className="bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-left text-xs">
-                            <thead>
-                                <tr className="bg-slate-50 border-b border-slate-200 text-slate-500 font-semibold text-[11px]">
-                                    <th className="py-3 px-4">Title & Description</th>
-                                    <th className="py-3 px-3">Priority</th>
-                                    <th className="py-3 px-3">Issuing Authority</th>
-                                    <th className="py-3 px-3">Effective Date</th>
-                                    <th className="py-3 px-3">Status</th>
-                                    <th className="py-3 px-4 text-right">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-100">
-                                {filteredDirectives.map(d => {
-                                    const isRead = d.userAcknowledgment?.isRead;
-                                    const isAck = d.userAcknowledgment?.isAcknowledged;
-                                    const reqAck = d.isAcknowledgmentRequired;
-                                    const hasImage = isImageUrl(d.attachmentUrl);
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
+                    {filteredDirectives.map(d => {
+                        const isRead = d.userAcknowledgment?.isRead;
+                        const isAck = d.userAcknowledgment?.isAcknowledged;
+                        const reqAck = d.isAcknowledgmentRequired;
+                        const tier = getDirectiveTier(d);
+                        const hasImage = isImageUrl(d.attachmentUrl);
 
-                                    return (
-                                        <tr
-                                            key={d.id}
-                                            className={`hover:bg-slate-50/70 transition-colors ${
-                                                !isRead ? "bg-blue-50/20" : ""
-                                            }`}
-                                        >
-                                            <td className="py-3 px-4 max-w-md">
-                                                <div className="flex items-start gap-3">
-                                                    {/* Image preview thumbnail if attached */}
-                                                    {d.attachmentUrl && hasImage ? (
-                                                        <div
-                                                            onClick={() => setPreviewImageUrl(d.attachmentUrl || null)}
-                                                            className="w-12 h-12 rounded-lg border border-slate-200 overflow-hidden bg-slate-100 shrink-0 cursor-pointer hover:opacity-85 transition-opacity"
-                                                            title="Click to view full image"
-                                                        >
-                                                            <img
-                                                                src={d.attachmentUrl}
-                                                                alt={d.attachmentName || d.title}
-                                                                className="w-full h-full object-cover"
-                                                            />
-                                                        </div>
-                                                    ) : d.attachmentUrl ? (
-                                                        <div className="w-10 h-10 rounded-lg bg-slate-100 border border-slate-200 flex items-center justify-center shrink-0 text-slate-500">
-                                                            <Paperclip className="w-4 h-4" />
-                                                        </div>
-                                                    ) : null}
+                        return (
+                            <div
+                                key={d.id}
+                                onClick={() => openDirectiveDetails(d)}
+                                className={`group relative rounded-xl border p-4 bg-white flex flex-col justify-between transition-all duration-200 cursor-pointer hover:shadow-md hover:-translate-y-0.5 ${
+                                    reqAck && !isAck
+                                        ? "border-amber-300 hover:border-amber-400 bg-linear-to-b from-amber-50/20 to-white"
+                                        : "border-slate-200 hover:border-blue-400 bg-white"
+                                }`}
+                            >
+                                <div>
+                                    {/* Top Badges: Source, Type, Priority & Attachment */}
+                                    <div className="flex items-center justify-between gap-1.5 mb-2.5">
+                                        <div className="flex items-center gap-1.5 flex-wrap">
+                                            {/* Source Badge */}
+                                            {tier === "FEDERAL" ? (
+                                                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-900 text-white flex items-center gap-1 shrink-0">
+                                                    <Building2 className="w-2.5 h-2.5 text-blue-400" />
+                                                    <span>Federal</span>
+                                                </span>
+                                            ) : tier === "REGION" ? (
+                                                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-50 text-blue-800 border border-blue-200 flex items-center gap-1 shrink-0">
+                                                    <Building2 className="w-2.5 h-2.5 text-blue-600" />
+                                                    <span>Regional</span>
+                                                </span>
+                                            ) : tier === "ZONE" ? (
+                                                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-800 text-white flex items-center gap-1 shrink-0">
+                                                    <Building2 className="w-2.5 h-2.5 text-indigo-300" />
+                                                    <span>Zone</span>
+                                                </span>
+                                            ) : tier === "WOREDA" ? (
+                                                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-sky-50 text-sky-800 border border-sky-200 flex items-center gap-1 shrink-0">
+                                                    <Building2 className="w-2.5 h-2.5 text-sky-600" />
+                                                    <span>Woreda</span>
+                                                </span>
+                                            ) : (
+                                                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-200 shrink-0">
+                                                    Official
+                                                </span>
+                                            )}
 
-                                                    <div className="min-w-0 flex-1">
-                                                        <div className="flex items-center gap-1.5 flex-wrap mb-1">
-                                                            {!isRead && (
-                                                                <span className="w-2 h-2 rounded-full bg-blue-600 inline-block" title="Unread" />
-                                                            )}
-                                                            <span
-                                                                className={`px-1.5 py-0.5 rounded text-[10px] font-semibold border ${getTypeBadge(
-                                                                    d.type
-                                                                )}`}
-                                                            >
-                                                                {d.type}
-                                                            </span>
-                                                            {d.code && (
-                                                                <span className="text-[10px] font-mono text-slate-500 font-medium">
-                                                                    #{d.code}
-                                                                </span>
-                                                            )}
-                                                        </div>
-                                                        <div
-                                                            onClick={() => openDirectiveDetails(d)}
-                                                            className="text-xs font-bold text-slate-800 hover:text-blue-600 transition-colors cursor-pointer truncate"
-                                                        >
-                                                            {d.title}
-                                                        </div>
-                                                        <p className="text-[11px] text-slate-500 line-clamp-1 mt-0.5">
-                                                            {d.content}
-                                                        </p>
-                                                    </div>
-                                                </div>
-                                            </td>
+                                            {/* Type Badge */}
+                                            <span
+                                                className={`px-1.5 py-0.5 rounded text-[9px] font-bold tracking-wide uppercase border ${getTypeBadge(
+                                                    d.type
+                                                )}`}
+                                            >
+                                                {d.type || "DIRECTIVE"}
+                                            </span>
+                                        </div>
 
-                                            <td className="py-3 px-3 whitespace-nowrap">
-                                                <span
-                                                    className={`px-2 py-0.5 rounded text-[10px] font-semibold border ${getPriorityBadge(
-                                                        d.priority
-                                                    )}`}
-                                                >
+                                        {/* Priority & Attachment */}
+                                        <div className="flex items-center gap-1 shrink-0">
+                                            {d.priority === "CRITICAL" || d.priority === "URGENT" ? (
+                                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold bg-rose-50 text-rose-700 border border-rose-200">
+                                                    <span className="w-1.5 h-1.5 rounded-full bg-rose-600 animate-pulse"></span>
                                                     {d.priority}
                                                 </span>
-                                            </td>
+                                            ) : d.priority === "HIGH" ? (
+                                                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
+                                                    <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+                                                    HIGH
+                                                </span>
+                                            ) : null}
 
-                                            <td className="py-3 px-3 whitespace-nowrap">
-                                                <div className="text-xs font-medium text-slate-800">
-                                                    {d.issuer?.name || d.issuerOrganization?.name || "Official Authority"}
-                                                </div>
-                                                <div className="text-[10px] text-slate-400">
-                                                    {d.issuer?.authorName || d.author?.name || "Governance Desk"}
-                                                </div>
-                                            </td>
+                                            {d.attachmentUrl && (
+                                                <span title="Has attachment" className="p-0.5 text-slate-400">
+                                                    <Paperclip className="w-3 h-3" />
+                                                </span>
+                                            )}
+                                        </div>
+                                    </div>
 
-                                            <td className="py-3 px-3 whitespace-nowrap">
-                                                <div className="text-xs text-slate-700">
-                                                    {new Date(d.effectiveDate).toLocaleDateString(undefined, {
-                                                        year: "numeric",
-                                                        month: "short",
-                                                        day: "numeric"
-                                                    })}
-                                                </div>
-                                                {d.deadline && (
-                                                    <div className="text-[10px] text-amber-700 font-medium flex items-center gap-1 mt-0.5">
-                                                        <Clock className="w-2.5 h-2.5" />
-                                                        <span>Due: {new Date(d.deadline).toLocaleDateString(undefined, { month: "short", day: "numeric" })}</span>
-                                                    </div>
-                                                )}
-                                            </td>
+                                    {/* Directive Title - 2 lines clamp */}
+                                    <h4 className="text-sm font-bold text-slate-900 group-hover:text-blue-600 transition-colors line-clamp-2 leading-snug mb-1">
+                                        {d.title}
+                                    </h4>
 
-                                            <td className="py-3 px-3 whitespace-nowrap">
-                                                {reqAck ? (
-                                                    isAck ? (
-                                                        <span className="inline-flex items-center gap-1 text-[10px] font-medium text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-                                                            <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                                                            Acknowledged
-                                                        </span>
-                                                    ) : (
-                                                        <span className="inline-flex items-center gap-1 text-[10px] font-medium text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
-                                                            <AlertCircle className="w-3 h-3 text-amber-600" />
-                                                            Ack Required
-                                                        </span>
-                                                    )
-                                                ) : (
-                                                    <span className="text-[10px] font-medium text-slate-500 bg-slate-100 px-2 py-0.5 rounded">
-                                                        {isRead ? "Viewed" : "Unread"}
-                                                    </span>
-                                                )}
-                                            </td>
+                                    {/* Reference Code & Origin Authority */}
+                                    <div className="flex items-center gap-1.5 text-[11px] text-slate-400 mb-3 truncate">
+                                        {d.code && (
+                                            <span className="font-mono text-[10px] text-slate-400 font-medium">
+                                                #{d.code}
+                                            </span>
+                                        )}
+                                        {d.code && (d.issuer?.name || d.issuerOrganization?.name) && <span>•</span>}
+                                        <span className="truncate">
+                                            {d.issuer?.name || d.issuerOrganization?.name || "Official Authority"}
+                                        </span>
+                                    </div>
+                                </div>
 
-                                            <td className="py-3 px-4 text-right whitespace-nowrap">
-                                                <div className="flex items-center justify-end gap-1.5">
-                                                    <button
-                                                        onClick={() => openDirectiveDetails(d)}
-                                                        className="px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors flex items-center gap-1 cursor-pointer border border-slate-200"
-                                                    >
-                                                        <Eye className="w-3.5 h-3.5" />
-                                                        <span>View</span>
-                                                    </button>
-                                                    {reqAck && !isAck && (
-                                                        <button
-                                                            onClick={() => {
-                                                                setAckModalDirective(d);
-                                                                setAckNotes("");
-                                                                setAckConfirmed(false);
-                                                            }}
-                                                            className="px-2.5 py-1.5 text-xs font-semibold text-white bg-slate-900 hover:bg-slate-800 rounded-lg transition-colors flex items-center gap-1 shadow-xs cursor-pointer"
-                                                        >
-                                                            <CheckSquare className="w-3.5 h-3.5" />
-                                                            <span>Acknowledge</span>
-                                                        </button>
-                                                    )}
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    );
-                                })}
-                            </tbody>
-                        </table>
-                    </div>
+                                {/* Footer: Due Date & Action Status */}
+                                <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-2 mt-auto">
+                                    {d.deadline ? (
+                                        <span className="text-[11px] font-semibold text-rose-600 flex items-center gap-1 shrink-0">
+                                            <Clock className="w-3 h-3" />
+                                            <span>Due {new Date(d.deadline).toLocaleDateString(undefined, { month: "short", day: "numeric" })}</span>
+                                        </span>
+                                    ) : (
+                                        <span className="text-[11px] text-slate-400 shrink-0">
+                                            {new Date(d.effectiveDate || d.issueDate).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
+                                        </span>
+                                    )}
+
+                                    <div className="shrink-0">
+                                        {reqAck && isAck ? (
+                                            <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-blue-50 text-blue-700 border border-blue-200 flex items-center gap-1">
+                                                <CheckCircle2 className="w-3 h-3 text-blue-600" />
+                                                <span>Confirmed</span>
+                                            </span>
+                                        ) : reqAck && !isAck ? (
+                                            <button
+                                                type="button"
+                                                onClick={e => {
+                                                    e.stopPropagation();
+                                                    setAckModalDirective(d);
+                                                    setAckNotes("");
+                                                    setAckConfirmed(false);
+                                                }}
+                                                className="px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-[11px] font-bold transition-all shadow-xs flex items-center gap-1 cursor-pointer"
+                                            >
+                                                <CheckSquare className="w-3 h-3" />
+                                                <span>Confirm</span>
+                                            </button>
+                                        ) : (
+                                            <span className="text-[11px] font-semibold text-slate-400 group-hover:text-blue-600 flex items-center gap-0.5">
+                                                <span>Review</span>
+                                                <ChevronRight className="w-3 h-3" />
+                                            </span>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        );
+                    })}
                 </div>
             )}
 
-            {/* Read Directive Details Modal */}
+            {/* SLIDE-OVER DRAWER (FULL DIRECTIVE DETAILS) */}
             {selectedDirective && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-xs p-4 overflow-y-auto animate-in fade-in">
-                    <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] flex flex-col shadow-xl border border-slate-200 overflow-hidden my-auto">
-                        {/* Modal Header */}
-                        <div className="p-5 border-b border-slate-200 bg-slate-50/50 flex items-start justify-between gap-4">
-                            <div className="space-y-1">
-                                <div className="flex items-center gap-2 flex-wrap">
-                                    <span
-                                        className={`px-2 py-0.5 rounded text-[10px] font-semibold border ${getTypeBadge(
-                                            selectedDirective.type
-                                        )}`}
-                                    >
-                                        {selectedDirective.type}
+                <div className="fixed inset-0 z-50 overflow-hidden animate-in fade-in duration-200">
+                    {/* Backdrop */}
+                    <div
+                        className="absolute inset-0 bg-black/40 backdrop-blur-xs transition-opacity"
+                        onClick={() => setSelectedDirective(null)}
+                    />
+
+                    <div className="fixed inset-y-0 right-0 max-w-xl w-full bg-white shadow-2xl flex flex-col z-50 animate-in slide-in-from-right duration-200 border-l border-slate-200">
+                        {/* Drawer Header */}
+                        <div className="p-5 border-b border-slate-200 bg-slate-50/80 flex items-center justify-between gap-3">
+                            <div className="flex flex-wrap items-center gap-2">
+                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold bg-white text-slate-800 border border-slate-200 shadow-2xs">
+                                    <Building2 className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                                    <span>
+                                        {selectedDirective.issuer?.name || selectedDirective.issuerOrganization?.name || "Official Governance Authority"}
                                     </span>
-                                    <span
-                                        className={`px-2 py-0.5 rounded text-[10px] font-semibold border ${getPriorityBadge(
-                                            selectedDirective.priority
-                                        )}`}
-                                    >
-                                        Priority: {selectedDirective.priority}
+                                </span>
+
+                                <span
+                                    className={`px-2 py-0.5 rounded text-[10px] font-bold tracking-wide uppercase border ${getTypeBadge(
+                                        selectedDirective.type
+                                    )}`}
+                                >
+                                    {selectedDirective.type || "DIRECTIVE"}
+                                </span>
+
+                                {selectedDirective.code && (
+                                    <span className="font-mono text-[10px] font-bold text-slate-500 bg-white px-2 py-0.5 rounded border border-slate-200">
+                                        #{selectedDirective.code}
                                     </span>
-                                    {selectedDirective.code && (
-                                        <span className="text-xs font-mono text-slate-500 font-medium">
-                                            #{selectedDirective.code}
-                                        </span>
-                                    )}
-                                </div>
-                                <h3 className="text-base font-bold text-slate-900 leading-snug">
-                                    {selectedDirective.title}
-                                </h3>
-                                <div className="text-xs text-slate-500 flex items-center gap-2 flex-wrap">
-                                    <span>Issued by: <strong className="text-slate-700">{selectedDirective.issuer?.name || selectedDirective.issuerOrganization?.name || "Official Authority"}</strong></span>
-                                    <span>•</span>
-                                    <span>Effective: {new Date(selectedDirective.effectiveDate).toLocaleDateString()}</span>
-                                    {selectedDirective.deadline && (
-                                        <>
-                                            <span>•</span>
-                                            <span className="text-amber-700 font-medium">
-                                                Due: {new Date(selectedDirective.deadline).toLocaleDateString()}
-                                            </span>
-                                        </>
-                                    )}
-                                </div>
+                                )}
                             </div>
 
                             <button
+                                type="button"
                                 onClick={() => setSelectedDirective(null)}
-                                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
+                                className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-200/60 rounded-lg transition-colors cursor-pointer"
+                                title="Close Panel"
                             >
                                 <X className="w-5 h-5" />
                             </button>
                         </div>
 
-                        {/* Modal Body */}
-                        <div className="p-5 overflow-y-auto space-y-5 flex-1 text-slate-800">
+                        {/* Drawer Scrollable Body */}
+                        <div className="p-6 overflow-y-auto space-y-5 flex-1 text-slate-800">
+                            {/* Title & Priority */}
+                            <div>
+                                <div className="flex items-center gap-2 mb-1.5">
+                                    {selectedDirective.priority === "CRITICAL" || selectedDirective.priority === "URGENT" ? (
+                                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200">
+                                            <span className="w-1.5 h-1.5 rounded-full bg-rose-600 animate-pulse"></span>
+                                            {selectedDirective.priority}
+                                        </span>
+                                    ) : selectedDirective.priority === "HIGH" ? (
+                                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
+                                            <span className="w-1.5 h-1.5 rounded-full bg-amber-600"></span>
+                                            HIGH PRIORITY
+                                        </span>
+                                    ) : (
+                                        <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-slate-100 text-slate-600">
+                                            STANDARD PRIORITY
+                                        </span>
+                                    )}
+                                </div>
+                                <h3 className="text-xl font-bold text-slate-900 leading-snug">
+                                    {selectedDirective.title}
+                                </h3>
+                            </div>
+
+                            {/* Metadata Grid */}
+                            <div className="grid grid-cols-2 gap-3 p-3.5 bg-slate-50 rounded-xl border border-slate-100 text-xs">
+                                <div>
+                                    <span className="text-slate-400 text-[11px] block">Issued Date</span>
+                                    <span className="font-semibold text-slate-800">
+                                        {new Date(selectedDirective.issueDate || selectedDirective.effectiveDate).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}
+                                    </span>
+                                </div>
+                                <div>
+                                    <span className="text-slate-400 text-[11px] block">Compliance Due Date</span>
+                                    {selectedDirective.deadline ? (
+                                        <span className="font-semibold text-rose-600">
+                                            {new Date(selectedDirective.deadline).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}
+                                        </span>
+                                    ) : (
+                                        <span className="text-slate-500 font-medium">Standard Execution</span>
+                                    )}
+                                </div>
+                                <div>
+                                    <span className="text-slate-400 text-[11px] block">Issuing Authority</span>
+                                    <span className="font-semibold text-slate-800 truncate block">
+                                        {selectedDirective.issuer?.name || selectedDirective.issuerOrganization?.name || "Official Authority"}
+                                    </span>
+                                </div>
+                                <div>
+                                    <span className="text-slate-400 text-[11px] block">Hierarchy Scope</span>
+                                    <span className="font-semibold text-slate-800">
+                                        {getDirectiveTier(selectedDirective)} Tier
+                                    </span>
+                                </div>
+                            </div>
+
                             {/* Acknowledgment Status Banner */}
                             {selectedDirective.isAcknowledgmentRequired && (
                                 <div
-                                    className={`p-3.5 rounded-xl border flex items-start justify-between gap-3 text-xs ${
+                                    className={`p-4 rounded-xl border flex items-start justify-between gap-3 text-xs ${
                                         selectedDirective.userAcknowledgment?.isAcknowledged
-                                            ? "bg-emerald-50 border-emerald-200 text-emerald-900"
+                                            ? "bg-blue-50 border-blue-200 text-blue-900"
                                             : "bg-amber-50 border-amber-200 text-amber-900"
                                     }`}
                                 >
                                     <div className="flex items-start gap-2.5">
                                         {selectedDirective.userAcknowledgment?.isAcknowledged ? (
-                                            <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                                            <CheckCircle2 className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
                                         ) : (
                                             <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
                                         )}
                                         <div>
                                             <div className="font-bold">
                                                 {selectedDirective.userAcknowledgment?.isAcknowledged
-                                                    ? "Receipt Acknowledged"
+                                                    ? "Receipt Confirmed"
                                                     : "Acknowledgment Required"}
                                             </div>
                                             <p className="mt-0.5 text-slate-600">
@@ -736,20 +908,21 @@ export default function DirectivesRecipientView({
 
                                     {!selectedDirective.userAcknowledgment?.isAcknowledged && (
                                         <button
+                                            type="button"
                                             onClick={() => {
                                                 setAckModalDirective(selectedDirective);
                                                 setAckNotes("");
                                                 setAckConfirmed(false);
                                             }}
-                                            className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-semibold shrink-0 transition-colors cursor-pointer"
+                                            className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold shrink-0 transition-colors cursor-pointer shadow-xs"
                                         >
-                                            Acknowledge
+                                            Confirm Receipt
                                         </button>
                                     )}
                                 </div>
                             )}
 
-                            {/* Attached Image Preview */}
+                            {/* Attached Image or File Preview */}
                             {selectedDirective.attachmentUrl && (
                                 <div className="space-y-2">
                                     <div className="text-xs font-semibold text-slate-600 flex items-center justify-between">
@@ -761,7 +934,7 @@ export default function DirectivesRecipientView({
                                             href={selectedDirective.attachmentUrl}
                                             target="_blank"
                                             rel="noopener noreferrer"
-                                            className="text-blue-600 hover:underline text-xs flex items-center gap-1"
+                                            className="text-blue-600 hover:underline text-xs flex items-center gap-1 font-semibold"
                                         >
                                             <ExternalLink className="w-3 h-3" />
                                             <span>Open Original</span>
@@ -769,20 +942,23 @@ export default function DirectivesRecipientView({
                                     </div>
 
                                     {isImageUrl(selectedDirective.attachmentUrl) ? (
-                                        <div className="rounded-xl border border-slate-200 overflow-hidden bg-slate-50 p-2">
+                                        <div
+                                            onClick={() => setPreviewImageUrl(selectedDirective.attachmentUrl || null)}
+                                            className="rounded-xl border border-slate-200 overflow-hidden bg-slate-50 p-2 cursor-pointer hover:border-blue-400 transition-colors group"
+                                            title="Click to view full image"
+                                        >
                                             <img
                                                 src={selectedDirective.attachmentUrl}
                                                 alt={selectedDirective.attachmentName || "Directive Image Attachment"}
-                                                className="w-full max-h-[350px] object-contain rounded-lg"
+                                                className="w-full max-h-[300px] object-contain rounded-lg group-hover:opacity-95 transition-opacity"
                                             />
-                                            {selectedDirective.attachmentName && (
-                                                <p className="text-[11px] text-slate-500 font-medium text-center mt-1.5">
-                                                    {selectedDirective.attachmentName}
-                                                </p>
-                                            )}
+                                            <p className="text-[11px] text-slate-500 font-medium text-center mt-1.5 flex items-center justify-center gap-1">
+                                                <span>Click to enlarge image</span>
+                                                <ExternalLink className="w-3 h-3" />
+                                            </p>
                                         </div>
                                     ) : (
-                                        <div className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-200">
+                                        <div className="flex items-center justify-between p-3.5 bg-slate-50 rounded-xl border border-slate-200">
                                             <div className="flex items-center gap-2.5">
                                                 <Paperclip className="w-4 h-4 text-slate-500" />
                                                 <div>
@@ -796,7 +972,7 @@ export default function DirectivesRecipientView({
                                                 href={selectedDirective.attachmentUrl}
                                                 target="_blank"
                                                 rel="noopener noreferrer"
-                                                className="px-2.5 py-1.5 bg-white border border-slate-200 text-slate-700 hover:bg-slate-100 rounded-lg text-xs font-semibold flex items-center gap-1"
+                                                className="px-3 py-1.5 bg-white border border-slate-200 text-slate-700 hover:bg-slate-100 rounded-lg text-xs font-semibold flex items-center gap-1 shadow-2xs"
                                             >
                                                 <ExternalLink className="w-3 h-3" />
                                                 <span>Download</span>
@@ -806,9 +982,9 @@ export default function DirectivesRecipientView({
                                 </div>
                             )}
 
-                            {/* Directive Content */}
+                            {/* Full Directive Content */}
                             <div>
-                                <div className="text-xs font-semibold text-slate-600 mb-1.5">
+                                <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">
                                     Official Directive Text
                                 </div>
                                 <div className="text-xs sm:text-sm text-slate-800 bg-slate-50 p-4 rounded-xl border border-slate-200 leading-relaxed whitespace-pre-wrap font-sans">
@@ -817,14 +993,30 @@ export default function DirectivesRecipientView({
                             </div>
                         </div>
 
-                        {/* Modal Footer */}
-                        <div className="p-4 border-t border-slate-200 bg-slate-50 flex items-center justify-end gap-2">
+                        {/* Drawer Footer */}
+                        <div className="p-4 border-t border-slate-200 bg-slate-50 flex items-center justify-between gap-2">
                             <button
+                                type="button"
                                 onClick={() => setSelectedDirective(null)}
                                 className="px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-200 rounded-lg transition-colors cursor-pointer"
                             >
                                 Close
                             </button>
+
+                            {selectedDirective.isAcknowledgmentRequired && !selectedDirective.userAcknowledgment?.isAcknowledged && (
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setAckModalDirective(selectedDirective);
+                                        setAckNotes("");
+                                        setAckConfirmed(false);
+                                    }}
+                                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 shadow-xs cursor-pointer"
+                                >
+                                    <CheckSquare className="w-3.5 h-3.5" />
+                                    <span>Confirm Receipt</span>
+                                </button>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -913,7 +1105,7 @@ export default function DirectivesRecipientView({
                                 className={`px-4 py-2 text-xs font-semibold text-white rounded-lg transition-colors flex items-center gap-1.5 shadow-xs cursor-pointer ${
                                     ackSubmitting || !ackConfirmed
                                         ? "bg-slate-300 cursor-not-allowed"
-                                        : "bg-slate-900 hover:bg-slate-800"
+                                        : "bg-blue-600 hover:bg-blue-700"
                                 }`}
                             >
                                 {ackSubmitting ? (
