@@ -2,12 +2,61 @@
 
 import { useState, useEffect, Suspense } from "react";
 import { useAuth } from "../../hooks/useAuth";
-import { Loader2, BookOpen, LogOut, LayoutDashboard, Building, Lock, ChevronDown, ChevronRight, Calendar, Users, GraduationCap, ClipboardCheck, FileText, Settings, User, Megaphone, Bell, MessageSquare, Package, AlertOctagon, TrendingUp, HeartHandshake, BarChart2, Sparkles, Menu, Brain, Landmark } from "lucide-react";
+import { Loader2, BookOpen, LogOut, LayoutDashboard, Building, Search, Lock, ChevronDown, ChevronRight, Calendar, Users, GraduationCap, ClipboardCheck, FileText, Settings, User, Megaphone, Bell, MessageSquare, Package, AlertOctagon, TrendingUp, HeartHandshake, BarChart2, Sparkles, Menu, Brain, Landmark, Layers, UserCheck } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { fetchApi } from "../../lib/api";
+import { getPrimaryAccess, isHierarchyAdminAccess } from "../../lib/auth-access";
 import StudentNavigation from "./student/StudentNavigation";
 import AdministrativeNavigation from "../../components/governance/AdministrativeNavigation";
+
+function FederalNavigation({ collapsed, onToggleCollapse, pathname }: { collapsed: boolean; onToggleCollapse: () => void; pathname: string }) {
+    const searchParams = useSearchParams();
+    const currentTab = searchParams.get("tab") || "overview";
+    const links = [
+        { href: "/dashboard/federal", label: "Dashboard", icon: LayoutDashboard },
+        { href: "/dashboard/federal?tab=regions", label: "Regions & Hierarchy", icon: Layers },
+        { href: "/dashboard/federal?tab=directives", label: "Policies & Directives", icon: FileText },
+        { href: "/dashboard/federal?tab=administration", label: "Leadership", icon: UserCheck },
+    ];
+
+    return (
+        <aside className={`bg-[#184973] border-r border-[#265e8e] flex flex-col hidden md:flex overflow-y-auto scrollbar-hide text-blue-100 font-sans shadow-lg shrink-0 transition-all duration-300 ease-in-out ${collapsed ? "w-16" : "w-64"}`} style={{ scrollbarWidth: "none", msOverflowStyle: "none" } as React.CSSProperties}>
+            <div className="flex items-center justify-between px-3 pt-4 pb-2 border-b border-[#265e8e]/50">
+                {!collapsed && <p className="text-[10px] text-blue-200/90 font-bold uppercase tracking-widest px-1">Federal Workspace</p>}
+                <button
+                    onClick={onToggleCollapse}
+                    title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+                    className={`flex items-center justify-center w-7 h-7 rounded-lg bg-[#225785] hover:bg-[#2c6da7] text-blue-100 hover:text-amber-300 transition-all cursor-pointer shadow-xs ${collapsed ? "mx-auto" : "ml-auto"}`}
+                    aria-label="Toggle sidebar"
+                >
+                    <ChevronRight className={`w-4 h-4 ${collapsed ? "" : "rotate-180"}`} />
+                </button>
+            </div>
+            <div className="p-3 pt-3 flex-1">
+                <nav className="space-y-1">
+                    {links.map(({ href, label, icon: Icon }) => {
+                        const expectedTab = new URLSearchParams(href.split("?")[1] || "").get("tab");
+                        const isActive = pathname === "/dashboard/federal" && (!expectedTab || currentTab === expectedTab);
+                        return (
+                            <Link
+                                key={href}
+                                href={href}
+                                title={label}
+                                className={`flex items-center ${collapsed ? "justify-center px-2" : "justify-between px-3.5"} py-2 rounded-xl text-xs font-medium transition-all duration-150 cursor-pointer ${isActive ? "bg-[#0f2f4c] text-amber-300 font-semibold border-l-2 border-amber-400 shadow-xs" : "text-blue-50/90 hover:bg-[#225785] hover:text-white hover:translate-x-0.5"}`}
+                            >
+                                <div className={`flex items-center ${collapsed ? "" : "space-x-3"}`}>
+                                    <Icon className="w-4 h-4 shrink-0 text-amber-300/90" />
+                                    {!collapsed && <span>{label}</span>}
+                                </div>
+                            </Link>
+                        );
+                    })}
+                </nav>
+            </div>
+        </aside>
+    );
+}
 
 function TeacherBreadcrumbs({ pathname, currentTab, currentType, currentChannel }: { pathname: string; currentTab: string; currentType: string; currentChannel?: string }) {
     if (pathname === "/dashboard/teacher") {
@@ -92,12 +141,10 @@ function TeacherBreadcrumbs({ pathname, currentTab, currentType, currentChannel 
             grade: "Record Results & Grade",
             feedback: "Provide Feedback"
         };
-        if (currentTab && tabMap[currentTab]) {
-            subItemTitle = tabMap[currentTab];
-        } else if (currentType && typeMap[currentType]) {
+        if (currentType && typeMap[currentType]) {
             subItemTitle = typeMap[currentType];
-        } else {
-            subItemTitle = "Create Assessment";
+        } else if (currentTab && tabMap[currentTab]) {
+            subItemTitle = tabMap[currentTab];
         }
     } else if (pathname.startsWith("/dashboard/teacher/learning") || pathname.startsWith("/dashboard/teacher/activities")) {
         parentTitle = "Learning Activities";
@@ -286,61 +333,14 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
         messages: 0,
     });
 
-    const primaryAccess = authData?.access?.[0];
+    const primaryAccess = getPrimaryAccess(authData?.access);
     const roleName = primaryAccess?.role?.name || "Unassigned";
-    const scopeType = primaryAccess?.scope?.type;
-    const scopeName = primaryAccess?.scope?.name;
+    const scopeType = primaryAccess?.scope?.type || "";
+    const isAdminRole = ["ADMIN", "SCHOOL_ADMIN", "ADMINISTRATOR", "PRINCIPAL", "FEDERAL_ADMIN", "REGION_ADMIN", "ZONE_ADMIN", "ZONAL_ADMIN", "WOREDA_ADMIN"].includes(roleName);
+    const isSchoolAdmin = scopeType === "SCHOOL" && isAdminRole;
+    const isFederalScope = scopeType === "FEDERAL";
     const isTeacherRoute = (pathname === "/dashboard/teacher" || pathname.startsWith("/dashboard/teacher/")) && roleName === "TEACHER";
     const isStudentRoute = (pathname === "/dashboard/student" || pathname.startsWith("/dashboard/student/")) || roleName === "STUDENT";
-    const isAdministrativeTier = scopeType === "FEDERAL" || scopeType === "REGION" || scopeType === "ZONE" || scopeType === "WOREDA";
-    const isAdministrativeRoute = 
-        pathname.startsWith("/dashboard/federal") ||
-        pathname.startsWith("/dashboard/region") ||
-        pathname.startsWith("/dashboard/zone") ||
-        pathname.startsWith("/dashboard/woreda") ||
-        isAdministrativeTier;
-
-    const defaultHomeHref = (() => {
-        if (scopeType === "FEDERAL") return "/dashboard/federal";
-        if (scopeType === "REGION") return "/dashboard/region";
-        if (scopeType === "ZONE") return "/dashboard/zone";
-        if (scopeType === "WOREDA") return "/dashboard/woreda";
-        if (roleName === "TEACHER") return "/dashboard/teacher";
-        if (roleName === "STUDENT") return "/dashboard/student";
-        if (roleName === "PARENT") return "/dashboard/parent";
-        if (roleName === "VICE_PRINCIPAL") return "/dashboard/vice-principal";
-        return "/dashboard/admin";
-    })();
-
-    const displayRoleTitle = (() => {
-        if (scopeType === "FEDERAL") return "Federal Administrator";
-        if (scopeType === "REGION") return "Regional Administrator";
-        if (scopeType === "ZONE") return "Zonal Administrator";
-        if (scopeType === "WOREDA") return "Woreda Administrator";
-        if (isTeacherRoute) return "Teacher";
-        if (roleName === "ADMIN" || roleName === "SCHOOL_ADMIN") return "School Administrator";
-        return roleName;
-    })();
-
-    const displayBadgeTitle = (() => {
-        if (scopeType === "FEDERAL") return "FEDERAL GOVERNANCE";
-        if (scopeType === "REGION") return `${scopeName || "REGIONAL"} BUREAU`;
-        if (scopeType === "ZONE") return `${scopeName || "ZONAL"} DEPT`;
-        if (scopeType === "WOREDA") return `${scopeName || "WOREDA"} OFFICE`;
-        if (isTeacherRoute) return "TEACHER ROLE";
-        return roleName;
-    })();
-
-    // Auto-redirect governance administrators if they land on /dashboard or /dashboard/admin
-    useEffect(() => {
-        if (!authData) return;
-        if (isAdministrativeTier && (pathname === "/dashboard" || pathname === "/dashboard/admin")) {
-            if (scopeType === "FEDERAL") router.replace("/dashboard/federal");
-            else if (scopeType === "REGION") router.replace("/dashboard/region");
-            else if (scopeType === "ZONE") router.replace("/dashboard/zone");
-            else if (scopeType === "WOREDA") router.replace("/dashboard/woreda");
-        }
-    }, [authData, isAdministrativeTier, scopeType, pathname, router]);
 
     const loadNotifications = async () => {
         try {
@@ -370,9 +370,26 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
     };
 
     useEffect(() => {
-        if (authData) {
+        if (!authData) return;
+        loadNotifications();
+
+        // 1. Periodic poll every 10 seconds for real-time notification delivery without requiring manual page refresh
+        const intervalId = setInterval(() => {
             loadNotifications();
-        }
+        }, 10000);
+
+        // 2. Refresh on window focus and custom notification-updated event
+        const handleRefresh = () => {
+            loadNotifications();
+        };
+        window.addEventListener("focus", handleRefresh);
+        window.addEventListener("notification-updated", handleRefresh);
+
+        return () => {
+            clearInterval(intervalId);
+            window.removeEventListener("focus", handleRefresh);
+            window.removeEventListener("notification-updated", handleRefresh);
+        };
     }, [authData, pathname]);
 
     useEffect(() => {
@@ -445,16 +462,14 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
 
     // Server-side validated role authorization check
     const isRouteAuthorized = (() => {
-        const isAdmin = ["ADMIN", "SCHOOL_ADMIN", "ADMINISTRATOR", "PRINCIPAL"].includes(roleName);
-
         // 0. The root /dashboard and /dashboard/admin are the School Administrator / Principal Dashboard
         if (pathname === "/dashboard" || pathname === "/dashboard/admin") {
-            return isAdmin;
+            return isSchoolAdmin;
         }
 
         // 1. /dashboard/teachers (plural) is the Admin Teacher Management route
         if (pathname.startsWith("/dashboard/teachers")) {
-            return isAdmin;
+            return isSchoolAdmin;
         }
 
         // 2. /dashboard/teacher (singular) is strictly reserved for the TEACHER actor workspace
@@ -462,40 +477,42 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
             return roleName === "TEACHER";
         }
 
-        // 3. Admin routes (/dashboard/admin, /dashboard/academics, /dashboard/school) are strictly for ADMIN roles
+        // 3. Admin routes (/dashboard/admin, /dashboard/academics, /dashboard/school) are strictly for SCHOOL-scoped ADMIN roles
         if (
             pathname.startsWith("/dashboard/admin") ||
             pathname.startsWith("/dashboard/academics") ||
             pathname.startsWith("/dashboard/school")
         ) {
-            return isAdmin;
+            return isSchoolAdmin;
         }
 
         // 4. Student routes
         if (pathname.startsWith("/dashboard/student")) {
-            return roleName === "STUDENT" || isAdmin;
+            return roleName === "STUDENT" || isAdminRole;
         }
 
         // 5. Parent routes
         if (pathname.startsWith("/dashboard/parent")) {
-            return roleName === "PARENT" || isAdmin;
+            return roleName === "PARENT" || isAdminRole;
         }
 
         // 6. Vice Principal routes
         if (pathname.startsWith("/dashboard/vice-principal")) {
-            return roleName === "VICE_PRINCIPAL" || isAdmin;
-        }
-
-        // 7. Administrative hierarchy routes (FEDERAL, REGION, ZONE, WOREDA)
-        if (isAdministrativeRoute) {
-            return isAdmin;
+            return roleName === "VICE_PRINCIPAL" || isAdminRole;
         }
 
         return true;
     })();
 
     if (!isRouteAuthorized) {
-        const getAuthorizedRolePath = (role: string) => {
+        const getAuthorizedRolePath = (role: string, currentScope: string) => {
+            switch (currentScope) {
+                case "FEDERAL": return "/dashboard/federal";
+                case "REGION": return "/dashboard/region";
+                case "ZONE": return "/dashboard/zone";
+                case "WOREDA": return "/dashboard/woreda";
+            }
+
             switch (role) {
                 case "ADMIN":
                 case "SCHOOL_ADMIN":
@@ -505,7 +522,7 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
                 case "STUDENT": return "/dashboard/student";
                 case "PARENT": return "/dashboard/parent";
                 case "VICE_PRINCIPAL": return "/dashboard/vice-principal";
-                default: return "/dashboard/admin";
+                default: return "/dashboard";
             }
         };
 
@@ -520,7 +537,7 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
                         You do not have authorization to access this page ({pathname}). You are logged in as <span className="font-bold text-gray-800">{roleName}</span>.
                     </p>
                     <button
-                        onClick={() => router.push(getAuthorizedRolePath(roleName))}
+                        onClick={() => router.push(getAuthorizedRolePath(roleName, scopeType))}
                         className="px-5 py-2.5 bg-blue-600 text-white font-bold text-xs rounded-xl hover:bg-blue-700 transition-colors shadow-sm"
                     >
                         Go to My Authorized Dashboard
@@ -544,22 +561,27 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
             {/* Top Navigation Bar */}
             <header className="bg-white border-b border-gray-200 h-16 flex items-center justify-between px-6 z-10">
                 <div className="flex items-center space-x-3">
-                    <Link href={defaultHomeHref} className="flex items-center space-x-2.5 group">
-                        <div className="w-8 h-8 rounded-lg bg-[#184973] flex items-center justify-center text-white shadow-xs transition-transform group-hover:scale-105">
-                            {isAdministrativeTier ? <Landmark className="w-5 h-5 text-amber-400" /> : <GraduationCap className="w-5 h-5" />}
+                    <Link href="/dashboard" className="flex items-center space-x-2.5 group">
+                        <div className="w-8 h-8 rounded-lg bg-[#4085b3] flex items-center justify-center text-white shadow-xs transition-transform group-hover:scale-105">
+                            <GraduationCap className="w-5 h-5" />
                         </div>
                         <span className="text-lg font-bold text-slate-900 tracking-tight">
-                            Edu<span className="text-[#184973]">Bridge</span>
+                            Edu<span className="text-[#4085b3]">Bridge</span>
                         </span>
-                        {isAdministrativeTier && (
-                            <span className="ml-2 px-2 py-0.5 bg-blue-50 text-[#184973] text-[10px] font-bold rounded-md border border-blue-200/60 uppercase">
-                                {scopeType}
-                            </span>
-                        )}
                     </Link>
                 </div>
 
                 <div className="hidden md:flex items-center space-x-5">
+                    {/* Search Input */}
+                    <div className="relative">
+                        <input 
+                            type="text" 
+                            placeholder={isTeacherRoute ? "Search (students, classes, assignments...)" : "Search ..."} 
+                            className="bg-gray-100 border border-gray-200 text-xs rounded-xl pl-9 pr-4 py-2 focus:ring-2 focus:ring-blue-500 outline-none w-64 md:w-80 text-gray-700 placeholder-gray-400"
+                        />
+                        <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
+                    </div>
+
                     {/* In-App Notifications Bell for All Roles */}
                     <div className="relative">
                         <button 
@@ -618,36 +640,119 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
                                         </div>
                                     ) : (
                                         notificationsList.slice(0, 8).map(n => {
-                                            const getDirectivesOrAnnouncementsUrl = () => {
-                                                if (pathname.startsWith("/dashboard/student") || roleName === "STUDENT") {
-                                                    return "/dashboard/student/communication";
+                                            const extractDirectiveId = (link?: string | null) => {
+                                                if (!link) return null;
+                                                try {
+                                                    const dummyUrl = new URL(link, "http://localhost");
+                                                    return dummyUrl.searchParams.get("directiveId") || dummyUrl.searchParams.get("id");
+                                                } catch {
+                                                    return null;
                                                 }
-                                                if (pathname.startsWith("/dashboard/teacher") || roleName === "TEACHER" || isTeacherRoute) {
-                                                    return "/dashboard/teacher/communication/staff";
-                                                }
-                                                if (pathname.startsWith("/dashboard/region") || scopeType === "REGION" || roleName === "REGION_ADMIN") {
-                                                    return "/dashboard/region?tab=directives";
-                                                }
-                                                if (pathname.startsWith("/dashboard/zone") || scopeType === "ZONE" || roleName === "ZONE_ADMIN") {
-                                                    return "/dashboard/zone?tab=directives";
-                                                }
-                                                if (pathname.startsWith("/dashboard/woreda") || scopeType === "WOREDA" || roleName === "WOREDA_ADMIN") {
-                                                    return "/dashboard/woreda?tab=directives";
-                                                }
-                                                if (pathname.startsWith("/dashboard/federal") || scopeType === "FEDERAL" || roleName === "FEDERAL_ADMIN") {
-                                                    return "/dashboard/federal?tab=directives";
-                                                }
-                                                return "/dashboard/communication/announcements";
                                             };
 
-                                            const resolvedLink = (!n.link || n.link === "/dashboard/directives") 
-                                                ? getDirectivesOrAnnouncementsUrl() 
-                                                : n.link;
+                                            const extractedId = extractDirectiveId(n.link);
+
+                                            const getDirectivesOrAnnouncementsUrl = (targetId?: string | null) => {
+                                                const idParam = targetId ? `&directiveId=${targetId}` : "";
+                                                if (pathname.startsWith("/dashboard/student") || roleName === "STUDENT") {
+                                                    return `/dashboard/student/communication${targetId ? `?id=${targetId}` : ""}`;
+                                                }
+                                                if (pathname.startsWith("/dashboard/teacher") || roleName === "TEACHER" || isTeacherRoute) {
+                                                    return `/dashboard/teacher/communication/staff${targetId ? `?id=${targetId}` : ""}`;
+                                                }
+                                                if (pathname.startsWith("/dashboard/region") || scopeType === "REGION" || roleName === "REGION_ADMIN") {
+                                                    return `/dashboard/region?tab=directives&subTab=INCOMING${idParam}`;
+                                                }
+                                                if (pathname.startsWith("/dashboard/zone") || scopeType === "ZONE" || roleName === "ZONE_ADMIN") {
+                                                    return `/dashboard/zone?tab=directives&subTab=INCOMING${idParam}`;
+                                                }
+                                                if (pathname.startsWith("/dashboard/woreda") || scopeType === "WOREDA" || roleName === "WOREDA_ADMIN") {
+                                                    return `/dashboard/woreda?tab=directives&subTab=INCOMING${idParam}`;
+                                                }
+                                                if (pathname.startsWith("/dashboard/federal") || scopeType === "FEDERAL" || roleName === "FEDERAL_ADMIN") {
+                                                    return `/dashboard/federal?tab=directives${idParam}`;
+                                                }
+                                                return `/dashboard/communication/announcements?tab=directives${idParam}`;
+                                            };
+
+                                            const isProgramRelated = (n.title || "").toLowerCase().includes("initiative") || 
+                                                (n.title || "").toLowerCase().includes("program") || 
+                                                (n.link || "").includes("/programs") || 
+                                                (n.link || "").includes("tab=programs");
+
+                                            const extractProgramId = (link?: string | null) => {
+                                                if (!link) return null;
+                                                try {
+                                                    const dummyUrl = new URL(link, "http://localhost");
+                                                    return dummyUrl.searchParams.get("programId") || dummyUrl.searchParams.get("id");
+                                                } catch {
+                                                    return null;
+                                                }
+                                            };
+
+                                            const extractProgramTitle = (title?: string | null) => {
+                                                if (!title) return null;
+                                                const match = title.match(/(?:Initiative|Program(?:\s+Status\s+Update(?:\s*\([^)]*\))?)?|Program\s+Acknowledged)\s*[:\-–]\s*(.+)$/i);
+                                                if (match) return match[1].trim();
+                                                const colonIdx = title.indexOf(":");
+                                                if (colonIdx !== -1 && colonIdx < title.length - 1) {
+                                                    return title.substring(colonIdx + 1).trim();
+                                                }
+                                                return title.trim();
+                                            };
+
+                                            const progId = extractProgramId(n.link);
+                                            const progTitle = extractProgramTitle(n.title);
+
+                                            const getProgramUrl = () => {
+                                                const params = new URLSearchParams();
+                                                if (progId) params.set("programId", progId);
+                                                if (progTitle) params.set("programTitle", progTitle);
+                                                const paramStr = params.toString() ? `&${params.toString()}` : "";
+                                                const questionParamStr = params.toString() ? `?${params.toString()}` : "";
+
+                                                if (pathname.startsWith("/dashboard/region") || scopeType === "REGION" || roleName === "REGION_ADMIN") {
+                                                    return `/dashboard/region?tab=programs${paramStr}`;
+                                                }
+                                                if (pathname.startsWith("/dashboard/zone") || scopeType === "ZONE" || roleName === "ZONE_ADMIN") {
+                                                    return `/dashboard/zone?tab=programs${paramStr}`;
+                                                }
+                                                if (pathname.startsWith("/dashboard/woreda") || scopeType === "WOREDA" || roleName === "WOREDA_ADMIN") {
+                                                    return `/dashboard/woreda?tab=programs${paramStr}`;
+                                                }
+                                                if (pathname.startsWith("/dashboard/federal") || scopeType === "FEDERAL" || roleName === "FEDERAL_ADMIN") {
+                                                    return `/dashboard/federal?tab=programs${paramStr}`;
+                                                }
+                                                return `/dashboard/programs${questionParamStr}`;
+                                            };
+
+                                            const isDirectiveRelated = !isProgramRelated && ((n.title || "").toLowerCase().includes("directive") || (n.title || "").toLowerCase().includes("policy") || (n.title || "").toLowerCase().includes("announcement"));
+
+                                            const isDirectivesRoute = !isProgramRelated && (!n.link || n.link === "/dashboard/directives" || n.link.startsWith("/dashboard/directives?") || (isDirectiveRelated && (n.link === "/dashboard/communication/announcements" || n.link.startsWith("/dashboard/communication/announcements?id="))));
+
+                                            let resolvedLink = n.link;
+                                            if (isProgramRelated) {
+                                                resolvedLink = getProgramUrl();
+                                            } else if (isDirectivesRoute) {
+                                                resolvedLink = getDirectivesOrAnnouncementsUrl(extractedId);
+                                            }
 
                                             return (
                                                 <div
                                                     key={n.id}
-                                                    onClick={() => markNotificationAsRead(n.id, resolvedLink)}
+                                                    onClick={() => {
+                                                        markNotificationAsRead(n.id, resolvedLink);
+                                                        if (isProgramRelated && typeof window !== "undefined") {
+                                                            window.dispatchEvent(new CustomEvent("open-program-detail", {
+                                                                detail: { programId: progId, programTitle: progTitle }
+                                                            }));
+                                                            setTimeout(() => {
+                                                                window.dispatchEvent(new CustomEvent("open-program-detail", {
+                                                                    detail: { programId: progId, programTitle: progTitle }
+                                                                }));
+                                                            }, 120);
+                                                        }
+                                                    }}
                                                     className={`p-3 hover:bg-gray-50 transition-colors cursor-pointer ${
                                                         !n.isRead ? "bg-blue-50/40" : ""
                                                     }`}
@@ -735,12 +840,12 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
                             onClick={() => setShowProfileDropdown(!showProfileDropdown)}
                             className="flex items-center space-x-2.5 hover:opacity-80 transition-opacity focus:outline-none cursor-pointer"
                         >
-                            <div className="w-8 h-8 rounded-full bg-[#184973] border border-white flex items-center justify-center text-white font-bold text-xs shadow-2xs">
-                                {authData?.user?.name ? authData.user.name.split(' ').map((n: string) => n[0]).join('').slice(0, 2) : "A"}
+                            <div className="w-8 h-8 rounded-full bg-[#4085b3] border border-white flex items-center justify-center text-white font-bold text-xs shadow-2xs">
+                                {authData?.user?.name ? authData.user.name.split(' ').map((n: string) => n[0]).join('') : "Y"}
                             </div>
                             <div className="hidden sm:block text-left">
-                                <p className="text-xs font-bold text-gray-800 leading-tight">{authData?.user?.name || "Administrator"}</p>
-                                <p className="text-[10px] text-gray-500 font-medium leading-tight">{displayRoleTitle}</p>
+                                <p className="text-xs font-bold text-gray-800 leading-tight">{authData?.user?.name || "Mr. Yohannes"}</p>
+                                <p className="text-[10px] text-gray-500 font-medium leading-tight">{isTeacherRoute ? "Teacher" : roleName}</p>
                             </div>
                             <ChevronDown className={`w-3.5 h-3.5 text-gray-400 transition-transform ${showProfileDropdown ? "rotate-180" : ""}`} />
                         </button>
@@ -748,31 +853,17 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
                         {/* Dropdown Menu Popup */}
                         {showProfileDropdown && (
                             <div 
-                                className="absolute right-0 mt-3 w-60 bg-white rounded-2xl shadow-xl border border-gray-100 py-2 z-50 text-xs font-medium text-gray-700 animate-in fade-in slide-in-from-top-2 duration-150"
+                                className="absolute right-0 mt-3 w-56 bg-white rounded-2xl shadow-xl border border-gray-100 py-2 z-50 text-xs font-medium text-gray-700 animate-in fade-in slide-in-from-top-2 duration-150"
                                 onMouseLeave={() => setShowProfileDropdown(false)}
                             >
                                 {/* Header info */}
                                 <div className="px-4 py-2.5 border-b border-gray-100 bg-gray-50/50">
-                                    <p className="font-bold text-gray-900 text-xs">{authData?.user?.name || "Administrator"}</p>
-                                    <p className="text-[10px] text-gray-500 truncate">{authData?.user?.email || "admin@edubridge.gov.et"}</p>
-                                    <span className="inline-block mt-1 px-2 py-0.5 bg-blue-50 text-[#184973] rounded font-bold text-[9px] border border-blue-100">
-                                        {displayBadgeTitle}
+                                    <p className="font-bold text-gray-900 text-xs">{authData?.user?.name || "System Administrator"}</p>
+                                    <p className="text-[10px] text-gray-500 truncate">{authData?.user?.email || "admin@edubridge.local"}</p>
+                                    <span className="inline-block mt-1 px-2 py-0.5 bg-blue-50 text-[#4085b3] rounded font-bold text-[9px]">
+                                        {isTeacherRoute ? "TEACHER ROLE" : roleName}
                                     </span>
                                 </div>
-
-                                {/* Governance Admin Links */}
-                                {isAdministrativeTier && (
-                                    <div className="py-1">
-                                        <Link 
-                                            href={defaultHomeHref} 
-                                            onClick={() => setShowProfileDropdown(false)}
-                                            className="flex items-center px-4 py-2 hover:bg-gray-50 text-gray-700 space-x-2 transition-colors"
-                                        >
-                                            <Landmark className="w-4 h-4 text-[#184973]" />
-                                            <span>{displayRoleTitle} Desk</span>
-                                        </Link>
-                                    </div>
-                                )}
 
                                 {/* Teacher-specific Links */}
                                 {isTeacherRoute && (
@@ -798,7 +889,7 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
                                 )}
 
                                 {/* Logout button */}
-                                <div className="border-t border-gray-100 pt-1 mt-1">
+                                <div className={`${isTeacherRoute ? "border-t border-gray-100 pt-1 mt-1" : "pt-1"}`}>
                                     <button 
                                         onClick={() => {
                                             setShowProfileDropdown(false);
@@ -818,7 +909,14 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
 
             <div className="flex flex-1 overflow-hidden">
                 {/* Sidebar */}
-                {isTeacherRoute ? (
+                {isFederalScope ? (
+                    <FederalNavigation collapsed={sidebarCollapsed} onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)} pathname={pathname} />
+                ) : isHierarchyAdminAccess(primaryAccess) ? (
+                    <AdministrativeNavigation
+                        sidebarCollapsed={sidebarCollapsed}
+                        onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
+                    />
+                ) : isTeacherRoute ? (
                     <aside
                         className={`bg-[#184973] border-r border-[#265e8e] flex flex-col hidden md:flex overflow-y-auto text-blue-100 font-sans shadow-lg shrink-0 transition-all duration-300 ease-in-out ${sidebarCollapsed ? "w-16" : "w-64"}`}
                         style={{ scrollbarWidth: "none", msOverflowStyle: "none" } as React.CSSProperties}
@@ -965,7 +1063,11 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
                                     </button>
                                     {openMenus.teacherAssessment && !sidebarCollapsed && (
                                         <div className="pl-8 pr-2 py-1.5 space-y-1 bg-[#103454]/80 rounded-xl my-1 border-l-2 border-[#2c6da7]/50 shadow-inner">
-                                            <Link href="/dashboard/teacher/assessment" className={`block py-1.5 px-2 rounded-lg text-xs transition-all duration-150 hover:translate-x-0.5 ${pathname === "/dashboard/teacher/assessment" && (!currentTab || currentTab === "create") ? "text-amber-300 font-semibold bg-[#0f2f4c] shadow-xs" : "text-blue-200/90 hover:text-amber-200 hover:bg-[#225785]/60"}`}>Create Assessment</Link>
+                                            <Link href="/dashboard/teacher/assessment?type=ALL" className={`block py-1.5 px-2 rounded-lg text-xs transition-all duration-150 hover:translate-x-0.5 ${pathname === "/dashboard/teacher/assessment" && currentType === "ALL" ? "text-amber-300 font-semibold bg-[#0f2f4c] shadow-xs" : "text-blue-200/90 hover:text-amber-200 hover:bg-[#225785]/60"}`}>Create Assessment</Link>
+                                            <Link href="/dashboard/teacher/assessment?type=QUIZ" className={`block py-1.5 px-2 rounded-lg text-xs transition-all duration-150 hover:translate-x-0.5 ${pathname === "/dashboard/teacher/assessment" && currentType === "QUIZ" ? "text-amber-300 font-semibold bg-[#0f2f4c] shadow-xs" : "text-blue-200/90 hover:text-amber-200 hover:bg-[#225785]/60"}`}>Create Quiz</Link>
+                                            <Link href="/dashboard/teacher/assessment?type=TEST" className={`block py-1.5 px-2 rounded-lg text-xs transition-all duration-150 hover:translate-x-0.5 ${pathname === "/dashboard/teacher/assessment" && currentType === "TEST" ? "text-amber-300 font-semibold bg-[#0f2f4c] shadow-xs" : "text-blue-200/90 hover:text-amber-200 hover:bg-[#225785]/60"}`}>Create Test</Link>
+                                            <Link href="/dashboard/teacher/assessment?type=ASSIGNMENT" className={`block py-1.5 px-2 rounded-lg text-xs transition-all duration-150 hover:translate-x-0.5 ${pathname === "/dashboard/teacher/assessment" && currentType === "ASSIGNMENT" ? "text-amber-300 font-semibold bg-[#0f2f4c] shadow-xs" : "text-blue-200/90 hover:text-amber-200 hover:bg-[#225785]/60"}`}>Create Assignment</Link>
+                                            <Link href="/dashboard/teacher/assessment?type=PROJECT" className={`block py-1.5 px-2 rounded-lg text-xs transition-all duration-150 hover:translate-x-0.5 ${pathname === "/dashboard/teacher/assessment" && currentType === "PROJECT" ? "text-amber-300 font-semibold bg-[#0f2f4c] shadow-xs" : "text-blue-200/90 hover:text-amber-200 hover:bg-[#225785]/60"}`}>Create Project</Link>
                                             <Link href="/dashboard/teacher/assessment?tab=conduct" className={`block py-1.5 px-2 rounded-lg text-xs transition-all duration-150 hover:translate-x-0.5 ${pathname === "/dashboard/teacher/assessment" && currentTab === "conduct" ? "text-amber-300 font-semibold bg-[#0f2f4c] shadow-xs" : "text-blue-200/90 hover:text-amber-200 hover:bg-[#225785]/60"}`}>Conduct Assessment</Link>
                                             <Link href="/dashboard/teacher/assessment?tab=grade" className={`block py-1.5 px-2 rounded-lg text-xs transition-all duration-150 hover:translate-x-0.5 ${pathname === "/dashboard/teacher/assessment" && currentTab === "grade" ? "text-amber-300 font-semibold bg-[#0f2f4c] shadow-xs" : "text-blue-200/90 hover:text-amber-200 hover:bg-[#225785]/60"}`}>Record Results & Grade</Link>
                                             <Link href="/dashboard/teacher/assessment?tab=feedback" className={`block py-1.5 px-2 rounded-lg text-xs transition-all duration-150 hover:translate-x-0.5 ${pathname === "/dashboard/teacher/assessment" && currentTab === "feedback" ? "text-amber-300 font-semibold bg-[#0f2f4c] shadow-xs" : "text-blue-200/90 hover:text-amber-200 hover:bg-[#225785]/60"}`}>Provide Feedback</Link>
@@ -1142,12 +1244,7 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
                         </div>
                     </aside>
                 ) : isStudentRoute ? (
-                    <StudentNavigation />
-                ) : isAdministrativeRoute ? (
-                    <AdministrativeNavigation 
-                        sidebarCollapsed={sidebarCollapsed}
-                        onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
-                    />
+                    <StudentNavigation collapsed={sidebarCollapsed} onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)} />
                 ) : (
                     <aside
                         className={`bg-[#184973] border-r border-[#265e8e] flex flex-col hidden md:flex overflow-y-auto scrollbar-hide text-blue-100 font-sans shadow-lg shrink-0 transition-all duration-300 ease-in-out ${sidebarCollapsed ? "w-16" : "w-64"}`}
@@ -1174,7 +1271,7 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
                         <div className="p-3 pt-3 flex-1">
                             
                             <nav className="space-y-1">
-                                {["ADMIN", "SCHOOL_ADMIN", "ADMINISTRATOR", "PRINCIPAL"].includes(roleName) && (
+                                {isSchoolAdmin && (
                                     <>
                                         {/* Dashboard */}
                                         <Link 
@@ -1185,6 +1282,18 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
                                             <div className={`flex items-center ${sidebarCollapsed ? "" : "space-x-3"}`}>
                                                 <LayoutDashboard className={`w-4 h-4 shrink-0 transition-transform group-hover:scale-105 ${pathname === "/dashboard" || pathname === "/dashboard/admin" ? "text-amber-300" : "text-amber-300/90"}`} />
                                                 {!sidebarCollapsed && <span>Dashboard</span>}
+                                            </div>
+                                        </Link>
+
+                                        {/* Governance Overview */}
+                                        <Link 
+                                            href="/dashboard/governance" 
+                                            title="Governance Overview"
+                                            className={`flex items-center ${sidebarCollapsed ? "justify-center px-2" : "justify-between px-3.5"} py-2 rounded-xl text-xs font-medium transition-all duration-150 cursor-pointer ${pathname === "/dashboard/governance" ? "bg-[#0f2f4c] text-amber-300 font-semibold border-l-2 border-amber-400 shadow-xs" : "text-blue-50/90 hover:bg-[#225785] hover:text-white hover:translate-x-0.5"}`}
+                                        >
+                                            <div className={`flex items-center ${sidebarCollapsed ? "" : "space-x-3"}`}>
+                                                <Landmark className={`w-4 h-4 shrink-0 transition-transform group-hover:scale-105 ${pathname === "/dashboard/governance" ? "text-amber-300" : "text-amber-300/90"}`} />
+                                                {!sidebarCollapsed && <span>Governance Overview</span>}
                                             </div>
                                         </Link>
 

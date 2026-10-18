@@ -14,7 +14,8 @@ import {
     Shield,
     Compass,
     BarChart3,
-    FileSpreadsheet
+    FileSpreadsheet,
+    type LucideIcon
 } from "lucide-react";
 
 export type AdminTier = "FEDERAL" | "REGION" | "ZONE" | "WOREDA";
@@ -22,7 +23,7 @@ export type AdminTier = "FEDERAL" | "REGION" | "ZONE" | "WOREDA";
 interface NavItem {
     label: string;
     href: string;
-    icon: any;
+    icon: LucideIcon;
     tab?: string;
 }
 

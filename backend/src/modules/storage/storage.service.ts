@@ -107,7 +107,7 @@ export class StorageService {
             }
         }
 
-        // Ensure public download policy so uploaded documents and images can be downloaded/viewed
+        // Ensure bucket has public read policy so uploaded documents and images can be viewed/downloaded
         try {
             const publicReadPolicy = JSON.stringify({
                 Version: "2012-10-17",
@@ -130,9 +130,9 @@ export class StorageService {
                 Bucket: BUCKET,
                 Policy: publicReadPolicy,
             }));
-            console.log(`[Storage] Bucket "${BUCKET}" policy set to public read.`);
+            console.log(`[Storage] Public read policy configured for bucket "${BUCKET}".`);
         } catch (policyErr: any) {
-            console.warn("[Storage] Could not set public bucket policy:", policyErr?.message || policyErr);
+            console.warn("[Storage] Could not set bucket policy:", policyErr?.message || policyErr);
         }
     }
 

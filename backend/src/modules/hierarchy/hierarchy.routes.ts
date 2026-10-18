@@ -15,6 +15,7 @@ import {
     getWoredaOverviewHandler,
     assignRegionalAdminHandler,
     resendRegionalAdminInvitationHandler,
+    resetRegionalAdminPasswordHandler,
     cancelRegionalAdminInvitationHandler,
     assignZoneAdminHandler,
     resendZoneAdminInvitationHandler,
@@ -58,6 +59,7 @@ router.get("/:id/descendant-schools", getDescendantSchoolsHandler);
 // Mutation operations - Region Admin Management
 router.post("/regions/:regionId/assign-admin", assignRegionalAdminHandler);
 router.post("/regions/:regionId/resend-invitation", resendRegionalAdminInvitationHandler);
+router.post("/regions/:regionId/reset-admin-password", resetRegionalAdminPasswordHandler);
 router.delete("/regions/:regionId/cancel-invitation", cancelRegionalAdminInvitationHandler);
 
 // Mutation operations - Zone Admin Management

@@ -68,22 +68,43 @@ echo ""
 # --- Step 2: Sync backend/.env with generated values ---
 BACKEND_ENV="backend/.env"
 if [ -f "$ENV_FILE" ]; then
-  PG_USER=$(grep "^POSTGRES_USER=" "$ENV_FILE" | cut -d '=' -f2)
-  PG_PASS_FINAL=$(grep "^POSTGRES_PASSWORD=" "$ENV_FILE" | cut -d '=' -f2)
-  PG_DB=$(grep "^POSTGRES_DB=" "$ENV_FILE" | cut -d '=' -f2)
-  DB_PORT=$(grep "^DB_PORT=" "$ENV_FILE" | cut -d '=' -f2)
-  AUTH_SEC=$(grep "^BETTER_AUTH_SECRET=" "$ENV_FILE" | cut -d '=' -f2)
+  PG_USER=$(grep "^POSTGRES_USER=" "$ENV_FILE" | cut -d '=' -f2- | sed 's/^"//;s/"$//')
+  PG_PASS_FINAL=$(grep "^POSTGRES_PASSWORD=" "$ENV_FILE" | cut -d '=' -f2- | sed 's/^"//;s/"$//')
+  PG_DB=$(grep "^POSTGRES_DB=" "$ENV_FILE" | cut -d '=' -f2- | sed 's/^"//;s/"$//')
+  DB_PORT=$(grep "^DB_PORT=" "$ENV_FILE" | cut -d '=' -f2- | sed 's/^"//;s/"$//')
+  AUTH_SEC=$(grep "^BETTER_AUTH_SECRET=" "$ENV_FILE" | cut -d '=' -f2- | sed 's/^"//;s/"$//')
+  DEFAULT_PASS=$(grep "^DEFAULT_INITIAL_PASSWORD=" "$ENV_FILE" | cut -d '=' -f2- | sed 's/^"//;s/"$//')
+  DB_URL="postgresql://${PG_USER}:${PG_PASS_FINAL}@localhost:${DB_PORT}/${PG_DB}"
 
-  cat > "$BACKEND_ENV" <<EOF
-DATABASE_URL="postgresql://${PG_USER}:${PG_PASS_FINAL}@localhost:${DB_PORT}/${PG_DB}"
+  if [ ! -f "$BACKEND_ENV" ]; then
+    if [ -f "backend/.env.example" ]; then
+      cp "backend/.env.example" "$BACKEND_ENV"
+    else
+      touch "$BACKEND_ENV"
+    fi
+  fi
+
+  if grep -q "^DATABASE_URL=" "$BACKEND_ENV"; then
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+      sed -i '' "s|^DATABASE_URL=.*|DATABASE_URL=\"${DB_URL}\"|" "$BACKEND_ENV"
+      sed -i '' "s|^BETTER_AUTH_SECRET=.*|BETTER_AUTH_SECRET=\"${AUTH_SEC}\"|" "$BACKEND_ENV"
+      sed -i '' "s|^DEFAULT_INITIAL_PASSWORD=.*|DEFAULT_INITIAL_PASSWORD=\"${DEFAULT_PASS}\"|" "$BACKEND_ENV"
+      sed -i '' "s|^ADMIN_PASSWORD=.*|ADMIN_PASSWORD=\"${DEFAULT_PASS}\"|" "$BACKEND_ENV"
+    else
+      sed -i "s|^DATABASE_URL=.*|DATABASE_URL=\"${DB_URL}\"|" "$BACKEND_ENV"
+      sed -i "s|^BETTER_AUTH_SECRET=.*|BETTER_AUTH_SECRET=\"${AUTH_SEC}\"|" "$BACKEND_ENV"
+      sed -i "s|^DEFAULT_INITIAL_PASSWORD=.*|DEFAULT_INITIAL_PASSWORD=\"${DEFAULT_PASS}\"|" "$BACKEND_ENV"
+      sed -i "s|^ADMIN_PASSWORD=.*|ADMIN_PASSWORD=\"${DEFAULT_PASS}\"|" "$BACKEND_ENV"
+    fi
+  else
+    cat > "$BACKEND_ENV" <<EOF
+DATABASE_URL="${DB_URL}"
 BETTER_AUTH_SECRET="${AUTH_SEC}"
 BETTER_AUTH_URL="http://localhost:5000"
-POSTGRES_USER=${PG_USER}
-POSTGRES_PASSWORD=${PG_PASS_FINAL}
-POSTGRES_DB=${PG_DB}
-DEFAULT_INITIAL_PASSWORD=${DEFAULT_PASS}
-ADMIN_PASSWORD=${DEFAULT_PASS}
+DEFAULT_INITIAL_PASSWORD="${DEFAULT_PASS}"
+ADMIN_PASSWORD="${DEFAULT_PASS}"
 EOF
+  fi
   echo "✅  backend/.env synced with database credentials."
 fi
 

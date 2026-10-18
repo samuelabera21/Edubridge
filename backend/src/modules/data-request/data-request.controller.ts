@@ -285,12 +285,43 @@ export async function getGoogleOAuthUrlHandler(req: Request, res: Response) {
 export async function handleGoogleOAuthCallbackHandler(req: Request, res: Response) {
     try {
         const code = String(req.query.code || "");
+        const state = req.query.state ? String(req.query.state) : "";
         if (!code) {
             return res.status(400).send("Authorization code missing from Google OAuth callback.");
         }
         await GoogleFormsService.handleOAuthCallback(code);
         const frontendUrl = process.env.FRONTEND_URL || "http://localhost:3001";
-        return res.redirect(`${frontendUrl}/dashboard/federal?tab=data-requests&googleOAuth=success`);
+        let targetPath = "/dashboard/federal?tab=data-requests";
+        if (state && (state.startsWith("/") || state.startsWith("http"))) {
+            targetPath = state;
+        }
+        const separator = targetPath.includes("?") ? "&" : "?";
+        const finalRedirect = targetPath.startsWith("http")
+            ? `${targetPath}${separator}googleOAuth=success`
+            : `${frontendUrl}${targetPath}${separator}googleOAuth=success`;
+
+        return res.send(`
+            <!DOCTYPE html>
+            <html>
+            <head><title>Google Authorization Successful</title></head>
+            <body style="font-family: sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; background: #f8fafc;">
+                <div style="text-align: center; background: white; padding: 2rem; border-radius: 1rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); max-width: 400px;">
+                    <h2 style="color: #16a34a; margin-top: 0;">Authorization Successful</h2>
+                    <p style="color: #475569; font-size: 14px;">Your Google account is now connected to EduBridge. You can close this window.</p>
+                </div>
+                <script>
+                    if (window.opener) {
+                        try {
+                            window.opener.postMessage({ type: "GOOGLE_OAUTH_SUCCESS" }, "*");
+                        } catch (e) {}
+                        setTimeout(function() { window.close(); }, 800);
+                    } else {
+                        window.location.href = "${finalRedirect}";
+                    }
+                </script>
+            </body>
+            </html>
+        `);
     } catch (error: any) {
         console.error("Google OAuth callback error:", error);
         return res.status(500).send(`Google OAuth authorization failed: ${error.message}`);

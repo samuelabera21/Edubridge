@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { fetchApi } from "../../../lib/api";
+import { getPrimaryAccess } from "../../../lib/auth-access";
 import { Loader2, KeyRound, Mail, CheckCircle2, AlertCircle, X } from "lucide-react";
 
 export default function LoginPage() {
@@ -35,7 +36,7 @@ export default function LoginPage() {
             return;
         }
 
-        const primaryAccess = meData.access?.[0];
+        const primaryAccess = getPrimaryAccess(meData.access);
         const roleName = primaryAccess?.role?.name;
         const scopeType = primaryAccess?.scope?.type;
 

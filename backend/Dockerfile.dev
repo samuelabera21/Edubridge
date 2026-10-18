@@ -7,4 +7,6 @@ COPY . .
 
 EXPOSE 5000
 
+# Prisma client generation must run after the runtime DATABASE_URL is available.
+# The named node_modules volume preserves dependencies installed in the image.
 CMD ["sh", "-c", "npm install && npx prisma generate && npm run dev"]

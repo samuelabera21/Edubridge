@@ -2,7 +2,8 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { Request, Response } from "express";
 import { 
     createStudent, getStudents, enrollStudent, 
-    getEnrollments, transferStudent, updateStudentStatus, getStudentProfile
+    getEnrollments, transferStudent, updateStudentStatus, getStudentProfile, getMySupportActivities,
+    registerStudent, verifyStudentDocument
 } from "./student.controller.js";
 import { StudentService } from "./student.service.js";
 
@@ -11,10 +12,13 @@ vi.mock("./student.service.js", () => ({
         createStudent: vi.fn(),
         getStudents: vi.fn(),
         enrollStudent: vi.fn(),
+        registerStudentIntake: vi.fn(),
         getEnrollments: vi.fn(),
         transferStudent: vi.fn(),
         updateStudentStatus: vi.fn(),
         getStudentByUserId: vi.fn(),
+        getStudentSupportActivities: vi.fn(),
+        verifyDocument: vi.fn(),
     }
 }));
 
@@ -61,7 +65,7 @@ describe("Student Controller", () => {
 
             await enrollStudent(mockReq as Request, mockRes as Response);
 
-            expect(StudentService.enrollStudent).toHaveBeenCalledWith("school1", "s1", "ay1", "sg1", undefined, undefined);
+            expect(StudentService.enrollStudent).toHaveBeenCalledWith("school1", "s1", "ay1", "sg1", undefined);
             expect(mockRes.status).toHaveBeenCalledWith(201);
             expect(mockRes.json).toHaveBeenCalledWith(mockEnrollment);
         });
@@ -131,6 +135,132 @@ describe("Student Controller", () => {
 
             expect(mockRes.status).toHaveBeenCalledWith(404);
             expect(mockRes.json).toHaveBeenCalledWith({ error: "Student profile not found" });
+        });
+    });
+
+    describe("getMySupportActivities", () => {
+        it("returns support activities for the authenticated student and school scope", async () => {
+            (mockReq as any).accessScope = { id: "school1" };
+            (mockReq as any).user = { id: "user1" };
+            const activities = [{ id: "support1", supportCategory: "REMEDIAL" }];
+            vi.mocked(StudentService.getStudentSupportActivities).mockResolvedValue(activities as any);
+
+            await getMySupportActivities(mockReq as Request, mockRes as Response);
+
+            expect(StudentService.getStudentSupportActivities).toHaveBeenCalledWith("user1", "school1");
+            expect(mockRes.json).toHaveBeenCalledWith(activities);
+        });
+
+        it("rejects requests without an authenticated student context", async () => {
+            (mockReq as any).accessScope = { id: "school1" };
+
+            await getMySupportActivities(mockReq as Request, mockRes as Response);
+
+            expect(mockRes.status).toHaveBeenCalledWith(403);
+            expect(StudentService.getStudentSupportActivities).not.toHaveBeenCalled();
+        });
+    });
+
+    describe("registerStudent", () => {
+        it("should return 403 if missing school scope", async () => {
+            await registerStudent(mockReq as Request, mockRes as Response);
+            expect(mockRes.status).toHaveBeenCalledWith(403);
+            expect(mockRes.json).toHaveBeenCalledWith({ error: "Missing school scope" });
+        });
+
+        it("should register student intake successfully", async () => {
+            (mockReq as any).accessScope = { id: "school1" };
+            (mockReq as any).user = { id: "principal1" };
+            mockReq.body = {
+                student: { firstName: "Abebe", fatherName: "Kebede", grandfatherName: "Tessema" },
+                enrollment: { academicYearId: "ay1", schoolGradeId: "sg1" }
+            };
+
+            const mockResult = {
+                student: { id: "s1", firstName: "Abebe", studentId: "STU-2601-1234" },
+                enrollment: { id: "enr1" }
+            };
+            vi.mocked(StudentService.registerStudentIntake).mockResolvedValue(mockResult as any);
+
+            await registerStudent(mockReq as Request, mockRes as Response);
+
+            expect(StudentService.registerStudentIntake).toHaveBeenCalledWith("school1", mockReq.body, "principal1");
+            expect(mockRes.status).toHaveBeenCalledWith(201);
+            expect(mockRes.json).toHaveBeenCalledWith(mockResult);
+        });
+
+        it("should return 400 when registration fails", async () => {
+            (mockReq as any).accessScope = { id: "school1" };
+            (mockReq as any).user = { id: "principal1" };
+            mockReq.body = {};
+            vi.mocked(StudentService.registerStudentIntake).mockRejectedValue(new Error("Academic Year and School Grade are required"));
+
+            await registerStudent(mockReq as Request, mockRes as Response);
+
+            expect(mockRes.status).toHaveBeenCalledWith(400);
+            expect(mockRes.json).toHaveBeenCalledWith({ error: "Academic Year and School Grade are required" });
+        });
+    });
+
+    describe("verifyStudentDocument", () => {
+        it("should return 403 if missing school scope", async () => {
+            await verifyStudentDocument(mockReq as Request, mockRes as Response);
+            expect(mockRes.status).toHaveBeenCalledWith(403);
+            expect(mockRes.json).toHaveBeenCalledWith({ error: "Missing school scope" });
+        });
+
+        it("should return 400 if verificationStatus is missing", async () => {
+            (mockReq as any).accessScope = { id: "school1" };
+            mockReq.params = { documentId: "doc-123" };
+            mockReq.body = {};
+
+            await verifyStudentDocument(mockReq as Request, mockRes as Response);
+
+            expect(mockRes.status).toHaveBeenCalledWith(400);
+            expect(mockRes.json).toHaveBeenCalledWith({ error: "verificationStatus is required" });
+        });
+
+        it("should verify document successfully", async () => {
+            (mockReq as any).accessScope = { id: "school1" };
+            (mockReq as any).user = { id: "verifier-user-1" };
+            mockReq.params = { documentId: "doc-123" };
+            mockReq.body = {
+                verificationStatus: "VERIFIED",
+                verificationNotes: "Verified against institutional records"
+            };
+
+            const mockVerified = {
+                id: "doc-123",
+                verificationStatus: "VERIFIED",
+                verificationNotes: "Verified against institutional records",
+                verifiedById: "verifier-user-1"
+            };
+            vi.mocked(StudentService.verifyDocument).mockResolvedValue(mockVerified as any);
+
+            await verifyStudentDocument(mockReq as Request, mockRes as Response);
+
+            expect(StudentService.verifyDocument).toHaveBeenCalledWith(
+                "school1",
+                "doc-123",
+                "VERIFIED",
+                "Verified against institutional records",
+                "verifier-user-1"
+            );
+            expect(mockRes.json).toHaveBeenCalledWith(mockVerified);
+        });
+
+        it("should return 400 when StudentService throws an error", async () => {
+            (mockReq as any).accessScope = { id: "school1" };
+            (mockReq as any).user = { id: "verifier-user-1" };
+            mockReq.params = { documentId: "doc-123" };
+            mockReq.body = { verificationStatus: "VERIFIED" };
+
+            vi.mocked(StudentService.verifyDocument).mockRejectedValue(new Error("Document not found or student does not belong to this school organization"));
+
+            await verifyStudentDocument(mockReq as Request, mockRes as Response);
+
+            expect(mockRes.status).toHaveBeenCalledWith(400);
+            expect(mockRes.json).toHaveBeenCalledWith({ error: "Document not found or student does not belong to this school organization" });
         });
     });
 });

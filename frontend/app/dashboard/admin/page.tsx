@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { fetchApi } from "@/lib/api";
 import { useAuth } from "@/hooks/useAuth";
+import { getPrimaryAccess } from "@/lib/auth-access";
 import { 
     Users, 
     GraduationCap, 
@@ -154,7 +155,7 @@ export default function AdminDashboardPage() {
     // Auto-redirect administrative governance tiers to their specialized dashboards
     useEffect(() => {
         if (!authData) return;
-        const scopeType = authData.access?.[0]?.scope?.type;
+        const scopeType = getPrimaryAccess(authData.access)?.scope?.type;
         if (scopeType === "FEDERAL") {
             router.replace("/dashboard/federal");
         } else if (scopeType === "REGION") {
