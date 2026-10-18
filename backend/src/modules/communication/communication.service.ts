@@ -535,7 +535,40 @@ export class CommunicationService {
             orderBy: { createdAt: "desc" }
         });
 
-        return items.map(a => {
+        // If a Teacher user is querying, filter so they only see announcements addressed to them or to all teachers
+        let filteredItems = items;
+        if (currentUserId) {
+            const teacherProfile = await prisma.teacher.findFirst({
+                where: { organizationId, userId: currentUserId }
+            });
+
+            if (teacherProfile) {
+                filteredItems = items.filter(a => {
+                    const targetDetails = (a.targetDetails as any) || {};
+                    const teacherIds = targetDetails.teacherIds || [];
+                    if (teacherIds.length > 0) {
+                        return teacherIds.includes(teacherProfile.id) || a.acknowledgments?.some(ack => ack.userId === currentUserId);
+                    }
+
+                    const targetRoles = targetDetails.targetRoles || [];
+                    if (a.target === "ALL" || a.target === "TEACHERS" || targetRoles.includes("ALL") || targetRoles.includes("TEACHERS")) {
+                        return true;
+                    }
+
+                    if (a.acknowledgments?.some(ack => ack.userId === currentUserId)) {
+                        return true;
+                    }
+
+                    if (a.target === "STUDENTS" || a.target === "PARENTS" || a.target === "SPECIFIC_GRADE" || a.target === "SPECIFIC_SECTION") {
+                        return false;
+                    }
+
+                    return true;
+                });
+            }
+        }
+
+        return filteredItems.map(a => {
             const acks = a.acknowledgments || [];
             const totalRecipients = acks.length;
             const readCount = acks.filter(x => x.isRead).length;
@@ -547,6 +580,7 @@ export class CommunicationService {
 
             return {
                 ...a,
+                attachments: a.attachmentUrl ? [{ url: a.attachmentUrl, name: a.attachmentName || "Attached Document" }] : [],
                 stats: {
                     totalRecipients,
                     readCount,

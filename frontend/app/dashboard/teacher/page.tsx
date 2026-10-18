@@ -22,7 +22,10 @@ import {
     Inbox,
     GraduationCap,
     HelpCircle,
-    MessageSquareQuote
+    MessageSquareQuote,
+    Megaphone,
+    Paperclip,
+    ExternalLink
 } from "lucide-react";
 
 export default function TeacherDashboard() {
@@ -40,10 +43,28 @@ export default function TeacherDashboard() {
     const [selectedClass, setSelectedClass] = useState<any>(null);
     const [attendanceMap, setAttendanceMap] = useState<Record<string, string>>({});
     const [submittingAttendance, setSubmittingAttendance] = useState(false);
+    const [acknowledgingAnnouncementId, setAcknowledgingAnnouncementId] = useState<string | null>(null);
 
     useEffect(() => {
         loadSummary();
     }, []);
+
+    async function handleAcknowledgeAnnouncement(announcementId: string) {
+        try {
+            setAcknowledgingAnnouncementId(announcementId);
+            const res = await fetchApi(`/communication/announcements/${announcementId}/acknowledge`, {
+                method: "POST",
+                body: JSON.stringify({})
+            });
+            if (res.ok) {
+                await loadSummary();
+            }
+        } catch (err) {
+            console.error("Failed to acknowledge announcement:", err);
+        } finally {
+            setAcknowledgingAnnouncementId(null);
+        }
+    }
 
     async function loadSummary() {
         try {
@@ -124,6 +145,8 @@ export default function TeacherDashboard() {
     const pendingSubmissionsCount = summary?.pendingSubmissionsCount ?? 0;
     const studentsNeedAttentionCount = summary?.studentsNeedAttentionCount ?? 0;
     const attentionStudents = summary?.studentsRequiringAttention || [];
+    const recentAnnouncements = summary?.recentAnnouncements || [];
+    const pendingAnnouncementsCount = summary?.pendingAnnouncementsCount || 0;
 
     // Demographic and subject breakdown from real database
     const studentsByGrade = summary?.studentsByGrade || [];
@@ -231,6 +254,119 @@ export default function TeacherDashboard() {
                     </div>
                 </div>
 
+            </div>
+
+            {/* School Announcements Section */}
+            <div className="bg-white border border-gray-200/90 rounded-2xl p-5 shadow-2xs">
+                <div className="flex items-center justify-between pb-3 border-b border-gray-100">
+                    <div className="flex items-center space-x-2.5">
+                        <div className="w-8 h-8 rounded-xl bg-[#1F5380]/10 text-[#1F5380] flex items-center justify-center shrink-0">
+                            <Megaphone className="w-4 h-4" />
+                        </div>
+                        <div>
+                            <div className="flex items-center space-x-2">
+                                <h3 className="font-extrabold text-sm text-gray-900">School Announcements</h3>
+                                {pendingAnnouncementsCount > 0 && (
+                                    <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-[#1F5380]/10 text-[#1F5380]">
+                                        {pendingAnnouncementsCount} action required
+                                    </span>
+                                )}
+                            </div>
+                            <p className="text-[11px] text-gray-400 font-medium">Official directives and circulars from your school administration</p>
+                        </div>
+                    </div>
+                    <Link 
+                        href="/dashboard/teacher/announcements" 
+                        className="text-xs font-bold text-[#1F5380] hover:text-[#18446b] flex items-center gap-1 transition-colors"
+                    >
+                        <span>View all notices</span>
+                        <span>→</span>
+                    </Link>
+                </div>
+
+                {recentAnnouncements.length === 0 ? (
+                    <div className="py-6 text-center text-gray-400 space-y-1">
+                        <CheckCircle2 className="w-6 h-6 mx-auto text-[#1F5380]/60" />
+                        <p className="text-xs font-bold text-gray-700">All Notices Up to Date</p>
+                        <p className="text-[11px] text-gray-400">There are no pending school-wide announcements requiring your attention.</p>
+                    </div>
+                ) : (
+                    <div className="divide-y divide-gray-100 pt-1">
+                        {recentAnnouncements.map((item: any) => {
+                            const priority = (item.priority || "NORMAL").toUpperCase();
+                            const isUrgent = priority === "URGENT";
+                            const isHigh = priority === "HIGH";
+
+                            return (
+                                <div key={item.id} className="py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-gray-50/60 px-2 rounded-xl transition-colors">
+                                    <div className="space-y-1 max-w-3xl">
+                                        <div className="flex items-center space-x-2 flex-wrap gap-y-1">
+                                            <span className={`px-2 py-0.5 rounded-md text-[10px] font-extrabold uppercase ${
+                                                isUrgent 
+                                                    ? "bg-rose-100 text-rose-800 border border-rose-200" 
+                                                    : isHigh 
+                                                        ? "bg-amber-100 text-amber-800 border border-amber-200" 
+                                                        : "bg-slate-100 text-slate-700 border border-slate-200"
+                                            }`}>
+                                                {priority}
+                                            </span>
+                                            <h4 className="font-extrabold text-xs text-gray-900">{item.title}</h4>
+                                            <span className="text-gray-300">•</span>
+                                            <span className="text-[10px] text-gray-400 font-medium">
+                                                {new Date(item.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                                            </span>
+                                        </div>
+                                        <p className="text-xs text-gray-600 line-clamp-2 leading-relaxed">
+                                            {item.content}
+                                        </p>
+                                        {(item.attachmentUrl || item.attachmentName) && (
+                                            <a 
+                                                href={item.attachmentUrl || "#"} 
+                                                target="_blank" 
+                                                rel="noreferrer"
+                                                className="inline-flex items-center space-x-1.5 text-[11px] font-bold text-[#1F5380] hover:text-[#18446b] bg-[#1F5380]/5 hover:bg-[#1F5380]/10 px-2.5 py-1 rounded-lg border border-[#1F5380]/20 transition-colors pt-0.5 mt-1"
+                                            >
+                                                <Paperclip className="w-3 h-3 text-[#1F5380]" />
+                                                <span className="truncate max-w-[200px]">{item.attachmentName || "View Attachment"}</span>
+                                                <ExternalLink className="w-2.5 h-2.5 text-[#1F5380]" />
+                                            </a>
+                                        )}
+                                    </div>
+
+                                    <div className="flex items-center space-x-2 shrink-0 self-end sm:self-center">
+                                        {item.isAcknowledgmentRequired ? (
+                                            item.isAcknowledged ? (
+                                                <span className="inline-flex items-center space-x-1 text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-lg">
+                                                    <CheckCircle2 className="w-3.5 h-3.5" />
+                                                    <span>Receipt Confirmed</span>
+                                                </span>
+                                            ) : (
+                                                <button
+                                                    onClick={() => handleAcknowledgeAnnouncement(item.id)}
+                                                    disabled={acknowledgingAnnouncementId === item.id}
+                                                    className="px-3 py-1.5 bg-[#1F5380] hover:bg-[#18446b] text-white font-bold rounded-lg text-xs transition-colors shadow-2xs cursor-pointer disabled:opacity-60 flex items-center space-x-1"
+                                                >
+                                                    {acknowledgingAnnouncementId === item.id ? (
+                                                        <span>Confirming...</span>
+                                                    ) : (
+                                                        <span>Confirm Receipt</span>
+                                                    )}
+                                                </button>
+                                            )
+                                        ) : (
+                                            <Link
+                                                href="/dashboard/teacher/announcements"
+                                                className="text-xs font-bold text-[#1F5380] hover:underline"
+                                            >
+                                                View Notice →
+                                            </Link>
+                                        )}
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                )}
             </div>
 
             {/* Today's Timetable */}
