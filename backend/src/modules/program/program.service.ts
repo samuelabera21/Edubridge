@@ -1010,12 +1010,36 @@ export class ProgramService {
                 orderBy: { name: "asc" }
             });
 
+            const formattedRegions = regions.map(r => ({
+                id: r.id,
+                name: r.name,
+                type: r.type,
+                children: r.children,
+                zones: r.children.map(z => ({
+                    id: z.id,
+                    name: z.name,
+                    type: z.type,
+                    children: z.children,
+                    woredas: z.children.map(w => ({
+                        id: w.id,
+                        name: w.name,
+                        type: w.type,
+                        children: w.children,
+                        schools: w.children.map(s => ({
+                            id: s.id,
+                            name: s.name,
+                            type: s.type
+                        }))
+                    }))
+                }))
+            }));
+
             return {
                 id: actorScope.id,
                 name: actorScope.name,
                 type: actorScope.type,
                 actorTier: "FEDERAL",
-                regions,
+                regions: formattedRegions,
                 units: allUnits
             };
         } else if (actorScope.type === "REGION") {
@@ -1041,12 +1065,30 @@ export class ProgramService {
                 orderBy: { name: "asc" }
             });
 
+            const formattedZones = zones.map(z => ({
+                id: z.id,
+                name: z.name,
+                type: z.type,
+                children: z.children,
+                woredas: z.children.map(w => ({
+                    id: w.id,
+                    name: w.name,
+                    type: w.type,
+                    children: w.children,
+                    schools: w.children.map(s => ({
+                        id: s.id,
+                        name: s.name,
+                        type: s.type
+                    }))
+                }))
+            }));
+
             return {
                 id: actorScope.id,
                 name: actorScope.name,
                 type: actorScope.type,
                 actorTier: "REGION",
-                zones,
+                zones: formattedZones,
                 units: allUnits
             };
         } else if (actorScope.type === "ZONE") {
