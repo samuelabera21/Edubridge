@@ -24,6 +24,18 @@ export class GoogleFormsSyncPoller {
 
         console.log(`[GoogleFormsSyncPoller] Starting automated background poller (every ${intervalMs / 1000}s)...`);
 
+        // Mark legacy mock forms (1FAIpQLSc_...) as ERROR so they are excluded from polling
+        prisma.googleFormIntegration.updateMany({
+            where: {
+                googleFormId: { startsWith: "1FAIpQLSc_" },
+                status: { not: GoogleFormIntegrationStatus.ERROR }
+            },
+            data: {
+                status: GoogleFormIntegrationStatus.ERROR,
+                errorMessage: "Mock development form ID - not linked to live Google Cloud"
+            }
+        }).catch(() => {});
+
         // Run an initial sync cycle after 5 seconds
         setTimeout(() => {
             this.syncAllActiveForms().catch(err => {
@@ -67,7 +79,11 @@ export class GoogleFormsSyncPoller {
         const activeRequests: any[] = await prisma.dataRequest.findMany({
             where: {
                 status: "PUBLISHED",
-                googleForm: { isNot: null }
+                googleForm: {
+                    is: {
+                        status: { in: [GoogleFormIntegrationStatus.ACTIVE, GoogleFormIntegrationStatus.SYNCING] }
+                    }
+                }
             },
             include: {
                 fields: true,
@@ -183,7 +199,22 @@ export class GoogleFormsSyncPoller {
                     console.log(`[GoogleFormsSyncPoller] Auto-synced ${newCount} new submission(s) for Data Request "${request.title}" (${request.id})`);
                 }
             } catch (formErr: any) {
-                console.warn(`[GoogleFormsSyncPoller] Error syncing form ${request.googleForm.googleFormId} for request "${request.title}":`, formErr?.message);
+                const isPermanent = formErr?.isPermanent ||
+                    formErr?.status === 404 || formErr?.code === 404 || formErr?.statusCode === 404 ||
+                    formErr?.status === 403 || formErr?.code === 403 || formErr?.statusCode === 403;
+
+                if (isPermanent) {
+                    console.warn(`[GoogleFormsSyncPoller] Marking form ${request.googleForm.googleFormId} as ERROR (skipping future auto-polls): ${formErr?.message || formErr}`);
+                    await prisma.googleFormIntegration.update({
+                        where: { id: request.googleForm.id },
+                        data: {
+                            status: GoogleFormIntegrationStatus.ERROR,
+                            errorMessage: formErr?.message || "Google Form inaccessible or permission denied"
+                        }
+                    }).catch(() => {});
+                } else {
+                    console.warn(`[GoogleFormsSyncPoller] Temporary error syncing form ${request.googleForm.googleFormId} for request "${request.title}":`, formErr?.message);
+                }
             }
         }
     }

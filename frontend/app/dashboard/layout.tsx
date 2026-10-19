@@ -10,53 +10,6 @@ import { getPrimaryAccess, isHierarchyAdminAccess } from "../../lib/auth-access"
 import StudentNavigation from "./student/StudentNavigation";
 import AdministrativeNavigation from "../../components/governance/AdministrativeNavigation";
 
-function FederalNavigation({ collapsed, onToggleCollapse, pathname }: { collapsed: boolean; onToggleCollapse: () => void; pathname: string }) {
-    const searchParams = useSearchParams();
-    const currentTab = searchParams.get("tab") || "overview";
-    const links = [
-        { href: "/dashboard/federal", label: "Dashboard", icon: LayoutDashboard },
-        { href: "/dashboard/federal?tab=regions", label: "Regions & Hierarchy", icon: Layers },
-        { href: "/dashboard/federal?tab=directives", label: "Policies & Directives", icon: FileText },
-        { href: "/dashboard/federal?tab=administration", label: "Leadership", icon: UserCheck },
-    ];
-
-    return (
-        <aside className={`bg-[#184973] border-r border-[#265e8e] flex flex-col hidden md:flex overflow-y-auto scrollbar-hide text-blue-100 font-sans shadow-lg shrink-0 transition-all duration-300 ease-in-out ${collapsed ? "w-16" : "w-64"}`} style={{ scrollbarWidth: "none", msOverflowStyle: "none" } as React.CSSProperties}>
-            <div className="flex items-center justify-between px-3 pt-4 pb-2 border-b border-[#265e8e]/50">
-                {!collapsed && <p className="text-[10px] text-blue-200/90 font-bold uppercase tracking-widest px-1">Federal Workspace</p>}
-                <button
-                    onClick={onToggleCollapse}
-                    title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-                    className={`flex items-center justify-center w-7 h-7 rounded-lg bg-[#225785] hover:bg-[#2c6da7] text-blue-100 hover:text-amber-300 transition-all cursor-pointer shadow-xs ${collapsed ? "mx-auto" : "ml-auto"}`}
-                    aria-label="Toggle sidebar"
-                >
-                    <ChevronRight className={`w-4 h-4 ${collapsed ? "" : "rotate-180"}`} />
-                </button>
-            </div>
-            <div className="p-3 pt-3 flex-1">
-                <nav className="space-y-1">
-                    {links.map(({ href, label, icon: Icon }) => {
-                        const expectedTab = new URLSearchParams(href.split("?")[1] || "").get("tab");
-                        const isActive = pathname === "/dashboard/federal" && (!expectedTab || currentTab === expectedTab);
-                        return (
-                            <Link
-                                key={href}
-                                href={href}
-                                title={label}
-                                className={`flex items-center ${collapsed ? "justify-center px-2" : "justify-between px-3.5"} py-2 rounded-xl text-xs font-medium transition-all duration-150 cursor-pointer ${isActive ? "bg-[#0f2f4c] text-amber-300 font-semibold border-l-2 border-amber-400 shadow-xs" : "text-blue-50/90 hover:bg-[#225785] hover:text-white hover:translate-x-0.5"}`}
-                            >
-                                <div className={`flex items-center ${collapsed ? "" : "space-x-3"}`}>
-                                    <Icon className="w-4 h-4 shrink-0 text-amber-300/90" />
-                                    {!collapsed && <span>{label}</span>}
-                                </div>
-                            </Link>
-                        );
-                    })}
-                </nav>
-            </div>
-        </aside>
-    );
-}
 
 function TeacherBreadcrumbs({ pathname, currentTab, currentType, currentChannel }: { pathname: string; currentTab: string; currentType: string; currentChannel?: string }) {
     if (pathname === "/dashboard/teacher") {
@@ -339,6 +292,7 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
     const isAdminRole = ["ADMIN", "SCHOOL_ADMIN", "ADMINISTRATOR", "PRINCIPAL", "FEDERAL_ADMIN", "REGION_ADMIN", "ZONE_ADMIN", "ZONAL_ADMIN", "WOREDA_ADMIN"].includes(roleName);
     const isSchoolAdmin = scopeType === "SCHOOL" && isAdminRole;
     const isFederalScope = scopeType === "FEDERAL";
+    const isAdministrativeRoute = pathname.startsWith("/dashboard/federal") || pathname.startsWith("/dashboard/region") || pathname.startsWith("/dashboard/zone") || pathname.startsWith("/dashboard/woreda");
     const isTeacherRoute = (pathname === "/dashboard/teacher" || pathname.startsWith("/dashboard/teacher/")) && roleName === "TEACHER";
     const isStudentRoute = (pathname === "/dashboard/student" || pathname.startsWith("/dashboard/student/")) || roleName === "STUDENT";
 
@@ -909,9 +863,7 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
 
             <div className="flex flex-1 overflow-hidden">
                 {/* Sidebar */}
-                {isFederalScope ? (
-                    <FederalNavigation collapsed={sidebarCollapsed} onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)} pathname={pathname} />
-                ) : isHierarchyAdminAccess(primaryAccess) ? (
+                {isAdministrativeRoute || isFederalScope || isHierarchyAdminAccess(primaryAccess) ? (
                     <AdministrativeNavigation
                         sidebarCollapsed={sidebarCollapsed}
                         onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}

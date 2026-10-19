@@ -406,6 +406,14 @@ export class GoogleFormsService {
 
         if (isLive && this.hasAuthorizedTokens()) {
             try {
+                // Mock development fallback IDs (1FAIpQLSc_...) never exist on Google Cloud
+                if (googleFormId.startsWith("1FAIpQLSc_")) {
+                    const mockErr = new Error(`Google Form (${googleFormId}) is a mock ID and does not exist on Google Cloud.`);
+                    (mockErr as any).statusCode = 404;
+                    (mockErr as any).isPermanent = true;
+                    throw mockErr;
+                }
+
                 const auth = this.getOAuth2Client();
                 const forms = google.forms({ version: "v1", auth });
 
@@ -425,8 +433,16 @@ export class GoogleFormsService {
                     }
                 } catch (metaErr: any) {
                     if (metaErr?.status === 404 || metaErr?.code === 404 || metaErr?.message?.includes("not found")) {
-                        console.warn(`[GoogleFormsService] Google Form (${googleFormId}) not found on Google Cloud. Skipping live sync.`);
-                        return [];
+                        const notFoundErr = new Error(`Google Form (${googleFormId}) not found on Google Cloud.`);
+                        (notFoundErr as any).statusCode = 404;
+                        (notFoundErr as any).isPermanent = true;
+                        throw notFoundErr;
+                    }
+                    if (metaErr?.status === 403 || metaErr?.code === 403 || metaErr?.message?.includes("permission") || metaErr?.message?.includes("caller does not have permission")) {
+                        const permErr = new Error(`Google Form (${googleFormId}) permission denied: The connected Google account does not have access.`);
+                        (permErr as any).statusCode = 403;
+                        (permErr as any).isPermanent = true;
+                        throw permErr;
                     }
                     console.warn("[GoogleFormsService] Failed to fetch form meta for title mapping:", metaErr?.message || metaErr);
                 }
@@ -465,9 +481,8 @@ export class GoogleFormsService {
 
                 return parsedResponses;
             } catch (err: any) {
-                if (err?.status === 404 || err?.code === 404 || err?.message?.includes("not found")) {
-                    console.warn(`[GoogleFormsService] Google Form (${googleFormId}) does not exist on Google Cloud (404 Not Found). Skipping.`);
-                    return [];
+                if (err?.isPermanent || err?.statusCode === 404 || err?.statusCode === 403 || err?.status === 404 || err?.status === 403 || err?.code === 404 || err?.code === 403) {
+                    throw err;
                 }
                 console.warn("[GoogleFormsService] Google Forms sync warning:", err?.message || err);
                 return [];
