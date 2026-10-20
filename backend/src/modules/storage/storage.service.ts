@@ -63,12 +63,16 @@ const PUBLIC_URL = process.env.MINIO_PUBLIC_URL || "http://localhost:9000";
 const PRESIGN_EXPIRES_IN = 5 * 60; // 5 minutes
 
 // ─── S3 Client for Internal Docker Communication (Server-to-MinIO) ──────────
+const internalEndpoint = process.env.MINIO_ENDPOINT 
+    ? `http://${process.env.MINIO_ENDPOINT}:${process.env.MINIO_PORT || 9000}`
+    : `http://localhost:${process.env.MINIO_PORT || 9000}`;
+
 const internalS3 = new S3Client({
-    endpoint: `http://${process.env.MINIO_ENDPOINT || "minio"}:${process.env.MINIO_PORT || 9000}`,
+    endpoint: internalEndpoint,
     region: "us-east-1",
     credentials: {
         accessKeyId: process.env.MINIO_ROOT_USER || "edubridge_minio",
-        secretAccessKey: process.env.MINIO_ROOT_PASSWORD || "",
+        secretAccessKey: process.env.MINIO_ROOT_PASSWORD || "EduBridge@MinIO2024!",
     },
     forcePathStyle: true,
 });
@@ -84,7 +88,7 @@ const presignS3 = new S3Client({
     region: "us-east-1",
     credentials: {
         accessKeyId: process.env.MINIO_ROOT_USER || "edubridge_minio",
-        secretAccessKey: process.env.MINIO_ROOT_PASSWORD || "",
+        secretAccessKey: process.env.MINIO_ROOT_PASSWORD || "EduBridge@MinIO2024!",
     },
     forcePathStyle: true,
 });

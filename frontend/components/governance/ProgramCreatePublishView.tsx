@@ -23,6 +23,7 @@ import {
     ChevronDown,
     Filter
 } from "lucide-react";
+import SearchableSelect, { SearchableOption } from "../ui/SearchableSelect";
 
 export interface ProgramCreatePublishViewProps {
     parentProgram?: {
@@ -55,18 +56,16 @@ export default function ProgramCreatePublishView({
     const [targetLevelAll, setTargetLevelAll] = useState(true);
     const [cascadeDescendants, setCascadeDescendants] = useState(false);
 
-    // Delivery Mode & Target Selection
-    const [deliveryMode, setDeliveryMode] = useState<"ALL" | "SPECIFIC">("ALL");
-    const [selectedUnitIds, setSelectedUnitIds] = useState<string[]>([]);
+    // Delivery Mode & Target Selection (Matching Image 3)
+    const [targetType, setTargetType] = useState<
+        "ALL" | "ALL_REGIONS" | "SPECIFIC_REGION" | "ALL_ZONES" | "SPECIFIC_ZONE" | "ALL_WOREDAS" | "SPECIFIC_WOREDA" | "ALL_SCHOOLS" | "SPECIFIC_SCHOOL"
+    >("ALL");
+    const [selectedRegionId, setSelectedRegionId] = useState("");
+    const [selectedZoneId, setSelectedZoneId] = useState("");
+    const [selectedWoredaId, setSelectedWoredaId] = useState("");
+    const [selectedSchoolId, setSelectedSchoolId] = useState("");
     const [treeData, setTreeData] = useState<any>(null);
     const [loadingTree, setLoadingTree] = useState(true);
-
-    // Cascading Filter Selection State
-    const [selectedCategory, setSelectedCategory] = useState<TargetTierCategory>("REGION");
-    const [filterRegionId, setFilterRegionId] = useState<string>("");
-    const [filterZoneId, setFilterZoneId] = useState<string>("");
-    const [filterWoredaId, setFilterWoredaId] = useState<string>("");
-    const [unitSearchQuery, setUnitSearchQuery] = useState("");
 
     // Attachment
     const [attachmentUrl, setAttachmentUrl] = useState("");
@@ -90,17 +89,6 @@ export default function ProgramCreatePublishView({
                 if (res.ok) {
                     const json = await res.json();
                     setTreeData(json.data);
-
-                    const actorTier = json.data?.actorTier || "FEDERAL";
-                    if (actorTier === "FEDERAL") {
-                        setSelectedCategory("REGION");
-                    } else if (actorTier === "REGION") {
-                        setSelectedCategory("ZONE");
-                    } else if (actorTier === "ZONE") {
-                        setSelectedCategory("WOREDA");
-                    } else if (actorTier === "WOREDA") {
-                        setSelectedCategory("SCHOOL");
-                    }
                 }
             } catch (err: any) {
                 console.error("Failed to load recipients tree:", err);
@@ -121,125 +109,59 @@ export default function ProgramCreatePublishView({
     }, [treeData]);
 
     const availableZones = useMemo(() => {
-        if (!treeData) return [];
-        if (treeData.actorTier === "REGION" && treeData.zones) return treeData.zones;
-        if (treeData.regions) {
-            if (filterRegionId) {
-                const r = treeData.regions.find((reg: any) => reg.id === filterRegionId);
-                return r?.children || [];
-            }
-            return treeData.regions.flatMap((reg: any) => reg.children || []);
-        }
-        return treeData.units?.filter((u: any) => u.type === "ZONE") || [];
-    }, [treeData, filterRegionId]);
+        if (actorTier === "REGION" && treeData?.zones) return treeData.zones;
+        if (!availableRegions.length || !selectedRegionId) return [];
+        const reg = availableRegions.find((r: any) => r.id === selectedRegionId);
+        return reg?.zones || reg?.children || [];
+    }, [actorTier, treeData, availableRegions, selectedRegionId]);
 
     const availableWoredas = useMemo(() => {
-        if (!treeData) return [];
-        if (treeData.actorTier === "ZONE" && treeData.woredas) return treeData.woredas;
-
-        let zonesToScan: any[] = [];
-        if (treeData.regions) {
-            if (filterRegionId) {
-                const r = treeData.regions.find((reg: any) => reg.id === filterRegionId);
-                zonesToScan = r?.children || [];
-            } else {
-                zonesToScan = treeData.regions.flatMap((reg: any) => reg.children || []);
-            }
-        } else if (treeData.zones) {
-            zonesToScan = treeData.zones;
-        }
-
-        if (filterZoneId) {
-            const z = zonesToScan.find((zone: any) => zone.id === filterZoneId);
-            return z?.children || [];
-        }
-
-        if (zonesToScan.length > 0) {
-            return zonesToScan.flatMap((z: any) => z.children || []);
-        }
-
-        return treeData.units?.filter((u: any) => u.type === "WOREDA") || [];
-    }, [treeData, filterRegionId, filterZoneId]);
+        if (actorTier === "ZONE" && treeData?.woredas) return treeData.woredas;
+        if (!availableZones.length || !selectedZoneId) return [];
+        const zone = availableZones.find((z: any) => z.id === selectedZoneId);
+        return zone?.woredas || zone?.children || [];
+    }, [actorTier, treeData, availableZones, selectedZoneId]);
 
     const availableSchools = useMemo(() => {
-        if (!treeData) return [];
-        if (treeData.actorTier === "WOREDA" && treeData.schools) return treeData.schools;
+        if (actorTier === "WOREDA" && treeData?.schools) return treeData.schools;
+        if (!availableWoredas.length || !selectedWoredaId) return [];
+        const woreda = availableWoredas.find((w: any) => w.id === selectedWoredaId);
+        return woreda?.schools || woreda?.children || [];
+    }, [actorTier, treeData, availableWoredas, selectedWoredaId]);
 
-        let woredasToScan: any[] = [];
-        if (treeData.regions) {
-            let zones = treeData.regions.flatMap((reg: any) => reg.children || []);
-            if (filterRegionId) {
-                const r = treeData.regions.find((reg: any) => reg.id === filterRegionId);
-                zones = r?.children || [];
-            }
-            if (filterZoneId) {
-                zones = zones.filter((z: any) => z.id === filterZoneId);
-            }
-            woredasToScan = zones.flatMap((z: any) => z.children || []);
-        } else if (treeData.zones) {
-            let zones = treeData.zones;
-            if (filterZoneId) {
-                zones = zones.filter((z: any) => z.id === filterZoneId);
-            }
-            woredasToScan = zones.flatMap((z: any) => z.children || []);
-        } else if (treeData.woredas) {
-            woredasToScan = treeData.woredas;
-        }
+    const regionOptions: SearchableOption[] = useMemo(() => {
+        return availableRegions.map((r: any) => ({
+            value: r.id,
+            label: r.name,
+            badge: `${(r.zones || r.children || []).length} zones`
+        }));
+    }, [availableRegions]);
 
-        if (filterWoredaId) {
-            const w = woredasToScan.find((wor: any) => wor.id === filterWoredaId);
-            return w?.children || [];
-        }
+    const zoneOptions: SearchableOption[] = useMemo(() => {
+        return availableZones.map((z: any) => ({
+            value: z.id,
+            label: z.name,
+            badge: `${(z.woredas || z.children || []).length} woredas`
+        }));
+    }, [availableZones]);
 
-        if (woredasToScan.length > 0) {
-            return woredasToScan.flatMap((w: any) => w.children || []);
-        }
+    const woredaOptions: SearchableOption[] = useMemo(() => {
+        return availableWoredas.map((w: any) => ({
+            value: w.id,
+            label: w.name,
+            badge: `${(w.schools || w.children || []).length} schools`
+        }));
+    }, [availableWoredas]);
 
-        return treeData.units?.filter((u: any) => u.type === "SCHOOL") || [];
-    }, [treeData, filterRegionId, filterZoneId, filterWoredaId]);
+    const schoolOptions: SearchableOption[] = useMemo(() => {
+        return availableSchools.map((s: any) => ({
+            value: s.id,
+            label: s.name,
+            badge: "School"
+        }));
+    }, [availableSchools]);
 
-    // Current units displayed for selection
-    const selectableUnits = useMemo(() => {
-        let list: any[] = [];
-        if (selectedCategory === "REGION") list = availableRegions;
-        else if (selectedCategory === "ZONE") list = availableZones;
-        else if (selectedCategory === "WOREDA") list = availableWoredas;
-        else if (selectedCategory === "SCHOOL") list = availableSchools;
 
-        if (!unitSearchQuery.trim()) return list;
-        return list.filter((u: any) => u.name.toLowerCase().includes(unitSearchQuery.toLowerCase()));
-    }, [selectedCategory, availableRegions, availableZones, availableWoredas, availableSchools, unitSearchQuery]);
-
-    // Map of all accessible units for displaying selected tags
-    const allUnitsMap = useMemo(() => {
-        const map = new Map<string, { id: string; name: string; type: string }>();
-        if (!treeData) return map;
-
-        if (treeData.units) {
-            for (const u of treeData.units) map.set(u.id, u);
-        }
-        if (treeData.regions) {
-            for (const r of treeData.regions) {
-                map.set(r.id, { id: r.id, name: r.name, type: r.type });
-                if (r.children) {
-                    for (const z of r.children) {
-                        map.set(z.id, { id: z.id, name: z.name, type: z.type });
-                        if (z.children) {
-                            for (const w of z.children) {
-                                map.set(w.id, { id: w.id, name: w.name, type: w.type });
-                                if (w.children) {
-                                    for (const s of w.children) {
-                                        map.set(s.id, { id: s.id, name: s.name, type: s.type });
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        return map;
-    }, [treeData]);
 
     const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -288,22 +210,6 @@ export default function ProgramCreatePublishView({
         }
     };
 
-    const toggleUnitSelection = (unitId: string) => {
-        setSelectedUnitIds(prev =>
-            prev.includes(unitId) ? prev.filter(id => id !== unitId) : [...prev, unitId]
-        );
-    };
-
-    const selectAllCurrentUnits = () => {
-        const newIds = new Set(selectedUnitIds);
-        selectableUnits.forEach((u: any) => newIds.add(u.id));
-        setSelectedUnitIds(Array.from(newIds));
-    };
-
-    const deselectAllCurrentUnits = () => {
-        const currentIds = new Set(selectableUnits.map((u: any) => u.id));
-        setSelectedUnitIds(prev => prev.filter(id => !currentIds.has(id)));
-    };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -334,10 +240,67 @@ export default function ProgramCreatePublishView({
             return;
         }
 
-        const isTargetSpecific = deliveryMode === "SPECIFIC";
-        if (isTargetSpecific && selectedUnitIds.length === 0) {
-            setError("Please select at least one specific target unit or choose 'Deliver to All Subordinates Across Jurisdiction'.");
+        // Validate drill-down selection
+        if (targetType === "SPECIFIC_REGION" && !selectedRegionId) {
+            setError("Please select a target Region.");
             return;
+        }
+        if (targetType === "ALL_ZONES" && !selectedRegionId) {
+            setError("Please select a Region to target all its Zones.");
+            return;
+        }
+        if (targetType === "SPECIFIC_ZONE" && (!selectedRegionId || !selectedZoneId)) {
+            setError("Please select both Region and target Zone.");
+            return;
+        }
+        if (targetType === "ALL_WOREDAS" && (!selectedRegionId || !selectedZoneId)) {
+            setError("Please select both Region and Zone to target all Woredas.");
+            return;
+        }
+        if (targetType === "SPECIFIC_WOREDA" && (!selectedRegionId || !selectedZoneId || !selectedWoredaId)) {
+            setError("Please select Region, Zone, and target Woreda.");
+            return;
+        }
+        if (targetType === "ALL_SCHOOLS" && (!selectedRegionId || !selectedZoneId || !selectedWoredaId)) {
+            setError("Please select Region, Zone, and Woreda to target all Schools.");
+            return;
+        }
+        if (targetType === "SPECIFIC_SCHOOL" && (!selectedRegionId || !selectedZoneId || !selectedWoredaId || !selectedSchoolId)) {
+            setError("Please select Region, Zone, Woreda, and target School.");
+            return;
+        }
+
+        let isTargetAll = false;
+        let targetLevels: any[] = [];
+        let targetUnitIds: string[] = [];
+
+        if (targetType === "ALL") {
+            isTargetAll = true;
+            targetUnitIds = [];
+        } else if (targetType === "ALL_REGIONS") {
+            targetLevels = ["REGION"];
+            targetUnitIds = availableRegions.map((r: any) => r.id);
+        } else if (targetType === "SPECIFIC_REGION") {
+            targetLevels = ["REGION"];
+            targetUnitIds = [selectedRegionId];
+        } else if (targetType === "ALL_ZONES") {
+            targetLevels = ["ZONE"];
+            targetUnitIds = availableZones.map((z: any) => z.id);
+        } else if (targetType === "SPECIFIC_ZONE") {
+            targetLevels = ["ZONE"];
+            targetUnitIds = [selectedZoneId];
+        } else if (targetType === "ALL_WOREDAS") {
+            targetLevels = ["WOREDA"];
+            targetUnitIds = availableWoredas.map((w: any) => w.id);
+        } else if (targetType === "SPECIFIC_WOREDA") {
+            targetLevels = ["WOREDA"];
+            targetUnitIds = [selectedWoredaId];
+        } else if (targetType === "ALL_SCHOOLS") {
+            targetLevels = ["SCHOOL"];
+            targetUnitIds = availableSchools.map((s: any) => s.id);
+        } else if (targetType === "SPECIFIC_SCHOOL") {
+            targetLevels = ["SCHOOL"];
+            targetUnitIds = [selectedSchoolId];
         }
 
         setSubmitting(true);
@@ -360,10 +323,10 @@ export default function ProgramCreatePublishView({
                     requiredAction: requiredAction.trim(),
                     attachmentUrl: attachmentUrl || null,
                     attachmentName: attachmentName || null,
-                    targetLevelAll: !isTargetSpecific,
-                    targetLevels: isTargetSpecific ? [selectedCategory] : [],
-                    cascadeDescendants: isTargetSpecific ? cascadeDescendants : false,
-                    targetUnitIds: isTargetSpecific ? selectedUnitIds : [],
+                    targetLevelAll: isTargetAll,
+                    targetLevels,
+                    cascadeDescendants: targetType !== "ALL" ? cascadeDescendants : false,
+                    targetUnitIds,
                     parentProgramId: parentProgram?.id || null
                 })
             });
@@ -376,7 +339,7 @@ export default function ProgramCreatePublishView({
             const data = await res.json();
             setSuccessReceipt({
                 name: data.data?.name || name,
-                recipientsCount: data.data?.totalRecipients || (isTargetSpecific ? selectedUnitIds.length : 1)
+                recipientsCount: data.data?.totalRecipients || (targetUnitIds.length > 0 ? targetUnitIds.length : 1)
             });
         } catch (err: any) {
             setError(err.message || "An error occurred while publishing the program.");
@@ -415,9 +378,9 @@ export default function ProgramCreatePublishView({
                         <div>
                             <span className="text-slate-400 font-medium">Delivery Scope:</span>
                             <p className="font-semibold text-slate-800">
-                                {deliveryMode === "SPECIFIC"
-                                    ? `Targeted (${selectedUnitIds.length} designated units)`
-                                    : "All Subordinate Tiers & Descendants"}
+                                {targetType === "ALL"
+                                    ? "All Subordinate Tiers & Descendants"
+                                    : `Targeted Scope (${targetType.replace(/_/g, " ")})`}
                             </p>
                         </div>
                     </div>
@@ -667,342 +630,325 @@ export default function ProgramCreatePublishView({
                     </div>
                 </div>
 
-                {/* Section 3: Hierarchical Target Scope Delivery */}
+                {/* Section 3: Hierarchical Target Scope Delivery (Matching Image 3) */}
                 <div className="space-y-4 pt-4 border-t border-slate-100">
-                    <div className="flex items-center justify-between">
-                        <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider text-slate-400">
-                            3. Delivery & Hierarchical Target Scope
-                        </h3>
-                        {selectedUnitIds.length > 0 && deliveryMode === "SPECIFIC" && (
-                            <span className="text-xs font-semibold text-slate-700 bg-slate-100 px-2 py-0.5 rounded-full">
-                                {selectedUnitIds.length} units selected
-                            </span>
-                        )}
-                    </div>
+                    <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider text-slate-400">
+                        3. Delivery & Hierarchical Target Scope
+                    </h3>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <label
-                            className={`flex items-start gap-3 p-3.5 rounded-xl border cursor-pointer transition-all ${
-                                deliveryMode === "ALL"
-                                    ? "bg-slate-50/80 border-slate-800 shadow-xs"
-                                    : "bg-white border-slate-200 hover:bg-slate-50/50"
-                            }`}
-                        >
-                            <input
-                                type="radio"
-                                checked={deliveryMode === "ALL"}
-                                onChange={() => {
-                                    setDeliveryMode("ALL");
-                                    setSelectedUnitIds([]);
-                                }}
-                                name="deliveryMode"
-                                className="mt-0.5 text-slate-900 focus:ring-slate-900 cursor-pointer"
-                            />
-                            <div>
-                                <span className="text-xs font-bold text-slate-900 block">
-                                    Deliver to All Subordinates
-                                </span>
-                                <span className="text-[11px] text-slate-500 block mt-0.5 leading-relaxed">
-                                    Broadcasts this program across all subordinate organizations and tiers under your jurisdiction.
-                                </span>
-                            </div>
+                    <div className="space-y-2">
+                        <label className="block text-xs font-bold text-slate-800">
+                            Target Audience <span className="text-rose-500">*</span>
                         </label>
-
-                        <label
-                            className={`flex items-start gap-3 p-3.5 rounded-xl border cursor-pointer transition-all ${
-                                deliveryMode === "SPECIFIC"
-                                    ? "bg-slate-50/80 border-slate-800 shadow-xs"
-                                    : "bg-white border-slate-200 hover:bg-slate-50/50"
-                            }`}
+                        <select
+                            value={targetType}
+                            onChange={(e) => {
+                                const val = e.target.value as any;
+                                setTargetType(val);
+                                setSelectedRegionId("");
+                                setSelectedZoneId("");
+                                setSelectedWoredaId("");
+                                setSelectedSchoolId("");
+                            }}
+                            className="w-full border border-slate-300 rounded-lg p-2.5 text-xs bg-white focus:ring-1 focus:ring-blue-600 font-medium text-slate-800 cursor-pointer"
                         >
-                            <input
-                                type="radio"
-                                checked={deliveryMode === "SPECIFIC"}
-                                onChange={() => setDeliveryMode("SPECIFIC")}
-                                name="deliveryMode"
-                                className="mt-0.5 text-slate-900 focus:ring-slate-900 cursor-pointer"
-                            />
-                            <div>
-                                <span className="text-xs font-bold text-slate-900 block">
-                                    Target Specific Administrative Units
-                                </span>
-                                <span className="text-[11px] text-slate-500 block mt-0.5 leading-relaxed">
-                                    Filter and select specific regions, zones, woredas, or schools using hierarchical drop-downs.
-                                </span>
-                            </div>
-                        </label>
-                    </div>
+                            <option value="ALL">Entire Country (All Jurisdictions, Regions, Zones, Woredas, & Schools)</option>
+                            <option value="ALL_REGIONS">All Regions Nationwide (Regions Only)</option>
+                            <option value="SPECIFIC_REGION">Target Specific Region (Region Only)</option>
+                            <option value="ALL_ZONES">All Zones in a Specific Region</option>
+                            <option value="SPECIFIC_ZONE">Target Specific Zone (Zone Only)</option>
+                            <option value="ALL_WOREDAS">All Woredas in a Specific Zone</option>
+                            <option value="SPECIFIC_WOREDA">Target Specific Woreda (Woreda Only)</option>
+                            <option value="ALL_SCHOOLS">All Schools in a Specific Woreda</option>
+                            <option value="SPECIFIC_SCHOOL">Target Specific School (School Only)</option>
+                        </select>
 
-                    {/* Hierarchical Picker Panel (when Specific is chosen) */}
-                    {deliveryMode === "SPECIFIC" && (
-                        <div className="bg-slate-50/70 border border-slate-200 rounded-2xl p-4 space-y-4">
-                            {/* Step A: Select Target Category */}
-                            <div>
-                                <label className="text-[11px] font-bold text-slate-700 uppercase tracking-wider block mb-2">
-                                    Step 1: Choose Target Level
+                        {/* Drill-down: Specific Region (Searchable) */}
+                        {targetType === "SPECIFIC_REGION" && (
+                            <div className="pt-2">
+                                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                                    1. Region <span className="text-rose-500">*</span>
                                 </label>
-                                <div className="flex flex-wrap gap-2">
-                                    {actorTier === "FEDERAL" && (
-                                        <button
-                                            type="button"
-                                            onClick={() => {
-                                                setSelectedCategory("REGION");
-                                                setUnitSearchQuery("");
-                                            }}
-                                            className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
-                                                selectedCategory === "REGION"
-                                                    ? "bg-slate-900 text-white shadow-xs"
-                                                    : "bg-white text-slate-700 border border-slate-200 hover:bg-slate-100"
-                                            }`}
-                                        >
-                                            <Layers className="w-3.5 h-3.5" />
-                                            <span>Regions ({availableRegions.length})</span>
-                                        </button>
-                                    )}
+                                <SearchableSelect
+                                    options={regionOptions}
+                                    value={selectedRegionId}
+                                    onChange={(val) => setSelectedRegionId(val)}
+                                    placeholder="-- Region --"
+                                    searchPlaceholder="Type region..."
+                                />
+                            </div>
+                        )}
 
-                                    {(actorTier === "FEDERAL" || actorTier === "REGION") && (
-                                        <button
-                                            type="button"
-                                            onClick={() => {
-                                                setSelectedCategory("ZONE");
-                                                setUnitSearchQuery("");
-                                            }}
-                                            className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
-                                                selectedCategory === "ZONE"
-                                                    ? "bg-slate-900 text-white shadow-xs"
-                                                    : "bg-white text-slate-700 border border-slate-200 hover:bg-slate-100"
-                                            }`}
-                                        >
-                                            <Building2 className="w-3.5 h-3.5" />
-                                            <span>Zones</span>
-                                        </button>
-                                    )}
+                        {/* Drill-down: All Zones in Region */}
+                        {targetType === "ALL_ZONES" && (
+                            <div className="pt-2">
+                                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                                    1. Select Parent Region <span className="text-rose-500">*</span>
+                                </label>
+                                <SearchableSelect
+                                    options={regionOptions}
+                                    value={selectedRegionId}
+                                    onChange={(val) => setSelectedRegionId(val)}
+                                    placeholder="-- Region --"
+                                    searchPlaceholder="Type region..."
+                                />
+                            </div>
+                        )}
 
-                                    {(actorTier === "FEDERAL" || actorTier === "REGION" || actorTier === "ZONE") && (
-                                        <button
-                                            type="button"
-                                            onClick={() => {
-                                                setSelectedCategory("WOREDA");
-                                                setUnitSearchQuery("");
-                                            }}
-                                            className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
-                                                selectedCategory === "WOREDA"
-                                                    ? "bg-slate-900 text-white shadow-xs"
-                                                    : "bg-white text-slate-700 border border-slate-200 hover:bg-slate-100"
-                                            }`}
-                                        >
-                                            <MapPin className="w-3.5 h-3.5" />
-                                            <span>Woredas</span>
-                                        </button>
-                                    )}
-
-                                    <button
-                                        type="button"
-                                        onClick={() => {
-                                            setSelectedCategory("SCHOOL");
-                                            setUnitSearchQuery("");
+                        {/* Drill-down: Specific Zone (Searchable Region -> Zone) */}
+                        {targetType === "SPECIFIC_ZONE" && (
+                            <div className="pt-2 grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                                <div>
+                                    <label className="block text-xs font-semibold text-slate-700 mb-1">
+                                        1. Region <span className="text-rose-500">*</span>
+                                    </label>
+                                    <SearchableSelect
+                                        options={regionOptions}
+                                        value={selectedRegionId}
+                                        onChange={(val) => {
+                                            setSelectedRegionId(val);
+                                            setSelectedZoneId("");
                                         }}
-                                        className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
-                                            selectedCategory === "SCHOOL"
-                                                ? "bg-slate-900 text-white shadow-xs"
-                                                : "bg-white text-slate-700 border border-slate-200 hover:bg-slate-100"
-                                        }`}
-                                    >
-                                        <School className="w-3.5 h-3.5" />
-                                        <span>Schools</span>
-                                    </button>
+                                        placeholder="-- Region --"
+                                        searchPlaceholder="Type region..."
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-semibold text-slate-700 mb-1">
+                                        2. Zone <span className="text-rose-500">*</span>
+                                    </label>
+                                    <SearchableSelect
+                                        options={zoneOptions}
+                                        value={selectedZoneId}
+                                        disabled={!selectedRegionId}
+                                        onChange={(val) => setSelectedZoneId(val)}
+                                        placeholder={selectedRegionId ? "-- Zone --" : "-- Choose Region First --"}
+                                        searchPlaceholder="Type zone..."
+                                    />
                                 </div>
                             </div>
+                        )}
 
-                            {/* Step B: Cascading Parent Filters */}
-                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
-                                {actorTier === "FEDERAL" && (selectedCategory === "ZONE" || selectedCategory === "WOREDA" || selectedCategory === "SCHOOL") && (
-                                    <div>
-                                        <label className="text-[11px] font-semibold text-slate-600 block mb-1">
-                                            Filter by Region
-                                        </label>
-                                        <select
-                                            value={filterRegionId}
-                                            onChange={e => {
-                                                setFilterRegionId(e.target.value);
-                                                setFilterZoneId("");
-                                                setFilterWoredaId("");
-                                            }}
-                                            className="w-full p-2 text-xs border border-slate-200 rounded-xl bg-white text-slate-800 focus:outline-none cursor-pointer"
-                                        >
-                                            <option value="">All Regions</option>
-                                            {availableRegions.map((r: any) => (
-                                                <option key={r.id} value={r.id}>{r.name}</option>
-                                            ))}
-                                        </select>
-                                    </div>
-                                )}
-
-                                {(actorTier === "FEDERAL" || actorTier === "REGION") && (selectedCategory === "WOREDA" || selectedCategory === "SCHOOL") && (
-                                    <div>
-                                        <label className="text-[11px] font-semibold text-slate-600 block mb-1">
-                                            Filter by Zone
-                                        </label>
-                                        <select
-                                            value={filterZoneId}
-                                            onChange={e => {
-                                                setFilterZoneId(e.target.value);
-                                                setFilterWoredaId("");
-                                            }}
-                                            className="w-full p-2 text-xs border border-slate-200 rounded-xl bg-white text-slate-800 focus:outline-none cursor-pointer"
-                                        >
-                                            <option value="">All Zones</option>
-                                            {availableZones.map((z: any) => (
-                                                <option key={z.id} value={z.id}>{z.name}</option>
-                                            ))}
-                                        </select>
-                                    </div>
-                                )}
-
-                                {(actorTier === "FEDERAL" || actorTier === "REGION" || actorTier === "ZONE") && selectedCategory === "SCHOOL" && (
-                                    <div>
-                                        <label className="text-[11px] font-semibold text-slate-600 block mb-1">
-                                            Filter by Woreda
-                                        </label>
-                                        <select
-                                            value={filterWoredaId}
-                                            onChange={e => setFilterWoredaId(e.target.value)}
-                                            className="w-full p-2 text-xs border border-slate-200 rounded-xl bg-white text-slate-800 focus:outline-none cursor-pointer"
-                                        >
-                                            <option value="">All Woredas</option>
-                                            {availableWoredas.map((w: any) => (
-                                                <option key={w.id} value={w.id}>{w.name}</option>
-                                            ))}
-                                        </select>
-                                    </div>
-                                )}
-                            </div>
-
-                            {/* Step C: Searchable Unit Selection List */}
-                            <div className="bg-white border border-slate-200 rounded-xl p-3 space-y-2">
-                                <div className="flex items-center justify-between gap-2">
-                                    <div className="relative flex-1">
-                                        <Search className="w-3.5 h-3.5 absolute left-2.5 top-2.5 text-slate-400" />
-                                        <input
-                                            type="text"
-                                            value={unitSearchQuery}
-                                            onChange={e => setUnitSearchQuery(e.target.value)}
-                                            placeholder={`Search available ${selectedCategory.toLowerCase()}s...`}
-                                            className="w-full pl-8 pr-3 py-1.5 text-xs border border-slate-200 rounded-lg focus:outline-none focus:border-slate-400 text-slate-800 placeholder-slate-400"
-                                        />
-                                    </div>
-
-                                    <div className="flex items-center gap-2 shrink-0">
-                                        <button
-                                            type="button"
-                                            onClick={selectAllCurrentUnits}
-                                            className="text-[11px] font-semibold text-blue-600 hover:text-blue-800 cursor-pointer"
-                                        >
-                                            Select All ({selectableUnits.length})
-                                        </button>
-                                        <span className="text-slate-300">|</span>
-                                        <button
-                                            type="button"
-                                            onClick={deselectAllCurrentUnits}
-                                            className="text-[11px] font-semibold text-slate-500 hover:text-slate-700 cursor-pointer"
-                                        >
-                                            Deselect
-                                        </button>
-                                    </div>
+                        {/* Drill-down: All Woredas in Zone */}
+                        {targetType === "ALL_WOREDAS" && (
+                            <div className="pt-2 grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                                <div>
+                                    <label className="block text-xs font-semibold text-slate-700 mb-1">
+                                        1. Region <span className="text-rose-500">*</span>
+                                    </label>
+                                    <SearchableSelect
+                                        options={regionOptions}
+                                        value={selectedRegionId}
+                                        onChange={(val) => {
+                                            setSelectedRegionId(val);
+                                            setSelectedZoneId("");
+                                        }}
+                                        placeholder="-- Region --"
+                                        searchPlaceholder="Type region..."
+                                    />
                                 </div>
-
-                                <div className="max-h-48 overflow-y-auto border border-slate-100 rounded-lg divide-y divide-slate-100">
-                                    {loadingTree ? (
-                                        <div className="py-6 text-center text-xs text-slate-400 flex items-center justify-center gap-2">
-                                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                                            <span>Loading organizational hierarchy...</span>
-                                        </div>
-                                    ) : selectableUnits.length === 0 ? (
-                                        <div className="py-6 text-center text-xs text-slate-400">
-                                            No {selectedCategory.toLowerCase()}s match your search / filter criteria.
-                                        </div>
-                                    ) : (
-                                        selectableUnits.map((u: any) => {
-                                            const isChecked = selectedUnitIds.includes(u.id);
-                                            return (
-                                                <label
-                                                    key={u.id}
-                                                    className={`flex items-center justify-between p-2 hover:bg-slate-50 cursor-pointer text-xs transition-colors ${
-                                                        isChecked ? "bg-blue-50/40" : ""
-                                                    }`}
-                                                >
-                                                    <div className="flex items-center gap-2.5 min-w-0">
-                                                        <input
-                                                            type="checkbox"
-                                                            checked={isChecked}
-                                                            onChange={() => toggleUnitSelection(u.id)}
-                                                            className="rounded text-slate-900 focus:ring-slate-900 cursor-pointer"
-                                                        />
-                                                        <span className="font-semibold text-slate-800 truncate">{u.name}</span>
-                                                    </div>
-                                                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider shrink-0">
-                                                        {u.type}
-                                                    </span>
-                                                </label>
-                                            );
-                                        })
-                                    )}
+                                <div>
+                                    <label className="block text-xs font-semibold text-slate-700 mb-1">
+                                        2. Zone <span className="text-rose-500">*</span>
+                                    </label>
+                                    <SearchableSelect
+                                        options={zoneOptions}
+                                        value={selectedZoneId}
+                                        disabled={!selectedRegionId}
+                                        onChange={(val) => setSelectedZoneId(val)}
+                                        placeholder={selectedRegionId ? "-- Zone --" : "-- Choose Region First --"}
+                                        searchPlaceholder="Type zone..."
+                                    />
                                 </div>
                             </div>
+                        )}
 
-                            {/* Step D: Selected Units Tag Chips */}
-                            {selectedUnitIds.length > 0 && (
-                                <div className="pt-1">
-                                    <div className="flex items-center justify-between mb-1.5">
-                                        <span className="text-[11px] font-bold text-slate-700 uppercase tracking-wider">
-                                            Designated Target Units ({selectedUnitIds.length})
-                                        </span>
-                                        <button
-                                            type="button"
-                                            onClick={() => setSelectedUnitIds([])}
-                                            className="text-[11px] text-rose-600 hover:underline font-semibold cursor-pointer"
-                                        >
-                                            Clear All
-                                        </button>
-                                    </div>
-                                    <div className="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto p-1.5 bg-white border border-slate-200 rounded-xl">
-                                        {selectedUnitIds.map(id => {
-                                            const unit = allUnitsMap.get(id);
-                                            return (
-                                                <span
-                                                    key={id}
-                                                    className="inline-flex items-center gap-1 px-2 py-0.5 bg-slate-100 text-slate-800 rounded-md text-[11px] font-medium border border-slate-200"
-                                                >
-                                                    <span>{unit?.name || id}</span>
-                                                    <span className="text-[9px] text-slate-400 uppercase">({unit?.type || "UNIT"})</span>
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => toggleUnitSelection(id)}
-                                                        className="text-slate-400 hover:text-slate-700 cursor-pointer ml-0.5"
-                                                    >
-                                                        <X className="w-3 h-3" />
-                                                    </button>
-                                                </span>
-                                            );
-                                        })}
-                                    </div>
+                        {/* Drill-down: Specific Woreda (Searchable Region -> Zone -> Woreda) */}
+                        {targetType === "SPECIFIC_WOREDA" && (
+                            <div className="pt-2 grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                                <div>
+                                    <label className="block text-xs font-semibold text-slate-700 mb-1">
+                                        1. Region <span className="text-rose-500">*</span>
+                                    </label>
+                                    <SearchableSelect
+                                        options={regionOptions}
+                                        value={selectedRegionId}
+                                        onChange={(val) => {
+                                            setSelectedRegionId(val);
+                                            setSelectedZoneId("");
+                                            setSelectedWoredaId("");
+                                        }}
+                                        placeholder="-- Region --"
+                                        searchPlaceholder="Type region..."
+                                    />
                                 </div>
-                            )}
+                                <div>
+                                    <label className="block text-xs font-semibold text-slate-700 mb-1">
+                                        2. Zone <span className="text-rose-500">*</span>
+                                    </label>
+                                    <SearchableSelect
+                                        options={zoneOptions}
+                                        value={selectedZoneId}
+                                        disabled={!selectedRegionId}
+                                        onChange={(val) => {
+                                            setSelectedZoneId(val);
+                                            setSelectedWoredaId("");
+                                        }}
+                                        placeholder={selectedRegionId ? "-- Zone --" : "-- Choose Region First --"}
+                                        searchPlaceholder="Type zone..."
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-semibold text-slate-700 mb-1">
+                                        3. Woreda <span className="text-rose-500">*</span>
+                                    </label>
+                                    <SearchableSelect
+                                        options={woredaOptions}
+                                        value={selectedWoredaId}
+                                        disabled={!selectedZoneId}
+                                        onChange={(val) => setSelectedWoredaId(val)}
+                                        placeholder={selectedZoneId ? "-- Woreda --" : "-- Choose Zone First --"}
+                                        searchPlaceholder="Type woreda..."
+                                    />
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Drill-down: All Schools in Woreda */}
+                        {targetType === "ALL_SCHOOLS" && (
+                            <div className="pt-2 grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                                <div>
+                                    <label className="block text-xs font-semibold text-slate-700 mb-1">
+                                        1. Region <span className="text-rose-500">*</span>
+                                    </label>
+                                    <SearchableSelect
+                                        options={regionOptions}
+                                        value={selectedRegionId}
+                                        onChange={(val) => {
+                                            setSelectedRegionId(val);
+                                            setSelectedZoneId("");
+                                            setSelectedWoredaId("");
+                                        }}
+                                        placeholder="-- Region --"
+                                        searchPlaceholder="Type region..."
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-semibold text-slate-700 mb-1">
+                                        2. Zone <span className="text-rose-500">*</span>
+                                    </label>
+                                    <SearchableSelect
+                                        options={zoneOptions}
+                                        value={selectedZoneId}
+                                        disabled={!selectedRegionId}
+                                        onChange={(val) => {
+                                            setSelectedZoneId(val);
+                                            setSelectedWoredaId("");
+                                        }}
+                                        placeholder={selectedRegionId ? "-- Zone --" : "-- Choose Region First --"}
+                                        searchPlaceholder="Type zone..."
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-semibold text-slate-700 mb-1">
+                                        3. Woreda <span className="text-rose-500">*</span>
+                                    </label>
+                                    <SearchableSelect
+                                        options={woredaOptions}
+                                        value={selectedWoredaId}
+                                        disabled={!selectedZoneId}
+                                        onChange={(val) => setSelectedWoredaId(val)}
+                                        placeholder={selectedZoneId ? "-- Woreda --" : "-- Choose Zone First --"}
+                                        searchPlaceholder="Type woreda..."
+                                    />
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Drill-down: Specific School (4-level Searchable Cascade: EXACT MATCH TO IMAGE 3) */}
+                        {targetType === "SPECIFIC_SCHOOL" && (
+                            <div className="pt-2 grid grid-cols-1 sm:grid-cols-4 gap-2.5">
+                                <div>
+                                    <label className="block text-xs font-semibold text-slate-700 mb-1">
+                                        1. Region <span className="text-rose-500">*</span>
+                                    </label>
+                                    <SearchableSelect
+                                        options={regionOptions}
+                                        value={selectedRegionId}
+                                        onChange={(val) => {
+                                            setSelectedRegionId(val);
+                                            setSelectedZoneId("");
+                                            setSelectedWoredaId("");
+                                            setSelectedSchoolId("");
+                                        }}
+                                        placeholder="-- Region --"
+                                        searchPlaceholder="Type region..."
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-semibold text-slate-700 mb-1">
+                                        2. Zone <span className="text-rose-500">*</span>
+                                    </label>
+                                    <SearchableSelect
+                                        options={zoneOptions}
+                                        value={selectedZoneId}
+                                        disabled={!selectedRegionId}
+                                        onChange={(val) => {
+                                            setSelectedZoneId(val);
+                                            setSelectedWoredaId("");
+                                            setSelectedSchoolId("");
+                                        }}
+                                        placeholder={selectedRegionId ? "-- Zone --" : "-- Choose Region First --"}
+                                        searchPlaceholder="Type zone..."
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-semibold text-slate-700 mb-1">
+                                        3. Woreda <span className="text-rose-500">*</span>
+                                    </label>
+                                    <SearchableSelect
+                                        options={woredaOptions}
+                                        value={selectedWoredaId}
+                                        disabled={!selectedZoneId}
+                                        onChange={(val) => {
+                                            setSelectedWoredaId(val);
+                                            setSelectedSchoolId("");
+                                        }}
+                                        placeholder={selectedZoneId ? "-- Woreda --" : "-- Choose Zone First --"}
+                                        searchPlaceholder="Type woreda..."
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-semibold text-slate-700 mb-1">
+                                        4. School <span className="text-rose-500">*</span>
+                                    </label>
+                                    <SearchableSelect
+                                        options={schoolOptions}
+                                        value={selectedSchoolId}
+                                        disabled={!selectedWoredaId}
+                                        onChange={(val) => setSelectedSchoolId(val)}
+                                        placeholder={selectedWoredaId ? "-- School --" : "-- Choose Woreda First --"}
+                                        searchPlaceholder="Type school..."
+                                    />
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Cascade descendants toggle */}
+                        <div className="pt-2">
+                            <label className="flex items-center gap-2 cursor-pointer">
+                                <input
+                                    type="checkbox"
+                                    checked={cascadeDescendants}
+                                    onChange={e => setCascadeDescendants(e.target.checked)}
+                                    className="rounded text-blue-600 focus:ring-blue-500 h-4 w-4"
+                                />
+                                <span className="text-xs text-slate-600">
+                                    Automatically cascade implementation requirements to subordinate descendant institutions
+                                </span>
+                            </label>
                         </div>
-                    )}
-
-                    {/* Cascade descendants toggle */}
-                    <label className="flex items-center gap-2 pt-1 cursor-pointer">
-                        <input
-                            type="checkbox"
-                            checked={cascadeDescendants}
-                            onChange={e => setCascadeDescendants(e.target.checked)}
-                            className="rounded text-slate-900 focus:ring-slate-900 cursor-pointer"
-                        />
-                        <span className="text-xs text-slate-700 font-medium">
-                            Automatically cascade implementation requirements to subordinate descendant institutions
-                        </span>
-                    </label>
+                    </div>
                 </div>
 
                 {/* Submit Actions */}
