@@ -154,14 +154,16 @@ export class AssessmentService {
             update: {
                 score: data.score,
                 feedback: data.feedback,
-                gradedById: data.gradedById
+                gradedById: data.gradedById,
+                status: "GRADED"
             },
             create: {
                 assessmentId: data.assessmentId,
                 enrollmentId: data.enrollmentId,
                 score: data.score,
                 feedback: data.feedback,
-                gradedById: data.gradedById
+                gradedById: data.gradedById,
+                status: "GRADED"
             }
         });
 
@@ -201,14 +203,16 @@ export class AssessmentService {
                     update: {
                         score: item.score,
                         feedback: item.feedback || null,
-                        gradedById: data.gradedById || null
+                        gradedById: data.gradedById || null,
+                        status: "GRADED"
                     },
                     create: {
                         assessmentId: data.assessmentId,
                         enrollmentId: item.enrollmentId,
                         score: item.score,
                         feedback: item.feedback || null,
-                        gradedById: data.gradedById || null
+                        gradedById: data.gradedById || null,
+                        status: "GRADED"
                     }
                 });
             })

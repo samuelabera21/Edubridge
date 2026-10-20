@@ -1,5 +1,6 @@
 import { prisma } from "../../infrastructure/prisma/client.js";
 import { AnnouncementTarget } from "../../generated/prisma/enums.js";
+import { emitNewMessageToUsers, emitNewAnnouncement, getIO } from "../../infrastructure/socket/socket.service.js";
 
 export class CommunicationService {
 
@@ -478,6 +479,8 @@ export class CommunicationService {
         } catch {
             // Ignore audit fail
         }
+
+        emitNewAnnouncement(announcement, organizationId);
 
         return {
             ...announcement,
@@ -1100,6 +1103,17 @@ export class CommunicationService {
         });
     }
 
+    static async markAllNotificationsRead(userId: string, organizationId?: string) {
+        return prisma.notification.updateMany({
+            where: {
+                userId,
+                ...(organizationId ? { organizationId } : {}),
+                isRead: false
+            },
+            data: { isRead: true }
+        });
+    }
+
     static async getUnreadNotificationCount(userId: string, organizationId?: string): Promise<number> {
         return prisma.notification.count({
             where: {
@@ -1156,10 +1170,24 @@ export class CommunicationService {
             // Notification failure must not block message delivery
         }
 
+        emitNewMessageToUsers(message);
         return message;
     }
 
     static async getMessages(userId: string, organizationId: string, otherUserId?: string) {
+        if (otherUserId) {
+            await prisma.message.updateMany({
+                where: {
+                    organizationId,
+                    senderId: otherUserId,
+                    receiverId: userId,
+                    isRead: false
+                },
+                data: { isRead: true }
+            });
+            getIO()?.to(`user:${otherUserId}`).emit("messages_read", { byUserId: userId });
+        }
+
         return prisma.message.findMany({
             where: {
                 organizationId,

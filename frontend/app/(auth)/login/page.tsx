@@ -122,7 +122,7 @@ export default function LoginPage() {
 
             if (!res.ok) {
                 const data = await res.json().catch(() => ({}));
-                setError(data.message || "Failed to initialize Google Sign-in. Please check your credentials.");
+                setError(data.message || "Google Sign-in is not configured or credentials are invalid. Please check backend GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET.");
                 setGoogleLoading(false);
                 return;
             }
