@@ -25,7 +25,9 @@ import {
     ChevronDown,
     Check,
     Search,
-    X
+    X,
+    RefreshCw,
+    Sparkles
 } from "lucide-react";
 import SearchableSelect, { SearchableOption } from "../ui/SearchableSelect";
 
@@ -67,41 +69,10 @@ export default function DataRequestCreateView({
     const [instructions, setInstructions] = useState("");
     const [requiredAction, setRequiredAction] = useState("");
 
-    // Dynamic Fields
-    const [fields, setFields] = useState<FieldItem[]>([
-        {
-            id: "f-1",
-            label: "Number of computers",
-            fieldType: "NUMBER",
-            required: true,
-            description: "Total count of desktop and laptop computers in inventory",
-            options: []
-        },
-        {
-            id: "f-2",
-            label: "Number of functional computers",
-            fieldType: "NUMBER",
-            required: true,
-            description: "Computers currently powered on and usable",
-            options: []
-        },
-        {
-            id: "f-3",
-            label: "Is internet available?",
-            fieldType: "YES_NO",
-            required: true,
-            description: "Dedicated broadband, 4G, or fiber internet connection",
-            options: []
-        },
-        {
-            id: "f-4",
-            label: "Comments & Infrastructure condition",
-            fieldType: "LONG_TEXT",
-            required: false,
-            description: "Any extra remarks regarding lab facilities or power stability",
-            options: []
-        }
-    ]);
+    // Synced questions state from Google Forms (Option A)
+    const [syncedQuestions, setSyncedQuestions] = useState<any[]>([]);
+    const [syncingQuestions, setSyncingQuestions] = useState(false);
+    const [lastSyncedTime, setLastSyncedTime] = useState<string | null>(null);
 
     // Target Audience Hierarchy Selection
     const [targetType, setTargetType] = useState<
@@ -374,54 +345,26 @@ export default function DataRequestCreateView({
         return null;
     }, [targetType, availableRegions, availableZones, availableWoredas, availableSchools, selectedRegionId, selectedZoneId, selectedWoredaId, selectedSchoolId, userTier]);
 
-    // Dynamic field manipulation
-    const handleAddField = () => {
-        const newField: FieldItem = {
-            id: `f-${Date.now()}`,
-            label: `New Question ${fields.length + 1}`,
-            fieldType: "SHORT_TEXT",
-            required: true,
-            description: "",
-            options: []
-        };
-        setFields((prev) => [...prev, newField]);
-    };
-
-    const handleRemoveField = (index: number) => {
-        if (fields.length <= 1) {
-            setError("At least one question is required for a Data Request.");
-            return;
-        }
-        setFields((prev) => prev.filter((_, i) => i !== index));
-    };
-
-    const handleFieldChange = (index: number, key: keyof FieldItem, value: any) => {
-        setFields((prev) => {
-            const copy = [...prev];
-            const item = { ...copy[index]!, [key]: value };
-
-            if (key === "rawOptionsInput" && typeof value === "string") {
-                item.options = value
-                    .split(",")
-                    .map((s) => s.trim())
-                    .filter(Boolean);
+    // Dynamic field sync from Google Forms
+    const syncQuestionsFromGoogleForm = async (requestId: string, silent = false) => {
+        if (!requestId) return;
+        if (!silent) setSyncingQuestions(true);
+        try {
+            const res = await fetchApi(`/data-requests/${requestId}/schema/sync`, {
+                method: "POST"
+            });
+            if (res.ok) {
+                const json = await res.json();
+                if (json.data?.fields) {
+                    setSyncedQuestions(json.data.fields);
+                    setLastSyncedTime(new Date().toLocaleTimeString());
+                }
             }
-            copy[index] = item;
-            return copy;
-        });
-    };
-
-    const moveField = (index: number, direction: "up" | "down") => {
-        const newIndex = direction === "up" ? index - 1 : index + 1;
-        if (newIndex < 0 || newIndex >= fields.length) return;
-
-        setFields((prev) => {
-            const copy = [...prev];
-            const temp = copy[index]!;
-            copy[index] = copy[newIndex]!;
-            copy[newIndex] = temp;
-            return copy;
-        });
+        } catch (err) {
+            console.warn("Failed to sync questions from Google Form:", err);
+        } finally {
+            if (!silent) setSyncingQuestions(false);
+        }
     };
 
     // Handle Form Creation
@@ -444,21 +387,6 @@ export default function DataRequestCreateView({
         if (new Date(deadline) < new Date(startDate)) {
             setError("Submission deadline cannot be earlier than start date.");
             return;
-        }
-
-        // Validate fields
-        for (let i = 0; i < fields.length; i++) {
-            if (!fields[i]!.label.trim()) {
-                setError(`Question #${i + 1} is missing a label.`);
-                return;
-            }
-            if (
-                (fields[i]!.fieldType === "SINGLE_SELECT" || fields[i]!.fieldType === "MULTI_SELECT") &&
-                (!fields[i]!.options || fields[i]!.options.length < 2)
-            ) {
-                setError(`Question #${i + 1} (${fields[i]!.label}) requires at least 2 choices (comma-separated).`);
-                return;
-            }
         }
 
         // Validate Target Audience Selection
@@ -554,14 +482,7 @@ export default function DataRequestCreateView({
                 requiredAction: requiredAction.trim() || undefined,
                 targetScope: targetType === "ALL" ? "ALL_AUTHORIZED_DESCENDANTS" : targetType,
                 targetUnitIds: resolvedTargetIds.length > 0 ? resolvedTargetIds : undefined,
-                fields: fields.map((f, idx) => ({
-                    label: f.label.trim(),
-                    fieldType: f.fieldType,
-                    required: f.required,
-                    description: f.description?.trim() || null,
-                    options: f.options,
-                    order: idx + 1
-                }))
+                fields: []
             };
 
             const createRes = await fetchApi("/data-requests", {
@@ -618,27 +539,192 @@ export default function DataRequestCreateView({
         setTimeout(() => setCopiedLink(false), 2500);
     };
 
+    // Auto-sync Google Form questions on window focus and periodic background poll
+    useEffect(() => {
+        if (!successData?.id) return;
+
+        // Immediate check
+        syncQuestionsFromGoogleForm(successData.id, true);
+
+        // Auto-sync whenever administrator switches back to the EduBridge tab from Google Forms
+        const handleWindowFocus = () => {
+            syncQuestionsFromGoogleForm(successData.id, true);
+        };
+        window.addEventListener("focus", handleWindowFocus);
+
+        // Periodic background poll every 7 seconds
+        const pollInterval = setInterval(() => {
+            syncQuestionsFromGoogleForm(successData.id, true);
+        }, 7000);
+
+        return () => {
+            window.removeEventListener("focus", handleWindowFocus);
+            clearInterval(pollInterval);
+        };
+    }, [successData?.id]);
+
     // Success Screen
     if (successData) {
         return (
-            <div className="bg-white border border-slate-200/90 rounded-2xl p-8 max-w-2xl mx-auto text-center space-y-6 shadow-sm">
-                <div className="w-14 h-14 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto shadow-xs">
-                    <CheckCircle2 className="w-8 h-8" />
-                </div>
-
-                <div className="space-y-1.5">
+            <div className="bg-white border border-slate-200/90 rounded-2xl p-6 md:p-8 max-w-3xl mx-auto space-y-6 shadow-sm">
+                <div className="text-center space-y-2">
+                    <div className="w-14 h-14 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto shadow-xs">
+                        <CheckCircle2 className="w-8 h-8" />
+                    </div>
                     <h2 className="text-xl font-bold text-slate-900">Data Request & Google Form Created!</h2>
-                    <p className="text-xs md:text-sm text-slate-500">
-                        "{successData.title}" was published to {successData.targetCount} targeted unit(s).
+                    <p className="text-xs md:text-sm text-slate-500 max-w-xl mx-auto">
+                        "{successData.title}" has been initialized and linked to a live Google Form for {successData.targetCount} targeted unit(s).
                     </p>
                 </div>
 
-                {/* Live Form Link Box */}
-                <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 text-left space-y-2.5">
+                {/* Step 1: Open Google Forms to Design Questions */}
+                <div className="bg-gradient-to-r from-purple-50 to-indigo-50 border border-purple-200/80 rounded-2xl p-5 space-y-3">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <div className="space-y-1">
+                            <span className="text-[11px] font-bold uppercase tracking-wider text-purple-700 bg-purple-100/80 px-2 py-0.5 rounded-md inline-block">
+                                Step 1 • Design Questions
+                            </span>
+                            <h3 className="text-sm font-bold text-slate-900">Add Questions in Google Forms</h3>
+                            <p className="text-xs text-slate-600 leading-relaxed">
+                                Use Google Forms' native drag-and-drop editor to add short text, multiple choice, numbers, or dates.
+                            </p>
+                        </div>
+
+                        {successData.googleFormEditUrl && (
+                            <a
+                                href={successData.googleFormEditUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-purple-600 hover:bg-purple-700 text-white text-xs font-semibold rounded-xl transition-all shadow-sm shrink-0 cursor-pointer active:scale-95"
+                            >
+                                <ExternalLink className="w-4 h-4" />
+                                <span>Open in Google Forms ↗</span>
+                            </a>
+                        )}
+                    </div>
+
+                    <div className="text-[11px] text-purple-800/90 bg-white/70 border border-purple-200/60 rounded-xl px-3 py-2 flex items-center gap-2">
+                        <Sparkles className="w-3.5 h-3.5 text-purple-600 shrink-0" />
+                        <span>
+                            <strong>Zero-Click Sync:</strong> Add questions in Google Forms and switch back here — EduBridge detects your changes automatically!
+                        </span>
+                    </div>
+                </div>
+
+                {/* Step 2: Live Synced Questions Preview */}
+                <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5 space-y-3">
+                    <div className="flex items-center justify-between pb-2 border-b border-slate-200">
+                        <div className="flex items-center gap-2">
+                            <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wide">
+                                Step 2 • Imported Questions ({syncedQuestions.length})
+                            </h3>
+                            {syncedQuestions.length > 0 ? (
+                                <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-700 bg-emerald-100/80 px-2 py-0.5 rounded-md">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                                    Auto-Synced
+                                </span>
+                            ) : (
+                                <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-amber-700 bg-amber-100/80 px-2 py-0.5 rounded-md">
+                                    <Loader2 className="w-3 h-3 animate-spin" />
+                                    Waiting for questions...
+                                </span>
+                            )}
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                            {lastSyncedTime && (
+                                <span className="text-[11px] text-slate-400 hidden sm:inline">
+                                    Updated {lastSyncedTime}
+                                </span>
+                            )}
+                            <button
+                                type="button"
+                                onClick={() => syncQuestionsFromGoogleForm(successData.id, false)}
+                                disabled={syncingQuestions}
+                                className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 text-xs font-medium rounded-lg transition-colors cursor-pointer"
+                                title="Force sync from Google Forms"
+                            >
+                                <RefreshCw className={`w-3.5 h-3.5 ${syncingQuestions ? "animate-spin text-blue-600" : "text-slate-500"}`} />
+                                <span>{syncingQuestions ? "Checking..." : "Sync Now"}</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    {syncedQuestions.length === 0 ? (
+                        <div className="bg-white border border-dashed border-slate-300 rounded-xl p-6 text-center space-y-2">
+                            <div className="w-9 h-9 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center mx-auto">
+                                <FileSpreadsheet className="w-5 h-5" />
+                            </div>
+                            <p className="text-xs font-semibold text-slate-700">No questions found yet</p>
+                            <p className="text-[11px] text-slate-500 max-w-sm mx-auto">
+                                Click <strong>"Open in Google Forms ↗"</strong> above, add your survey questions in Google Forms, then switch back to this tab.
+                            </p>
+                        </div>
+                    ) : (
+                        <div className="overflow-x-auto border border-slate-200 rounded-xl bg-white shadow-2xs">
+                            <table className="w-full text-xs text-left">
+                                <thead className="bg-slate-50 text-slate-700 border-b border-slate-200 font-semibold text-[11px]">
+                                    <tr>
+                                        <th className="px-3 py-2 w-10 text-center">#</th>
+                                        <th className="px-3 py-2">Question Title</th>
+                                        <th className="px-3 py-2">Type</th>
+                                        <th className="px-3 py-2">Required</th>
+                                        <th className="px-3 py-2">Details / Choices</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100 text-slate-700">
+                                    {syncedQuestions.map((q: any, idx: number) => {
+                                        const typeLabels: Record<string, { label: string; badge: string }> = {
+                                            SHORT_TEXT: { label: "Short Text", badge: "bg-slate-100 text-slate-700 border-slate-200" },
+                                            LONG_TEXT: { label: "Paragraph", badge: "bg-blue-50 text-blue-700 border-blue-200" },
+                                            NUMBER: { label: "Number", badge: "bg-purple-50 text-purple-700 border-purple-200" },
+                                            YES_NO: { label: "Yes / No", badge: "bg-emerald-50 text-emerald-700 border-emerald-200" },
+                                            DATE: { label: "Date", badge: "bg-amber-50 text-amber-700 border-amber-200" },
+                                            SINGLE_SELECT: { label: "Single Choice", badge: "bg-indigo-50 text-indigo-700 border-indigo-200" },
+                                            MULTI_SELECT: { label: "Checkboxes", badge: "bg-cyan-50 text-cyan-700 border-cyan-200" }
+                                        };
+                                        const meta = typeLabels[q.fieldType] || { label: q.fieldType, badge: "bg-slate-100 text-slate-700" };
+
+                                        return (
+                                            <tr key={q.id || idx} className="hover:bg-slate-50/70">
+                                                <td className="px-3 py-2 text-center text-slate-400 font-mono text-[11px]">
+                                                    {idx + 1}
+                                                </td>
+                                                <td className="px-3 py-2 font-medium text-slate-900">
+                                                    {q.label}
+                                                </td>
+                                                <td className="px-3 py-2">
+                                                    <span className={`px-2 py-0.5 rounded text-[10px] font-semibold border ${meta.badge}`}>
+                                                        {meta.label}
+                                                    </span>
+                                                </td>
+                                                <td className="px-3 py-2">
+                                                    {q.required ? (
+                                                        <span className="text-[11px] font-semibold text-red-600">Required</span>
+                                                    ) : (
+                                                        <span className="text-[11px] text-slate-400">Optional</span>
+                                                    )}
+                                                </td>
+                                                <td className="px-3 py-2 text-slate-500 text-[11px] max-w-xs truncate">
+                                                    {q.options && q.options.length > 0
+                                                        ? q.options.join(", ")
+                                                        : q.description || "—"}
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
+                </div>
+
+                {/* Step 3: Public Submission URL */}
+                <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 text-left space-y-2.5">
                     <div className="flex items-center justify-between">
                         <span className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
                             <FileSpreadsheet className="w-4 h-4 text-blue-600" />
-                            Live Google Form Submission URL
+                            Public Responder URL (Distributed to Schools)
                         </span>
                         <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-100/80 px-2 py-0.5 rounded-md">
                             Active
@@ -662,7 +748,7 @@ export default function DataRequestCreateView({
                         </button>
                     </div>
 
-                    <div className="flex items-center gap-2 pt-2">
+                    <div className="flex items-center gap-2 pt-1">
                         <a
                             href={successData.googleResponderUri}
                             target="_blank"
@@ -670,30 +756,19 @@ export default function DataRequestCreateView({
                             className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-xl transition-colors cursor-pointer"
                         >
                             <ExternalLink className="w-3.5 h-3.5" />
-                            <span>Open Public Form</span>
+                            <span>Preview Public Form</span>
                         </a>
-
-                        {successData.googleFormEditUrl && (
-                            <a
-                                href={successData.googleFormEditUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 text-xs font-semibold rounded-xl transition-colors cursor-pointer"
-                            >
-                                <ExternalLink className="w-3.5 h-3.5" />
-                                <span>Edit Form in Google Drive</span>
-                            </a>
-                        )}
                     </div>
                 </div>
 
+                {/* Bottom Navigation */}
                 <div className="flex items-center justify-center gap-3 pt-2">
                     <button
                         type="button"
                         onClick={() => onCreated ? onCreated(successData.id) : onBack?.()}
-                        className="px-5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold rounded-xl transition-colors cursor-pointer shadow-sm"
+                        className="px-6 py-2.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold rounded-xl transition-all cursor-pointer shadow-sm active:scale-95"
                     >
-                        View Request Ledger & Responses
+                        Done — View Request Ledger & Responses
                     </button>
                 </div>
             </div>
@@ -1204,137 +1279,56 @@ export default function DataRequestCreateView({
                 </div>
             </div>
 
-            {/* Section 3: Dynamic Questions Builder */}
+            {/* Section 3: Google Forms Native Question Design */}
             <div className="bg-white border border-slate-200/90 rounded-2xl p-6 shadow-sm space-y-4">
-                <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                <div className="flex items-start justify-between gap-4 pb-3 border-b border-slate-100">
                     <div>
-                        <h2 className="text-base font-bold text-slate-900">3. Form Questions Schema ({fields.length})</h2>
-                        <p className="text-xs text-slate-500 mt-0.5">
-                            Build questions for your Google Form. Questions map directly into the live form.
+                        <div className="flex items-center gap-2">
+                            <h2 className="text-base font-bold text-slate-900">3. Question Design (Google Forms)</h2>
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-50 text-purple-700 border border-purple-200">
+                                Native Google Forms
+                            </span>
+                        </div>
+                        <p className="text-xs text-slate-500 mt-1">
+                            Questions are designed directly using Google Forms' native drag-and-drop editor.
                         </p>
                     </div>
-
-                    <button
-                        type="button"
-                        onClick={handleAddField}
-                        className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-700 text-xs font-semibold rounded-xl transition-colors cursor-pointer"
-                    >
-                        <Plus className="w-3.5 h-3.5" />
-                        <span>Add Question</span>
-                    </button>
+                    <div className="w-10 h-10 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center shrink-0 border border-purple-100">
+                        <FileSpreadsheet className="w-5 h-5" />
+                    </div>
                 </div>
 
-                <div className="space-y-3">
-                    {fields.map((f, index) => (
-                        <div
-                            key={f.id}
-                            className="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-3 shadow-2xs"
-                        >
-                            <div className="flex items-center justify-between gap-2">
-                                <span className="text-xs font-bold text-slate-800">
-                                    Question #{index + 1}
-                                </span>
-
-                                <div className="flex items-center gap-1">
-                                    <button
-                                        type="button"
-                                        disabled={index === 0}
-                                        onClick={() => moveField(index, "up")}
-                                        className="p-1 text-slate-400 hover:text-slate-700 disabled:opacity-30"
-                                        title="Move up"
-                                    >
-                                        <ChevronUp className="w-4 h-4" />
-                                    </button>
-                                    <button
-                                        type="button"
-                                        disabled={index === fields.length - 1}
-                                        onClick={() => moveField(index, "down")}
-                                        className="p-1 text-slate-400 hover:text-slate-700 disabled:opacity-30"
-                                        title="Move down"
-                                    >
-                                        <ChevronDown className="w-4 h-4" />
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={() => handleRemoveField(index)}
-                                        className="p-1 text-red-500 hover:text-red-700 ml-1"
-                                        title="Delete Question"
-                                    >
-                                        <Trash2 className="w-4 h-4" />
-                                    </button>
-                                </div>
-                            </div>
-
-                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                                <div className="sm:col-span-2">
-                                    <label className="block text-[11px] font-semibold text-slate-600 mb-1">Question Title *</label>
-                                    <input
-                                        type="text"
-                                        value={f.label}
-                                        onChange={(e) => handleFieldChange(index, "label", e.target.value)}
-                                        placeholder="e.g. Total student computer ratio"
-                                        className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs text-slate-900 focus:outline-blue-500"
-                                    />
-                                </div>
-
-                                <div>
-                                    <label className="block text-[11px] font-semibold text-slate-600 mb-1">Question Type</label>
-                                    <select
-                                        value={f.fieldType}
-                                        onChange={(e) => handleFieldChange(index, "fieldType", e.target.value)}
-                                        className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs text-slate-900 focus:outline-blue-500"
-                                    >
-                                        <option value="SHORT_TEXT">Short Text</option>
-                                        <option value="LONG_TEXT">Paragraph / Long Text</option>
-                                        <option value="NUMBER">Number</option>
-                                        <option value="YES_NO">Yes / No</option>
-                                        <option value="DATE">Date</option>
-                                        <option value="SINGLE_SELECT">Multiple Choice (Single)</option>
-                                        <option value="MULTI_SELECT">Checkboxes (Multiple)</option>
-                                    </select>
-                                </div>
-                            </div>
-
-                            <div>
-                                <label className="block text-[11px] font-semibold text-slate-600 mb-1">Hint / Description (Optional)</label>
-                                <input
-                                    type="text"
-                                    value={f.description}
-                                    onChange={(e) => handleFieldChange(index, "description", e.target.value)}
-                                    placeholder="e.g. Specify count of working devices as of this week"
-                                    className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs text-slate-900 focus:outline-blue-500"
-                                />
-                            </div>
-
-                            {(f.fieldType === "SINGLE_SELECT" || f.fieldType === "MULTI_SELECT") && (
-                                <div>
-                                    <label className="block text-[11px] font-semibold text-slate-600 mb-1">
-                                        Options (comma separated) <span className="text-red-500">*</span>
-                                    </label>
-                                    <input
-                                        type="text"
-                                        value={f.rawOptionsInput ?? f.options.join(", ")}
-                                        onChange={(e) => handleFieldChange(index, "rawOptionsInput", e.target.value)}
-                                        placeholder="Good, Fair, Poor, Critical"
-                                        className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs text-slate-900 focus:outline-blue-500"
-                                    />
-                                </div>
-                            )}
-
-                            <div className="flex items-center gap-2 pt-1">
-                                <input
-                                    type="checkbox"
-                                    id={`req-${f.id}`}
-                                    checked={f.required}
-                                    onChange={(e) => handleFieldChange(index, "required", e.target.checked)}
-                                    className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 w-3.5 h-3.5"
-                                />
-                                <label htmlFor={`req-${f.id}`} className="text-xs text-slate-700 font-medium cursor-pointer">
-                                    Required question
-                                </label>
-                            </div>
+                <div className="bg-slate-50/80 border border-slate-200/80 rounded-xl p-4 space-y-3">
+                    <div className="flex items-start gap-3">
+                        <Sparkles className="w-4 h-4 text-purple-600 mt-0.5 shrink-0" />
+                        <div className="space-y-1 text-xs">
+                            <p className="font-semibold text-slate-800">
+                                How question creation works:
+                            </p>
+                            <p className="text-slate-600 leading-relaxed">
+                                Once you click <strong>"Create & Generate Google Form"</strong> below, an official Google Form will be generated in your Google Drive. You can open it to add, reorder, and configure questions natively. EduBridge will automatically detect and import your questions whenever you switch back!
+                            </p>
                         </div>
-                    ))}
+                    </div>
+
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1 text-[11px]">
+                        <div className="bg-white border border-slate-200 rounded-lg p-2.5 text-center shadow-2xs">
+                            <span className="font-semibold text-slate-800 block">Short & Long Text</span>
+                            <span className="text-slate-400 text-[10px]">Open-ended text responses</span>
+                        </div>
+                        <div className="bg-white border border-slate-200 rounded-lg p-2.5 text-center shadow-2xs">
+                            <span className="font-semibold text-slate-800 block">Multiple Choice</span>
+                            <span className="text-slate-400 text-[10px]">Single & Checkboxes</span>
+                        </div>
+                        <div className="bg-white border border-slate-200 rounded-lg p-2.5 text-center shadow-2xs">
+                            <span className="font-semibold text-slate-800 block">Numbers & Dates</span>
+                            <span className="text-slate-400 text-[10px]">Numeric counts & time</span>
+                        </div>
+                        <div className="bg-white border border-slate-200 rounded-lg p-2.5 text-center shadow-2xs">
+                            <span className="font-semibold text-purple-700 block">Zero-Click Sync</span>
+                            <span className="text-slate-400 text-[10px]">Auto-syncs on tab switch</span>
+                        </div>
+                    </div>
                 </div>
             </div>
 

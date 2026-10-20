@@ -31,17 +31,29 @@ export function areResponsesEqual(
     if (!a && !b) return true;
     if (!a || !b) return false;
 
+    const normalizeVal = (val: any): string => {
+        if (val === undefined || val === null) return "";
+        let str = String(val).trim();
+        // If it's a file upload formatted as 'fileName:::https://drive...', normalize to the URL
+        if (str.includes(":::")) {
+            str = str.split(":::")[1] || str;
+        }
+        return str.trim();
+    };
+
     const normA: Record<string, string> = {};
     for (const [k, v] of Object.entries(a)) {
-        if (v !== undefined && v !== null && v !== "") {
-            normA[k.trim().toLowerCase()] = String(v).trim();
+        const cleaned = normalizeVal(v);
+        if (cleaned !== "") {
+            normA[k.trim().toLowerCase()] = cleaned;
         }
     }
 
     const normB: Record<string, string> = {};
     for (const [k, v] of Object.entries(b)) {
-        if (v !== undefined && v !== null && v !== "") {
-            normB[k.trim().toLowerCase()] = String(v).trim();
+        const cleaned = normalizeVal(v);
+        if (cleaned !== "") {
+            normB[k.trim().toLowerCase()] = cleaned;
         }
     }
 
@@ -71,7 +83,7 @@ export interface CreateDataRequestInput {
     requiredAction?: string;
     targetScope?: string; // e.g. "ALL_REGIONS", "SELECTED_ORGANIZATIONS"
     targetUnitIds?: string[];
-    fields: CreateDataRequestFieldInput[];
+    fields?: CreateDataRequestFieldInput[];
     status?: DataRequestStatus;
 }
 
@@ -111,9 +123,8 @@ export class DataRequestService {
         if (!input.deadline) {
             throw new Error("Deadline date is required.");
         }
-        if (!input.fields || !Array.isArray(input.fields) || input.fields.length === 0) {
-            throw new Error("At least one dynamic field definition is required.");
-        }
+        // Fields are optional during creation if questions will be designed natively in Google Forms
+        const fieldsInput = Array.isArray(input.fields) ? input.fields : [];
 
         const startDate = new Date(input.startDate);
         const deadline = new Date(input.deadline);
@@ -174,7 +185,7 @@ export class DataRequestService {
                 createdById: userId,
                 createdOrganizationId: actorScope.id,
                 fields: {
-                    create: input.fields.map((field, idx) => ({
+                    create: fieldsInput.map((field, idx) => ({
                         label: field.label.trim(),
                         fieldType: field.fieldType,
                         required: field.required !== undefined ? Boolean(field.required) : true,
@@ -546,6 +557,76 @@ export class DataRequestService {
     }
 
     /**
+     * Replaces all field schema definitions for a data request with newly synced fields from Google Forms.
+     */
+    static async replaceDataRequestFields(
+        requestId: string,
+        fields: GoogleFormFieldInput[],
+        userId?: string,
+        ipAddress?: string
+    ): Promise<void> {
+        const existing: any = await prisma.dataRequest.findUnique({
+            where: { id: requestId },
+            include: { fields: true }
+        });
+
+        if (!existing) {
+            throw new Error(`Data Request with ID '${requestId}' not found.`);
+        }
+
+        // Delete existing fields and insert new ones
+        await (prisma as any).dataRequestField.deleteMany({
+            where: { requestId }
+        });
+
+        if (fields.length > 0) {
+            await (prisma as any).dataRequestField.createMany({
+                data: fields.map((f, idx) => ({
+                    requestId,
+                    label: f.label.trim(),
+                    fieldType: f.fieldType as DataRequestFieldType,
+                    required: f.required !== undefined ? Boolean(f.required) : false,
+                    description: f.description?.trim() || null,
+                    options: Array.isArray(f.options) ? f.options : [],
+                    order: f.order !== undefined ? f.order : idx + 1
+                }))
+            });
+        }
+
+        // Update GoogleFormIntegration lastSyncedAt if present
+        try {
+            await (prisma as any).googleFormIntegration.updateMany({
+                where: { requestId },
+                data: { lastSyncedAt: new Date() }
+            });
+        } catch {
+            // non-blocking
+        }
+
+        // Audit log
+        if (userId) {
+            try {
+                await prisma.auditLog.create({
+                    data: {
+                        organizationId: existing.createdOrganizationId,
+                        userId,
+                        action: "DATA_REQUEST_FIELDS_SYNCED",
+                        resource: "DataRequest",
+                        resourceId: requestId,
+                        ipAddress,
+                        newValue: {
+                            fieldCount: fields.length,
+                            fields: fields.map(f => ({ label: f.label, type: f.fieldType }))
+                        }
+                    }
+                });
+            } catch (auditErr) {
+                console.warn("[DataRequestService] AuditLog creation failed for schema sync:", auditErr);
+            }
+        }
+    }
+
+    /**
      * Synchronizes live responses from Google Forms API into PostgreSQL JSONB DataRequestSubmission records.
      * Prevents duplicate submissions using external idempotency on googleResponseId.
      */
@@ -577,7 +658,25 @@ export class DataRequestService {
             throw new Error("No active Google Form integration exists for this request. Please create a Google Form first.");
         }
 
-        const formFields: GoogleFormFieldInput[] = request.fields.map((f: any) => ({
+        // Auto-sync question schema if no fields exist yet
+        let currentFields = request.fields || [];
+        if (currentFields.length === 0) {
+            try {
+                const fetchedSchema = await GoogleFormsService.getGoogleFormSchema(request.googleForm.googleFormId);
+                if (fetchedSchema.length > 0) {
+                    await this.replaceDataRequestFields(id, fetchedSchema, userId, ipAddress);
+                    const refreshed = await prisma.dataRequest.findUnique({
+                        where: { id },
+                        include: { fields: true }
+                    });
+                    currentFields = refreshed?.fields || [];
+                }
+            } catch (schemaErr) {
+                console.warn("[DataRequestService] Schema auto-sync warning during response sync:", schemaErr);
+            }
+        }
+
+        const formFields: GoogleFormFieldInput[] = currentFields.map((f: any) => ({
             id: f.id,
             label: f.label,
             fieldType: f.fieldType as any,
@@ -617,21 +716,48 @@ export class DataRequestService {
 
             if (existingSubmission) {
                 const isSameAnswers = areResponsesEqual(existingSubmission.responseData as any, gResp.answers);
+
+                // Preserve administrative review decisions:
+                // An explicit status (ACCEPTED or RETURNED) must NEVER be reverted by background sync
+                // unless the respondent explicitly submitted an updated response in Google Forms AFTER the review.
+                const isAlreadyReviewed =
+                    existingSubmission.status === DataRequestSubmissionStatus.ACCEPTED ||
+                    existingSubmission.status === DataRequestSubmissionStatus.RETURNED;
+
+                const hasNewerGoogleSubmission = Boolean(
+                    existingSubmission.reviewedAt &&
+                    gResp.lastSubmittedTime &&
+                    new Date(gResp.lastSubmittedTime).getTime() > new Date(existingSubmission.reviewedAt).getTime()
+                );
+
                 if (!isSameAnswers) {
+                    const nextSubmissionStatus = isAlreadyReviewed && !hasNewerGoogleSubmission
+                        ? existingSubmission.status
+                        : DataRequestSubmissionStatus.UNDER_REVIEW;
+
+                    const nextTargetStatus = isAlreadyReviewed && !hasNewerGoogleSubmission
+                        ? (existingSubmission.status === DataRequestSubmissionStatus.ACCEPTED
+                            ? DataRequestTargetStatus.ACCEPTED
+                            : DataRequestTargetStatus.RETURNED)
+                        : DataRequestTargetStatus.SUBMITTED;
+
                     await prisma.dataRequestSubmission.update({
                         where: { id: existingSubmission.id },
                         data: {
                             googleResponseId: gResp.responseId,
                             responseData: gResp.answers,
-                            status: DataRequestSubmissionStatus.UNDER_REVIEW,
+                            status: nextSubmissionStatus,
                             updatedAt: new Date()
                         }
                     });
                     await prisma.dataRequestTarget.update({
                         where: { id: matchedTarget.id },
-                        data: { status: DataRequestTargetStatus.SUBMITTED }
+                        data: { status: nextTargetStatus }
                     });
-                    updatedCount++;
+
+                    if (!isAlreadyReviewed || hasNewerGoogleSubmission) {
+                        updatedCount++;
+                    }
                 } else if (!existingSubmission.googleResponseId && gResp.responseId) {
                     await prisma.dataRequestSubmission.update({
                         where: { id: existingSubmission.id },
@@ -751,19 +877,37 @@ export class DataRequestService {
 
                 if (existingSubmission) {
                     const isSameAnswers = areResponsesEqual(existingSubmission.responseData as any, rawAnswers);
+                    const isAlreadyReviewed =
+                        existingSubmission.status === DataRequestSubmissionStatus.ACCEPTED ||
+                        existingSubmission.status === DataRequestSubmissionStatus.RETURNED;
+
+                    const webhookTime = payload.timestamp ? new Date(payload.timestamp).getTime() : Date.now();
+                    const hasNewerSubmission = Boolean(
+                        existingSubmission.reviewedAt &&
+                        webhookTime > new Date(existingSubmission.reviewedAt).getTime()
+                    );
+
                     if (!isSameAnswers) {
+                        const nextSubStatus = isAlreadyReviewed && !hasNewerSubmission
+                            ? existingSubmission.status
+                            : DataRequestSubmissionStatus.UNDER_REVIEW;
+
+                        const nextTargetStatus = isAlreadyReviewed && !hasNewerSubmission
+                            ? (existingSubmission.status === DataRequestSubmissionStatus.ACCEPTED ? DataRequestTargetStatus.ACCEPTED : DataRequestTargetStatus.RETURNED)
+                            : DataRequestTargetStatus.SUBMITTED;
+
                         await prisma.dataRequestSubmission.update({
                             where: { id: existingSubmission.id },
                             data: {
                                 googleResponseId,
                                 responseData: rawAnswers,
-                                status: DataRequestSubmissionStatus.UNDER_REVIEW,
+                                status: nextSubStatus,
                                 updatedAt: new Date()
                             }
                         });
                         await prisma.dataRequestTarget.update({
                             where: { id: matchedTarget.id },
-                            data: { status: DataRequestTargetStatus.SUBMITTED }
+                            data: { status: nextTargetStatus }
                         });
                     } else if (!existingSubmission.googleResponseId) {
                         await prisma.dataRequestSubmission.update({
@@ -830,20 +974,38 @@ export class DataRequestService {
                     });
 
                     if (existingSub) {
-                        const isSame = JSON.stringify(existingSub.responseData || {}) === JSON.stringify(gResp.answers || {});
+                        const isSame = areResponsesEqual(existingSub.responseData as any, gResp.answers as any);
+                        const isAlreadyReviewed =
+                            existingSub.status === DataRequestSubmissionStatus.ACCEPTED ||
+                            existingSub.status === DataRequestSubmissionStatus.RETURNED;
+
+                        const hasNewerGoogleSubmission = Boolean(
+                            existingSub.reviewedAt &&
+                            gResp.lastSubmittedTime &&
+                            new Date(gResp.lastSubmittedTime).getTime() > new Date(existingSub.reviewedAt).getTime()
+                        );
+
                         if (!isSame) {
+                            const nextSubStatus = isAlreadyReviewed && !hasNewerGoogleSubmission
+                                ? existingSub.status
+                                : DataRequestSubmissionStatus.UNDER_REVIEW;
+
+                            const nextTargetStatus = isAlreadyReviewed && !hasNewerGoogleSubmission
+                                ? (existingSub.status === DataRequestSubmissionStatus.ACCEPTED ? DataRequestTargetStatus.ACCEPTED : DataRequestTargetStatus.RETURNED)
+                                : DataRequestTargetStatus.SUBMITTED;
+
                             await prisma.dataRequestSubmission.update({
                                 where: { id: existingSub.id },
                                 data: {
                                     googleResponseId: gResp.responseId,
                                     responseData: gResp.answers,
-                                    status: DataRequestSubmissionStatus.UNDER_REVIEW,
+                                    status: nextSubStatus,
                                     updatedAt: new Date()
                                 }
                             });
                             await prisma.dataRequestTarget.update({
                                 where: { id: target.id },
-                                data: { status: DataRequestTargetStatus.SUBMITTED }
+                                data: { status: nextTargetStatus }
                             });
                         }
                     } else {
