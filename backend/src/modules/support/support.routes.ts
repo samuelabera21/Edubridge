@@ -5,12 +5,16 @@ import {
     getEnrichmentPrograms, createEnrichmentProgram,
     getInterventionPlans, createInterventionPlan,
     getInterventionOutcomes, createInterventionOutcome,
-    getInterventionMonitoring, createInterventionMonitoring
+    getInterventionMonitoring, createInterventionMonitoring,
+    getEarlyWarningFlags
 } from "./support.controller.js";
 import { requirePermission, requireScope } from "../authentication/authorization.middleware.js";
 
 const router = Router();
 router.use(requireScope("SCHOOL"));
+
+// Early Warning Flags (Role-filtered: Parent, Teacher, Student)
+router.get("/early-warning", getEarlyWarningFlags);
 
 // Learning Difficulties
 router.get("/learning-difficulties", requirePermission("ACADEMIC:VIEW"), getLearningDifficulties);

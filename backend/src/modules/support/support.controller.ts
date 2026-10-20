@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import { SupportService } from "./support.service.js";
+import { EarlyWarningService } from "./early-warning.service.js";
 
 // Learning Difficulties
 export const getLearningDifficulties = async (req: Request, res: Response) => {
@@ -136,5 +137,20 @@ export const createInterventionMonitoring = async (req: Request, res: Response) 
         return res.status(201).json(item);
     } catch (err: any) {
         return res.status(400).json({ error: err.message || "Failed to record monitoring log" });
+    }
+};
+
+// Early Warning Flags for Current User (Parent, Teacher, Student)
+export const getEarlyWarningFlags = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        const currentUserId = req.user?.id;
+        if (!organizationId || !currentUserId) {
+            return res.status(403).json({ error: "Missing school scope or authentication" });
+        }
+        const flags = await EarlyWarningService.getFlagsForCurrentUser(currentUserId, organizationId);
+        return res.json(flags);
+    } catch (err: any) {
+        return res.status(500).json({ error: err.message || "Failed to fetch early warning flags" });
     }
 };

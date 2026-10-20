@@ -41,11 +41,14 @@ import {
     Download,
     ExternalLink,
     Image as ImageIcon,
-    File
+    File,
+    Target
 } from "lucide-react";
 import { LoadingState } from "@/components/ui/LoadingState";
+import DirectivesRecipientView from "@/components/governance/DirectivesRecipientView";
+import ProgramsRegistryView from "@/components/governance/ProgramsRegistryView";
 
-type CommunicationCategory = "STUDENT" | "PARENT" | "DEPARTMENT" | "STAFF";
+type CommunicationCategory = "STUDENT" | "PARENT" | "DEPARTMENT" | "STAFF" | "DIRECTIVES" | "PROGRAMS";
 
 interface ContactItem {
     id: string;
@@ -68,6 +71,9 @@ export default function TeacherCommunicationPage() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const currentUserId = authData?.user?.id;
+    const activeScope = authData?.access?.[0]?.scope;
+    const unitName = activeScope?.name || "School";
+    const organizationId = activeScope?.id;
 
     // Resolve active category from URL params (e.g. ?channel=STUDENT or ?tab=student)
     const channelParam = (searchParams?.get("channel") || searchParams?.get("tab") || "").toUpperCase();
@@ -82,6 +88,10 @@ export default function TeacherCommunicationPage() {
             setActiveCategory("DEPARTMENT");
         } else if (channelParam === "STAFF" || channelParam === "SCHOOL") {
             setActiveCategory("STAFF");
+        } else if (channelParam === "DIRECTIVES" || channelParam === "POLICY" || channelParam === "POLICIES") {
+            setActiveCategory("DIRECTIVES");
+        } else if (channelParam === "PROGRAMS" || channelParam === "INITIATIVES") {
+            setActiveCategory("PROGRAMS");
         }
     }, [channelParam]);
 
@@ -99,6 +109,8 @@ export default function TeacherCommunicationPage() {
     const [parentContacts, setParentContacts] = useState<any[]>([]);
     const [schoolUsers, setSchoolUsers] = useState<any[]>([]);
     const [messagesHistory, setMessagesHistory] = useState<any[]>([]);
+    const [directivesCount, setDirectivesCount] = useState<number>(0);
+    const [programsCount, setProgramsCount] = useState<number>(0);
 
     // Active conversation selection
     const [selectedContact, setSelectedContact] = useState<ContactItem | null>(null);
@@ -280,12 +292,14 @@ export default function TeacherCommunicationPage() {
             if (isRefresh) setRefreshing(true);
             else setLoading(true);
 
-            const [myStudentsRes, myClassesRes, parentRes, usersRes, msgRes] = await Promise.all([
+            const [myStudentsRes, myClassesRes, parentRes, usersRes, msgRes, directivesRes, programsRes] = await Promise.all([
                 fetchApi("/teacher/my-students").catch(() => null),
                 fetchApi("/teacher/my-classes").catch(() => null),
                 fetchApi("/communication/teacher/parent-contacts").catch(() => null),
                 fetchApi("/communication/users").catch(() => null),
-                fetchApi("/communication/messages").catch(() => null)
+                fetchApi("/communication/messages").catch(() => null),
+                fetchApi("/directives").catch(() => null),
+                fetchApi("/programs").catch(() => null)
             ]);
 
             // 1. Students list
@@ -318,6 +332,20 @@ export default function TeacherCommunicationPage() {
             if (msgRes && msgRes.ok) {
                 const mData = await msgRes.json();
                 setMessagesHistory(Array.isArray(mData) ? mData : []);
+            }
+
+            // 5. Directives count
+            if (directivesRes && directivesRes.ok) {
+                const dData = await directivesRes.json();
+                const count = Array.isArray(dData?.data) ? dData.data.length : Array.isArray(dData) ? dData.length : 0;
+                setDirectivesCount(count);
+            }
+
+            // 6. Programs count
+            if (programsRes && programsRes.ok) {
+                const prData = await programsRes.json();
+                const count = Array.isArray(prData?.data) ? prData.data.length : Array.isArray(prData) ? prData.length : 0;
+                setProgramsCount(count);
             }
         } catch (err) {
             console.error("Failed to load communication contacts:", err);
@@ -1116,13 +1144,15 @@ export default function TeacherCommunicationPage() {
 
     return (
         <div className="w-full max-w-7xl mx-auto space-y-4 pb-12 font-sans text-slate-800">
-            {/* 4 Main Category Tabs */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 bg-white p-2 rounded-2xl border border-slate-200 shadow-2xs">
+            {/* Category Tabs (6 Main Categories) */}
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2 bg-white p-2 rounded-2xl border border-slate-200 shadow-2xs">
                 {[
                     { id: "STUDENT", label: "Student Communication", icon: GraduationCap, count: studentsList.length, desc: "Assigned Students" },
                     { id: "PARENT", label: "Parent Communication", icon: Users, count: parentContacts.length, desc: "Guardians & Contacts" },
                     { id: "DEPARTMENT", label: "Department Communication", icon: Building2, count: schoolUsers.filter(u => (u.role?.name || "").includes("TEACHER")).length, desc: "Faculty & Peers" },
-                    { id: "STAFF", label: "School Communication", icon: Shield, count: schoolUsers.length, desc: "Admin & Leadership" }
+                    { id: "STAFF", label: "School Communication", icon: Shield, count: schoolUsers.length, desc: "Admin & Leadership" },
+                    { id: "DIRECTIVES", label: "Policies & Directives", icon: FileText, count: directivesCount, desc: "School & Dept Policies" },
+                    { id: "PROGRAMS", label: "Programs & Initiatives", icon: Target, count: programsCount, desc: "Academic Initiatives" }
                 ].map(tab => {
                     const Icon = tab.icon;
                     const isActive = activeCategory === tab.id;
@@ -1130,7 +1160,7 @@ export default function TeacherCommunicationPage() {
                         <button
                             key={tab.id}
                             onClick={() => handleCategoryChange(tab.id as CommunicationCategory)}
-                            className={`p-3 rounded-xl text-left transition-all border flex items-start space-x-3 ${isActive
+                            className={`p-3 rounded-xl text-left transition-all border flex items-start space-x-3 cursor-pointer ${isActive
                                     ? "bg-[#143e66] text-white border-[#143e66] shadow-xs"
                                     : "bg-slate-50/70 hover:bg-slate-100/80 text-slate-700 border-slate-200/80"
                                 }`}
@@ -1162,8 +1192,31 @@ export default function TeacherCommunicationPage() {
                 </div>
             )}
 
-            {/* Main Interactive Workspace (2 Columns) */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+            {/* Policies & Directives Tab Content */}
+            {activeCategory === "DIRECTIVES" && (
+                <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs p-4 sm:p-6 animate-in fade-in duration-150">
+                    <DirectivesRecipientView
+                        tierName={unitName}
+                        tierType="SCHOOL"
+                        organizationId={organizationId}
+                    />
+                </div>
+            )}
+
+            {/* Programs & Initiatives Tab Content */}
+            {activeCategory === "PROGRAMS" && (
+                <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs p-4 sm:p-6 animate-in fade-in duration-150">
+                    <ProgramsRegistryView
+                        tierName={unitName}
+                        tierType="SCHOOL"
+                        canCreateProgram={false}
+                    />
+                </div>
+            )}
+
+            {/* Main Interactive Workspace (2 Columns for Messaging) */}
+            {activeCategory !== "DIRECTIVES" && activeCategory !== "PROGRAMS" && (
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
                 {/* Left: Contact Directory (4 Cols) */}
                 <div className="lg:col-span-4 bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden flex flex-col min-h-[580px]">
                     <div className="p-3.5 border-b border-slate-100 bg-slate-50/80 space-y-2.5">
@@ -2159,6 +2212,7 @@ export default function TeacherCommunicationPage() {
                     </div>
                 </div>
             </div>
+            )}
         </div>
     );
 }

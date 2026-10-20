@@ -535,14 +535,26 @@ export class CommunicationService {
             orderBy: { createdAt: "desc" }
         });
 
-        // If a Teacher user is querying, filter so they only see announcements addressed to them or to all teachers
+        // Strict Role-Based Visibility Filtering (Teacher, Parent, Student)
         let filteredItems = items;
         if (currentUserId) {
-            const teacherProfile = await prisma.teacher.findFirst({
-                where: { organizationId, userId: currentUserId }
-            });
+            const [teacherProfile, parentProfile, studentProfile] = await Promise.all([
+                prisma.teacher.findFirst({
+                    where: { organizationId, userId: currentUserId },
+                    include: { assignments: { select: { sectionId: true } } }
+                }),
+                prisma.parent.findFirst({
+                    where: { userId: currentUserId },
+                    include: { children: { select: { studentId: true } } }
+                }),
+                prisma.student.findFirst({
+                    where: { userId: currentUserId },
+                    include: { enrollments: { where: { organizationId }, select: { sectionId: true, schoolGradeId: true } } }
+                })
+            ]);
 
             if (teacherProfile) {
+                const assignedSectionIds = teacherProfile.assignments.map(a => a.sectionId).filter(Boolean);
                 filteredItems = items.filter(a => {
                     const targetDetails = (a.targetDetails as any) || {};
                     const teacherIds = targetDetails.teacherIds || [];
@@ -559,11 +571,71 @@ export class CommunicationService {
                         return true;
                     }
 
+                    const sectionIds = targetDetails.sectionIds || [];
+                    if (a.target === "SPECIFIC_SECTION" && a.targetId && assignedSectionIds.includes(a.targetId)) {
+                        return true;
+                    }
+                    if (sectionIds.some((sId: string) => assignedSectionIds.includes(sId))) {
+                        return true;
+                    }
+
                     if (a.target === "STUDENTS" || a.target === "PARENTS" || a.target === "SPECIFIC_GRADE" || a.target === "SPECIFIC_SECTION") {
                         return false;
                     }
 
                     return true;
+                });
+            } else if (parentProfile) {
+                const myChildrenStudentIds = parentProfile.children.map(c => c.studentId);
+                filteredItems = items.filter(a => {
+                    const targetDetails = (a.targetDetails as any) || {};
+                    const targetStudentIds: string[] = targetDetails.studentIds || [];
+
+                    // If announcement is targeted to specific students, parent can ONLY see if it includes their child
+                    if (targetStudentIds.length > 0) {
+                        return targetStudentIds.some(id => myChildrenStudentIds.includes(id));
+                    }
+
+                    if (a.acknowledgments?.some(ack => ack.userId === currentUserId)) {
+                        return true;
+                    }
+
+                    const targetRoles = targetDetails.targetRoles || [];
+                    if (a.target === "ALL" || a.target === "PARENTS" || targetRoles.includes("ALL") || targetRoles.includes("PARENTS")) {
+                        return true;
+                    }
+
+                    return false;
+                });
+            } else if (studentProfile) {
+                const myStudentId = studentProfile.id;
+                const myEnrollment = studentProfile.enrollments[0];
+                filteredItems = items.filter(a => {
+                    const targetDetails = (a.targetDetails as any) || {};
+                    const targetStudentIds: string[] = targetDetails.studentIds || [];
+
+                    // If announcement is targeted to specific students, student can ONLY see if it is themselves
+                    if (targetStudentIds.length > 0) {
+                        return targetStudentIds.includes(myStudentId);
+                    }
+
+                    if (a.acknowledgments?.some(ack => ack.userId === currentUserId)) {
+                        return true;
+                    }
+
+                    if (myEnrollment?.sectionId && (a.target === "SPECIFIC_SECTION" && a.targetId === myEnrollment.sectionId)) {
+                        return true;
+                    }
+                    if (myEnrollment?.schoolGradeId && (a.target === "SPECIFIC_GRADE" && a.targetId === myEnrollment.schoolGradeId)) {
+                        return true;
+                    }
+
+                    const targetRoles = targetDetails.targetRoles || [];
+                    if (a.target === "ALL" || a.target === "STUDENTS" || targetRoles.includes("ALL") || targetRoles.includes("STUDENTS")) {
+                        return true;
+                    }
+
+                    return false;
                 });
             }
         }
