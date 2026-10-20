@@ -1,24 +1,34 @@
-import { ArrowLeft, NotebookPen } from "lucide-react";
-import Link from "next/link";
+"use client";
+
+import { useEffect, useState } from "react";
+import LearningHeader from "../LearningHeader";
 import AssignmentsCard from "../AssignmentsCard";
+import { fetchApi } from "@/lib/api";
 
 export default function StudentAssignmentsPage() {
+  const [totalCount, setTotalCount] = useState(0);
+
+  useEffect(() => {
+    fetchApi("/student/learning/activities")
+      .then(async (res) => {
+        if (res.ok) {
+          const acts = await res.json();
+          if (Array.isArray(acts)) {
+            const homeworkOnly = acts.filter((a: any) => a.type !== "PRACTICE" && a.type !== "READING" && a.type !== "LAB");
+            setTotalCount(homeworkOnly.length);
+          }
+        }
+      })
+      .catch(() => {});
+  }, []);
+
   return (
-    <div className="mx-auto w-full max-w-6xl space-y-6 p-2">
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <div className="rounded-xl bg-orange-100 p-2 text-orange-700">
-            <NotebookPen className="h-5 w-5" />
-          </div>
-          <div>
-            <p className="text-xs font-bold uppercase tracking-[0.2em] text-orange-700">My learning</p>
-            <h1 className="text-2xl font-bold text-gray-900">Assignments</h1>
-          </div>
-        </div>
-        <Link href="/dashboard/student" className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
-          <ArrowLeft className="h-4 w-4" /> Back
-        </Link>
-      </div>
+    <div className="mx-auto w-full max-w-6xl space-y-6 p-2 sm:p-4">
+      <LearningHeader
+        title="Assignments"
+        subtitle="Current homework, writing tasks, and curriculum problem sets assigned by your subject instructors."
+        totalActivities={totalCount}
+      />
 
       <AssignmentsCard />
     </div>

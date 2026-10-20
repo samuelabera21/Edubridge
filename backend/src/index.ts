@@ -32,11 +32,17 @@ import dataRequestRoutes from "./modules/data-request/data-request.routes.js";
 import { GoogleFormsSyncPoller } from "./modules/data-request/google-forms-sync.poller.js";
 import storageRoutes from "./modules/storage/storage.routes.js";
 import { StorageService } from "./modules/storage/storage.service.js";
+import { createServer } from "http";
 import swaggerUi from "swagger-ui-express";
 import { swaggerSpec } from "./swagger.js";
+import { initSocketServer } from "./infrastructure/socket/socket.service.js";
 
 const app = express();
+const httpServer = createServer(app);
 const PORT = 5000;
+
+// Initialize WebSocket / Socket.IO gateway
+initSocketServer(httpServer);
 
 // Middleware
 app.use(cors({
@@ -46,6 +52,21 @@ app.use(cors({
 
 // Better Auth - Custom middleware to preserve full URL and avoid path-to-regexp crashes
 app.use((req, res, next) => {
+    if ((req.path === "/api/auth/sign-in/social" || req.path === "/api/auth/sign-in/social/") && req.method === "POST") {
+        const id = process.env.GOOGLE_CLIENT_ID?.replace(/^["']|["']$/g, "").trim();
+        const secret = process.env.GOOGLE_CLIENT_SECRET?.replace(/^["']|["']$/g, "").trim();
+        const hasGoogleCreds = Boolean(
+            id &&
+            secret &&
+            id !== "your-client-id.apps.googleusercontent.com" &&
+            secret !== "your-client-secret"
+        );
+        if (!hasGoogleCreds) {
+            return res.status(400).json({
+                message: "Google Sign-In is not configured yet. Please set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET in backend/.env.",
+            });
+        }
+    }
     if (req.path.startsWith("/api/auth/") || req.path === "/api/auth") {
         return toNodeHandler(auth)(req, res);
     }
@@ -102,7 +123,7 @@ app.use(notFoundHandler);
 // Global Error Handler
 app.use(errorHandler);
 
-app.listen(PORT, () => {
+httpServer.listen(PORT, () => {
     console.log(`Server running on http://localhost:${PORT}`);
     // Verify MinIO bucket exists on startup (non-blocking)
     StorageService.ensureBucketExists().catch(err =>

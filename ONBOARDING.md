@@ -94,3 +94,20 @@ EduBridge is designed for parallel team development. When building a new feature
 5. **Decouple Actor UIs**: The Student Portal UI should not depend on the Principal Dashboard UI. They should both consume the shared backend APIs.
 
 If you are unsure about a design decision, refer to the SRS documentation in `backend/Docs/SRS/`.
+
+## 7. Real-Time WebSocket Communication (Socket.IO)
+EduBridge features a real-time WebSocket communication layer using Socket.IO for direct messaging, live typing indicators, delivery read receipts, online user presence, and instant announcement broadcasts.
+
+### ⚠️ What to do after pulling changes:
+If you are pulling updates that include the WebSocket gateway:
+```bash
+# Option A: With Docker (rebuild cached node_modules volumes)
+docker compose up --build -d
+
+# Option B: Without Docker
+cd backend && npm install
+cd ../frontend && npm install
+```
+
+For complete documentation on how to use real-time sockets in your frontend components and backend services, see [docs/06-realtime-communication.md](file:///home/sosi/Edubridge/docs/06-realtime-communication.md).
+

@@ -284,6 +284,19 @@ export const markNotificationRead = async (req: Request, res: Response) => {
     }
 };
 
+export const markAllNotificationsRead = async (req: Request, res: Response) => {
+    try {
+        const userId = req.user?.id;
+        if (!userId) return res.status(401).json({ error: "Unauthorized" });
+
+        const organizationId = (req as any).accessScope?.id || (req.query?.organizationId as string) || undefined;
+        await CommunicationService.markAllNotificationsRead(userId, organizationId);
+        return res.json({ success: true, message: "All notifications marked as read" });
+    } catch (error: any) {
+        return res.status(400).json({ error: error.message || "Failed to mark notifications read" });
+    }
+};
+
 export const getUnreadNotificationCount = async (req: Request, res: Response) => {
     try {
         const userId = req.user?.id;

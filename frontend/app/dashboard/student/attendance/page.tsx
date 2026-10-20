@@ -1,30 +1,53 @@
-import Link from "next/link";
-import { ArrowLeft, ClipboardCheck } from "lucide-react";
-import AttendanceHistoryCard from "./AttendanceHistoryCard";
-import SubmitExplanationCard from "./SubmitExplanationCard";
+"use client";
+
+import { useEffect, useState } from "react";
+import AttendanceHeader from "./AttendanceHeader";
+import AttendanceHistoryCard, { AttendanceRecord } from "./AttendanceHistoryCard";
+import { fetchApi } from "../../../../lib/api";
 
 export default function StudentAttendancePage() {
-  return (
-    <div className="mx-auto w-full max-w-6xl space-y-6 p-2">
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <div className="rounded-xl bg-amber-100 p-2 text-amber-700">
-            <ClipboardCheck className="h-5 w-5" />
-          </div>
-          <div>
-            <p className="text-xs font-bold uppercase tracking-[0.2em] text-amber-700">My attendance</p>
-            <h1 className="text-2xl font-bold text-gray-900">Attendance and Absence Records</h1>
-          </div>
-        </div>
-        <Link href="/dashboard/student" className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
-          <ArrowLeft className="h-4 w-4" /> Back
-        </Link>
-      </div>
+  const [attendanceRate, setAttendanceRate] = useState<number | null>(null);
+  const [totalRecords, setTotalRecords] = useState<number>(0);
+  const [unexcusedCount, setUnexcusedCount] = useState<number>(0);
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        <AttendanceHistoryCard />
-        <SubmitExplanationCard />
-      </div>
+  useEffect(() => {
+    async function loadSummary() {
+      try {
+        const res = await fetchApi("/student/attendance");
+        if (res.ok) {
+          const records: AttendanceRecord[] = await res.json();
+          if (Array.isArray(records)) {
+            setTotalRecords(records.length);
+            const present = records.filter((r) => r.status === "PRESENT").length;
+            const late = records.filter((r) => r.status === "LATE").length;
+            const excused = records.filter((r) => r.status === "EXCUSED").length;
+            const absent = records.filter((r) => r.status === "ABSENT").length;
+            setUnexcusedCount(absent);
+
+            if (records.length > 0) {
+              setAttendanceRate(Math.round(((present + late + excused) / records.length) * 100));
+            }
+          }
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
+    loadSummary();
+  }, []);
+
+  return (
+    <div className="mx-auto w-full max-w-7xl space-y-6 p-2 sm:p-4">
+      <AttendanceHeader
+        title="Attendance History & Calendar"
+        subtitle="Track your daily attendance records, standing metrics, and period remarks."
+        attendanceRate={attendanceRate}
+        totalRecords={totalRecords}
+        unexcusedCount={unexcusedCount}
+      />
+
+      <AttendanceHistoryCard />
     </div>
   );
 }
