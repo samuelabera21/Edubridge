@@ -1147,12 +1147,12 @@ export default function TeacherCommunicationPage() {
             {/* Category Tabs (6 Main Categories) */}
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2 bg-white p-2 rounded-2xl border border-slate-200 shadow-2xs">
                 {[
-                    { id: "STUDENT", label: "Student Communication", icon: GraduationCap, count: studentsList.length, desc: "Assigned Students" },
-                    { id: "PARENT", label: "Parent Communication", icon: Users, count: parentContacts.length, desc: "Guardians & Contacts" },
-                    { id: "DEPARTMENT", label: "Department Communication", icon: Building2, count: schoolUsers.filter(u => (u.role?.name || "").includes("TEACHER")).length, desc: "Faculty & Peers" },
-                    { id: "STAFF", label: "School Communication", icon: Shield, count: schoolUsers.length, desc: "Admin & Leadership" },
-                    { id: "DIRECTIVES", label: "Policies & Directives", icon: FileText, count: directivesCount, desc: "School & Dept Policies" },
-                    { id: "PROGRAMS", label: "Programs & Initiatives", icon: Target, count: programsCount, desc: "Academic Initiatives" }
+                    { id: "STUDENT", label: "Students", sub: "የተማሪዎች ኮሚዩኒኬሽን", icon: GraduationCap, count: studentsList.length, desc: "Assigned Students" },
+                    { id: "PARENT", label: "Parents", sub: "የወላጆች ኮሚዩኒኬሽን", icon: Users, count: parentContacts.length, desc: "Guardians & Contacts" },
+                    { id: "DEPARTMENT", label: "Department", sub: "የትምህርት ክፍል", icon: Building2, count: schoolUsers.filter(u => (u.role?.name || "").includes("TEACHER")).length, desc: "Faculty & Peers" },
+                    { id: "STAFF", label: "School Staff", sub: "የትምህርት ቤት አመራር", icon: Shield, count: schoolUsers.length, desc: "Admin & Leadership" },
+                    { id: "DIRECTIVES", label: "Policies & Directives", sub: "ፖሊሲዎች እና መመሪያዎች", icon: FileText, count: directivesCount, desc: "School & Dept Policies" },
+                    { id: "PROGRAMS", label: "Programs & Initiatives", sub: "ፕሮግራሞች እና ውጥኖች", icon: Target, count: programsCount, desc: "Academic Initiatives" }
                 ].map(tab => {
                     const Icon = tab.icon;
                     const isActive = activeCategory === tab.id;
@@ -1175,7 +1175,10 @@ export default function TeacherCommunicationPage() {
                                         {tab.label}
                                     </h3>
                                 </div>
-                                <p className={`text-[11px] truncate mt-0.5 ${isActive ? "text-blue-100" : "text-slate-400"}`}>
+                                <p className={`text-[10px] font-medium truncate mt-0.5 ${isActive ? "text-amber-200/90" : "text-blue-600"}`}>
+                                    {tab.sub}
+                                </p>
+                                <p className={`text-[10px] truncate ${isActive ? "text-blue-100" : "text-slate-400"}`}>
                                     {tab.desc} ({tab.count})
                                 </p>
                             </div>
