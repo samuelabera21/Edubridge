@@ -742,105 +742,52 @@ export default function WoredaDashboard() {
                 </div>
             )}
 
-            {/* Top Navigation Bar */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div className="flex items-center gap-6 border-b border-slate-200 w-full sm:w-auto">
-                    <button
-                        onClick={() => router.push(`/dashboard/woreda${targetQueryOnly}`)}
-                        className={`pb-3 text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5 ${
-                            currentTab === "overview" && !unitIdParam
-                                ? "text-blue-600 border-b-2 border-blue-600"
-                                : "text-slate-500 hover:text-slate-800"
-                        }`}
-                    >
-                        <span>Dashboard</span>
-                    </button>
-                    <button
-                        onClick={() => navigateToUnit(null)}
-                        className={`pb-3 text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5 ${
-                            currentTab === "schools" || unitIdParam
-                                ? "text-blue-600 border-b-2 border-blue-600"
-                                : "text-slate-500 hover:text-slate-800"
-                        }`}
-                    >
-                        <School className="w-3.5 h-3.5" />
-                        <span>Schools ({data?.counts?.totalSchools ?? 0})</span>
-                    </button>
-                    <button
-                        onClick={() => router.push(`/dashboard/woreda?tab=administration${targetParam}`)}
-                        className={`pb-3 text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5 ${
-                            currentTab === "administration" && !unitIdParam
-                                ? "text-blue-600 border-b-2 border-blue-600"
-                                : "text-slate-500 hover:text-slate-800"
-                        }`}
-                    >
-                        <UserCheck className="w-3.5 h-3.5" />
-                        <span>Leadership ({assignedAdministrators.length})</span>
-                    </button>
-                    <button
-                        onClick={() => router.push(`/dashboard/woreda?tab=directives${targetParam}`)}
-                        className={`pb-3 text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5 ${
-                            currentTab === "directives" && !unitIdParam
-                                ? "text-blue-600 border-b-2 border-blue-600"
-                                : "text-slate-500 hover:text-slate-800"
-                        }`}
-                    >
-                        <FileText className="w-3.5 h-3.5" />
-                        <span>Policies & Directives</span>
-                    </button>
-                    <button
-                        onClick={() => router.push(`/dashboard/woreda?tab=programs${targetParam}`)}
-                        className={`pb-3 text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5 ${
-                            currentTab === "programs" && !unitIdParam
-                                ? "text-blue-600 border-b-2 border-blue-600"
-                                : "text-slate-500 hover:text-slate-800"
-                        }`}
-                    >
-                        <Compass className="w-3.5 h-3.5" />
-                        <span>Programs & Initiatives</span>
-                    </button>
-                    <button
-                        onClick={() => router.push(`/dashboard/woreda?tab=reports${targetParam}`)}
-                        className={`pb-3 text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5 ${
-                            currentTab === "reports" && !unitIdParam
-                                ? "text-blue-600 border-b-2 border-blue-600"
-                                : "text-slate-500 hover:text-slate-800"
-                        }`}
-                    >
-                        <BarChart3 className="w-3.5 h-3.5" />
-                        <span>Reports & Analytics</span>
-                    </button>
-                </div>
+            {/* Direct contextual actions (when on overview or schools) */}
+            {(currentTab === "overview" || currentTab === "schools" || unitIdParam) && (
+                <div className="flex items-center justify-between pb-2">
+                    <div>
+                        <h1 className="text-xl font-bold text-slate-900">
+                            {currentTab === "overview" && !unitIdParam
+                                ? "Woreda Governance Overview"
+                                : "Schools Directory & Hierarchy"}
+                        </h1>
+                        <p className="text-xs text-slate-500 mt-0.5">
+                            {currentTab === "overview" && !unitIdParam
+                                ? "District education infrastructure, institutional distribution, and school leadership."
+                                : "Explore registered schools, facilities, educators, and student body."}
+                        </p>
+                    </div>
 
-                <div className="flex items-center gap-2 self-end sm:self-auto shrink-0">
-                    <button
-                        onClick={() => {
-                            setNewSchoolName("");
-                            setNewSchoolCode("");
-                            setNewSchoolAddress("");
-                            setNewSchoolPhone("");
-                            setCreateSchoolMessage(null);
-                            setCreateSchoolOpen(true);
-                        }}
-                        className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-lg transition-colors flex items-center gap-1.5 shadow-xs cursor-pointer"
-                    >
-                        <Plus className="w-4 h-4" />
-                        <span>Add School</span>
-                    </button>
-                    <button
-                        onClick={() => {
-                            loadWoredaData();
-                            if (currentTab === "schools" || unitIdParam) {
-                                loadDrilldownData(unitIdParam);
-                            }
-                        }}
-                        className="p-1.5 border border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-50 rounded-lg transition-colors cursor-pointer"
-                        title="Refresh"
-                    >
-                        <RefreshCw className={`w-4 h-4 ${loading || drilldownLoading ? "animate-spin text-blue-600" : ""}`} />
-                    </button>
+                    <div className="flex items-center gap-2 shrink-0">
+                        <button
+                            onClick={() => {
+                                setNewSchoolName("");
+                                setNewSchoolCode("");
+                                setNewSchoolAddress("");
+                                setNewSchoolPhone("");
+                                setCreateSchoolMessage(null);
+                                setCreateSchoolOpen(true);
+                            }}
+                            className="px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-xl transition-all flex items-center gap-1.5 shadow-sm cursor-pointer active:scale-95"
+                        >
+                            <Plus className="w-4 h-4" />
+                            <span>Add School</span>
+                        </button>
+                        <button
+                            onClick={() => {
+                                loadWoredaData();
+                                if (currentTab === "schools" || unitIdParam) {
+                                    loadDrilldownData(unitIdParam);
+                                }
+                            }}
+                            className="p-2 border border-slate-200 bg-white text-slate-600 hover:text-slate-900 hover:bg-slate-50 rounded-xl transition-colors cursor-pointer shadow-2xs"
+                            title="Refresh"
+                        >
+                            <RefreshCw className={`w-4 h-4 ${loading || drilldownLoading ? "animate-spin text-blue-600" : ""}`} />
+                        </button>
+                    </div>
                 </div>
-            </div>
+            )}
 
             {/* Error Banner */}
             {error && (
@@ -2313,6 +2260,7 @@ export default function WoredaDashboard() {
                 <ProgramsRegistryView
                     tierName={data?.woredaName || "Woreda Education Office"}
                     tierType="WOREDA"
+                    organizationId={data?.woredaId}
                     canCreateProgram={true}
                     initialProgramId={searchParams?.get("programId")}
                     initialProgramTitle={searchParams?.get("programTitle")}

@@ -260,7 +260,12 @@ export const getMyNotifications = async (req: Request, res: Response) => {
         const userId = req.user?.id;
         if (!userId) return res.status(401).json({ error: "Unauthorized" });
 
-        const organizationId = (req as any).accessScope?.id || (req.query?.organizationId as string) || undefined;
+        const organizationId =
+            (req as any).accessScope?.id ||
+            (req.headers["x-organization-id"] as string) ||
+            (req.headers["x-scope-id"] as string) ||
+            (req.query?.organizationId as string) ||
+            undefined;
         const notifications = await CommunicationService.getUserNotifications(userId, organizationId);
         return res.json(notifications);
     } catch (error: any) {
@@ -273,7 +278,12 @@ export const markNotificationRead = async (req: Request, res: Response) => {
         const userId = req.user?.id;
         if (!userId) return res.status(401).json({ error: "Unauthorized" });
 
-        const organizationId = (req as any).accessScope?.id || (req.query?.organizationId as string) || undefined;
+        const organizationId =
+            (req as any).accessScope?.id ||
+            (req.headers["x-organization-id"] as string) ||
+            (req.headers["x-scope-id"] as string) ||
+            (req.query?.organizationId as string) ||
+            undefined;
         const { id } = req.params;
         if (!id) return res.status(400).json({ error: "Notification id is required" });
 
@@ -289,7 +299,12 @@ export const markAllNotificationsRead = async (req: Request, res: Response) => {
         const userId = req.user?.id;
         if (!userId) return res.status(401).json({ error: "Unauthorized" });
 
-        const organizationId = (req as any).accessScope?.id || (req.query?.organizationId as string) || undefined;
+        const organizationId =
+            (req as any).accessScope?.id ||
+            (req.headers["x-organization-id"] as string) ||
+            (req.headers["x-scope-id"] as string) ||
+            (req.query?.organizationId as string) ||
+            undefined;
         await CommunicationService.markAllNotificationsRead(userId, organizationId);
         return res.json({ success: true, message: "All notifications marked as read" });
     } catch (error: any) {
@@ -302,7 +317,12 @@ export const getUnreadNotificationCount = async (req: Request, res: Response) =>
         const userId = req.user?.id;
         if (!userId) return res.status(401).json({ error: "Unauthorized" });
 
-        const organizationId = (req as any).accessScope?.id || (req.query?.organizationId as string) || undefined;
+        const organizationId =
+            (req as any).accessScope?.id ||
+            (req.headers["x-organization-id"] as string) ||
+            (req.headers["x-scope-id"] as string) ||
+            (req.query?.organizationId as string) ||
+            undefined;
         const count = await CommunicationService.getUnreadNotificationCount(userId, organizationId);
         return res.json({ count });
     } catch (error: any) {

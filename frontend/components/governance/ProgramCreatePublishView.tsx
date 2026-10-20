@@ -31,6 +31,7 @@ export interface ProgramCreatePublishViewProps {
         name: string;
         createdOrganization?: { name: string; type: string };
     } | null;
+    organizationId?: string | null;
     onBack?: () => void;
     onPublished?: () => void;
 }
@@ -39,6 +40,7 @@ type TargetTierCategory = "REGION" | "ZONE" | "WOREDA" | "SCHOOL";
 
 export default function ProgramCreatePublishView({
     parentProgram,
+    organizationId,
     onBack,
     onPublished
 }: ProgramCreatePublishViewProps) {
@@ -312,6 +314,7 @@ export default function ProgramCreatePublishView({
 
             const res = await fetchApi(endpoint, {
                 method: "POST",
+                headers: organizationId ? { "x-organization-id": organizationId } : {},
                 body: JSON.stringify({
                     name: name.trim(),
                     description: description.trim(),
