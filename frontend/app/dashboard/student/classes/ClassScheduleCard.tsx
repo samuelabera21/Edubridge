@@ -51,12 +51,12 @@ export default function ClassScheduleCard() {
       <div>
         <div className="mb-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <CalendarDays className="h-5 w-5 text-[#006b3f]" />
+            <CalendarDays className="h-5 w-5 text-[#184973]" />
             <h2 className="text-lg font-semibold text-gray-900">Class Schedule</h2>
           </div>
           <Link
             href="/dashboard/student/timetable"
-            className="text-xs font-semibold text-[#006b3f] hover:underline"
+            className="text-xs font-semibold text-[#184973] hover:underline"
           >
             Full Timetable →
           </Link>
@@ -68,7 +68,7 @@ export default function ClassScheduleCard() {
           <p className="text-sm text-red-600">Could not load schedule.</p>
         ) : todayClasses.length > 0 ? (
           <div className="space-y-3">
-            <p className="text-xs font-bold uppercase tracking-wider text-emerald-800">Today&apos;s Classes ({todayName})</p>
+            <p className="text-xs font-bold uppercase tracking-wider text-[#184973]">Today&apos;s Classes ({todayName})</p>
             {todayClasses.map((item) => (
               <div key={item.id} className="rounded-xl border border-gray-100 bg-gray-50 p-3">
                 <div className="flex items-center justify-between gap-3">
@@ -86,9 +86,9 @@ export default function ClassScheduleCard() {
           </div>
         ) : (
           <div className="space-y-4">
-            <div className="rounded-xl border border-emerald-100 bg-emerald-50/70 p-3.5 text-sm text-emerald-900">
+            <div className="rounded-xl border border-blue-100 bg-blue-50/70 p-3.5 text-sm text-slate-800">
               <p className="font-semibold">No classes scheduled today ({todayName}).</p>
-              <p className="mt-0.5 text-xs text-emerald-700">Preview of your weekly scheduled periods:</p>
+              <p className="mt-0.5 text-xs text-slate-600">Preview of your weekly scheduled periods:</p>
             </div>
 
             {weeklyClasses.length > 0 ? (
@@ -97,7 +97,7 @@ export default function ClassScheduleCard() {
                   <div key={item.id} className="flex items-center justify-between rounded-xl border border-gray-100 bg-gray-50 p-3 text-sm">
                     <div>
                       <div className="flex items-center gap-2">
-                        <span className="rounded bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold text-emerald-800">
+                        <span className="rounded bg-blue-100 px-2 py-0.5 text-[11px] font-semibold text-[#184973]">
                           {dayNames[item.dayOfWeek] || `Day ${item.dayOfWeek}`}
                         </span>
                         <span className="font-semibold text-gray-900">{item.teachingAssignment.subject.name}</span>
@@ -123,7 +123,7 @@ export default function ClassScheduleCard() {
       <div className="mt-6 border-t border-gray-100 pt-4">
         <Link
           href="/dashboard/student/timetable"
-          className="inline-flex items-center gap-2 text-sm font-medium text-[#006b3f] hover:underline"
+          className="inline-flex items-center gap-2 text-sm font-medium text-[#184973] hover:underline"
         >
           <Clock className="h-4 w-4" />
           View full interactive weekly timetable

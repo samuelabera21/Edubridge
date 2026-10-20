@@ -18,6 +18,7 @@ import {
     Inbox
 } from "lucide-react";
 import { LoadingState } from "@/components/ui/LoadingState";
+import CommunicationHeader from "./CommunicationHeader";
 
 function isImageUrl(url?: string | null, name?: string | null): boolean {
     if (!url && !name) return false;
@@ -77,6 +78,22 @@ export default function StudentCommunicationPage() {
 
     useEffect(() => {
         loadData();
+        const interval = setInterval(() => {
+            if (typeof document !== "undefined" && document.visibilityState === "visible") {
+                Promise.all([
+                    fetchApi("/communication/announcements").catch(() => null),
+                    fetchApi("/communication/notifications").catch(() => null)
+                ]).then(([annRes, notifRes]) => {
+                    if (annRes && annRes.ok) {
+                        annRes.json().then(data => Array.isArray(data) && setAnnouncements(data)).catch(() => {});
+                    }
+                    if (notifRes && notifRes.ok) {
+                        notifRes.json().then(data => Array.isArray(data) && setNotifications(data)).catch(() => {});
+                    }
+                }).catch(() => {});
+            }
+        }, 8000);
+        return () => clearInterval(interval);
     }, [loadData]);
 
     // Handle Confirm Receipt
@@ -129,22 +146,27 @@ export default function StudentCommunicationPage() {
     if (loading) return <LoadingState message="Loading communications..." />;
 
     return (
-        <div className="max-w-3xl mx-auto space-y-4 font-sans text-slate-800 pb-16">
-            {/* Simple Clean Header */}
+        <div className="max-w-6xl mx-auto space-y-6 font-sans text-slate-800 pb-16 p-2 sm:p-4">
+            <CommunicationHeader
+                title="Communication Overview"
+                subtitle="School-wide announcements, bulletins, and real-time updates."
+                isLive={true}
+                onRefresh={loadData}
+            />
+
+            {/* Sub-Channel Filter Toggle */}
             <div className="flex items-center justify-between gap-3 pb-3 border-b border-slate-200">
                 <div className="flex items-center gap-2">
-                    <Megaphone className="w-5 h-5 text-emerald-600" />
-                    <h1 className="text-lg font-bold text-slate-900">Announcements</h1>
+                    <span className="text-xs font-bold uppercase tracking-wider text-slate-500">Filter By Feed:</span>
                 </div>
 
-                {/* Tabs */}
                 <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl">
                     <button
                         type="button"
                         onClick={() => setActiveTab("announcements")}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                        className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
                             activeTab === "announcements"
-                                ? "bg-white text-emerald-700 shadow-xs"
+                                ? "bg-white text-[#184973] shadow-xs"
                                 : "text-slate-600 hover:text-slate-900"
                         }`}
                     >
@@ -153,9 +175,9 @@ export default function StudentCommunicationPage() {
                     <button
                         type="button"
                         onClick={() => setActiveTab("notifications")}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                        className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
                             activeTab === "notifications"
-                                ? "bg-white text-emerald-700 shadow-xs"
+                                ? "bg-white text-[#184973] shadow-xs"
                                 : "text-slate-600 hover:text-slate-900"
                         }`}
                     >
