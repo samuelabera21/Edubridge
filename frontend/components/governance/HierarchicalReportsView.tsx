@@ -621,34 +621,34 @@ export default function HierarchicalReportsView({
                 <div className="flex items-center gap-2 shrink-0">
                     <button
                         onClick={() => setShowFilters(prev => !prev)}
-                        className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold border transition-colors cursor-pointer ${
+                        className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold border transition-all duration-200 cursor-pointer group/btn ${
                             showFilters
-                                ? "bg-slate-100 border-slate-400 text-slate-900"
-                                : "bg-white hover:bg-slate-50 border-slate-300 text-slate-700"
+                                ? "bg-[#4085b3] border-[#4085b3] text-white"
+                                : "bg-white hover:bg-[#4085b3] hover:text-white hover:border-[#4085b3] border-slate-300 text-slate-700"
                         }`}
                         title="Toggle Scope & Filters"
                     >
-                        <Filter className="w-3.5 h-3.5 text-slate-500" />
+                        <Filter className={`w-3.5 h-3.5 transition-colors ${showFilters ? "text-white" : "text-slate-500 group-hover/btn:text-white"}`} />
                         <span>{showFilters ? "Hide Filters" : "Filter Scope"}</span>
                     </button>
 
                     <button
                         onClick={() => handleExport("csv")}
                         disabled={!reportData || exportingCsv || generating}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-white hover:bg-[#4085b3] hover:text-white hover:border-[#4085b3] text-slate-700 border border-slate-300 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer group/btn"
                         title="Download Raw Disaggregated Data (CSV)"
                     >
-                        <Download className="w-3.5 h-3.5 text-slate-500" />
+                        <Download className="w-3.5 h-3.5 text-slate-500 group-hover/btn:text-white transition-colors" />
                         <span>{exportingCsv ? "Exporting..." : "Download CSV"}</span>
                     </button>
 
                     <button
                         onClick={() => handleExport("excel")}
                         disabled={!reportData || exportingExcel || generating}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-[#4085b3] hover:bg-[#336e96] text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-white hover:bg-[#4085b3] hover:text-white hover:border-[#4085b3] text-slate-700 border border-slate-300 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer group/btn"
                         title="Export Official Statistical Abstract (.xlsx)"
                     >
-                        <FileSpreadsheet className="w-3.5 h-3.5" />
+                        <FileSpreadsheet className="w-3.5 h-3.5 text-slate-500 group-hover/btn:text-white transition-colors" />
                         <span>{exportingExcel ? "Exporting..." : "Export Excel (.xlsx)"}</span>
                     </button>
                 </div>
@@ -1034,17 +1034,17 @@ export default function HierarchicalReportsView({
                                 <div className="flex items-center gap-2">
                                     <button
                                         onClick={() => handleDrillDownRow(reportData.lineage[1].id)}
-                                        className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold bg-white hover:bg-slate-100 text-slate-700 hover:text-slate-900 border border-slate-300 transition-colors cursor-pointer"
+                                        className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold bg-white hover:bg-[#4085b3] text-slate-700 hover:text-white border border-slate-300 hover:border-[#4085b3] transition-all duration-200 cursor-pointer group/nav"
                                         title={`Return to ${reportData.lineage[1].name}`}
                                     >
-                                        <ArrowLeft className="w-3.5 h-3.5 text-slate-500" />
+                                        <ArrowLeft className="w-3.5 h-3.5 text-slate-500 group-hover/nav:text-white transition-colors" />
                                         <span>Up to {formatJurisdictionName(reportData.lineage[1].name)}</span>
                                     </button>
 
                                     {reportData.lineage.length > 2 && (
                                         <button
                                             onClick={() => handleDrillDownRow(reportData.lineage[reportData.lineage.length - 1].id)}
-                                            className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold bg-white hover:bg-slate-100 text-[#4085b3] hover:text-[#2b5d80] border border-slate-300 transition-colors cursor-pointer"
+                                            className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold bg-white hover:bg-[#4085b3] text-slate-700 hover:text-white border border-slate-300 hover:border-[#4085b3] transition-all duration-200 cursor-pointer"
                                             title="Return to National Scope"
                                         >
                                             <span>National Overview</span>
