@@ -26,6 +26,7 @@ import {
     Filter
 } from "lucide-react";
 import ProgramCreatePublishView from "./ProgramCreatePublishView";
+import GovernanceSubnav from "./GovernanceSubnav";
 
 export interface ProgramRecipientTracking {
     id: string;
@@ -100,6 +101,7 @@ export interface ProgramsRegistryViewProps {
     canCreateProgram?: boolean;
     initialProgramId?: string | null;
     initialProgramTitle?: string | null;
+    showSubnav?: boolean;
 }
 
 export default function ProgramsRegistryView({
@@ -108,7 +110,8 @@ export default function ProgramsRegistryView({
     organizationId,
     canCreateProgram = true,
     initialProgramId,
-    initialProgramTitle
+    initialProgramTitle,
+    showSubnav = true
 }: ProgramsRegistryViewProps) {
     const { authData } = useAuth(false);
     const searchParams = useSearchParams();
@@ -385,7 +388,15 @@ export default function ProgramsRegistryView({
             if (targetScopeFilter !== "ALL" && !matchesTargetScope(p, targetScopeFilter)) return false;
 
             if (priorityFilter !== "ALL" && p.priority !== priorityFilter) return false;
-            if (statusFilter !== "ALL" && p.status !== statusFilter) return false;
+            if (statusFilter !== "ALL") {
+                const deskStatus = getProgramDeskStatus(p).type;
+                if (statusFilter === "PUBLISHED" && deskStatus !== "PUBLISHED") return false;
+                if (statusFilter === "ACKNOWLEDGED" && deskStatus !== "ACKNOWLEDGED") return false;
+                if (statusFilter === "PENDING" && deskStatus !== "PENDING") return false;
+                if (statusFilter === "IN_PROGRESS" && deskStatus !== "IN_PROGRESS") return false;
+                if (statusFilter === "COMPLETED" && deskStatus !== "COMPLETED") return false;
+                if (statusFilter === "DRAFT" && deskStatus !== "DRAFT") return false;
+            }
 
             if (searchQuery.trim()) {
                 const q = searchQuery.toLowerCase().trim();
@@ -502,6 +513,65 @@ export default function ProgramsRegistryView({
         return `Strategic initiative issued by ${authority} for delivery across ${scope}.`;
     };
 
+    // Returns governance desk status for table, cards, and filtering
+    const getProgramDeskStatus = (item: ProgramItem) => {
+        if (item.status === "DRAFT") {
+            return {
+                label: "Draft",
+                className: "text-slate-500 font-medium",
+                type: "DRAFT"
+            };
+        }
+
+        // A single target is when it's explicitly targeted to 1 unit, or recipient count is exactly 1 (and not a broadcast to all units)
+        const targetUnitsCount = item.targetOrganizationUnits?.length || 0;
+        const totalRecipients = item.totalRecipients ?? item.tracking?.totalRecipients ?? item.implementations?.length ?? 0;
+        const isSingleTarget = targetUnitsCount === 1 || (totalRecipients === 1 && !item.targetLevelAll);
+
+        // When sent to multiple levels/units, show 'Published' on registry table/cards.
+        // Detailed per-unit delivery is inspected in the slide-over drawer.
+        if (!isSingleTarget) {
+            return {
+                label: "Published",
+                className: "text-slate-700 font-medium",
+                type: "PUBLISHED"
+            };
+        }
+
+        // Single target: exactly 1 targeted unit
+        const userImp = item.userImplementation || (item.implementations && item.implementations.length === 1 ? item.implementations[0] : null);
+        const impStatus = userImp?.status;
+        const acked = item.acknowledgedCount ?? item.tracking?.acknowledgedCount ?? 0;
+
+        if (impStatus === "COMPLETED" || (item.completedCount && item.completedCount >= 1)) {
+            return {
+                label: "Completed",
+                className: "text-slate-700 font-medium",
+                type: "COMPLETED"
+            };
+        }
+        if (impStatus === "IN_PROGRESS" || (item.inProgressCount && item.inProgressCount >= 1)) {
+            return {
+                label: "In progress",
+                className: "text-slate-700 font-medium",
+                type: "IN_PROGRESS"
+            };
+        }
+        if (impStatus === "ACKNOWLEDGED" || userImp?.isAcknowledged || acked >= 1) {
+            return {
+                label: "Acknowledged",
+                className: "text-slate-700 font-medium",
+                type: "ACKNOWLEDGED"
+            };
+        }
+
+        return {
+            label: "Pending",
+            className: "text-slate-700 font-medium",
+            type: "PENDING"
+        };
+    };
+
     if (isCreatingProgram || cascadingParentProgram) {
         return (
             <ProgramCreatePublishView
@@ -522,6 +592,11 @@ export default function ProgramsRegistryView({
 
     return (
         <div className="space-y-6 font-sans text-slate-900 max-w-7xl">
+            {/* Top Subnav (Option A: Policies & Programs Governance Hub) */}
+            {showSubnav && (
+                <GovernanceSubnav activeTab="programs" programsCount={programs.length} />
+            )}
+
             {/* Notification Toast */}
             {actionToast && (
                 <div
@@ -742,7 +817,16 @@ export default function ProgramsRegistryView({
                                 onClick={() => setStatusFilter("ALL")}
                                 className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-slate-100 hover:bg-slate-200 text-slate-800 transition-colors cursor-pointer"
                             >
-                                <span>Status: {statusFilter.charAt(0) + statusFilter.slice(1).toLowerCase()}</span>
+                                <span>
+                                    Status: {
+                                        statusFilter === "PUBLISHED" ? "Published" :
+                                        statusFilter === "ACKNOWLEDGED" ? "Acknowledged" :
+                                        statusFilter === "PENDING" ? "Pending" :
+                                        statusFilter === "IN_PROGRESS" ? "In progress" :
+                                        statusFilter === "COMPLETED" ? "Completed" :
+                                        statusFilter === "DRAFT" ? "Draft" : statusFilter
+                                    }
+                                </span>
                                 <X className="w-3.5 h-3.5 text-slate-500 hover:text-slate-900" />
                             </button>
                         )}
@@ -868,11 +952,12 @@ export default function ProgramsRegistryView({
                                 className="w-full py-1.5 px-2.5 text-sm bg-white border border-slate-300 rounded text-slate-800 focus:outline-none focus:ring-1 focus:ring-[#4085b3] focus:border-[#4085b3] cursor-pointer"
                             >
                                 <option value="ALL">All statuses</option>
-                                <option value="ACTIVE">Active</option>
                                 <option value="PUBLISHED">Published</option>
-                                <option value="DRAFT">Draft</option>
+                                <option value="ACKNOWLEDGED">Acknowledged</option>
+                                <option value="PENDING">Pending</option>
+                                <option value="IN_PROGRESS">In progress</option>
                                 <option value="COMPLETED">Completed</option>
-                                <option value="CLOSED">Closed</option>
+                                <option value="DRAFT">Draft</option>
                             </select>
                         </div>
                     </div>
@@ -979,30 +1064,14 @@ export default function ProgramsRegistryView({
                                             {new Date(item.endDate).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
                                         </td>
 
-                                        {/* Priority (Single line pill) */}
-                                        <td className="py-3.5 px-2 text-xs whitespace-nowrap">
-                                            <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${
-                                                item.priority === "CRITICAL" || item.priority === "URGENT"
-                                                    ? "bg-rose-50 text-rose-800 border border-rose-200"
-                                                    : item.priority === "HIGH"
-                                                    ? "bg-amber-50 text-amber-800 border border-amber-200"
-                                                    : "bg-slate-100 text-slate-700"
-                                            }`}>
-                                                {item.priority.charAt(0) + item.priority.slice(1).toLowerCase()}
-                                            </span>
+                                        {/* Priority */}
+                                        <td className="py-3.5 px-2 text-xs text-slate-700 whitespace-nowrap">
+                                            {item.priority.charAt(0) + item.priority.slice(1).toLowerCase()}
                                         </td>
 
-                                        {/* Status (Single line pill) */}
-                                        <td className="py-3.5 px-2 text-xs whitespace-nowrap">
-                                            <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${
-                                                item.status === "ACTIVE"
-                                                    ? "bg-emerald-50 text-emerald-800 border border-emerald-200"
-                                                    : item.status === "PUBLISHED"
-                                                    ? "bg-blue-50 text-blue-800 border border-blue-200"
-                                                    : "bg-slate-100 text-slate-700"
-                                            }`}>
-                                                {item.status.charAt(0) + item.status.slice(1).toLowerCase()}
-                                            </span>
+                                        {/* Status (Single line text) */}
+                                        <td className="py-3.5 px-2 text-xs text-slate-700 whitespace-nowrap">
+                                            {getProgramDeskStatus(item).label}
                                         </td>
 
                                         {/* Action Link (Always visible, right-aligned) */}
@@ -1045,8 +1114,8 @@ export default function ProgramsRegistryView({
                                     <span className="tabular-nums">
                                         Due: {new Date(item.endDate).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
                                     </span>
-                                    <span className="font-medium px-2 py-0.5 rounded bg-slate-100 text-slate-700 group-hover:bg-white/15 group-hover:text-white transition-colors">
-                                        {item.status.charAt(0) + item.status.slice(1).toLowerCase()}
+                                    <span className="text-xs font-medium text-slate-600 group-hover:text-white/90">
+                                        {getProgramDeskStatus(item).label}
                                     </span>
                                 </div>
                             </div>
@@ -1108,18 +1177,13 @@ export default function ProgramsRegistryView({
                         {/* Header */}
                         <div className="p-5 sm:p-6 border-b border-slate-200 bg-slate-50/90 flex items-start justify-between gap-4 shrink-0">
                             <div className="min-w-0 flex-1 pr-2">
-                                <div className="flex items-center gap-2 mb-2 flex-wrap">
-                                    <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-mono font-medium bg-slate-200/80 text-slate-700 tracking-wide uppercase">
+                                <div className="flex items-center gap-2 mb-2 flex-wrap text-xs text-slate-500">
+                                    <span className="font-mono tracking-wide uppercase">
                                         REF: PRG-{selectedProgram.id.substring(0, 8).toUpperCase()}
                                     </span>
-                                    <span className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold ${
-                                        selectedProgram.status === "ACTIVE"
-                                            ? "bg-emerald-50 text-emerald-800 border border-emerald-200"
-                                            : selectedProgram.status === "PUBLISHED"
-                                            ? "bg-blue-50 text-blue-800 border border-blue-200"
-                                            : "bg-slate-100 text-slate-700 border border-slate-200"
-                                    }`}>
-                                        {selectedProgram.status.charAt(0) + selectedProgram.status.slice(1).toLowerCase()}
+                                    <span>·</span>
+                                    <span className="font-medium text-slate-700">
+                                        {getProgramDeskStatus(selectedProgram).label}
                                     </span>
                                 </div>
                                 <h2
@@ -1401,21 +1465,9 @@ export default function ProgramsRegistryView({
                                                                     </div>
                                                                 </td>
 
-                                                                {/* Status Pill */}
-                                                                <td className="py-2.5 px-2.5 align-top whitespace-nowrap">
-                                                                    <span className={`inline-block px-2 py-0.5 rounded text-[11px] font-medium ${
-                                                                        imp.status === "COMPLETED"
-                                                                            ? "bg-emerald-50 text-emerald-800 border border-emerald-200"
-                                                                            : imp.status === "IN_PROGRESS"
-                                                                            ? "bg-blue-50 text-blue-800 border border-blue-200"
-                                                                            : imp.status === "ACKNOWLEDGED"
-                                                                            ? "bg-indigo-50 text-indigo-800 border border-indigo-200"
-                                                                            : imp.status === "BLOCKED"
-                                                                            ? "bg-rose-50 text-rose-800 border border-rose-200"
-                                                                            : "bg-slate-100 text-slate-700 border border-slate-200"
-                                                                    }`}>
-                                                                        {imp.status.replace("_", " ").toLowerCase().replace(/^\w/, c => c.toUpperCase())}
-                                                                    </span>
+                                                                {/* Status */}
+                                                                <td className="py-2.5 px-2.5 align-top whitespace-nowrap text-xs text-slate-700 font-medium">
+                                                                    {imp.status.replace("_", " ").toLowerCase().replace(/^\w/, c => c.toUpperCase())}
                                                                 </td>
 
                                                                 {/* Acknowledged by & Timestamp */}
