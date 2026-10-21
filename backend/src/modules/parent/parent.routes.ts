@@ -14,7 +14,15 @@ import {
     getFilterOptions,
     getMeetings, createMeeting,
     getNotifications, createNotification,
-    getParticipations, createParticipation
+    getParticipations, createParticipation,
+    getParentChildAttendance,
+    getParentChildAcademics,
+    getParentChildTeachers,
+    getParentMessages,
+    sendParentMessage,
+    getParentAnnouncements,
+    getParentMeetingsList,
+    requestParentMeeting
 } from "./parent.controller.js";
 import { requirePermission, requireScope } from "../authentication/authorization.middleware.js";
 
@@ -23,8 +31,16 @@ const router = Router();
 // Scope all parent operations to SCHOOL
 router.use(requireScope("SCHOOL"));
 
-// Parent self-service profile (Parent Portal)
+// Parent self-service profile, attendance, academics & communication (Parent Portal)
 router.get("/me", getParentProfile);
+router.get("/children/:studentId/attendance", getParentChildAttendance);
+router.get("/children/:studentId/academics", getParentChildAcademics);
+router.get("/children/:studentId/teachers", getParentChildTeachers);
+router.get("/messages", getParentMessages);
+router.post("/messages", sendParentMessage);
+router.get("/announcements", getParentAnnouncements);
+router.get("/meetings-list", getParentMeetingsList);
+router.post("/meetings/request", requestParentMeeting);
 
 // Step 11: Admin Parent & Guardian Management APIs
 router.get("/admin/guardians", requirePermission("ACADEMIC:VIEW"), getGuardians);
