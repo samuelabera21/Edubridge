@@ -691,14 +691,14 @@ export default function ProgramsRegistryView({
                         <button
                             type="button"
                             onClick={() => setShowFilters(prev => !prev)}
-                            className={`px-3 py-2 text-sm font-medium rounded border transition-colors flex items-center gap-1.5 cursor-pointer shrink-0 ${
+                            className={`px-3 py-2 text-sm font-medium rounded border transition-all duration-200 flex items-center gap-1.5 cursor-pointer shrink-0 group/filter ${
                                 showFilters || activeFilterCount > 0
                                     ? "bg-[#4085b3] text-white border-[#4085b3]"
-                                    : "bg-white text-slate-700 border-slate-300 hover:bg-slate-50"
+                                    : "bg-white text-slate-700 border-slate-300 hover:bg-[#4085b3] hover:text-white hover:border-[#4085b3]"
                             }`}
                             title="Filter initiatives"
                         >
-                            <Filter className="w-4 h-4" />
+                            <Filter className={`w-4 h-4 transition-colors ${showFilters || activeFilterCount > 0 ? "text-white" : "text-slate-500 group-hover/filter:text-white"}`} />
                             <span>Filters</span>
                             {activeFilterCount > 0 && (
                                 <span className={`text-xs px-1.5 py-0.2 rounded-full font-bold ${
@@ -713,11 +713,11 @@ export default function ProgramsRegistryView({
                         <button
                             type="button"
                             onClick={() => loadPrograms()}
-                            className="p-2 border border-slate-300 hover:bg-slate-50 text-slate-700 rounded transition-colors cursor-pointer shrink-0"
+                            className="p-2 border border-slate-300 bg-white hover:bg-[#4085b3] text-slate-700 hover:text-white hover:border-[#4085b3] rounded transition-all duration-200 cursor-pointer shrink-0 group/refresh"
                             title="Reload registry data"
                             aria-label="Reload registry data"
                         >
-                            <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin text-[#4085b3]" : ""}`} />
+                            <RefreshCw className={`w-4 h-4 transition-colors ${loading ? "animate-spin text-[#4085b3]" : "text-slate-500 group-hover/refresh:text-white"}`} />
                         </button>
                     </div>
 
@@ -726,27 +726,27 @@ export default function ProgramsRegistryView({
                         <button
                             type="button"
                             onClick={() => setViewMode("table")}
-                            className={`px-2.5 py-1.5 text-xs font-medium rounded transition-colors flex items-center gap-1.5 cursor-pointer ${
+                            className={`px-2.5 py-1.5 text-xs font-medium rounded transition-all duration-200 flex items-center gap-1.5 cursor-pointer group/tbl ${
                                 viewMode === "table"
                                     ? "bg-[#4085b3] text-white"
-                                    : "text-slate-600 hover:text-slate-900 border border-slate-300 bg-white"
+                                    : "text-slate-700 border border-slate-300 bg-white hover:bg-[#4085b3] hover:text-white hover:border-[#4085b3]"
                             }`}
                             title="Display as administrative table"
                         >
-                            <LayoutList className="w-3.5 h-3.5" />
+                            <LayoutList className={`w-3.5 h-3.5 transition-colors ${viewMode === "table" ? "text-white" : "text-slate-500 group-hover/tbl:text-white"}`} />
                             <span>Table</span>
                         </button>
                         <button
                             type="button"
                             onClick={() => setViewMode("cards")}
-                            className={`px-2.5 py-1.5 text-xs font-medium rounded transition-colors flex items-center gap-1.5 cursor-pointer ${
+                            className={`px-2.5 py-1.5 text-xs font-medium rounded transition-all duration-200 flex items-center gap-1.5 cursor-pointer group/crd ${
                                 viewMode === "cards"
                                     ? "bg-[#4085b3] text-white"
-                                    : "text-slate-600 hover:text-slate-900 border border-slate-300 bg-white"
+                                    : "text-slate-700 border border-slate-300 bg-white hover:bg-[#4085b3] hover:text-white hover:border-[#4085b3]"
                             }`}
                             title="Display as DfE summary cards"
                         >
-                            <LayoutGrid className="w-3.5 h-3.5" />
+                            <LayoutGrid className={`w-3.5 h-3.5 transition-colors ${viewMode === "cards" ? "text-white" : "text-slate-500 group-hover/crd:text-white"}`} />
                             <span>Cards</span>
                         </button>
                     </div>
