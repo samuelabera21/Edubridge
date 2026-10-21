@@ -120,14 +120,24 @@ export default function LoginPage() {
                 }),
             });
 
+            let data: any = {};
+            try {
+                data = await res.json();
+            } catch {
+                // response might not be json
+            }
+
             if (!res.ok) {
-                const data = await res.json().catch(() => ({}));
-                setError(data.message || "Google Sign-in is not configured or credentials are invalid. Please check backend GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET.");
+                const rawMsg = data.message || data.error || "";
+                if (rawMsg.toLowerCase().includes("client id") || rawMsg.toLowerCase().includes("client secret") || rawMsg.toLowerCase().includes("missing")) {
+                    setError("Google Sign-In is not configured yet. Please set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET in your .env file.");
+                } else {
+                    setError(rawMsg || "Google Sign-in is not configured or credentials are invalid. Please check backend GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET.");
+                }
                 setGoogleLoading(false);
                 return;
             }
 
-            const data = await res.json();
             if (data?.url) {
                 window.location.href = data.url;
                 return;

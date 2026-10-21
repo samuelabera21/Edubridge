@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo, Fragment } from "react";
+import { useEffect, useState, useMemo, Fragment, Suspense } from "react";
 import { fetchApi } from "@/lib/api";
 import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
@@ -12,7 +12,7 @@ import {
     GraduationCap, RefreshCw, MoreVertical, BarChart3, PlusCircle, BookOpenCheck
 } from "lucide-react";
 
-export default function MyClassesPage() {
+function MyClassesContent() {
     const searchParams = useSearchParams();
     const router = useRouter();
     const initialTab = searchParams.get("tab") || "classes";
@@ -920,5 +920,18 @@ export default function MyClassesPage() {
                 </Card>
             )}
         </div>
+    );
+}
+
+export default function MyClassesPage() {
+    return (
+        <Suspense fallback={
+            <div className="w-full max-w-7xl mx-auto p-12 text-center text-gray-500 min-h-[400px] flex flex-col justify-center items-center">
+                <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#1F5380] mb-4"></div>
+                <p className="text-sm font-semibold text-gray-600">Loading teaching assignments...</p>
+            </div>
+        }>
+            <MyClassesContent />
+        </Suspense>
     );
 }

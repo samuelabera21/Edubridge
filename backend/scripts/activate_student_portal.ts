@@ -3,23 +3,33 @@ import { prisma } from "../src/infrastructure/prisma/client.js";
 import { assignRoleToUser } from "../src/modules/authentication/authorization.service.js";
 
 async function main() {
-    const studentId = "STU-2610-1223";
-const password = "ChangeMe123!";
+    const studentIdArg = process.argv[2];
+    const password = process.env.DEFAULT_INITIAL_PASSWORD || "ChangeMe123!";
 
+    const students = studentIdArg
+        ? await prisma.student.findMany({
+            where: { studentId: { equals: studentIdArg, mode: "insensitive" } },
+            include: { enrollments: true }
+        })
+        : await prisma.student.findMany({
+            where: { userId: null },
+            include: { enrollments: true }
+        });
 
-    const student = await prisma.student.findFirst({
-        where: { studentId: { equals: studentId, mode: "insensitive" } },
-        include: { enrollments: true }
-    });
-
-    if (!student) {
-        throw new Error(`Student ${studentId} not found`);
+    if (students.length === 0) {
+        console.log("No unlinked students found to activate.");
+        return;
     }
 
-    const school = await prisma.organizationUnit.findFirst({ where: { type: "SCHOOL" } });
-    if (!school) throw new Error("School not found");
+    for (const student of students) {
+        const studentOrgId = student.enrollments?.[0]?.organizationId;
+        const school = studentOrgId
+            ? await prisma.organizationUnit.findUnique({ where: { id: studentOrgId } })
+            : await prisma.organizationUnit.findFirst({ where: { type: "SCHOOL" } });
+        if (!school) throw new Error("School not found for student");
 
-    const email = `${studentId.toLowerCase()}@edubridge.local`;
+        const studentId = student.studentId;
+        const email = `${studentId.toLowerCase()}@edubridge.local`;
 
     let user = await prisma.user.findUnique({ where: { email } });
     if (!user) {
@@ -52,7 +62,8 @@ const password = "ChangeMe123!";
     console.log(`🆔 Student ID: ${student.studentId}`);
     console.log(`📧 User Email: ${user.email}`);
     console.log(`🔑 Password : ${password}`);
-    console.log("=========================================");
+        console.log("=========================================");
+    }
 }
 
 main().catch(console.error).finally(() => prisma.$disconnect());

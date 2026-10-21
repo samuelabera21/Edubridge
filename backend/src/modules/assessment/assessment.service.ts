@@ -1,5 +1,6 @@
 import { prisma } from "../../infrastructure/prisma/client.js";
 import { AssessmentType } from "../../generated/prisma/enums.js";
+import { EarlyWarningService } from "../support/early-warning.service.js";
 
 export class AssessmentService {
     static async createAssessment(organizationId: string, data: { academicYearId: string; teachingAssignmentId: string; title: string; description?: string; type: AssessmentType; maxScore: number; passingScore?: number; dueDate?: string; durationMinutes?: number; scheduledDate?: string; status?: string }) {
@@ -167,6 +168,15 @@ export class AssessmentService {
             }
         });
 
+        // Trigger automated early warning evaluation asynchronously
+        EarlyWarningService.evaluateAcademicPerformance({
+            organizationId,
+            enrollmentId: data.enrollmentId,
+            assessmentId: data.assessmentId,
+            score: data.score,
+            gradedById: data.gradedById
+        }).catch(err => console.error("Early warning academic evaluation error:", err));
+
         return result;
     }
 
@@ -217,6 +227,17 @@ export class AssessmentService {
                 });
             })
         );
+
+        // Trigger automated early warning evaluation for all scored students asynchronously
+        Promise.all(data.results.map(item => 
+            EarlyWarningService.evaluateAcademicPerformance({
+                organizationId,
+                enrollmentId: item.enrollmentId,
+                assessmentId: data.assessmentId,
+                score: item.score,
+                gradedById: data.gradedById
+            })
+        )).catch(err => console.error("Early warning bulk academic evaluation error:", err));
 
         return savedResults;
     }

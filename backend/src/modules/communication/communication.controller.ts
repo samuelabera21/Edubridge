@@ -340,10 +340,18 @@ export const sendMessage = async (req: Request, res: Response) => {
         const organizationId = (req as any).accessScope?.id;
         if (!senderId || !organizationId) return res.status(401).json({ error: "Unauthorized" });
 
-        const { receiverId, content } = req.body;
+        const { receiverId, content, attachmentUrl, attachmentName, attachmentType } = req.body;
         if (!receiverId || !content) return res.status(400).json({ error: "receiverId and content are required" });
 
-        const message = await CommunicationService.sendMessage({ organizationId, senderId, receiverId, content });
+        const message = await CommunicationService.sendMessage({
+            organizationId,
+            senderId,
+            receiverId,
+            content,
+            attachmentUrl,
+            attachmentName,
+            attachmentType
+        });
         return res.status(201).json(message);
     } catch (error: any) {
         return res.status(400).json({ error: error.message || "Failed to send message" });
@@ -390,6 +398,24 @@ export const deleteMessage = async (req: Request, res: Response) => {
         return res.json({ success: true });
     } catch (error: any) {
         return res.status(400).json({ error: error.message || "Failed to delete message" });
+    }
+};
+
+export const updateMessage = async (req: Request, res: Response) => {
+    try {
+        const userId = req.user?.id;
+        const organizationId = (req as any).accessScope?.id;
+        if (!userId || !organizationId) return res.status(401).json({ error: "Unauthorized" });
+
+        const { id } = req.params;
+        const { content } = req.body;
+        if (!id) return res.status(400).json({ error: "Message id is required" });
+        if (!content || !content.trim()) return res.status(400).json({ error: "Message content is required" });
+
+        const updated = await CommunicationService.updateMessage(organizationId, userId, id as string, content);
+        return res.json(updated);
+    } catch (error: any) {
+        return res.status(400).json({ error: error.message || "Failed to update message" });
     }
 };
 

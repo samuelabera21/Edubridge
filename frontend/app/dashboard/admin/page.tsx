@@ -26,7 +26,8 @@ import {
     TrendingUp,
     ChevronRight,
     ChevronDown,
-    Building2
+    Building2,
+    MessageSquare
 } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/Card";
 import { LoadingState } from "@/components/ui/LoadingState";
@@ -149,6 +150,7 @@ export default function AdminDashboardPage() {
     const [error, setError] = useState<string | null>(null);
     const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
     const [selectedYearId, setSelectedYearId] = useState<string>("");
+    const [recentSchoolMessages, setRecentSchoolMessages] = useState<any[]>([]);
 
     // Auto-redirect administrative governance tiers to their specialized dashboards
     useEffect(() => {
@@ -172,7 +174,10 @@ export default function AdminDashboardPage() {
             setError(null);
 
             const queryParam = yearId ? `?academicYearId=${encodeURIComponent(yearId)}` : "";
-            const res = await fetchApi(`/school/dashboard-overview${queryParam}`);
+            const [res, msgRes] = await Promise.all([
+                fetchApi(`/school/dashboard-overview${queryParam}`),
+                fetchApi("/communication/messages").catch(() => null)
+            ]);
 
             if (!res.ok) {
                 const errData = await res.json().catch(() => ({}));
@@ -183,6 +188,11 @@ export default function AdminDashboardPage() {
             setDashboardData(data);
             if (data.academicYear?.id && !selectedYearId) {
                 setSelectedYearId(data.academicYear.id);
+            }
+
+            if (msgRes && msgRes.ok) {
+                const msgs = await msgRes.json();
+                setRecentSchoolMessages(Array.isArray(msgs) ? msgs.slice(-5).reverse() : []);
             }
         } catch (err: any) {
             console.error("Failed to load school dashboard:", err);
@@ -859,6 +869,73 @@ export default function AdminDashboardPage() {
                             <span>Timetable</span>
                         </Link>
                     </div>
+                </div>
+            </div>
+
+            {/* DIRECT MESSAGES & TEACHER INQUIRIES */}
+            <div className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm space-y-4">
+                <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                    <div className="flex items-center space-x-2.5">
+                        <div className="p-2 bg-emerald-50 text-emerald-700 rounded-xl">
+                            <MessageSquare className="w-4 h-4" />
+                        </div>
+                        <div>
+                            <h3 className="text-sm font-bold text-slate-800">Teacher & Faculty Communications</h3>
+                            <p className="text-[11px] text-slate-400">Direct inquiries and updates received from classroom teachers</p>
+                        </div>
+                    </div>
+                    <Link
+                        href="/dashboard/communication/messages"
+                        className="text-xs font-bold text-[#143e66] hover:underline flex items-center gap-1"
+                    >
+                        <span>Open Messages Inbox</span>
+                        <ArrowRight className="w-3.5 h-3.5" />
+                    </Link>
+                </div>
+
+                <div className="pt-1">
+                    {recentSchoolMessages.length === 0 ? (
+                        <div className="text-center py-8 text-xs text-slate-400">
+                            No recent teacher messages received yet.
+                        </div>
+                    ) : (
+                        <div className="divide-y divide-slate-100">
+                            {recentSchoolMessages.map((msg: any) => (
+                                <Link
+                                    key={msg.id}
+                                    href="/dashboard/communication/messages"
+                                    className="p-3 rounded-xl hover:bg-slate-50 transition-colors flex items-center justify-between group block"
+                                >
+                                    <div className="flex items-center gap-3 overflow-hidden">
+                                        <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-800 flex items-center justify-center font-bold text-xs shrink-0">
+                                            {(msg.sender?.name || "T").charAt(0).toUpperCase()}
+                                        </div>
+                                        <div className="overflow-hidden">
+                                            <div className="flex items-center gap-2">
+                                                <p className="text-xs font-extrabold text-slate-900 truncate">
+                                                    {msg.sender?.name || "Teacher / Staff"}
+                                                </p>
+                                                <span className="text-[10px] px-1.5 py-0.2 rounded bg-slate-100 text-slate-600 font-semibold">
+                                                    Teacher
+                                                </span>
+                                            </div>
+                                            <p className="text-xs text-slate-600 truncate mt-0.5 max-w-xl">
+                                                {msg.content}
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <div className="text-right shrink-0 ml-4">
+                                        <span className="text-[10px] text-slate-400 block">
+                                            {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                        </span>
+                                        <span className="text-[11px] text-emerald-600 font-semibold group-hover:underline">
+                                            Reply
+                                        </span>
+                                    </div>
+                                </Link>
+                            ))}
+                        </div>
+                    )}
                 </div>
             </div>
         </div>

@@ -91,7 +91,7 @@ export default function CommunicationPage() {
                                             <span className="text-xs text-gray-500">{msg.date}</span>
                                         </div>
                                         <p className={`text-sm ${!msg.isRead ? 'font-semibold text-indigo-900' : 'text-gray-500'}`}>
-                                            {msg.subject}
+                                            {msg.subject || msg.preview || msg.content}
                                         </p>
                                     </li>
                                 ))}

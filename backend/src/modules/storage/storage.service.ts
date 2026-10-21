@@ -111,26 +111,29 @@ export class StorageService {
             }
         }
 
-        // Ensure bucket has public read policy so uploaded documents can be viewed/downloaded
+        // Ensure bucket has public read policy so uploaded documents and images can be viewed/downloaded
         try {
-            const policy = JSON.stringify({
+            const publicReadPolicy = JSON.stringify({
                 Version: "2012-10-17",
                 Statement: [
                     {
-                        Action: ["s3:GetBucketLocation", "s3:ListBucket"],
                         Effect: "Allow",
                         Principal: { AWS: ["*"] },
+                        Action: ["s3:GetBucketLocation", "s3:ListBucket"],
                         Resource: [`arn:aws:s3:::${BUCKET}`],
                     },
                     {
-                        Action: ["s3:GetObject"],
                         Effect: "Allow",
                         Principal: { AWS: ["*"] },
+                        Action: ["s3:GetObject"],
                         Resource: [`arn:aws:s3:::${BUCKET}/*`],
                     },
                 ],
             });
-            await internalS3.send(new PutBucketPolicyCommand({ Bucket: BUCKET, Policy: policy }));
+            await internalS3.send(new PutBucketPolicyCommand({
+                Bucket: BUCKET,
+                Policy: publicReadPolicy,
+            }));
             console.log(`[Storage] Public read policy configured for bucket "${BUCKET}".`);
         } catch (policyErr: any) {
             console.warn("[Storage] Could not set bucket policy:", policyErr?.message || policyErr);

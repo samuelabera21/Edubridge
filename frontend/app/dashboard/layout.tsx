@@ -8,6 +8,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { fetchApi } from "../../lib/api";
 import { getPrimaryAccess, isHierarchyAdminAccess } from "../../lib/auth-access";
 import StudentNavigation from "./student/StudentNavigation";
+import ParentNavigation from "./parent/ParentNavigation";
 import AdministrativeNavigation from "../../components/governance/AdministrativeNavigation";
 
 
@@ -295,6 +296,7 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
     const isAdministrativeRoute = pathname.startsWith("/dashboard/federal") || pathname.startsWith("/dashboard/region") || pathname.startsWith("/dashboard/zone") || pathname.startsWith("/dashboard/woreda");
     const isTeacherRoute = (pathname === "/dashboard/teacher" || pathname.startsWith("/dashboard/teacher/")) && roleName === "TEACHER";
     const isStudentRoute = (pathname === "/dashboard/student" || pathname.startsWith("/dashboard/student/")) || roleName === "STUDENT";
+    const isParentRoute = (pathname === "/dashboard/parent" || pathname.startsWith("/dashboard/parent/")) || roleName === "PARENT";
 
     const getActiveDeskOrgId = () => {
         if (!authData?.access?.length) return undefined;
@@ -867,9 +869,9 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
                                 {authData?.user?.name ? authData.user.name.split(' ').map((n: string) => n[0]).join('') : "A"}
                             </div>
                             <div className="hidden sm:block text-left">
-                                <p className="text-xs font-bold text-slate-800 leading-tight">{authData?.user?.name || "Federal Administrator"}</p>
+                                <p className="text-xs font-bold text-slate-800 leading-tight">{authData?.user?.name || (isAdministrativeRoute ? "Federal Administrator" : "User")}</p>
                                 <p className="text-[10px] text-slate-500 font-medium leading-tight">
-                                    {isTeacherRoute ? "Teacher" : isAdministrativeRoute ? "Federal Admin" : roleName}
+                                    {isTeacherRoute ? "Teacher" : isStudentRoute ? "Student" : isParentRoute ? "Parent" : isAdministrativeRoute ? "Federal Admin" : roleName}
                                 </p>
                             </div>
                             <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform ${showProfileDropdown ? "rotate-180" : ""}`} />
@@ -887,7 +889,7 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
                                     <p className="text-[10px] text-slate-500 truncate mt-0.5">{authData?.user?.email || "admin@moe.gov.et"}</p>
                                     <div className="mt-1.5 flex items-center gap-1.5">
                                         <span className="inline-block px-2 py-0.5 bg-slate-100 text-slate-700 border border-slate-200 rounded font-semibold text-[9px] uppercase tracking-wider">
-                                            {isTeacherRoute ? "Teacher" : isAdministrativeRoute ? "Federal Admin" : roleName}
+                                            {isTeacherRoute ? "Teacher" : isStudentRoute ? "Student" : isParentRoute ? "Parent" : isAdministrativeRoute ? "Federal Admin" : roleName}
                                         </span>
                                         {isAdministrativeRoute && (
                                             <span className="text-[10px] text-slate-400">
@@ -1171,6 +1173,8 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
                                             <Link href="/dashboard/teacher/communication?channel=PARENT" className={`block py-1.5 px-2 rounded-lg text-xs transition-all duration-150 hover:translate-x-0.5 ${pathname.startsWith("/dashboard/teacher/communication") && searchParams?.get("channel") === "PARENT" ? "text-amber-300 font-semibold bg-[#0f2f4c] shadow-xs" : "text-blue-200/90 hover:text-amber-200 hover:bg-[#225785]/60"}`}>Parent Communication</Link>
                                             <Link href="/dashboard/teacher/communication?channel=DEPARTMENT" className={`block py-1.5 px-2 rounded-lg text-xs transition-all duration-150 hover:translate-x-0.5 ${pathname.startsWith("/dashboard/teacher/communication") && searchParams?.get("channel") === "DEPARTMENT" ? "text-amber-300 font-semibold bg-[#0f2f4c] shadow-xs" : "text-blue-200/90 hover:text-amber-200 hover:bg-[#225785]/60"}`}>Department Communication</Link>
                                             <Link href="/dashboard/teacher/communication?channel=STAFF" className={`block py-1.5 px-2 rounded-lg text-xs transition-all duration-150 hover:translate-x-0.5 ${pathname.startsWith("/dashboard/teacher/communication") && (searchParams?.get("channel") === "STAFF" || (!searchParams?.get("channel") && !searchParams?.get("tab"))) ? "text-amber-300 font-semibold bg-[#0f2f4c] shadow-xs" : "text-blue-200/90 hover:text-amber-200 hover:bg-[#225785]/60"}`}>School Communication</Link>
+                                            <Link href="/dashboard/teacher/communication?channel=DIRECTIVES" className={`block py-1.5 px-2 rounded-lg text-xs transition-all duration-150 hover:translate-x-0.5 ${pathname.startsWith("/dashboard/teacher/communication") && searchParams?.get("channel") === "DIRECTIVES" ? "text-amber-300 font-semibold bg-[#0f2f4c] shadow-xs" : "text-blue-200/90 hover:text-amber-200 hover:bg-[#225785]/60"}`}>Policies & Directives</Link>
+                                            <Link href="/dashboard/teacher/communication?channel=PROGRAMS" className={`block py-1.5 px-2 rounded-lg text-xs transition-all duration-150 hover:translate-x-0.5 ${pathname.startsWith("/dashboard/teacher/communication") && searchParams?.get("channel") === "PROGRAMS" ? "text-amber-300 font-semibold bg-[#0f2f4c] shadow-xs" : "text-blue-200/90 hover:text-amber-200 hover:bg-[#225785]/60"}`}>Programs & Initiatives</Link>
                                         </div>
                                     )}
                                 </div>
@@ -1275,6 +1279,8 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
                     </aside>
                 ) : isStudentRoute ? (
                     <StudentNavigation collapsed={sidebarCollapsed} onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)} />
+                ) : isParentRoute ? (
+                    <ParentNavigation collapsed={sidebarCollapsed} onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)} />
                 ) : (
                     <aside
                         className={`h-full bg-[#184973] border-r border-[#265e8e] flex flex-col hidden md:flex overflow-y-auto scrollbar-hide text-blue-100 font-sans shadow-lg shrink-0 transition-all duration-300 ease-in-out ${sidebarCollapsed ? "w-16" : "w-64"}`}

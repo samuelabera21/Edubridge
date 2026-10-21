@@ -351,16 +351,35 @@ export default function StudentDashboard() {
                         </div>
                     </section>
 
-                    {/* Needs attention */}
+                    {/* Needs attention / Early Warning Flags */}
                     {dashboard.supportFlags.length > 0 && (
-                        <div className="rounded-xl border border-amber-100 bg-amber-50 p-6 text-amber-900">
-                            <h2 className="flex items-center gap-2 font-semibold">
-                                <TriangleAlert className="h-4 w-4" /> Needs attention
-                            </h2>
-                            <p className="mt-2 text-sm">
-                                You have {dashboard.supportFlags.length} active support notification
-                                {dashboard.supportFlags.length === 1 ? "" : "s"}.
-                            </p>
+                        <div className="space-y-3">
+                            {dashboard.supportFlags.map((flag) => {
+                                const isRed = flag.description.includes("[RED]");
+                                const titleLine = flag.description.split("\n")[0].replace(/^\[(RED|YELLOW)\]\s*/, "");
+                                const detailLines = flag.description.split("\n").slice(1).join("\n").trim();
+
+                                return (
+                                    <div 
+                                        key={flag.id} 
+                                        className={`rounded-xl border p-4 text-xs ${
+                                            isRed 
+                                                ? "border-rose-200 bg-rose-50 text-rose-950" 
+                                                : "border-amber-200 bg-amber-50 text-amber-950"
+                                        }`}
+                                    >
+                                        <div className="flex items-center gap-2 font-bold text-sm">
+                                            <TriangleAlert className={`h-4 w-4 ${isRed ? "text-rose-600" : "text-amber-600"}`} />
+                                            <span>{titleLine || "የክትትል ማሳሰቢያ (Academic & Attendance Alert)"}</span>
+                                        </div>
+                                        {detailLines && (
+                                            <p className="mt-1.5 whitespace-pre-line text-gray-700 leading-relaxed">
+                                                {detailLines}
+                                            </p>
+                                        )}
+                                    </div>
+                                );
+                            })}
                         </div>
                     )}
                 </div>

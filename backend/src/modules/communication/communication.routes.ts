@@ -16,6 +16,7 @@ import {
     getMyMessages,
     getMessagingUsers,
     deleteMessage,
+    updateMessage,
     getImportantNotices,
     createImportantNotice,
     updateImportantNotice,
@@ -67,8 +68,12 @@ router.delete("/notice/:id", requirePermission("COMMUNICATION:MANAGE"), deleteIm
 router.get("/messages", requirePermission("COMMUNICATION:VIEW"), getMyMessages);
 router.post("/messages", requirePermission("COMMUNICATION:CREATE"), sendMessage);
 router.get("/users", requirePermission("COMMUNICATION:VIEW"), getMessagingUsers);
+router.patch("/messages/:id", requirePermission("COMMUNICATION:VIEW"), updateMessage);
+router.put("/messages/:id", requirePermission("COMMUNICATION:VIEW"), updateMessage);
 router.delete("/messages/:id", requirePermission("COMMUNICATION:VIEW"), deleteMessage);
 router.delete("/message/:id", requirePermission("COMMUNICATION:VIEW"), deleteMessage);
+router.patch("/message/:id", requirePermission("COMMUNICATION:VIEW"), updateMessage);
+router.put("/message/:id", requirePermission("COMMUNICATION:VIEW"), updateMessage);
 
 // Legacy path aliases
 router.get("/message", requirePermission("COMMUNICATION:VIEW"), getMyMessages);

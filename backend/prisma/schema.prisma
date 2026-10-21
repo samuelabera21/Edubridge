@@ -1413,6 +1413,9 @@ model Message {
   senderId       String
   receiverId     String
   content        String
+  attachmentUrl  String?
+  attachmentName String?
+  attachmentType String?
   isRead         Boolean @default(false)
 
   organization OrganizationUnit @relation(fields: [organizationId], references: [id], onDelete: Cascade)

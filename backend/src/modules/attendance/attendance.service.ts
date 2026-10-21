@@ -1,5 +1,6 @@
 import { prisma } from "../../infrastructure/prisma/client.js";
 import { AttendanceStatus } from "../../generated/prisma/enums.js";
+import { EarlyWarningService } from "../support/early-warning.service.js";
 
 export class AttendanceService {
     static async recordStudentAttendance(organizationId: string, data: { academicYearId: string; enrollmentId: string; classPeriodId?: string; date: string; status: AttendanceStatus; remarks?: string; recordedById?: string }) {
@@ -11,29 +12,37 @@ export class AttendanceService {
             }
         });
 
-        if (existing) {
-            return prisma.studentAttendance.update({
+        const attendanceRecord = existing
+            ? await prisma.studentAttendance.update({
                 where: { id: existing.id },
                 data: {
                     status: data.status,
                     remarks: data.remarks,
                     recordedById: data.recordedById
                 }
+            })
+            : await prisma.studentAttendance.create({
+                data: {
+                    organizationId,
+                    academicYearId: data.academicYearId,
+                    enrollmentId: data.enrollmentId,
+                    classPeriodId: data.classPeriodId || null,
+                    date: new Date(data.date),
+                    status: data.status,
+                    remarks: data.remarks,
+                    recordedById: data.recordedById
+                }
             });
-        }
 
-        return prisma.studentAttendance.create({
-            data: {
-                organizationId,
-                academicYearId: data.academicYearId,
-                enrollmentId: data.enrollmentId,
-                classPeriodId: data.classPeriodId || null,
-                date: new Date(data.date),
-                status: data.status,
-                remarks: data.remarks,
-                recordedById: data.recordedById
-            }
-        });
+        // Trigger early warning attendance evaluation asynchronously
+        EarlyWarningService.evaluateAttendance({
+            organizationId,
+            enrollmentId: data.enrollmentId,
+            academicYearId: data.academicYearId,
+            recordedById: data.recordedById
+        }).catch(err => console.error("Early warning attendance evaluation error:", err));
+
+        return attendanceRecord;
     }
 
     static async recordBulkStudentAttendance(
@@ -88,6 +97,16 @@ export class AttendanceService {
                 newValue: { count: results.length, date: data.date, periodId }
             }
         });
+
+        // Trigger early warning attendance evaluation asynchronously for all recorded students
+        Promise.all(data.records.map(rec =>
+            EarlyWarningService.evaluateAttendance({
+                organizationId,
+                enrollmentId: rec.enrollmentId,
+                academicYearId: data.academicYearId,
+                recordedById: data.recordedById
+            })
+        )).catch(err => console.error("Early warning bulk attendance evaluation error:", err));
 
         return results;
     }

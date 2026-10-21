@@ -1,12 +1,5 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
 import "./globals.css";
-
-const inter = Inter({
-  variable: "--font-inter",
-  subsets: ["latin"],
-  display: "swap",
-});
 
 export const metadata: Metadata = {
   title: "EduBridge — School Management Platform",
@@ -17,7 +10,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html
       lang="en"
-      className={`${inter.variable} h-full antialiased`}
+      className="h-full antialiased font-sans"
     >
       <body className="h-full min-h-full flex flex-col bg-[#f4f5f7] text-slate-900">{children}</body>
     </html>

@@ -16,7 +16,9 @@ import {
     Filter,
     RefreshCw,
     X,
-    School
+    School,
+    FileText,
+    Eye
 } from "lucide-react";
 import { LoadingState } from "@/components/ui/LoadingState";
 
@@ -154,31 +156,7 @@ export default function TeacherAnnouncementsPage() {
 
     return (
         <div className="w-full max-w-7xl mx-auto space-y-5 pb-12 font-sans text-slate-800">
-            {/* Header Banner */}
-            <div className="bg-gradient-to-r from-[#0d2a45] via-[#143e66] to-[#1c558b] text-white p-6 rounded-2xl shadow-md flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div className="space-y-1">
-                    <div className="flex items-center space-x-2.5">
-                        <div className="p-2 bg-white/10 rounded-xl backdrop-blur-xs">
-                            <Megaphone className="w-6 h-6 text-amber-300" />
-                        </div>
-                        <h1 className="text-2xl font-black tracking-tight">Announcements & Notices</h1>
-                    </div>
-                    <p className="text-xs text-blue-100/90 max-w-2xl">
-                        View official school directives, administrative circulars, and departmental updates. Confirm receipt for mandatory notices.
-                    </p>
-                </div>
-
-                <button
-                    onClick={() => loadAnnouncements(true)}
-                    disabled={refreshing}
-                    className="self-start md:self-auto flex items-center space-x-2 px-3.5 py-2 bg-white/10 hover:bg-white/20 border border-white/20 rounded-xl text-xs font-semibold text-white transition-all active:scale-95"
-                >
-                    <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? "animate-spin" : ""}`} />
-                    <span>{refreshing ? "Syncing..." : "Refresh"}</span>
-                </button>
-            </div>
-
-            {/* Main Tabs (School vs Department) */}
+            {/* Main Tabs (School vs Department) & Search */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 bg-white px-3 py-2 rounded-xl shadow-2xs">
                 <div className="flex items-center space-x-2">
                     <button
@@ -186,9 +164,9 @@ export default function TeacherAnnouncementsPage() {
                             setActiveTab("school");
                             setSearchQuery("");
                         }}
-                        className={`flex items-center space-x-2 px-4 py-2.5 rounded-lg text-xs font-bold transition-all ${
+                        className={`flex items-center space-x-2 px-4 py-2.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                             activeTab === "school"
-                                ? "bg-[#143e66] text-amber-300 shadow-xs"
+                                ? "bg-[#1F5380] text-white shadow-xs"
                                 : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
                         }`}
                     >
@@ -201,9 +179,9 @@ export default function TeacherAnnouncementsPage() {
                             setActiveTab("department");
                             setSearchQuery("");
                         }}
-                        className={`flex items-center space-x-2 px-4 py-2.5 rounded-lg text-xs font-bold transition-all ${
+                        className={`flex items-center space-x-2 px-4 py-2.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                             activeTab === "department"
-                                ? "bg-[#143e66] text-amber-300 shadow-xs"
+                                ? "bg-[#1F5380] text-white shadow-xs"
                                 : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
                         }`}
                     >
@@ -212,16 +190,26 @@ export default function TeacherAnnouncementsPage() {
                     </button>
                 </div>
 
-                {/* Search Bar */}
-                <div className="relative w-full sm:w-64">
-                    <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                    <input
-                        type="text"
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        placeholder={`Search ${activeTab === 'school' ? 'school' : 'department'} notices...`}
-                        className="w-full pl-8 pr-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:outline-hidden focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
-                    />
+                {/* Search Bar & Compact Refresh */}
+                <div className="flex items-center space-x-2 w-full sm:w-auto">
+                    <div className="relative w-full sm:w-64">
+                        <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                        <input
+                            type="text"
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            placeholder={`Search ${activeTab === 'school' ? 'school' : 'department'} notices...`}
+                            className="w-full pl-8 pr-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:outline-hidden focus:ring-2 focus:ring-[#1F5380]/20 focus:border-[#1F5380]"
+                        />
+                    </div>
+                    <button
+                        onClick={() => loadAnnouncements(true)}
+                        disabled={refreshing}
+                        title="Refresh announcements"
+                        className="p-2 text-slate-600 hover:text-[#1F5380] hover:bg-slate-100 rounded-lg border border-slate-200 transition-colors shrink-0 disabled:opacity-50 cursor-pointer"
+                    >
+                        <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? "animate-spin" : ""}`} />
+                    </button>
                 </div>
             </div>
 
@@ -242,7 +230,7 @@ export default function TeacherAnnouncementsPage() {
                             onClick={() => setStatusFilter(st.id as any)}
                             className={`px-2.5 py-1 rounded-lg font-semibold transition-all ${
                                 statusFilter === st.id
-                                    ? "bg-[#143e66] text-white shadow-2xs"
+                                    ? "bg-[#1F5380] text-white shadow-2xs"
                                     : "bg-slate-100 text-slate-600 hover:bg-slate-200"
                             }`}
                         >
@@ -294,7 +282,7 @@ export default function TeacherAnnouncementsPage() {
                             <div
                                 key={item.id}
                                 className={`bg-white rounded-2xl border p-5 transition-all duration-200 shadow-2xs hover:shadow-xs space-y-3 ${
-                                    isAck ? "border-slate-200" : "border-amber-300/80 bg-amber-50/10"
+                                    isAck ? "border-slate-200" : "border-[#1F5380]/30 bg-[#1F5380]/5"
                                 }`}
                             >
                                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-slate-100">
@@ -335,26 +323,103 @@ export default function TeacherAnnouncementsPage() {
                                 </div>
 
                                 {/* Attachments */}
-                                {item.attachments && Array.isArray(item.attachments) && item.attachments.length > 0 && (
-                                    <div className="pt-2 flex flex-wrap gap-2">
-                                        {item.attachments.map((att: any, attIdx: number) => {
-                                            const isImg = isImageUrl(att.url, att.name);
-                                            const isPdf = isPdfUrl(att.url, att.name);
-                                            return (
-                                                <button
-                                                    key={attIdx}
-                                                    type="button"
-                                                    onClick={() => setPreviewMedia({ url: att.url, isPdf, name: att.name })}
-                                                    className="flex items-center space-x-1.5 px-3 py-1.5 bg-slate-50 hover:bg-blue-50 border border-slate-200 hover:border-blue-300 rounded-lg text-xs font-semibold text-slate-700 transition-colors"
-                                                >
-                                                    <Paperclip className="w-3 h-3 text-slate-400" />
-                                                    <span>{att.name || `Attachment ${attIdx + 1}`}</span>
-                                                    <ExternalLink className="w-2.5 h-2.5 text-slate-400" />
-                                                </button>
-                                            );
-                                        })}
-                                    </div>
-                                )}
+                                {(() => {
+                                    const itemAttachments: Array<{ url: string; name?: string | null }> = [];
+                                    if (item.attachmentUrl) {
+                                        itemAttachments.push({
+                                            url: item.attachmentUrl,
+                                            name: item.attachmentName || "Attached Document"
+                                        });
+                                    }
+                                    if (Array.isArray(item.attachments)) {
+                                        for (const att of item.attachments) {
+                                            if (att && att.url && att.url !== item.attachmentUrl) {
+                                                itemAttachments.push(att);
+                                            }
+                                        }
+                                    }
+
+                                    if (itemAttachments.length === 0) return null;
+
+                                    return (
+                                        <div className="pt-2 flex flex-wrap gap-2.5">
+                                            {itemAttachments.map((att, attIdx) => {
+                                                const isImg = isImageUrl(att.url, att.name);
+                                                const isPdf = isPdfUrl(att.url, att.name);
+
+                                                if (isPdf) {
+                                                    return (
+                                                        <div key={attIdx} className="rounded-xl border border-slate-200 bg-slate-50/90 p-2.5 max-w-md w-full flex items-center justify-between gap-3 shadow-2xs">
+                                                            <div className="flex items-center space-x-2.5 min-w-0">
+                                                                <div className="w-8 h-8 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center shrink-0 border border-rose-100">
+                                                                    <FileText className="w-4 h-4" />
+                                                                </div>
+                                                                <div className="min-w-0">
+                                                                    <p className="text-xs font-bold text-slate-800 truncate">{att.name || "Document.pdf"}</p>
+                                                                    <p className="text-[10px] text-slate-400 font-medium uppercase">PDF Document</p>
+                                                                </div>
+                                                            </div>
+                                                            <div className="flex items-center space-x-1.5 shrink-0">
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => setPreviewMedia({ url: att.url, isPdf: true, name: att.name || "PDF Document" })}
+                                                                    className="px-2.5 py-1 text-xs font-bold text-[#1F5380] hover:bg-[#1F5380]/10 rounded-lg transition-colors flex items-center gap-1 cursor-pointer"
+                                                                >
+                                                                    <Eye className="w-3.5 h-3.5" />
+                                                                    <span>Preview</span>
+                                                                </button>
+                                                                <a
+                                                                    href={att.url}
+                                                                    target="_blank"
+                                                                    rel="noopener noreferrer"
+                                                                    className="px-2.5 py-1 text-xs font-bold text-white bg-[#1F5380] hover:bg-[#18446b] rounded-lg transition-colors flex items-center gap-1 shadow-2xs"
+                                                                >
+                                                                    <span>Open PDF</span>
+                                                                    <ExternalLink className="w-3 h-3" />
+                                                                </a>
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                }
+
+                                                if (isImg) {
+                                                    return (
+                                                        <div key={attIdx} className="relative group rounded-xl overflow-hidden border border-slate-200 bg-slate-50 inline-block max-w-xs shadow-2xs">
+                                                            <img
+                                                                src={att.url}
+                                                                alt={att.name || "Attached Image"}
+                                                                className="max-h-48 w-auto rounded-xl object-contain cursor-pointer transition-transform duration-200 group-hover:scale-[1.01]"
+                                                                onClick={() => setPreviewMedia({ url: att.url, isPdf: false, name: att.name || "Image" })}
+                                                            />
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => setPreviewMedia({ url: att.url, isPdf: false, name: att.name || "Image" })}
+                                                                className="absolute bottom-2 right-2 px-2 py-0.5 rounded-md bg-black/75 text-white text-[10px] font-bold backdrop-blur-xs flex items-center gap-1 cursor-pointer hover:bg-black"
+                                                            >
+                                                                <Eye className="w-3 h-3" />
+                                                                <span>Full View</span>
+                                                            </button>
+                                                        </div>
+                                                    );
+                                                }
+
+                                                return (
+                                                    <a
+                                                        key={attIdx}
+                                                        href={att.url}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="inline-flex items-center space-x-2 px-3 py-2 bg-slate-50 hover:bg-[#1F5380]/10 border border-slate-200 hover:border-[#1F5380]/40 rounded-xl text-xs font-bold text-slate-700 hover:text-[#1F5380] transition-colors"
+                                                    >
+                                                        <Paperclip className="w-3.5 h-3.5 text-slate-400" />
+                                                        <span className="truncate max-w-[200px]">{att.name || "Download Attachment"}</span>
+                                                        <ExternalLink className="w-3 h-3 text-slate-400" />
+                                                    </a>
+                                                );
+                                            })}
+                                        </div>
+                                    );
+                                })()}
 
                                 {/* Footer Action */}
                                 <div className="pt-2 flex items-center justify-between border-t border-slate-100">
@@ -368,7 +433,7 @@ export default function TeacherAnnouncementsPage() {
                                             type="button"
                                             onClick={() => handleConfirmReceipt(item.id)}
                                             disabled={acknowledgingId === item.id}
-                                            className="flex items-center space-x-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs transition-all shadow-2xs active:scale-95 disabled:opacity-50"
+                                            className="flex items-center space-x-2 px-4 py-2 bg-[#1F5380] hover:bg-[#18446b] text-white font-bold rounded-xl text-xs transition-all shadow-2xs active:scale-95 disabled:opacity-50 cursor-pointer"
                                         >
                                             <CheckCircle2 className="w-4 h-4" />
                                             <span>{acknowledgingId === item.id ? "Confirming..." : "Confirm Receipt (Acknowledge)"}</span>
@@ -388,21 +453,32 @@ export default function TeacherAnnouncementsPage() {
             {/* Lightbox / Media Preview Modal */}
             {previewMedia && (
                 <div className="fixed inset-0 z-50 bg-slate-900/80 backdrop-blur-xs flex items-center justify-center p-4">
-                    <div className="bg-white rounded-2xl max-w-3xl w-full p-4 space-y-3 shadow-2xl relative">
+                    <div className="bg-white rounded-2xl max-w-4xl w-full p-4 space-y-3 shadow-2xl relative">
                         <div className="flex items-center justify-between border-b pb-2">
-                            <h3 className="text-sm font-bold text-slate-800">{previewMedia.name || "Attachment Preview"}</h3>
-                            <button
-                                onClick={() => setPreviewMedia(null)}
-                                className="p-1 hover:bg-slate-100 rounded-lg text-slate-500"
-                            >
-                                <X className="w-5 h-5" />
-                            </button>
+                            <h3 className="text-sm font-bold text-slate-800 truncate pr-4">{previewMedia.name || "Attachment Preview"}</h3>
+                            <div className="flex items-center space-x-2 shrink-0">
+                                <a 
+                                    href={previewMedia.url} 
+                                    target="_blank" 
+                                    rel="noreferrer"
+                                    className="px-2.5 py-1 hover:bg-slate-100 rounded-lg text-slate-600 flex items-center gap-1 text-xs font-bold"
+                                >
+                                    <ExternalLink className="w-3.5 h-3.5" />
+                                    <span>Open In New Tab</span>
+                                </a>
+                                <button
+                                    onClick={() => setPreviewMedia(null)}
+                                    className="p-1 hover:bg-slate-100 rounded-lg text-slate-500 cursor-pointer"
+                                >
+                                    <X className="w-5 h-5" />
+                                </button>
+                            </div>
                         </div>
-                        <div className="max-h-[70vh] overflow-auto flex items-center justify-center">
+                        <div className="h-[75vh] overflow-hidden flex items-center justify-center bg-slate-50 rounded-xl">
                             {previewMedia.isPdf ? (
-                                <iframe src={previewMedia.url} className="w-full h-96 rounded-lg" />
+                                <iframe src={previewMedia.url} className="w-full h-full rounded-lg border-0 bg-white" />
                             ) : (
-                                <img src={previewMedia.url} alt="Attachment" className="max-h-96 rounded-lg object-contain" />
+                                <img src={previewMedia.url} alt="Attachment" className="max-h-full max-w-full object-contain" />
                             )}
                         </div>
                     </div>

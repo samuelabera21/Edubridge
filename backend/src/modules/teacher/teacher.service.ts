@@ -1583,7 +1583,46 @@ export class TeacherService {
         if (attendancePendingCount > 0) priorities.push("Complete today's class attendance logs");
         if (pendingSubmissionsCount > 0) priorities.push(`Grade ${pendingSubmissionsCount} pending assignment submissions`);
         if (studentsRequiringAttention.length > 0) priorities.push(`Review ${studentsRequiringAttention.length} active student support flags`);
-        if (priorities.length === 0) priorities.push("Prepare upcoming lesson materials and assessments");
+        // Fetch active school announcements targeted to this teacher
+        const rawAnnouncements = await prisma.announcement.findMany({
+            where: {
+                organizationId,
+                OR: [
+                    { expiresAt: null },
+                    { expiresAt: { gte: startOfToday } }
+                ]
+            },
+            include: {
+                author: { select: { id: true, name: true } },
+                acknowledgments: {
+                    where: { userId },
+                    select: { isAcknowledged: true, acknowledgedAt: true }
+                }
+            },
+            orderBy: { createdAt: "desc" },
+            take: 10
+        });
+
+        const teacherAnnouncements = rawAnnouncements.filter((a: any) => {
+            const targetDetails = (a.targetDetails as any) || {};
+            const teacherIds = targetDetails.teacherIds || [];
+            if (teacherIds.length > 0) {
+                return teacher ? teacherIds.includes(teacher.id) : a.acknowledgments.length > 0;
+            }
+            const targetRoles = targetDetails.targetRoles || [];
+            if (a.target === "ALL" || a.target === "TEACHERS" || targetRoles.includes("ALL") || targetRoles.includes("TEACHERS")) {
+                return true;
+            }
+            if (a.acknowledgments.length > 0) return true;
+            if (a.target === "STUDENTS" || a.target === "PARENTS" || a.target === "SPECIFIC_GRADE" || a.target === "SPECIFIC_SECTION") {
+                return false;
+            }
+            return true;
+        }).slice(0, 5);
+
+        const pendingAnnouncementsCount = teacherAnnouncements.filter(
+            (a: any) => a.isAcknowledgmentRequired && !a.acknowledgments[0]?.isAcknowledged
+        ).length;
 
         return {
             profile: teacher,
@@ -1600,6 +1639,20 @@ export class TeacherService {
             weeklyAttendanceTrend,
             overallPassRate,
             totalAssessedCount,
+            recentAnnouncements: teacherAnnouncements.map((a: any) => ({
+                id: a.id,
+                title: a.title,
+                content: a.content,
+                priority: a.priority || "NORMAL",
+                target: a.target,
+                createdAt: a.createdAt,
+                attachmentUrl: a.attachmentUrl,
+                attachmentName: a.attachmentName,
+                isAcknowledgmentRequired: a.isAcknowledgmentRequired,
+                isAcknowledged: Boolean(a.acknowledgments[0]?.isAcknowledged),
+                authorName: a.author?.name || "School Administration"
+            })),
+            pendingAnnouncementsCount,
             tasksOverview: {
                 attendancePending: attendancePendingCount,
                 pendingAssessments: pendingAssessmentsCount,
