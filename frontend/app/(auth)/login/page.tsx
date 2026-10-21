@@ -120,6 +120,13 @@ export default function LoginPage() {
                 }),
             });
 
+            let data: any = {};
+            try {
+                data = await res.json();
+            } catch {
+                // response might not be json
+            }
+
             if (!res.ok) {
                 const rawMsg = data.message || data.error || "";
                 if (rawMsg.toLowerCase().includes("client id") || rawMsg.toLowerCase().includes("client secret") || rawMsg.toLowerCase().includes("missing")) {
@@ -131,7 +138,6 @@ export default function LoginPage() {
                 return;
             }
 
-            const data = await res.json();
             if (data?.url) {
                 window.location.href = data.url;
                 return;

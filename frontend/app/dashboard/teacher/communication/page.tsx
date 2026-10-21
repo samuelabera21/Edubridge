@@ -42,7 +42,8 @@ import {
     Image as ImageIcon,
     File,
     Target,
-    CheckCheck
+    CheckCheck,
+    X
 } from "lucide-react";
 import { LoadingState } from "@/components/ui/LoadingState";
 import DirectivesRecipientView from "@/components/governance/DirectivesRecipientView";
