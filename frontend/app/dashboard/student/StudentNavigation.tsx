@@ -150,7 +150,7 @@ export default function StudentNavigation({ collapsed, onToggleCollapse }: { col
     const isActive = (href: string) => pathname === href || pathname.startsWith(`${href}/`);
 
     return (
-        <aside className={`bg-[#184973] border-r border-[#265e8e] flex flex-col hidden md:flex overflow-y-auto text-blue-100 font-sans shadow-lg shrink-0 transition-all duration-300 ease-in-out ${collapsed ? "w-16" : "w-64"}`} style={{ scrollbarWidth: "none", msOverflowStyle: "none" } as React.CSSProperties}>
+        <aside className={`h-full bg-[#184973] border-r border-[#265e8e] flex flex-col hidden md:flex overflow-y-auto text-blue-100 font-sans shadow-lg shrink-0 transition-all duration-300 ease-in-out ${collapsed ? "w-16" : "w-64"}`} style={{ scrollbarWidth: "none", msOverflowStyle: "none" } as React.CSSProperties}>
             <div className="flex items-center justify-between px-3 pt-4 pb-2 border-b border-[#265e8e]/50">
                 {!collapsed && <p className="text-[10px] text-blue-200/90 font-bold uppercase tracking-widest px-1">Student Workspace</p>}
                 <button
