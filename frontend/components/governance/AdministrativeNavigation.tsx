@@ -4,17 +4,16 @@ import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import {
     LayoutDashboard,
-    Landmark,
     Layers,
     School,
     FileText,
     Building2,
     MapPin,
-    Network,
     Shield,
-    Compass,
     BarChart3,
     FileSpreadsheet,
+    ChevronLeft,
+    ChevronRight,
     type LucideIcon
 } from "lucide-react";
 import { useAuth } from "../../hooks/useAuth";
@@ -28,6 +27,11 @@ interface NavItem {
     icon: LucideIcon;
     tab?: string;
     activeTabs?: string[];
+}
+
+interface NavGroup {
+    title: string;
+    items: NavItem[];
 }
 
 export default function AdministrativeNavigation({
@@ -47,10 +51,8 @@ export default function AdministrativeNavigation({
     // Determine active tier from route with user scope fallback
     let currentTier: AdminTier = "FEDERAL";
     let tierTitle = "Federal Ministry of Education";
-    let tierSubtitle = "National Governance";
+    let tierSubtitle = "Federal Jurisdiction";
     let basePath = "/dashboard/federal";
-    let childUnitName = "Regions";
-    let childUnitIcon = Layers;
 
     if (
         pathname.startsWith("/dashboard/region") ||
@@ -58,267 +60,382 @@ export default function AdministrativeNavigation({
     ) {
         currentTier = "REGION";
         tierTitle = "Regional Education Bureau";
-        tierSubtitle = "Regional Administration";
+        tierSubtitle = "Regional Jurisdiction";
         basePath = "/dashboard/region";
-        childUnitName = "Zones";
-        childUnitIcon = Building2;
     } else if (
         pathname.startsWith("/dashboard/zone") ||
         (!pathname.startsWith("/dashboard/federal") && !pathname.startsWith("/dashboard/region") && !pathname.startsWith("/dashboard/woreda") && userScopeType === "ZONE")
     ) {
         currentTier = "ZONE";
         tierTitle = "Zonal Education Department";
-        tierSubtitle = "Zonal Administration";
+        tierSubtitle = "Zonal Jurisdiction";
         basePath = "/dashboard/zone";
-        childUnitName = "Woredas";
-        childUnitIcon = MapPin;
     } else if (
         pathname.startsWith("/dashboard/woreda") ||
         (!pathname.startsWith("/dashboard/federal") && !pathname.startsWith("/dashboard/region") && !pathname.startsWith("/dashboard/zone") && userScopeType === "WOREDA")
     ) {
         currentTier = "WOREDA";
         tierTitle = "Woreda Education Office";
-        tierSubtitle = "District Administration";
+        tierSubtitle = "District Jurisdiction";
         basePath = "/dashboard/woreda";
-        childUnitName = "Schools";
-        childUnitIcon = School;
     }
 
-    let navItems: NavItem[] = [];
+    let navGroups: NavGroup[] = [];
 
     if (currentTier === "FEDERAL") {
-        navItems = [
+        navGroups = [
             {
-                label: "Dashboard Overview",
-                href: basePath,
-                icon: LayoutDashboard,
+                title: "Monitoring",
+                items: [
+                    {
+                        label: "Dashboard Overview",
+                        href: basePath,
+                        icon: LayoutDashboard,
+                    },
+                ],
             },
             {
-                label: "Regions",
-                href: `${basePath}?tab=regions`,
-                icon: Layers,
-                tab: "regions",
+                title: "Territorial Governance",
+                items: [
+                    {
+                        label: "Regions",
+                        href: `${basePath}?tab=regions`,
+                        icon: Layers,
+                        tab: "regions",
+                    },
+                    {
+                        label: "Regional Administrators",
+                        href: `${basePath}?tab=administration`,
+                        icon: Shield,
+                        tab: "administration",
+                    },
+                ],
             },
             {
-                label: "Regional Administrators",
-                href: `${basePath}?tab=administration`,
-                icon: Shield,
-                tab: "administration",
+                title: "National Directives",
+                items: [
+                    {
+                        label: "Policies & Programs",
+                        href: `${basePath}?tab=directives`,
+                        icon: FileText,
+                        tab: "directives",
+                        activeTabs: ["directives", "programs"],
+                    },
+                    {
+                        label: "Data Requests",
+                        href: `${basePath}?tab=data-requests`,
+                        icon: FileSpreadsheet,
+                        tab: "data-requests",
+                    },
+                ],
             },
             {
-                label: "Policies & Programs",
-                href: `${basePath}?tab=directives`,
-                icon: FileText,
-                tab: "directives",
-                activeTabs: ["directives", "programs"],
-            },
-            {
-                label: "Data Requests",
-                href: `${basePath}?tab=data-requests`,
-                icon: FileSpreadsheet,
-                tab: "data-requests",
-            },
-            {
-                label: "Reports & Analytics",
-                href: `${basePath}?tab=reports`,
-                icon: BarChart3,
-                tab: "reports",
+                title: "Intelligence & Audit",
+                items: [
+                    {
+                        label: "Reports & Analytics",
+                        href: `${basePath}?tab=reports`,
+                        icon: BarChart3,
+                        tab: "reports",
+                    },
+                ],
             },
         ];
     } else if (currentTier === "REGION") {
-        navItems = [
+        navGroups = [
             {
-                label: "Dashboard Overview",
-                href: basePath,
-                icon: LayoutDashboard,
+                title: "Monitoring",
+                items: [
+                    {
+                        label: "Dashboard Overview",
+                        href: basePath,
+                        icon: LayoutDashboard,
+                    },
+                ],
             },
             {
-                label: "Administrative Zones",
-                href: `${basePath}?tab=zones`,
-                icon: Building2,
-                tab: "zones",
+                title: "Zonal Governance",
+                items: [
+                    {
+                        label: "Administrative Zones",
+                        href: `${basePath}?tab=zones`,
+                        icon: Building2,
+                        tab: "zones",
+                    },
+                    {
+                        label: "Zone Administrators",
+                        href: `${basePath}?tab=administration`,
+                        icon: Shield,
+                        tab: "administration",
+                    },
+                ],
             },
             {
-                label: "Zone Administrators",
-                href: `${basePath}?tab=administration`,
-                icon: Shield,
-                tab: "administration",
+                title: "Regional Directives",
+                items: [
+                    {
+                        label: "Policies & Programs",
+                        href: `${basePath}?tab=directives`,
+                        icon: FileText,
+                        tab: "directives",
+                        activeTabs: ["directives", "programs"],
+                    },
+                    {
+                        label: "Data Requests",
+                        href: `${basePath}?tab=data-requests`,
+                        icon: FileSpreadsheet,
+                        tab: "data-requests",
+                    },
+                ],
             },
             {
-                label: "Policies & Programs",
-                href: `${basePath}?tab=directives`,
-                icon: FileText,
-                tab: "directives",
-                activeTabs: ["directives", "programs"],
-            },
-            {
-                label: "Data Requests",
-                href: `${basePath}?tab=data-requests`,
-                icon: FileSpreadsheet,
-                tab: "data-requests",
-            },
-            {
-                label: "Reports & Analytics",
-                href: `${basePath}?tab=reports`,
-                icon: BarChart3,
-                tab: "reports",
+                title: "Intelligence & Audit",
+                items: [
+                    {
+                        label: "Reports & Analytics",
+                        href: `${basePath}?tab=reports`,
+                        icon: BarChart3,
+                        tab: "reports",
+                    },
+                ],
             },
         ];
     } else if (currentTier === "ZONE") {
-        navItems = [
+        navGroups = [
             {
-                label: "Dashboard Overview",
-                href: basePath,
-                icon: LayoutDashboard,
+                title: "Monitoring",
+                items: [
+                    {
+                        label: "Dashboard Overview",
+                        href: basePath,
+                        icon: LayoutDashboard,
+                    },
+                ],
             },
             {
-                label: "Woredas",
-                href: `${basePath}?tab=woredas`,
-                icon: MapPin,
-                tab: "woredas",
+                title: "District Governance",
+                items: [
+                    {
+                        label: "Woredas",
+                        href: `${basePath}?tab=woredas`,
+                        icon: MapPin,
+                        tab: "woredas",
+                    },
+                    {
+                        label: "Woreda Administrators",
+                        href: `${basePath}?tab=administration`,
+                        icon: Shield,
+                        tab: "administration",
+                    },
+                ],
             },
             {
-                label: "Woreda Administrators",
-                href: `${basePath}?tab=administration`,
-                icon: Shield,
-                tab: "administration",
+                title: "Zonal Directives",
+                items: [
+                    {
+                        label: "Policies & Programs",
+                        href: `${basePath}?tab=directives`,
+                        icon: FileText,
+                        tab: "directives",
+                        activeTabs: ["directives", "programs"],
+                    },
+                    {
+                        label: "Data Requests",
+                        href: `${basePath}?tab=data-requests`,
+                        icon: FileSpreadsheet,
+                        tab: "data-requests",
+                    },
+                ],
             },
             {
-                label: "Policies & Programs",
-                href: `${basePath}?tab=directives`,
-                icon: FileText,
-                tab: "directives",
-                activeTabs: ["directives", "programs"],
-            },
-            {
-                label: "Data Requests",
-                href: `${basePath}?tab=data-requests`,
-                icon: FileSpreadsheet,
-                tab: "data-requests",
-            },
-            {
-                label: "Reports & Analytics",
-                href: `${basePath}?tab=reports`,
-                icon: BarChart3,
-                tab: "reports",
+                title: "Intelligence & Audit",
+                items: [
+                    {
+                        label: "Reports & Analytics",
+                        href: `${basePath}?tab=reports`,
+                        icon: BarChart3,
+                        tab: "reports",
+                    },
+                ],
             },
         ];
     } else {
-        navItems = [
+        navGroups = [
             {
-                label: "Dashboard Overview",
-                href: basePath,
-                icon: LayoutDashboard,
+                title: "Monitoring",
+                items: [
+                    {
+                        label: "Dashboard Overview",
+                        href: basePath,
+                        icon: LayoutDashboard,
+                    },
+                ],
             },
             {
-                label: "Subordinate Schools",
-                href: `${basePath}?tab=schools`,
-                icon: School,
-                tab: "schools",
+                title: "School Network",
+                items: [
+                    {
+                        label: "Subordinate Schools",
+                        href: `${basePath}?tab=schools`,
+                        icon: School,
+                        tab: "schools",
+                    },
+                    {
+                        label: "School Principals",
+                        href: `${basePath}?tab=administration`,
+                        icon: Shield,
+                        tab: "administration",
+                    },
+                ],
             },
             {
-                label: "School Principals",
-                href: `${basePath}?tab=administration`,
-                icon: Shield,
-                tab: "administration",
+                title: "District Directives",
+                items: [
+                    {
+                        label: "Policies & Programs",
+                        href: `${basePath}?tab=directives`,
+                        icon: FileText,
+                        tab: "directives",
+                        activeTabs: ["directives", "programs"],
+                    },
+                    {
+                        label: "Data Requests",
+                        href: `${basePath}?tab=data-requests`,
+                        icon: FileSpreadsheet,
+                        tab: "data-requests",
+                    },
+                ],
             },
             {
-                label: "Policies & Programs",
-                href: `${basePath}?tab=directives`,
-                icon: FileText,
-                tab: "directives",
-                activeTabs: ["directives", "programs"],
-            },
-            {
-                label: "Data Requests",
-                href: `${basePath}?tab=data-requests`,
-                icon: FileSpreadsheet,
-                tab: "data-requests",
-            },
-            {
-                label: "Reports & Analytics",
-                href: `${basePath}?tab=reports`,
-                icon: BarChart3,
-                tab: "reports",
+                title: "Intelligence & Audit",
+                items: [
+                    {
+                        label: "Reports & Analytics",
+                        href: `${basePath}?tab=reports`,
+                        icon: BarChart3,
+                        tab: "reports",
+                    },
+                ],
             },
         ];
     }
 
     return (
         <aside
-            className={`bg-[#0d233a] border-r border-[#1e3e5e] flex flex-col hidden md:flex overflow-y-auto scrollbar-hide text-blue-100 font-sans shadow-xl shrink-0 transition-all duration-300 ease-in-out ${
+            className={`h-full bg-[#f8fafc] border-r border-slate-200 flex flex-col hidden md:flex overflow-y-auto scrollbar-hide text-slate-700 font-sans shrink-0 transition-all duration-200 ease-in-out ${
                 sidebarCollapsed ? "w-16" : "w-64"
             }`}
             style={{ scrollbarWidth: "none", msOverflowStyle: "none" } as React.CSSProperties}
         >
-            {/* Sidebar Header */}
-            <div className="flex items-center justify-between px-3.5 pt-4 pb-3 border-b border-[#1e3e5e]">
-                {!sidebarCollapsed && (
+            {/* Sidebar Department Masthead */}
+            <div className="flex items-center justify-between px-3.5 py-3 border-b border-slate-200 bg-white">
+                {!sidebarCollapsed ? (
                     <div className="min-w-0 pr-2">
-                        <div className="flex items-center space-x-1.5 text-amber-400">
-                            <Shield className="w-3.5 h-3.5" />
-                            <span className="text-[10px] font-bold uppercase tracking-widest">{currentTier} DESK</span>
+                        <p className="text-xs font-bold text-slate-900 truncate">
+                            {tierTitle}
+                        </p>
+                        <span className="text-[10px] font-medium text-slate-500 block truncate">
+                            {tierSubtitle}
+                        </span>
+                    </div>
+                ) : (
+                    <div className="mx-auto" title={`${tierTitle} (${currentTier})`}>
+                        <div className="w-7 h-7 rounded bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-700 font-bold text-[11px]">
+                            {currentTier[0]}
                         </div>
-                        <p className="text-xs font-bold text-white truncate">{tierTitle}</p>
                     </div>
                 )}
                 {onToggleCollapse && (
                     <button
                         onClick={onToggleCollapse}
                         title={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
-                        className={`flex items-center justify-center w-7 h-7 rounded-lg bg-[#193a5e] hover:bg-[#254f7d] text-blue-200 hover:text-amber-300 transition-all cursor-pointer shadow-xs ${
-                            sidebarCollapsed ? "mx-auto" : "ml-auto"
+                        className={`flex items-center justify-center w-7 h-7 rounded border border-slate-200 bg-white hover:bg-slate-100 text-slate-600 hover:text-slate-900 transition-colors cursor-pointer ${
+                            sidebarCollapsed ? "hidden" : "ml-auto"
                         }`}
                     >
-                        <Network className="w-4 h-4" />
+                        <ChevronLeft className="w-4 h-4" />
                     </button>
                 )}
             </div>
 
-            {/* Navigation items */}
-            <div className="p-3 pt-4 flex-1">
-                <nav className="space-y-1">
-                    {navItems.map((item) => {
-                        const Icon = item.icon;
-                        const isSelected = item.activeTabs
-                            ? (item.activeTabs.includes(currentTab) && pathname.startsWith(basePath)) ||
-                              ((pathname === "/dashboard/directives" || pathname === "/dashboard/programs") && item.tab === "directives")
-                            : item.tab
-                            ? currentTab === item.tab && pathname.startsWith(basePath)
-                            : !currentTab && pathname === basePath;
+            {/* Sidebar Expand button for collapsed mode */}
+            {sidebarCollapsed && onToggleCollapse && (
+                <div className="p-2 border-b border-slate-200 bg-white flex justify-center">
+                    <button
+                        onClick={onToggleCollapse}
+                        title="Expand sidebar"
+                        className="flex items-center justify-center w-7 h-7 rounded border border-slate-200 bg-white hover:bg-slate-100 text-slate-600 hover:text-slate-900 transition-colors cursor-pointer"
+                    >
+                        <ChevronRight className="w-4 h-4" />
+                    </button>
+                </div>
+            )}
 
-                        return (
-                            <Link
-                                key={item.label}
-                                href={item.href}
-                                title={item.label}
-                                className={`flex items-center ${
-                                    sidebarCollapsed ? "justify-center px-2" : "justify-between px-3.5"
-                                } py-2.5 rounded-xl text-xs font-medium transition-all duration-150 cursor-pointer ${
-                                    isSelected
-                                        ? "bg-[#184973] text-amber-300 font-bold border-l-2 border-amber-400 shadow-sm"
-                                        : "text-blue-100/90 hover:bg-[#15385b] hover:text-white hover:translate-x-0.5"
-                                }`}
-                            >
-                                <div className={`flex items-center ${sidebarCollapsed ? "" : "space-x-3"}`}>
-                                    <Icon
-                                        className={`w-4 h-4 shrink-0 transition-transform ${
-                                            isSelected ? "text-amber-300" : "text-blue-300 group-hover:text-amber-300"
+            {/* Grouped Navigation Links */}
+            <div className="p-2.5 flex-1 space-y-4">
+                {navGroups.map((group) => (
+                    <div key={group.title} className="space-y-0.5">
+                        {!sidebarCollapsed && (
+                            <div className="px-2.5 pb-1 pt-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400 select-none">
+                                {group.title}
+                            </div>
+                        )}
+                        <nav className="space-y-0.5">
+                            {group.items.map((item) => {
+                                const Icon = item.icon;
+                                const isSelected = item.activeTabs
+                                    ? (item.activeTabs.includes(currentTab) && pathname.startsWith(basePath)) ||
+                                      ((pathname === "/dashboard/directives" || pathname === "/dashboard/programs") && item.tab === "directives")
+                                    : item.tab
+                                    ? currentTab === item.tab && pathname.startsWith(basePath)
+                                    : !currentTab && pathname === basePath;
+
+                                return (
+                                    <Link
+                                        key={item.label}
+                                        href={item.href}
+                                        title={item.label}
+                                        className={`group flex items-center ${
+                                            sidebarCollapsed ? "justify-center px-2 py-2" : "justify-between px-2.5 py-2"
+                                        } text-xs transition-all duration-150 cursor-pointer rounded-md ${
+                                            isSelected
+                                                ? "bg-[#4085b3] text-white font-semibold shadow-xs"
+                                                : "text-slate-700 hover:bg-[#4085b3] hover:text-white"
                                         }`}
-                                    />
-                                    {!sidebarCollapsed && <span>{item.label}</span>}
-                                </div>
-                            </Link>
-                        );
-                    })}
-                </nav>
+                                    >
+                                        <div className={`flex items-center ${sidebarCollapsed ? "" : "space-x-2.5 min-w-0"}`}>
+                                            <Icon
+                                                className={`w-4 h-4 shrink-0 transition-colors duration-150 ${
+                                                    isSelected ? "text-white" : "text-slate-400 group-hover:text-white"
+                                                }`}
+                                            />
+                                            {!sidebarCollapsed && (
+                                                <span className="truncate">{item.label}</span>
+                                            )}
+                                        </div>
+                                    </Link>
+                                );
+                            })}
+                        </nav>
+                    </div>
+                ))}
             </div>
 
-            {/* Bottom Tier Status Footer */}
-            {!sidebarCollapsed && (
-                <div className="p-3.5 m-3 rounded-xl bg-[#112d4a] border border-[#1e3e5e] text-center">
-                    <p className="text-[10px] text-blue-300/80 uppercase font-semibold">Hierarchy Scope</p>
-                    <p className="text-xs font-bold text-amber-300 mt-0.5">{tierSubtitle}</p>
+            {/* Sidebar Utility Footer - System Status */}
+            {!sidebarCollapsed ? (
+                <div className="p-3 border-t border-slate-200 bg-white text-[11px] shrink-0">
+                    <div className="flex items-center justify-between">
+                        <span className="font-semibold text-slate-700">EMIS System</span>
+                        <span className="inline-flex items-center gap-1.5 text-[10px] text-emerald-700 font-semibold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                            Operational
+                        </span>
+                    </div>
+                    <p className="text-[10px] text-slate-400 mt-0.5 truncate">FDRE Ministry of Education</p>
+                </div>
+            ) : (
+                <div className="p-2 border-t border-slate-200 bg-white flex justify-center shrink-0" title="EMIS System Operational">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500" />
                 </div>
             )}
         </aside>
