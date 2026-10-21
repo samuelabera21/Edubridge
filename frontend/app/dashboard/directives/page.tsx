@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import DirectivesRecipientView from "../../../components/governance/DirectivesRecipientView";
+import DirectivesRegistryView from "../../../components/governance/DirectivesRegistryView";
 import { useAuth } from "../../../hooks/useAuth";
 
 export default function DirectivesPage() {
@@ -22,11 +22,11 @@ export default function DirectivesPage() {
         if (loading) return;
 
         if (unitType === "REGION" || roleName === "REGION_ADMIN") {
-            router.replace(`/dashboard/region?tab=directives&subTab=INCOMING${directiveParam}`);
+            router.replace(`/dashboard/region?tab=directives${directiveParam}`);
         } else if (unitType === "ZONE" || roleName === "ZONE_ADMIN") {
-            router.replace(`/dashboard/zone?tab=directives&subTab=INCOMING${directiveParam}`);
+            router.replace(`/dashboard/zone?tab=directives${directiveParam}`);
         } else if (unitType === "WOREDA" || roleName === "WOREDA_ADMIN") {
-            router.replace(`/dashboard/woreda?tab=directives&subTab=INCOMING${directiveParam}`);
+            router.replace(`/dashboard/woreda?tab=directives${directiveParam}`);
         } else if (unitType === "FEDERAL" || roleName === "FEDERAL_ADMIN") {
             router.replace(`/dashboard/federal?tab=directives${directiveParam}`);
         } else if (roleName === "TEACHER") {
@@ -38,10 +38,11 @@ export default function DirectivesPage() {
 
     return (
         <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto space-y-6">
-            <DirectivesRecipientView
+            <DirectivesRegistryView
                 tierName={unitName}
                 tierType={unitType}
                 organizationId={activeScope?.id}
+                canCreateDirective={unitType !== "SCHOOL"}
                 initialDirectiveId={directiveId}
             />
         </div>
