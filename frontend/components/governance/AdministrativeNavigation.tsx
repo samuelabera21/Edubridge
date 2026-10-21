@@ -17,6 +17,8 @@ import {
     FileSpreadsheet,
     type LucideIcon
 } from "lucide-react";
+import { useAuth } from "../../hooks/useAuth";
+import { getPrimaryAccess } from "../../lib/auth-access";
 
 export type AdminTier = "FEDERAL" | "REGION" | "ZONE" | "WOREDA";
 
@@ -25,6 +27,7 @@ interface NavItem {
     href: string;
     icon: LucideIcon;
     tab?: string;
+    activeTabs?: string[];
 }
 
 export default function AdministrativeNavigation({
@@ -37,8 +40,11 @@ export default function AdministrativeNavigation({
     const pathname = usePathname();
     const searchParams = useSearchParams();
     const currentTab = searchParams?.get("tab") || "";
+    const { authData } = useAuth(false);
+    const primaryAccess = getPrimaryAccess(authData?.access);
+    const userScopeType = primaryAccess?.scope?.type;
 
-    // Determine active tier from route
+    // Determine active tier from route with user scope fallback
     let currentTier: AdminTier = "FEDERAL";
     let tierTitle = "Federal Ministry of Education";
     let tierSubtitle = "National Governance";
@@ -46,21 +52,30 @@ export default function AdministrativeNavigation({
     let childUnitName = "Regions";
     let childUnitIcon = Layers;
 
-    if (pathname.startsWith("/dashboard/region")) {
+    if (
+        pathname.startsWith("/dashboard/region") ||
+        (!pathname.startsWith("/dashboard/federal") && !pathname.startsWith("/dashboard/zone") && !pathname.startsWith("/dashboard/woreda") && userScopeType === "REGION")
+    ) {
         currentTier = "REGION";
         tierTitle = "Regional Education Bureau";
         tierSubtitle = "Regional Administration";
         basePath = "/dashboard/region";
         childUnitName = "Zones";
         childUnitIcon = Building2;
-    } else if (pathname.startsWith("/dashboard/zone")) {
+    } else if (
+        pathname.startsWith("/dashboard/zone") ||
+        (!pathname.startsWith("/dashboard/federal") && !pathname.startsWith("/dashboard/region") && !pathname.startsWith("/dashboard/woreda") && userScopeType === "ZONE")
+    ) {
         currentTier = "ZONE";
         tierTitle = "Zonal Education Department";
         tierSubtitle = "Zonal Administration";
         basePath = "/dashboard/zone";
         childUnitName = "Woredas";
         childUnitIcon = MapPin;
-    } else if (pathname.startsWith("/dashboard/woreda")) {
+    } else if (
+        pathname.startsWith("/dashboard/woreda") ||
+        (!pathname.startsWith("/dashboard/federal") && !pathname.startsWith("/dashboard/region") && !pathname.startsWith("/dashboard/zone") && userScopeType === "WOREDA")
+    ) {
         currentTier = "WOREDA";
         tierTitle = "Woreda Education Office";
         tierSubtitle = "District Administration";
@@ -91,16 +106,11 @@ export default function AdministrativeNavigation({
                 tab: "administration",
             },
             {
-                label: "Policies & Directives",
+                label: "Policies & Programs",
                 href: `${basePath}?tab=directives`,
                 icon: FileText,
                 tab: "directives",
-            },
-            {
-                label: "Programs & Initiatives",
-                href: `${basePath}?tab=programs`,
-                icon: Compass,
-                tab: "programs",
+                activeTabs: ["directives", "programs"],
             },
             {
                 label: "Data Requests",
@@ -135,16 +145,11 @@ export default function AdministrativeNavigation({
                 tab: "administration",
             },
             {
-                label: "Policies & Directives",
+                label: "Policies & Programs",
                 href: `${basePath}?tab=directives`,
                 icon: FileText,
                 tab: "directives",
-            },
-            {
-                label: "Programs & Initiatives",
-                href: `${basePath}?tab=programs`,
-                icon: Compass,
-                tab: "programs",
+                activeTabs: ["directives", "programs"],
             },
             {
                 label: "Data Requests",
@@ -179,16 +184,11 @@ export default function AdministrativeNavigation({
                 tab: "administration",
             },
             {
-                label: "Policies & Directives",
+                label: "Policies & Programs",
                 href: `${basePath}?tab=directives`,
                 icon: FileText,
                 tab: "directives",
-            },
-            {
-                label: "Programs & Initiatives",
-                href: `${basePath}?tab=programs`,
-                icon: Compass,
-                tab: "programs",
+                activeTabs: ["directives", "programs"],
             },
             {
                 label: "Data Requests",
@@ -223,16 +223,11 @@ export default function AdministrativeNavigation({
                 tab: "administration",
             },
             {
-                label: "Policies & Directives",
+                label: "Policies & Programs",
                 href: `${basePath}?tab=directives`,
                 icon: FileText,
                 tab: "directives",
-            },
-            {
-                label: "Programs & Initiatives",
-                href: `${basePath}?tab=programs`,
-                icon: Compass,
-                tab: "programs",
+                activeTabs: ["directives", "programs"],
             },
             {
                 label: "Data Requests",
@@ -285,7 +280,10 @@ export default function AdministrativeNavigation({
                 <nav className="space-y-1">
                     {navItems.map((item) => {
                         const Icon = item.icon;
-                        const isSelected = item.tab
+                        const isSelected = item.activeTabs
+                            ? (item.activeTabs.includes(currentTab) && pathname.startsWith(basePath)) ||
+                              ((pathname === "/dashboard/directives" || pathname === "/dashboard/programs") && item.tab === "directives")
+                            : item.tab
                             ? currentTab === item.tab && pathname.startsWith(basePath)
                             : !currentTab && pathname === basePath;
 
