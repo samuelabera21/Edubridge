@@ -43,6 +43,8 @@ import DirectivesRegistryView from "./DirectivesRegistryView";
 import ProgramsRegistryView from "./ProgramsRegistryView";
 import HierarchicalReportsView from "./HierarchicalReportsView";
 import DataRequestsListView from "./DataRequestsListView";
+import RegionalAdministratorsView from "./RegionalAdministratorsView";
+import RegionalHierarchyView from "./RegionalHierarchyView";
 
 export interface SchoolAdmin {
     id: string;
@@ -549,6 +551,7 @@ export default function WoredaDashboard() {
     };
 
     // Proportions
+    const totalSchools = data?.counts?.totalSchools ?? 0;
     const totalStudents = data?.counts?.totalStudents ?? 0;
     const totalTeachers = data?.counts?.totalTeachers ?? 0;
     const totalPeople = totalStudents + totalTeachers;
@@ -743,24 +746,16 @@ export default function WoredaDashboard() {
                 </div>
             )}
 
-            {/* Direct contextual actions (when on overview or schools) */}
-            {(currentTab === "overview" || currentTab === "schools" || unitIdParam) && (
-                <div className="flex items-center justify-between pb-2">
-                    <div>
-                        <h1 className="text-xl font-bold text-slate-900">
-                            {currentTab === "overview" && !unitIdParam
-                                ? "Woreda Governance Overview"
-                                : "Schools Directory & Hierarchy"}
-                        </h1>
-                        <p className="text-xs text-slate-500 mt-0.5">
-                            {currentTab === "overview" && !unitIdParam
-                                ? "District education infrastructure, institutional distribution, and school leadership."
-                                : "Explore registered schools, facilities, educators, and student body."}
-                        </p>
-                    </div>
+            {/* Direct contextual actions (when on overview) */}
+            {currentTab === "overview" && !unitIdParam && (
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-200">
+                    <h1 className="text-2xl font-bold tracking-tight text-slate-900">
+                        Woreda Governance Overview
+                    </h1>
 
-                    <div className="flex items-center gap-2 shrink-0">
+                    <div className="flex items-center gap-2 self-start sm:self-auto">
                         <button
+                            type="button"
                             onClick={() => {
                                 setNewSchoolName("");
                                 setNewSchoolCode("");
@@ -769,22 +764,21 @@ export default function WoredaDashboard() {
                                 setCreateSchoolMessage(null);
                                 setCreateSchoolOpen(true);
                             }}
-                            className="px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-xl transition-all flex items-center gap-1.5 shadow-sm cursor-pointer active:scale-95"
+                            className="px-3.5 py-1.5 bg-[#4085b3] hover:bg-[#32698e] text-white text-sm font-medium rounded transition-colors inline-flex items-center gap-1.5 cursor-pointer"
                         >
                             <Plus className="w-4 h-4" />
                             <span>Add School</span>
                         </button>
                         <button
+                            type="button"
                             onClick={() => {
                                 loadWoredaData();
-                                if (currentTab === "schools" || unitIdParam) {
-                                    loadDrilldownData(unitIdParam);
-                                }
                             }}
-                            className="p-2 border border-slate-200 bg-white text-slate-600 hover:text-slate-900 hover:bg-slate-50 rounded-xl transition-colors cursor-pointer shadow-2xs"
-                            title="Refresh"
+                            className="p-2 border border-slate-300 bg-white hover:bg-[#4085b3] text-slate-700 hover:text-white hover:border-[#4085b3] rounded transition-all duration-200 cursor-pointer group/refresh"
+                            title="Reload overview data"
+                            aria-label="Reload overview data"
                         >
-                            <RefreshCw className={`w-4 h-4 ${loading || drilldownLoading ? "animate-spin text-blue-600" : ""}`} />
+                            <RefreshCw className={`w-4 h-4 transition-colors ${loading || drilldownLoading ? "animate-spin text-[#4085b3]" : "text-slate-500 group-hover/refresh:text-white"}`} />
                         </button>
                     </div>
                 </div>
@@ -809,183 +803,13 @@ export default function WoredaDashboard() {
             {/* TAB 1: OVERVIEW */}
             {currentTab === "overview" && !unitIdParam && (
                 <div className="space-y-6">
-                    {/* Top Row: 2 Cards */}
-                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-                        
-                        {/* CARD 1 (Top-Left): Woreda Demographic Proportion (Donut Chart) */}
-                        <div className="lg:col-span-4 bg-white p-6 rounded-2xl border border-slate-100 shadow-sm flex flex-col justify-between space-y-6">
+                    {/* Top Full-Width Card: Students & Teachers per School */}
+                    <div className="space-y-4 pt-1">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-slate-200">
                             <div className="flex items-center gap-2">
                                 <h2 className="text-base font-bold text-slate-900 tracking-tight">
-                                    Woreda Academic Demographics
+                                    School Student Body & Faculty Roster
                                 </h2>
-                                <span className="w-4 h-4 rounded-full bg-slate-200 text-slate-600 flex items-center justify-center text-[10px] font-bold cursor-help" title="Ratio of enrolled students to active teachers across the woreda">
-                                    i
-                                </span>
-                            </div>
-
-                            {/* Donut Chart */}
-                            <div className="flex flex-col items-center justify-center py-2 relative">
-                                <svg className="w-48 h-48 -rotate-90" viewBox="0 0 120 120">
-                                    <circle
-                                        cx="60"
-                                        cy="60"
-                                        r="48"
-                                        fill="none"
-                                        stroke="#f1f5f9"
-                                        strokeWidth="14"
-                                    />
-                                    <circle
-                                        cx="60"
-                                        cy="60"
-                                        r="48"
-                                        fill="none"
-                                        stroke="#0f172a"
-                                        strokeWidth="14"
-                                        strokeDasharray={`${(Number(studentsPercentage) / 100) * 301.6} 301.6`}
-                                        strokeDashoffset="0"
-                                        className="transition-all duration-700"
-                                    />
-                                    <circle
-                                        cx="60"
-                                        cy="60"
-                                        r="48"
-                                        fill="none"
-                                        stroke="#38bdf8"
-                                        strokeWidth="14"
-                                        strokeDasharray={`${(Number(teachersPercentage) / 100) * 301.6} 301.6`}
-                                        strokeDashoffset={`-${(Number(studentsPercentage) / 100) * 301.6}`}
-                                        className="transition-all duration-700"
-                                    />
-                                </svg>
-                                <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                                    <span className="text-2xl font-black text-slate-900 tracking-tight">
-                                        {fmt(totalPeople)}
-                                    </span>
-                                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                                        Academic Body
-                                    </span>
-                                </div>
-                            </div>
-
-                            {/* Legend */}
-                            <div className="space-y-3 pt-2 border-t border-slate-100">
-                                <div className="flex items-center justify-between text-xs">
-                                    <div className="flex items-center gap-2">
-                                        <span className="w-2.5 h-2.5 rounded-full bg-[#0f172a]" />
-                                        <span className="text-slate-600 font-medium">Students ({fmt(totalStudents)})</span>
-                                    </div>
-                                    <span className="font-bold text-slate-900">{studentsPercentage}%</span>
-                                </div>
-                                <div className="flex items-center justify-between text-xs">
-                                    <div className="flex items-center gap-2">
-                                        <span className="w-2.5 h-2.5 rounded-full bg-[#38bdf8]" />
-                                        <span className="text-slate-600 font-medium">Teachers ({fmt(totalTeachers)})</span>
-                                    </div>
-                                    <span className="font-bold text-slate-900">{teachersPercentage}%</span>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* CARD 2 (Top-Right): Registered Schools Overview */}
-                        <div className="lg:col-span-8 bg-white p-6 rounded-2xl border border-slate-100 shadow-sm space-y-6">
-                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                                <div>
-                                    <h2 className="text-base font-bold text-slate-900 tracking-tight">
-                                        Subordinate Schools
-                                    </h2>
-                                    <p className="text-xs text-slate-500 font-medium">
-                                        Explore registered schools and active institutional metrics
-                                    </p>
-                                </div>
-                                <button
-                                    onClick={() => navigateToUnit(null)}
-                                    className="text-xs font-bold text-blue-600 hover:text-blue-700 flex items-center gap-1 cursor-pointer self-start sm:self-auto"
-                                >
-                                    <span>View Directory</span>
-                                    <ArrowUpRight className="w-3.5 h-3.5" />
-                                </button>
-                            </div>
-
-                            {/* Circular School Cards */}
-                            <div className="flex flex-wrap items-center justify-start gap-4 py-2">
-                                {realSchools.length === 0 ? (
-                                    <div className="w-full text-center text-slate-400 text-xs py-8">
-                                        No schools registered under this woreda yet.
-                                    </div>
-                                ) : (
-                                    realSchools.map(school => {
-                                        const isSelected = hoveredSchool?.id === school.id;
-                                        return (
-                                            <div
-                                                key={school.id}
-                                                onMouseEnter={() => setHoveredSchool(school)}
-                                                onClick={() => navigateToUnit(school.id)}
-                                                className={`flex items-center gap-3 px-3.5 py-2.5 rounded-full border transition-all duration-200 cursor-pointer ${
-                                                    isSelected
-                                                        ? "border-blue-600 bg-blue-50/60 shadow-xs ring-1 ring-blue-500/20"
-                                                        : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50"
-                                                }`}
-                                            >
-                                                <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-blue-600 to-sky-400 flex items-center justify-center text-white shrink-0 shadow-xs">
-                                                    <School className="w-5 h-5" />
-                                                </div>
-
-                                                <div className="flex flex-col pr-2">
-                                                    <span className="text-xs font-bold text-slate-900 leading-tight">
-                                                        {school.name}
-                                                    </span>
-                                                    <span className="text-[11px] font-semibold text-slate-500">
-                                                        {school.studentsCount} Students • {school.teachersCount} Teachers
-                                                    </span>
-                                                </div>
-                                            </div>
-                                        );
-                                    })
-                                )}
-                            </div>
-
-                            {/* Selected School Live Breakdown */}
-                            {hoveredSchool && (
-                                <div className="p-4 bg-slate-50 rounded-xl border border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                                    <div>
-                                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
-                                            School Administration
-                                        </span>
-                                        <p className="text-sm font-bold text-slate-900 flex items-center gap-2 mt-0.5">
-                                            <span>{hoveredSchool.name}</span>
-                                            {hoveredSchool.admin ? (
-                                                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">
-                                                    {hoveredSchool.admin.name}
-                                                </span>
-                                            ) : (
-                                                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800">
-                                                    Admin Vacant
-                                                </span>
-                                            )}
-                                        </p>
-                                    </div>
-                                    <button
-                                        onClick={() => navigateToUnit(hoveredSchool.id)}
-                                        className="px-3.5 py-1.5 bg-white border border-slate-200 hover:border-blue-400 hover:text-blue-600 text-slate-700 text-xs font-bold rounded-lg transition-colors flex items-center gap-1.5 shadow-2xs self-start sm:self-auto cursor-pointer"
-                                    >
-                                        <span>Explore School Profile</span>
-                                        <ArrowUpRight className="w-3.5 h-3.5" />
-                                    </button>
-                                </div>
-                            )}
-                        </div>
-                    </div>
-
-                    {/* Bottom Full-Width Card: Students & Teachers per School */}
-                    <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm space-y-6">
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                            <div className="flex items-center gap-2">
-                                <h2 className="text-base font-bold text-slate-900 tracking-tight">
-                                    Students & Teaching Staff per School
-                                </h2>
-                                <span className="w-4 h-4 rounded-full bg-slate-200 text-slate-600 flex items-center justify-center text-[10px] font-bold cursor-help" title="Comparative school telemetry showing students (left) and teachers (right)">
-                                    i
-                                </span>
                             </div>
                             <div className="flex items-center gap-4 text-xs font-semibold text-slate-500">
                                 <span className="flex items-center gap-1.5 text-slate-700">
@@ -997,7 +821,7 @@ export default function WoredaDashboard() {
                             </div>
                         </div>
 
-                        {/* Chart Grid */}
+                        {/* Chart Grid and Bars */}
                         <div className="w-full overflow-x-auto pb-8 pt-2">
                             <div className="min-w-[500px] h-72 flex flex-col justify-between relative pl-12 pr-12 pt-4">
                                 <div className="absolute inset-0 pl-12 pr-12 pointer-events-none flex flex-col justify-between">
@@ -1006,7 +830,7 @@ export default function WoredaDashboard() {
                                             <span className="absolute -left-12 text-[11px] font-bold text-slate-500 w-10 text-right">
                                                 {val}
                                             </span>
-                                            <div className="w-full border-b border-dashed border-slate-200" />
+                                            <div className="w-full border-b border-dashed border-slate-300" />
                                             <span className="absolute -right-12 text-[11px] font-bold text-[#0284c7] w-10 text-left pl-2">
                                                 {val}
                                             </span>
@@ -1017,13 +841,13 @@ export default function WoredaDashboard() {
                                 <div className="h-full flex items-end justify-around gap-8 relative z-10 pt-2 pb-14">
                                     {realSchools.length === 0 ? (
                                         <div className="w-full text-center text-slate-400 text-xs py-16">
-                                            No school data available. Register a school to view analytics.
+                                            No schools registered in this woreda yet.
                                         </div>
                                     ) : (
                                         realSchools.map(school => {
                                             const totalHeightVal = maxStudentsCount > 0 ? maxStudentsCount : 1;
                                             const studentsHeight = Math.min(100, Math.max(12, (school.studentsCount / totalHeightVal) * 100));
-                                            const teachersHeight = Math.min(100, Math.max(12, ((school.teachersCount * 5) / totalHeightVal) * 100));
+                                            const teachersHeight = Math.min(100, Math.max(12, (school.teachersCount / totalHeightVal) * 100));
 
                                             return (
                                                 <div
@@ -1071,498 +895,156 @@ export default function WoredaDashboard() {
                             </div>
                         </div>
 
-                        <div className="flex items-center justify-center gap-6 text-xs text-slate-600 pt-6 border-t border-slate-100">
+                        <div className="flex items-center justify-center gap-6 text-xs text-slate-600 pt-4 border-t border-slate-200">
                             <div className="flex items-center gap-1.5">
                                 <span className="w-2.5 h-2.5 rounded-full bg-[#0f172a]" />
-                                <span>Students</span>
+                                <span>Students (Left Axis)</span>
                             </div>
                             <div className="flex items-center gap-1.5">
                                 <span className="w-2.5 h-2.5 rounded-full bg-[#38bdf8]" />
-                                <span>Teachers</span>
+                                <span>Teachers (Right Axis)</span>
                             </div>
+                        </div>
+                    </div>
+
+                    {/* Executive District Telemetry Strip */}
+                    <div className="flex flex-wrap items-center justify-between gap-4 p-4 bg-white border border-slate-200 rounded text-xs text-slate-700">
+                        <div className="flex flex-wrap items-center gap-6 sm:gap-8">
+                            <div>
+                                <span className="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">Registered Schools</span>
+                                <span className="text-base font-bold text-slate-900 tabular-nums">{fmt(totalSchools)}</span>
+                            </div>
+                            <div className="hidden sm:block h-7 w-px bg-slate-200" />
+                            <div>
+                                <span className="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">Enrolled Students</span>
+                                <span className="text-base font-bold text-slate-900 tabular-nums">{fmt(totalStudents)}</span>
+                            </div>
+                            <div className="hidden sm:block h-7 w-px bg-slate-200" />
+                            <div>
+                                <span className="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">Teachers</span>
+                                <span className="text-base font-bold text-slate-900 tabular-nums">{fmt(totalTeachers)}</span>
+                            </div>
+                        </div>
+
+                        <button
+                            type="button"
+                            onClick={() => navigateToUnit(null)}
+                            className="text-xs font-semibold text-[#4085b3] hover:underline inline-flex items-center gap-1 cursor-pointer self-start sm:self-auto"
+                        >
+                            <span>Explore directory</span>
+                            <ArrowUpRight className="w-3.5 h-3.5" />
+                        </button>
+                    </div>
+
+                    {/* School Capacity & Governance Table */}
+                    <div className="space-y-3 pt-2">
+                        <div className="flex items-center justify-between pb-2 border-b border-slate-200">
+                            <h2 className="text-base font-bold text-slate-900 tracking-tight">
+                                Educational Institutions & Capacity
+                            </h2>
+                            <span className="text-xs text-slate-500 font-medium">
+                                {realSchools.length} {realSchools.length === 1 ? "school" : "schools"}
+                            </span>
+                        </div>
+
+                        <div className="border border-slate-200 bg-white rounded overflow-hidden">
+                            <table className="w-full table-fixed text-left text-xs border-collapse">
+                                <thead className="bg-slate-50 border-b border-slate-200 text-slate-700 font-semibold">
+                                    <tr>
+                                        <th className="py-3 px-4 w-[36%]">School Institution</th>
+                                        <th className="py-3 px-4 w-[20%]">Students</th>
+                                        <th className="py-3 px-4 w-[20%]">Teachers</th>
+                                        <th className="py-3 px-4 w-[14%]">Principal / Admin</th>
+                                        <th className="py-3 px-4 w-[10%] text-right">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100 text-slate-800">
+                                    {realSchools.length === 0 ? (
+                                        <tr>
+                                            <td colSpan={5} className="py-8 text-center text-slate-400">
+                                                No schools registered yet.
+                                            </td>
+                                        </tr>
+                                    ) : (
+                                        realSchools.map(school => (
+                                            <tr
+                                                key={school.id}
+                                                onClick={() => navigateToUnit(school.id)}
+                                                className="hover:bg-slate-50/80 transition-colors cursor-pointer"
+                                            >
+                                                <td className="py-3.5 px-4 font-semibold text-slate-900 truncate">
+                                                    {school.name}
+                                                </td>
+                                                <td className="py-3.5 px-4 text-slate-900 font-medium tabular-nums truncate">
+                                                    {fmt(school.studentsCount)}
+                                                </td>
+                                                <td className="py-3.5 px-4 text-slate-900 font-medium tabular-nums truncate">
+                                                    {fmt(school.teachersCount)}
+                                                </td>
+                                                <td className="py-3.5 px-4 truncate">
+                                                    {school.admin ? (
+                                                        <span className="font-medium text-slate-900 block truncate">
+                                                            {school.admin.name}
+                                                        </span>
+                                                    ) : (
+                                                        <span className="text-slate-400">Vacant</span>
+                                                    )}
+                                                </td>
+                                                <td className="py-3.5 px-4 text-right" onClick={(e) => e.stopPropagation()}>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => navigateToUnit(school.id)}
+                                                        className="text-xs font-semibold text-[#4085b3] hover:underline cursor-pointer"
+                                                    >
+                                                        Inspect ↗
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        ))
+                                    )}
+                                </tbody>
+                            </table>
                         </div>
                     </div>
                 </div>
             )}
 
-            {/* TAB 2 / DRILLDOWN VIEW: WOREDA HIERARCHY DRILL-DOWN */}
+            {/* TAB 2: IN-PAGE HIERARCHY DRILL-DOWN */}
             {(currentTab === "schools" || unitIdParam) && (
-                <div className="space-y-4">
-                    {/* BREADCRUMB & BACK NAVIGATION HEADER */}
-                    <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
-                        <div className="flex items-center gap-3 overflow-x-auto pb-1 md:pb-0">
-                            {drilldownData?.breadcrumbs && drilldownData.breadcrumbs.length > 1 && (
-                                <button
-                                    onClick={navigateBack}
-                                    className="p-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition-colors flex items-center gap-1 text-xs font-bold shrink-0 cursor-pointer"
-                                    title="Back one level"
-                                >
-                                    <ArrowLeft className="w-4 h-4" />
-                                    <span>Back</span>
-                                </button>
-                            )}
-
-                            {/* Interactive Breadcrumb Chain */}
-                            <nav className="flex items-center gap-1 text-xs font-semibold text-slate-600 whitespace-nowrap">
-                                {drilldownData?.breadcrumbs ? (
-                                    drilldownData.breadcrumbs.map((bc, idx) => {
-                                        const isLast = idx === drilldownData.breadcrumbs.length - 1;
-                                        return (
-                                            <div key={bc.id} className="flex items-center gap-1">
-                                                {idx > 0 && <ChevronRight className="w-3.5 h-3.5 text-slate-400 shrink-0" />}
-                                                {isLast ? (
-                                                    <span className="font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md">
-                                                        {bc.name}
-                                                    </span>
-                                                ) : (
-                                                    <button
-                                                        onClick={() => {
-                                                            if (bc.type === "WOREDA") {
-                                                                navigateToUnit(null);
-                                                            } else {
-                                                                navigateToUnit(bc.id);
-                                                            }
-                                                        }}
-                                                        className="hover:text-blue-600 hover:underline transition-colors cursor-pointer"
-                                                    >
-                                                        {bc.name}
-                                                    </button>
-                                                )}
-                                            </div>
-                                        );
-                                    })
-                                ) : (
-                                    <span className="font-bold text-slate-800">
-                                        {data?.woredaName || "Woreda Education Office"}
-                                    </span>
-                                )}
-                            </nav>
-                        </div>
-
-                        {/* Actions in header */}
-                        <div className="flex items-center gap-2 shrink-0">
-                            {(!drilldownData || drilldownData.node.type === "WOREDA") && (
-                                <button
-                                    onClick={() => {
-                                        setNewSchoolName("");
-                                        setNewSchoolCode("");
-                                        setNewSchoolAddress("");
-                                        setNewSchoolPhone("");
-                                        setCreateSchoolMessage(null);
-                                        setCreateSchoolOpen(true);
-                                    }}
-                                    className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-lg transition-colors flex items-center gap-1.5 shadow-xs cursor-pointer"
-                                >
-                                    <Plus className="w-4 h-4" />
-                                    <span>Add School</span>
-                                </button>
-                            )}
-                        </div>
-                    </div>
-
-                    {/* Drilldown Error Banner */}
-                    {drilldownError && (
-                        <div className="p-4 bg-rose-50 border border-rose-200 rounded-lg text-rose-800 text-xs flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                                <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
-                                <span>{drilldownError}</span>
-                            </div>
-                            <button
-                                onClick={() => loadDrilldownData(unitIdParam)}
-                                className="px-3 py-1 bg-rose-600 text-white font-semibold rounded hover:bg-rose-700 cursor-pointer"
-                            >
-                                Retry
-                            </button>
-                        </div>
-                    )}
-
-                    {/* CURRENT NODE SUMMARY & AGGREGATED METRICS BANNER */}
-                    {drilldownData && drilldownData.node.type !== "SCHOOL" && (
-                        <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm space-y-4">
-                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100">
-                                <div className="space-y-1">
-                                    <div className="flex items-center gap-2">
-                                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-800">
-                                            {drilldownData.node.type} LEVEL
-                                        </span>
-                                        <h2 className="text-lg font-black text-slate-900 tracking-tight">
-                                            {drilldownData.node.name}
-                                        </h2>
-                                    </div>
-                                    <p className="text-xs text-slate-500 font-medium">
-                                        {drilldownData.node.parentName ? `Parent jurisdiction: ${drilldownData.node.parentName}` : "Woreda Educational Jurisdiction"}
-                                    </p>
-                                </div>
-
-                                {drilldownData.admin && (
-                                    <div className="flex items-center gap-3 p-2.5 bg-slate-50 rounded-xl border border-slate-100">
-                                        <div className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-xs shrink-0">
-                                            {drilldownData.admin.name.charAt(0)}
-                                        </div>
-                                        <div className="text-xs">
-                                            <p className="font-bold text-slate-900 leading-tight">{drilldownData.admin.name}</p>
-                                            <p className="text-[11px] text-slate-500">{drilldownData.admin.email}</p>
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-
-                            {/* Metric Cards Row */}
-                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                                <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-100/80">
-                                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
-                                        Registered Schools
-                                    </span>
-                                    <p className="text-xl font-black text-slate-900 mt-0.5">
-                                        {fmt(drilldownData.counts.schoolsCount)}
-                                    </p>
-                                </div>
-                                <div className="p-3.5 bg-blue-50/60 rounded-xl border border-blue-100/80">
-                                    <span className="text-[10px] font-bold text-blue-600 uppercase tracking-wider block">
-                                        Enrolled Students
-                                    </span>
-                                    <p className="text-xl font-black text-blue-900 mt-0.5">
-                                        {fmt(drilldownData.counts.studentsCount)}
-                                    </p>
-                                </div>
-                                <div className="p-3.5 bg-emerald-50/60 rounded-xl border border-emerald-100/80">
-                                    <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider block">
-                                        Teachers
-                                    </span>
-                                    <p className="text-xl font-black text-emerald-900 mt-0.5">
-                                        {fmt(drilldownData.counts.teachersCount)}
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* SCHOOL LEAF DRILLDOWN VIEW */}
-                    {drilldownData && drilldownData.node.type === "SCHOOL" && (
-                        <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm space-y-6">
-                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100">
-                                <div className="space-y-1">
-                                    <div className="flex items-center gap-2">
-                                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">
-                                            SCHOOL PROFILE
-                                        </span>
-                                        <h2 className="text-xl font-black text-slate-900 tracking-tight">
-                                            {drilldownData.node.name}
-                                        </h2>
-                                    </div>
-                                    <p className="text-xs text-slate-500 font-medium">
-                                        Located in Woreda: <span className="font-semibold text-slate-700">{drilldownData.node.parentName || "Unknown Woreda"}</span>
-                                    </p>
-                                </div>
-
-                                <div className="flex items-center gap-2">
-                                    <span className="px-3 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full text-xs font-bold flex items-center gap-1.5">
-                                        <CheckCircle2 className="w-3.5 h-3.5" />
-                                        <span>Active School</span>
-                                    </span>
-                                </div>
-                            </div>
-
-                            {/* School Key Metrics */}
-                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                                <div className="p-4 bg-blue-50/70 border border-blue-100 rounded-xl flex items-center gap-3">
-                                    <div className="w-10 h-10 rounded-lg bg-blue-600 text-white flex items-center justify-center shrink-0">
-                                        <GraduationCap className="w-5 h-5" />
-                                    </div>
-                                    <div>
-                                        <span className="text-[10px] font-bold text-blue-600 uppercase tracking-wider block">
-                                            Enrolled Students
-                                        </span>
-                                        <p className="text-xl font-black text-blue-900">
-                                            {fmt(drilldownData.counts.studentsCount)}
-                                        </p>
-                                    </div>
-                                </div>
-
-                                <div className="p-4 bg-emerald-50/70 border border-emerald-100 rounded-xl flex items-center gap-3">
-                                    <div className="w-10 h-10 rounded-lg bg-emerald-600 text-white flex items-center justify-center shrink-0">
-                                        <Users className="w-5 h-5" />
-                                    </div>
-                                    <div>
-                                        <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider block">
-                                            Teaching Staff
-                                        </span>
-                                        <p className="text-xl font-black text-emerald-900">
-                                            {fmt(drilldownData.counts.teachersCount)}
-                                        </p>
-                                    </div>
-                                </div>
-
-                                <div className="p-4 bg-slate-50 border border-slate-100 rounded-xl flex items-center gap-3">
-                                    <div className="w-10 h-10 rounded-lg bg-slate-800 text-white flex items-center justify-center shrink-0">
-                                        <Building2 className="w-5 h-5" />
-                                    </div>
-                                    <div>
-                                        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
-                                            Established Year
-                                        </span>
-                                        <p className="text-lg font-bold text-slate-900">
-                                            {drilldownData.schoolProfile?.establishedYear || "N/A"}
-                                        </p>
-                                    </div>
-                                </div>
-
-                                <div className="p-4 bg-slate-50 border border-slate-100 rounded-xl flex items-center gap-3">
-                                    <div className="w-10 h-10 rounded-lg bg-indigo-600 text-white flex items-center justify-center shrink-0">
-                                        <Shield className="w-5 h-5" />
-                                    </div>
-                                    <div>
-                                        <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
-                                            Principal / Admin
-                                        </span>
-                                        <p className="text-xs font-bold text-slate-900 truncate max-w-[140px]">
-                                            {drilldownData.admin?.name || "Unassigned"}
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* School Contact & Address Card */}
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
-                                <div className="p-4 bg-slate-50 rounded-xl border border-slate-100 space-y-3">
-                                    <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
-                                        <MapPin className="w-4 h-4 text-blue-600" />
-                                        <span>Campus & Contact Details</span>
-                                    </h4>
-                                    <div className="space-y-2 text-xs text-slate-600">
-                                        <div className="flex items-center gap-2">
-                                            <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                                            <span>Address: <strong className="text-slate-800">{drilldownData.schoolProfile?.address || "Registered Campus"}</strong></span>
-                                        </div>
-                                        <div className="flex items-center gap-2">
-                                            <Phone className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                                            <span>Phone: <strong className="text-slate-800">{drilldownData.schoolProfile?.phoneNumber || "Official line registered"}</strong></span>
-                                        </div>
-                                        <div className="flex items-center gap-2">
-                                            <Mail className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                                            <span>Email: <strong className="text-slate-800">{drilldownData.schoolProfile?.contactEmail || drilldownData.admin?.email || "N/A"}</strong></span>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div className="p-4 bg-slate-50 rounded-xl border border-slate-100 space-y-3">
-                                    <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
-                                        <Shield className="w-4 h-4 text-indigo-600" />
-                                        <span>Hierarchy Lineage</span>
-                                    </h4>
-                                    <div className="space-y-1.5 text-xs">
-                                        {drilldownData.breadcrumbs.map((bc, idx) => (
-                                            <div key={bc.id} className="flex items-center gap-2 text-slate-600">
-                                                <span className="w-4 text-center font-bold text-slate-400">{idx + 1}.</span>
-                                                <span className="font-semibold text-slate-800">{bc.name}</span>
-                                                <span className="text-[10px] px-1.5 py-0.2 bg-slate-200 text-slate-700 rounded-sm">{bc.type}</span>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* CHILD DIRECTORY TABLE FOR CURRENT NODE */}
-                    {drilldownData && drilldownData.node.type !== "SCHOOL" && (
-                        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm space-y-4 p-6">
-                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                                <div>
-                                    <h3 className="text-base font-bold text-slate-900">
-                                        Subordinate Schools
-                                    </h3>
-                                    <p className="text-xs text-slate-500">
-                                        Click any school to view full profile details and metrics
-                                    </p>
-                                </div>
-
-                                <div className="relative w-full sm:w-72">
-                                    <Search className="w-4 h-4 absolute left-3 top-2.5 text-slate-400" />
-                                    <input
-                                        type="text"
-                                        placeholder="Search schools..."
-                                        value={drilldownSearch}
-                                        onChange={e => setDrilldownSearch(e.target.value)}
-                                        className="w-full pl-9 pr-4 py-2 border border-slate-200 rounded-lg text-xs focus:outline-hidden focus:border-blue-500 transition-colors"
-                                    />
-                                </div>
-                            </div>
-
-                            {/* Table */}
-                            <div className="overflow-x-auto border border-slate-200 rounded-xl">
-                                <table className="w-full text-left text-xs">
-                                    <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 font-semibold uppercase tracking-wider text-[10px]">
-                                        <tr>
-                                            <th className="py-3 px-4">School Name</th>
-                                            <th className="py-3 px-4">Students</th>
-                                            <th className="py-3 px-4">Teachers</th>
-                                            <th className="py-3 px-4">Administrator</th>
-                                            <th className="py-3 px-4 text-right">Actions</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-slate-100 text-slate-700 font-medium">
-                                        {drilldownLoading ? (
-                                            <tr>
-                                                <td colSpan={5} className="py-8 text-center text-slate-400">
-                                                    <div className="flex items-center justify-center gap-2">
-                                                        <RefreshCw className="w-4 h-4 animate-spin text-blue-600" />
-                                                        <span>Loading schools...</span>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        ) : filteredDrilldownChildren.length === 0 ? (
-                                            <tr>
-                                                <td colSpan={5} className="py-8 text-center text-slate-400">
-                                                    No schools found under this woreda.
-                                                </td>
-                                            </tr>
-                                        ) : (
-                                            filteredDrilldownChildren.map(child => (
-                                                <tr
-                                                    key={child.id}
-                                                    onClick={() => navigateToUnit(child.id)}
-                                                    className="hover:bg-blue-50/40 transition-colors cursor-pointer"
-                                                >
-                                                    <td className="py-3 px-4 font-bold text-slate-900">
-                                                        <div className="flex items-center gap-2">
-                                                            <School className="w-4 h-4 text-emerald-600 shrink-0" />
-                                                            <span>{child.name}</span>
-                                                        </div>
-                                                    </td>
-                                                    <td className="py-3 px-4 font-semibold text-blue-700">
-                                                        {fmt(child.studentsCount)}
-                                                    </td>
-                                                    <td className="py-3 px-4 font-semibold text-emerald-700">
-                                                        {fmt(child.teachersCount)}
-                                                    </td>
-                                                    <td className="py-3 px-4">
-                                                        {child.admin ? (
-                                                            <div>
-                                                                <p className="font-semibold text-slate-900">{child.admin.name}</p>
-                                                                <p className="text-[11px] text-slate-500">{child.admin.email}</p>
-                                                            </div>
-                                                        ) : (
-                                                            <span className="text-slate-400 italic text-[11px]">Unassigned</span>
-                                                        )}
-                                                    </td>
-                                                    <td className="py-3 px-4 text-right" onClick={e => e.stopPropagation()}>
-                                                        <div className="flex items-center justify-end gap-1.5">
-                                                            <button
-                                                                onClick={() => navigateToUnit(child.id)}
-                                                                className="px-2.5 py-1 bg-white border border-slate-200 hover:border-blue-400 hover:text-blue-600 text-slate-700 rounded text-[11px] font-bold transition-colors flex items-center gap-1 cursor-pointer shadow-2xs"
-                                                            >
-                                                                <span>View Profile</span>
-                                                                <ChevronRight className="w-3.5 h-3.5" />
-                                                            </button>
-
-                                                            {!child.admin && (
-                                                                <button
-                                                                    onClick={() => openAssignAdmin(child)}
-                                                                    className="px-2.5 py-1 bg-blue-50 text-blue-700 hover:bg-blue-100 rounded text-[11px] font-bold transition-colors flex items-center gap-1 cursor-pointer"
-                                                                >
-                                                                    <UserPlus className="w-3.5 h-3.5" />
-                                                                    <span>Assign Admin</span>
-                                                                </button>
-                                                            )}
-                                                            {child.admin && child.admin.status === "INVITATION_PENDING" && (
-                                                                <button
-                                                                    onClick={() => handleResendInvitation(child.id)}
-                                                                    disabled={actionLoadingId === child.id}
-                                                                    className="px-2.5 py-1 bg-amber-50 text-amber-700 hover:bg-amber-100 rounded text-[11px] font-bold transition-colors cursor-pointer"
-                                                                >
-                                                                    {actionLoadingId === child.id ? "Resending..." : "Resend Invite"}
-                                                                </button>
-                                                            )}
-                                                        </div>
-                                                    </td>
-                                                </tr>
-                                            ))
-                                        )}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    )}
-                </div>
+                <RegionalHierarchyView
+                    drilldownData={drilldownData}
+                    loading={drilldownLoading}
+                    error={drilldownError}
+                    onNavigateToUnit={navigateToUnit}
+                    onNavigateBack={navigateBack}
+                    onRefresh={() => {
+                        loadWoredaData();
+                        loadDrilldownData(unitIdParam);
+                    }}
+                    onOpenAddRegion={() => {
+                        setNewSchoolName("");
+                        setNewSchoolCode("");
+                        setNewSchoolAddress("");
+                        setNewSchoolPhone("");
+                        setCreateSchoolMessage(null);
+                        setCreateSchoolOpen(true);
+                    }}
+                    onOpenAssignAdmin={openAssignAdmin}
+                    title="School directory & institutions"
+                    addUnitLabel="Add school"
+                />
             )}
 
             {/* TAB 3: LEADERSHIP & ADMINISTRATION */}
             {currentTab === "administration" && !unitIdParam && (
-                <div className="bg-white rounded-2xl border border-slate-100 shadow-sm space-y-4 p-6">
-                    <div>
-                        <h2 className="text-base font-bold text-slate-900">School Leadership & Administrators</h2>
-                        <p className="text-xs text-slate-500">Designated school administrators and principals</p>
-                    </div>
-
-                    <div className="overflow-x-auto border border-slate-200 rounded-xl">
-                        <table className="w-full text-left text-xs">
-                            <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 font-semibold uppercase tracking-wider text-[10px]">
-                                <tr>
-                                    <th className="py-3 px-4">Administrator</th>
-                                    <th className="py-3 px-4">School</th>
-                                    <th className="py-3 px-4">Email</th>
-                                    <th className="py-3 px-4">Status</th>
-                                    <th className="py-3 px-4 text-right">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-100 text-slate-700 font-medium">
-                                {assignedAdministrators.length === 0 ? (
-                                    <tr>
-                                        <td colSpan={5} className="py-8 text-center text-slate-400">
-                                            No school administrators appointed yet.
-                                        </td>
-                                    </tr>
-                                ) : (
-                                    assignedAdministrators.map(({ schoolId, schoolName, admin }) => (
-                                        <tr key={schoolId} className="hover:bg-slate-50/70 transition-colors">
-                                            <td className="py-3 px-4 font-bold text-slate-900">
-                                                {admin.name}
-                                            </td>
-                                            <td className="py-3 px-4 font-semibold text-slate-800">
-                                                {schoolName}
-                                            </td>
-                                            <td className="py-3 px-4 text-slate-600">
-                                                {admin.email}
-                                            </td>
-                                            <td className="py-3 px-4">
-                                                {admin.status === "ACTIVE" ? (
-                                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                                                        <CheckCircle2 className="w-3 h-3" /> Active
-                                                    </span>
-                                                ) : (
-                                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
-                                                        Pending Invite
-                                                    </span>
-                                                )}
-                                            </td>
-                                            <td className="py-3 px-4 text-right">
-                                                <div className="flex items-center justify-end gap-2">
-                                                    {admin.status === "INVITATION_PENDING" && (
-                                                        <button
-                                                            onClick={() => handleResendInvitation(schoolId)}
-                                                            disabled={actionLoadingId === schoolId}
-                                                            className="px-2.5 py-1 bg-amber-50 text-amber-700 hover:bg-amber-100 rounded text-[11px] font-bold transition-colors cursor-pointer"
-                                                        >
-                                                            {actionLoadingId === schoolId ? "Resending..." : "Resend Invite"}
-                                                        </button>
-                                                    )}
-                                                    <button
-                                                        onClick={() => handleCancelInvitation(schoolId)}
-                                                        disabled={actionLoadingId === schoolId}
-                                                        className="px-2.5 py-1 text-rose-600 hover:text-rose-800 border border-rose-200 hover:bg-rose-50 rounded text-[11px] font-semibold transition-colors cursor-pointer"
-                                                    >
-                                                        Revoke
-                                                    </button>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    ))
-                                )}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
+                <RegionalAdministratorsView
+                    regions={data?.schools || []}
+                    onRefresh={loadWoredaData}
+                    onNavigateToRegion={(id) => navigateToUnit(id)}
+                    title="School administrators"
+                    unitTypeLabel="School"
+                    apiEndpointPrefix="schools"
+                />
             )}
 
             {/* TAB: DIRECTIVES & ANNOUNCEMENTS */}
