@@ -132,6 +132,7 @@ export default function ProgramsRegistryView({
 
     // Navigation & Filter Mode
     const [originFilter, setOriginFilter] = useState<"ALL" | "RECEIVED" | "CREATED">("ALL");
+    const [receivedFromFilter, setReceivedFromFilter] = useState<string>("ALL");
     const [searchQuery, setSearchQuery] = useState("");
     const [priorityFilter, setPriorityFilter] = useState<string>("ALL");
     const [statusFilter, setStatusFilter] = useState<string>("ALL");
@@ -351,11 +352,34 @@ export default function ProgramsRegistryView({
         return false;
     };
 
+    const matchesReceivedFrom = (p: ProgramItem, filter: string): boolean => {
+        if (filter === "ALL") return true;
+        const orgType = (p.createdOrganization?.type || "").toUpperCase();
+        const orgName = (p.createdOrganization?.name || "").toLowerCase();
+
+        if (filter === "FEDERAL") {
+            return orgType === "FEDERAL" || orgName.includes("federal") || orgName.includes("ministry") || orgName.includes("edubridge");
+        }
+        if (filter === "REGION") {
+            return orgType === "REGION" || orgName.includes("region") || orgName.includes("bureau");
+        }
+        if (filter === "ZONE") {
+            return orgType === "ZONE" || orgName.includes("zone") || orgName.includes("department");
+        }
+        if (filter === "WOREDA") {
+            return orgType === "WOREDA" || orgName.includes("woreda") || orgName.includes("office");
+        }
+        return orgType === filter;
+    };
+
     const filteredPrograms = useMemo(() => {
         return programs.filter(p => {
             // Origin filter: created by us vs received
             if (originFilter === "RECEIVED" && p.isCreatedByMe) return false;
             if (originFilter === "CREATED" && !p.isCreatedByMe) return false;
+
+            // Received from (issuing authority) filter
+            if (receivedFromFilter !== "ALL" && !matchesReceivedFrom(p, receivedFromFilter)) return false;
 
             // Target scope filter
             if (targetScopeFilter !== "ALL" && !matchesTargetScope(p, targetScopeFilter)) return false;
@@ -377,11 +401,11 @@ export default function ProgramsRegistryView({
 
             return true;
         });
-    }, [programs, originFilter, targetScopeFilter, priorityFilter, statusFilter, searchQuery]);
+    }, [programs, originFilter, receivedFromFilter, targetScopeFilter, priorityFilter, statusFilter, searchQuery]);
 
     useEffect(() => {
         setPage(1);
-    }, [originFilter, targetScopeFilter, priorityFilter, statusFilter, searchQuery, pageSize, viewMode]);
+    }, [originFilter, receivedFromFilter, targetScopeFilter, priorityFilter, statusFilter, searchQuery, pageSize, viewMode]);
 
     const totalPages = Math.max(1, Math.ceil(filteredPrograms.length / pageSize));
     const paginatedPrograms = useMemo(() => {
@@ -416,17 +440,19 @@ export default function ProgramsRegistryView({
     const activeFilterCount = useMemo(() => {
         let count = 0;
         if (originFilter !== "ALL") count++;
+        if (tierType !== "FEDERAL" && receivedFromFilter !== "ALL") count++;
         if (targetScopeFilter !== "ALL") count++;
         if (priorityFilter !== "ALL") count++;
         if (statusFilter !== "ALL") count++;
         return count;
-    }, [originFilter, targetScopeFilter, priorityFilter, statusFilter]);
+    }, [originFilter, tierType, receivedFromFilter, targetScopeFilter, priorityFilter, statusFilter]);
 
     const hasActiveFilters = searchQuery !== "" || activeFilterCount > 0;
 
     const clearAllFilters = () => {
         setSearchQuery("");
         setOriginFilter("ALL");
+        setReceivedFromFilter("ALL");
         setTargetScopeFilter("ALL");
         setPriorityFilter("ALL");
         setStatusFilter("ALL");
@@ -665,6 +691,23 @@ export default function ProgramsRegistryView({
                                 <X className="w-3.5 h-3.5 text-slate-500 hover:text-slate-900" />
                             </button>
                         )}
+                        {tierType !== "FEDERAL" && receivedFromFilter !== "ALL" && (
+                            <button
+                                type="button"
+                                onClick={() => setReceivedFromFilter("ALL")}
+                                className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-slate-100 hover:bg-slate-200 text-slate-800 transition-colors cursor-pointer"
+                            >
+                                <span>
+                                    From: {
+                                        receivedFromFilter === "FEDERAL" ? "Federal Ministry" :
+                                        receivedFromFilter === "REGION" ? "Regional Bureau" :
+                                        receivedFromFilter === "ZONE" ? "Zone Department" :
+                                        receivedFromFilter === "WOREDA" ? "Woreda Office" : receivedFromFilter
+                                    }
+                                </span>
+                                <X className="w-3.5 h-3.5 text-slate-500 hover:text-slate-900" />
+                            </button>
+                        )}
                         {targetScopeFilter !== "ALL" && (
                             <button
                                 type="button"
@@ -715,7 +758,9 @@ export default function ProgramsRegistryView({
 
                 {/* Collapsible Secondary Filters Panel */}
                 {showFilters && (
-                    <div className="p-4 bg-slate-50 border border-slate-200 rounded grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div className={`p-4 bg-slate-50 border border-slate-200 rounded grid grid-cols-1 sm:grid-cols-2 ${
+                        tierType === "FEDERAL" ? "lg:grid-cols-4" : "lg:grid-cols-5"
+                    } gap-4`}>
                         {/* Ownership / Origin */}
                         <div>
                             <label htmlFor="origin-filter" className="block text-xs font-semibold text-slate-700 mb-1">
@@ -729,11 +774,43 @@ export default function ProgramsRegistryView({
                             >
                                 <option value="ALL">All initiatives ({programs.length})</option>
                                 <option value="CREATED">Created by our desk ({programs.filter(p => p.isCreatedByMe).length})</option>
-                                <option value="RECEIVED">Received from higher tiers ({programs.filter(p => !p.isCreatedByMe).length})</option>
+                                {tierType !== "FEDERAL" && (
+                                    <option value="RECEIVED">Received from higher tiers ({programs.filter(p => !p.isCreatedByMe).length})</option>
+                                )}
                             </select>
                         </div>
 
-                        {/* Target Scope */}
+                        {/* Received from (Issuing Authority) - Only for tiers below Federal */}
+                        {tierType !== "FEDERAL" && (
+                            <div>
+                                <label htmlFor="received-from-filter" className="block text-xs font-semibold text-slate-700 mb-1">
+                                    Received from
+                                </label>
+                                <select
+                                    id="received-from-filter"
+                                    value={receivedFromFilter}
+                                    onChange={e => setReceivedFromFilter(e.target.value)}
+                                    disabled={originFilter === "CREATED"}
+                                    className={`w-full py-1.5 px-2.5 text-sm bg-white border border-slate-300 rounded text-slate-800 focus:outline-none focus:ring-1 focus:ring-[#4085b3] focus:border-[#4085b3] ${
+                                        originFilter === "CREATED" ? "opacity-50 cursor-not-allowed bg-slate-100" : "cursor-pointer"
+                                    }`}
+                                >
+                                    <option value="ALL">All issuing authorities</option>
+                                    <option value="FEDERAL">Federal Ministry</option>
+                                    {tierType !== "REGION" && (
+                                        <option value="REGION">Regional Bureau</option>
+                                    )}
+                                    {tierType !== "REGION" && tierType !== "ZONE" && (
+                                        <option value="ZONE">Zone Department</option>
+                                    )}
+                                    {(tierType === "SCHOOL" || !tierType) && (
+                                        <option value="WOREDA">Woreda Office</option>
+                                    )}
+                                </select>
+                            </div>
+                        )}
+
+                        {/* Target Scope - strictly subordinate levels only */}
                         <div>
                             <label htmlFor="target-scope-filter" className="block text-xs font-semibold text-slate-700 mb-1">
                                 Target scope
@@ -746,9 +823,15 @@ export default function ProgramsRegistryView({
                             >
                                 <option value="ALL">All target scopes</option>
                                 <option value="ALL_TIERS">All subordinate units</option>
-                                <option value="REGION">Regional Bureaus</option>
-                                <option value="ZONE">Zone Departments</option>
-                                <option value="WOREDA">Woreda Offices</option>
+                                {tierType === "FEDERAL" && (
+                                    <option value="REGION">Regional Bureaus</option>
+                                )}
+                                {(tierType === "FEDERAL" || tierType === "REGION") && (
+                                    <option value="ZONE">Zone Departments</option>
+                                )}
+                                {(tierType === "FEDERAL" || tierType === "REGION" || tierType === "ZONE") && (
+                                    <option value="WOREDA">Woreda Offices</option>
+                                )}
                                 <option value="SCHOOL">Schools</option>
                             </select>
                         </div>
