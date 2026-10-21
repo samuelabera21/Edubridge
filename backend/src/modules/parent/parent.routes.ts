@@ -22,7 +22,8 @@ import {
     sendParentMessage,
     getParentAnnouncements,
     getParentMeetingsList,
-    requestParentMeeting
+    requestParentMeeting,
+    getParentChildActivities
 } from "./parent.controller.js";
 import { requirePermission, requireScope } from "../authentication/authorization.middleware.js";
 
@@ -35,6 +36,7 @@ router.use(requireScope("SCHOOL"));
 router.get("/me", getParentProfile);
 router.get("/children/:studentId/attendance", getParentChildAttendance);
 router.get("/children/:studentId/academics", getParentChildAcademics);
+router.get("/children/:studentId/activities", getParentChildActivities);
 router.get("/children/:studentId/teachers", getParentChildTeachers);
 router.get("/messages", getParentMessages);
 router.post("/messages", sendParentMessage);

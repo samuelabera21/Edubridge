@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { usePathname, useSearchParams } from "next/navigation";
+import { useState, Suspense } from "react";
 import {
     LayoutDashboard,
     User,
@@ -108,7 +108,7 @@ const parentNavGroups: ParentNavGroup[] = [
     },
 ];
 
-export default function ParentNavigation({
+function ParentNavigationContent({
     collapsed,
     onToggleCollapse
 }: {
@@ -116,6 +116,9 @@ export default function ParentNavigation({
     onToggleCollapse: () => void;
 }) {
     const pathname = usePathname();
+    const searchParams = useSearchParams();
+    const currentTab = searchParams ? searchParams.get("tab") : null;
+
     const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
         profile: pathname.startsWith("/dashboard/parent/profile"),
         attendance: pathname.startsWith("/dashboard/parent/attendance"),
@@ -135,8 +138,30 @@ export default function ParentNavigation({
     };
 
     const isActive = (href: string) => {
-        const cleanHref = href.split("?")[0];
-        return pathname === cleanHref;
+        const [linkPath, linkQuery] = href.split("?");
+        if (pathname !== linkPath) {
+            return false;
+        }
+
+        // When link has NO query string (e.g. /dashboard/parent/profile), it represents default tab
+        if (!linkQuery) {
+            if (!currentTab) return true;
+            // Also match if currentTab equals the default tab name for the page
+            if (linkPath.endsWith("/profile") && currentTab === "general") return true;
+            if (linkPath.endsWith("/attendance") && currentTab === "overview") return true;
+            if (linkPath.endsWith("/academics") && currentTab === "subjects") return true;
+            if (linkPath.endsWith("/communication") && currentTab === "messages") return true;
+            if (linkPath.endsWith("/activities") && currentTab === "upcoming") return true;
+            if (linkPath.endsWith("/support") && currentTab === "notifications") return true;
+            if (linkPath.endsWith("/consent") && currentTab === "consent") return true;
+            if (linkPath.endsWith("/assistant") && currentTab === "assistant") return true;
+            return false;
+        }
+
+        // When link specifies ?tab=..., compare it with currentTab
+        const linkParams = new URLSearchParams(linkQuery);
+        const expectedTab = linkParams.get("tab");
+        return currentTab === expectedTab;
     };
 
     return (
@@ -269,3 +294,17 @@ export default function ParentNavigation({
         </aside>
     );
 }
+
+export default function ParentNavigation(props: {
+    collapsed: boolean;
+    onToggleCollapse: () => void;
+}) {
+    return (
+        <Suspense fallback={
+            <aside className={`bg-[#184973] border-r border-[#265e8e] flex flex-col hidden md:flex shrink-0 ${props.collapsed ? "w-16" : "w-64"}`} />
+        }>
+            <ParentNavigationContent {...props} />
+        </Suspense>
+    );
+}
+

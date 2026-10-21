@@ -738,4 +738,103 @@ export const requestParentMeeting = async (req: Request, res: Response) => {
     }
 };
 
+/**
+ * Get upcoming and recent learning activities for a child
+ */
+export const getParentChildActivities = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        const { studentId } = req.params;
+
+        const userEmail = req.user?.email;
+        if (!userEmail) return res.status(401).json({ error: "Unauthorized" });
+
+        const user = await prisma.user.findUnique({
+            where: { email: userEmail },
+            include: { parent: { include: { children: true } } }
+        });
+
+        const isLinked = user?.parent?.children.some(c => c.studentId === studentId);
+        if (!isLinked) {
+            return res.status(403).json({ error: "Unauthorized access to student" });
+        }
+
+        const enrollment = await prisma.studentEnrollment.findFirst({
+            where: {
+                studentId,
+                ...(organizationId ? { organizationId } : {})
+            },
+            orderBy: { createdAt: "desc" }
+        });
+
+        if (!enrollment) {
+            return res.json([]);
+        }
+
+        const activities = await prisma.learningActivity.findMany({
+            where: {
+                organizationId: enrollment.organizationId,
+                academicYearId: enrollment.academicYearId,
+                teachingAssignment: {
+                    schoolGradeId: enrollment.schoolGradeId,
+                    sectionId: enrollment.sectionId
+                }
+            },
+            include: {
+                teachingAssignment: {
+                    include: {
+                        subject: true,
+                        teacher: true,
+                        schoolGrade: { include: { grade: true } },
+                        section: true
+                    }
+                },
+                submissions: {
+                    where: { enrollmentId: enrollment.id }
+                }
+            },
+            orderBy: [
+                { dueDate: "asc" },
+                { createdAt: "desc" }
+            ],
+            take: 20
+        });
+
+        const formatted = activities.map(act => {
+            const submission = act.submissions[0] || null;
+            let status = "PENDING";
+            if (submission?.status) {
+                status = submission.status;
+            } else if (act.dueDate && new Date(act.dueDate) < new Date()) {
+                status = "OVERDUE";
+            }
+
+            return {
+                id: act.id,
+                title: act.title,
+                description: act.description,
+                type: act.type,
+                subject: act.teachingAssignment?.subject?.name || "General",
+                teacher: act.teachingAssignment?.teacher ? `${act.teachingAssignment.teacher.firstName} ${act.teachingAssignment.teacher.lastName}` : "Assigned Teacher",
+                dueDate: act.dueDate,
+                supportCategory: act.supportCategory,
+                status,
+                submission: submission ? {
+                    id: submission.id,
+                    submittedAt: submission.submittedAt,
+                    grade: submission.grade,
+                    feedback: submission.feedback,
+                    status: submission.status
+                } : null
+            };
+        });
+
+        return res.json(formatted);
+    } catch (error: any) {
+        console.error("Error fetching child activities:", error);
+        return res.status(500).json({ error: error.message || "Failed to load activities" });
+    }
+};
+
+
 
