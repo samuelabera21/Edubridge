@@ -155,10 +155,10 @@ export default function StudentDashboard() {
                     <section className="overflow-hidden rounded-xl border border-gray-100 bg-white shadow-sm">
                         <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4">
                             <div className="flex items-center gap-2">
-                                <CalendarDays className="h-5 w-5 text-[#006b3f]" />
+                                <CalendarDays className="h-5 w-5 text-[#184973]" />
                                 <h2 className="font-semibold text-gray-900">Today&apos;s classes &amp; schedule</h2>
                             </div>
-                            <Link href="/dashboard/student/timetable" className="text-sm font-medium text-[#006b3f] hover:underline">
+                            <Link href="/dashboard/student/timetable" className="text-sm font-medium text-[#184973] hover:underline">
                                 View full timetable →
                             </Link>
                         </div>
@@ -167,7 +167,7 @@ export default function StudentDashboard() {
                                 <div className="space-y-3">
                                     {dashboard.todayClasses.map((item) => (
                                         <div key={item.id} className="flex items-start gap-4 rounded-xl border border-gray-100 bg-gray-50/50 p-4 transition hover:bg-gray-50">
-                                            <div className="w-28 flex-shrink-0 text-sm font-semibold text-[#006b3f]">
+                                            <div className="w-28 flex-shrink-0 text-sm font-semibold text-[#184973]">
                                                 {item.classPeriod.startTime} {item.classPeriod.endTime ? `- ${item.classPeriod.endTime}` : ""}
                                             </div>
                                             <div>
@@ -226,10 +226,10 @@ export default function StudentDashboard() {
                     <section className="overflow-hidden rounded-xl border border-gray-100 bg-white shadow-sm">
                         <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4">
                             <div className="flex items-center gap-2">
-                                <BookOpen className="h-5 w-5 text-[#006b3f]" />
+                                <BookOpen className="h-5 w-5 text-[#184973]" />
                                 <h2 className="font-semibold text-gray-900">Enrolled subjects &amp; teachers</h2>
                             </div>
-                            <Link href="/dashboard/student/classes/subjects" className="text-sm font-medium text-[#006b3f] hover:underline">
+                            <Link href="/dashboard/student/classes/subjects" className="text-sm font-medium text-[#184973] hover:underline">
                                 View all →
                             </Link>
                         </div>
@@ -291,7 +291,7 @@ export default function StudentDashboard() {
                                             <p className="font-medium text-gray-900">{result.title}</p>
                                             <p className="text-sm text-gray-500">{result.subject}</p>
                                         </div>
-                                        <p className="font-semibold text-[#006b3f]">{result.percentage}%</p>
+                                        <p className="font-semibold text-[#184973]">{result.percentage}%</p>
                                     </div>
                                 ))
                             )}
@@ -327,9 +327,9 @@ export default function StudentDashboard() {
                     <section className="rounded-xl border border-gray-100 bg-white shadow-sm">
                         <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4">
                             <h2 className="flex items-center gap-2 font-semibold text-gray-900">
-                                <Megaphone className="h-4 w-4 text-[#006b3f]" /> Announcements
+                                <Megaphone className="h-4 w-4 text-[#184973]" /> Announcements
                             </h2>
-                            <Link href="/dashboard/student/communication" className="text-xs font-semibold text-[#006b3f] hover:underline">
+                            <Link href="/dashboard/student/communication" className="text-xs font-semibold text-[#184973] hover:underline">
                                 View all
                             </Link>
                         </div>
@@ -393,7 +393,7 @@ function Empty({ text }: { text: string }) {
 }
 
 function StatCard({ icon, label, value, color }: { icon: React.ReactNode; label: string; value: string; color: "blue" | "green" | "amber" }) {
-    const colors = { blue: "bg-blue-50 text-[#006b3f]", green: "bg-green-50 text-green-600", amber: "bg-amber-50 text-amber-600" };
+    const colors = { blue: "bg-blue-50 text-[#184973]", green: "bg-green-50 text-green-600", amber: "bg-amber-50 text-amber-600" };
     return (
         <div className="flex items-center space-x-4 rounded-xl border border-gray-100 bg-white p-6 shadow-sm">
             <div className={`rounded-lg p-3 ${colors[color]}`}>{icon}</div>

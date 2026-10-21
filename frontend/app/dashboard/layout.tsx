@@ -298,9 +298,31 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
     const isStudentRoute = (pathname === "/dashboard/student" || pathname.startsWith("/dashboard/student/")) || roleName === "STUDENT";
     const isParentRoute = (pathname === "/dashboard/parent" || pathname.startsWith("/dashboard/parent/")) || roleName === "PARENT";
 
+    const getActiveDeskOrgId = () => {
+        if (!authData?.access?.length) return undefined;
+        if (pathname.startsWith("/dashboard/federal")) {
+            return authData.access.find((a: any) => a.scope?.type === "FEDERAL")?.scope?.id;
+        }
+        if (pathname.startsWith("/dashboard/region")) {
+            return authData.access.find((a: any) => a.scope?.type === "REGION")?.scope?.id;
+        }
+        if (pathname.startsWith("/dashboard/zone")) {
+            return authData.access.find((a: any) => a.scope?.type === "ZONE")?.scope?.id;
+        }
+        if (pathname.startsWith("/dashboard/woreda")) {
+            return authData.access.find((a: any) => a.scope?.type === "WOREDA")?.scope?.id;
+        }
+        const schoolScope = authData.access.find((a: any) => a.scope?.type === "SCHOOL")?.scope?.id;
+        return schoolScope || primaryAccess?.scope?.id;
+    };
+
     const loadNotifications = async () => {
         try {
-            const res = await fetchApi("/communication/notifications");
+            const activeOrgId = getActiveDeskOrgId();
+            const query = activeOrgId ? `?organizationId=${activeOrgId}` : "";
+            const res = await fetchApi(`/communication/notifications${query}`, {
+                headers: activeOrgId ? { "x-organization-id": activeOrgId } : {}
+            });
             if (res.ok) {
                 const data = await res.json();
                 if (Array.isArray(data)) {
@@ -315,7 +337,12 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
 
     const markNotificationAsRead = async (id: string, link?: string | null) => {
         try {
-            await fetchApi(`/communication/notifications/${id}/read`, { method: "PATCH" });
+            const activeOrgId = getActiveDeskOrgId();
+            const query = activeOrgId ? `?organizationId=${activeOrgId}` : "";
+            await fetchApi(`/communication/notifications/${id}/read${query}`, {
+                method: "PATCH",
+                headers: activeOrgId ? { "x-organization-id": activeOrgId } : {}
+            });
             setNotificationsList(prev => prev.map(n => n.id === id ? { ...n, isRead: true } : n));
             setUnreadCount(prev => Math.max(0, prev - 1));
         } catch {}
@@ -1466,8 +1493,7 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
                                             {openMenus.communication && !sidebarCollapsed && (
                                                 <div className="pl-8 pr-2 py-1.5 space-y-1 bg-[#103454]/80 rounded-xl my-1 border-l-2 border-[#2c6da7]/50 shadow-inner">
                                                     <Link href="/dashboard/communication/announcements" className={`block py-1.5 px-2 rounded-lg text-xs transition-all duration-150 hover:translate-x-0.5 ${pathname === "/dashboard/communication/announcements" ? "text-amber-300 font-semibold bg-[#0f2f4c] shadow-xs" : "text-blue-200/90 hover:text-amber-200 hover:bg-[#225785]/60"}`}>Announcements</Link>
-                                                    <Link href="/dashboard/directives" className={`block py-1.5 px-2 rounded-lg text-xs transition-all duration-150 hover:translate-x-0.5 ${pathname === "/dashboard/directives" ? "text-amber-300 font-semibold bg-[#0f2f4c] shadow-xs" : "text-blue-200/90 hover:text-amber-200 hover:bg-[#225785]/60"}`}>National Policies & Directives</Link>
-                                                    <Link href="/dashboard/programs" className={`block py-1.5 px-2 rounded-lg text-xs transition-all duration-150 hover:translate-x-0.5 ${pathname === "/dashboard/programs" ? "text-amber-300 font-semibold bg-[#0f2f4c] shadow-xs" : "text-blue-200/90 hover:text-amber-200 hover:bg-[#225785]/60"}`}>Programs & Initiatives</Link>
+                                                    <Link href="/dashboard/directives" className={`block py-1.5 px-2 rounded-lg text-xs transition-all duration-150 hover:translate-x-0.5 ${pathname.startsWith("/dashboard/directives") || pathname.startsWith("/dashboard/programs") ? "text-amber-300 font-semibold bg-[#0f2f4c] shadow-xs" : "text-blue-200/90 hover:text-amber-200 hover:bg-[#225785]/60"}`}>Policies & Programs</Link>
                                                     <Link href="/dashboard/data-requests" className={`block py-1.5 px-2 rounded-lg text-xs transition-all duration-150 hover:translate-x-0.5 ${pathname.startsWith("/dashboard/data-requests") ? "text-amber-300 font-semibold bg-[#0f2f4c] shadow-xs" : "text-blue-200/90 hover:text-amber-200 hover:bg-[#225785]/60"}`}>Data Requests & Surveys</Link>
                                                     <Link href="/dashboard/communication/notices" className={`block py-1.5 px-2 rounded-lg text-xs transition-all duration-150 hover:translate-x-0.5 ${pathname === "/dashboard/communication/notices" ? "text-amber-300 font-semibold bg-[#0f2f4c] shadow-xs" : "text-blue-200/90 hover:text-amber-200 hover:bg-[#225785]/60"}`}>Important Notices</Link>
                                                     <Link href="/dashboard/communication/messages" className={`block py-1.5 px-2 rounded-lg text-xs transition-all duration-150 hover:translate-x-0.5 ${pathname === "/dashboard/communication/messages" ? "text-amber-300 font-semibold bg-[#0f2f4c] shadow-xs" : "text-blue-200/90 hover:text-amber-200 hover:bg-[#225785]/60"}`}>Direct Messages</Link>

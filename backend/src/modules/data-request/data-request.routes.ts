@@ -6,6 +6,8 @@ import {
     getDataRequestByIdHandler,
     publishDataRequestHandler,
     createGoogleFormHandler,
+    getGoogleFormSchemaHandler,
+    syncGoogleFormSchemaHandler,
     syncGoogleFormResponsesHandler,
     recordDirectSubmissionHandler,
     reviewSubmissionHandler,
@@ -33,6 +35,8 @@ router.get("/", getDataRequestsHandler);
 router.get("/:id", getDataRequestByIdHandler);
 router.post("/:id/publish", publishDataRequestHandler);
 router.post("/:id/google-form", createGoogleFormHandler);
+router.get("/:id/schema", getGoogleFormSchemaHandler);
+router.post("/:id/schema/sync", syncGoogleFormSchemaHandler);
 router.post("/:id/sync", syncGoogleFormResponsesHandler);
 router.post("/:id/submit", recordDirectSubmissionHandler);
 

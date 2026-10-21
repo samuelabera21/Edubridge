@@ -31,7 +31,6 @@ import {
     Bookmark,
     BookOpen,
     Megaphone,
-    X,
     Copy,
     Check,
     Reply,
@@ -42,11 +41,13 @@ import {
     ExternalLink,
     Image as ImageIcon,
     File,
-    Target
+    Target,
+    CheckCheck
 } from "lucide-react";
 import { LoadingState } from "@/components/ui/LoadingState";
 import DirectivesRecipientView from "@/components/governance/DirectivesRecipientView";
 import ProgramsRegistryView from "@/components/governance/ProgramsRegistryView";
+import { getSocket, emitTyping, emitMarkRead } from "@/lib/socket";
 
 type CommunicationCategory = "STUDENT" | "PARENT" | "DEPARTMENT" | "STAFF" | "DIRECTIVES" | "PROGRAMS";
 
@@ -355,9 +356,113 @@ export default function TeacherCommunicationPage() {
         }
     }, []);
 
+    // Real-time WebSocket states
+    const [socketConnected, setSocketConnected] = useState(false);
+    const [onlineUserIds, setOnlineUserIds] = useState<Set<string>>(new Set());
+    const [isStudentTyping, setIsStudentTyping] = useState(false);
+    const typingTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
+
+    // Selected Contact Target User ID
+    const selectedTargetUserId = useMemo(() => {
+        if (!selectedContact || selectedContact.isBroadcast) return null;
+        return (
+            selectedContact.parentUserId ||
+            selectedContact.raw?.parentUserId ||
+            selectedContact.raw?.parent?.userId ||
+            selectedContact.raw?.student?.userId ||
+            selectedContact.raw?.userId ||
+            (selectedContact.id?.startsWith("parent-") || selectedContact.id?.startsWith("section-") || selectedContact.id?.startsWith("broadcast-") ? null : selectedContact.id)
+        );
+    }, [selectedContact]);
+
+    // WebSocket Gateway Integration for Teacher
+    useEffect(() => {
+        if (!currentUserId) return;
+        const socket = getSocket(currentUserId);
+        if (!socket) return;
+
+        const onConnect = () => setSocketConnected(true);
+        const onDisconnect = () => setSocketConnected(false);
+
+        const onOnlineUsers = (users: string[]) => {
+            if (Array.isArray(users)) setOnlineUserIds(new Set(users));
+        };
+
+        const onUserPresence = ({ userId, status }: { userId: string; status: string }) => {
+            setOnlineUserIds(prev => {
+                const next = new Set(prev);
+                if (status === "online") next.add(userId);
+                else next.delete(userId);
+                return next;
+            });
+        };
+
+        const onNewMessage = (msg: any) => {
+            if (!msg) return;
+            setMessagesHistory(prev => {
+                if (prev.some((m: any) => m.id === msg.id)) return prev;
+                return [msg, ...prev];
+            });
+
+            if (selectedTargetUserId && msg.senderId === selectedTargetUserId) {
+                emitMarkRead(selectedTargetUserId);
+            }
+        };
+
+        const onTypingStatus = (data: { fromUserId: string; isTyping: boolean }) => {
+            if (selectedTargetUserId && data.fromUserId === selectedTargetUserId) {
+                setIsStudentTyping(Boolean(data.isTyping));
+            }
+        };
+
+        const onMessagesRead = (data: { byUserId: string }) => {
+            setMessagesHistory(prev =>
+                prev.map((m: any) =>
+                    (m.senderId === currentUserId && (m.receiverId === data.byUserId || m.recipientId === data.byUserId))
+                        ? { ...m, isRead: true }
+                        : m
+                )
+            );
+        };
+
+        socket.on("connect", onConnect);
+        socket.on("disconnect", onDisconnect);
+        socket.on("online_users_list", onOnlineUsers);
+        socket.on("user_presence", onUserPresence);
+        socket.on("new_message", onNewMessage);
+        socket.on("typing_status", onTypingStatus);
+        socket.on("messages_read", onMessagesRead);
+
+        if (socket.connected) setSocketConnected(true);
+
+        return () => {
+            socket.off("connect", onConnect);
+            socket.off("disconnect", onDisconnect);
+            socket.off("online_users_list", onOnlineUsers);
+            socket.off("user_presence", onUserPresence);
+            socket.off("new_message", onNewMessage);
+            socket.off("typing_status", onTypingStatus);
+            socket.off("messages_read", onMessagesRead);
+        };
+    }, [currentUserId, selectedTargetUserId]);
+
     useEffect(() => {
         loadData();
-    }, [loadData]);
+        const pollInterval = socketConnected ? 12000 : 4000;
+        const interval = setInterval(() => {
+            if (typeof document !== "undefined" && document.visibilityState === "visible") {
+                fetchApi("/communication/messages")
+                    .then(res => res.ok ? res.json() : null)
+                    .then(mData => {
+                        if (Array.isArray(mData)) {
+                            setMessagesHistory(mData);
+                        }
+                    })
+                    .catch(() => {});
+            }
+        }, pollInterval);
+        return () => clearInterval(interval);
+    }, [loadData, socketConnected]);
 
     // Helper to normalize section strings
     const normalizeSection = (val: string) => {
@@ -1016,7 +1121,10 @@ export default function TeacherCommunicationPage() {
                         attachmentName: newMsg.attachmentName || uploadedAttachmentName,
                         attachmentType: newMsg.attachmentType || uploadedAttachmentType
                     };
-                    setMessagesHistory(prev => [formattedMsg, ...prev]);
+                    setMessagesHistory(prev => {
+                        if (prev.some((m: any) => m.id === formattedMsg.id)) return prev;
+                        return [formattedMsg, ...prev];
+                    });
                     setMessageText("");
                     setMessageSubject("");
                     setReplyingTo(null);
@@ -1880,6 +1988,21 @@ export default function TeacherCommunicationPage() {
                                                 <div className="flex items-center gap-1.5">
                                                     {msg.isEdited && <span className="italic text-[9px] opacity-90 font-normal">(edited)</span>}
                                                     <span>{new Date(msg.createdAt || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                                    {isMe && (
+                                                        <span title={msg.isRead ? "Read by recipient" : "Delivered"}>
+                                                            {msg.isRead ? (
+                                                                <span className="inline-flex items-center text-amber-300 font-bold">
+                                                                    <CheckCheck className="w-3 h-3" />
+                                                                    <span className="ml-0.5 text-[9px]">Read</span>
+                                                                </span>
+                                                            ) : (
+                                                                <span className="inline-flex items-center text-blue-200">
+                                                                    <Check className="w-3 h-3" />
+                                                                    <span className="ml-0.5 text-[9px]">Sent</span>
+                                                                </span>
+                                                            )}
+                                                        </span>
+                                                    )}
                                                 </div>
                                             </div>
 
@@ -2053,6 +2176,21 @@ export default function TeacherCommunicationPage() {
                                 );
                             })
                         )}
+                        {/* Real-time typing bubble for student/recipient */}
+                        {isStudentTyping && (
+                            <div className="flex items-start">
+                                <div className="max-w-xs p-3 rounded-2xl text-xs bg-white border border-slate-200 text-slate-600 rounded-bl-xs shadow-2xs flex items-center gap-2">
+                                    <span className="text-[11px] font-medium text-slate-500">
+                                        {selectedContact?.name || "Student"} is typing
+                                    </span>
+                                    <span className="inline-flex items-center gap-1">
+                                        <span className="h-1.5 w-1.5 rounded-full bg-[#143e66] animate-bounce [animation-delay:-0.3s]"></span>
+                                        <span className="h-1.5 w-1.5 rounded-full bg-[#143e66] animate-bounce [animation-delay:-0.15s]"></span>
+                                        <span className="h-1.5 w-1.5 rounded-full bg-[#143e66] animate-bounce"></span>
+                                    </span>
+                                </div>
+                            </div>
+                        )}
                     </div>
 
                     {/* Composer Form */}
@@ -2145,7 +2283,16 @@ export default function TeacherCommunicationPage() {
                             <div className="flex gap-2">
                                 <textarea
                                     value={messageText}
-                                    onChange={(e) => setMessageText(e.target.value)}
+                                    onChange={(e) => {
+                                        setMessageText(e.target.value);
+                                        if (selectedTargetUserId) {
+                                            emitTyping(selectedTargetUserId, true);
+                                            if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+                                            typingTimeoutRef.current = setTimeout(() => {
+                                                if (selectedTargetUserId) emitTyping(selectedTargetUserId, false);
+                                            }, 1500);
+                                        }
+                                    }}
                                     placeholder={
                                         activeCategory === "STUDENT" && studentTargetMode === "ALL"
                                             ? `Write announcement to all ${studentsList.length} students across all your classes...`
@@ -2203,9 +2350,9 @@ export default function TeacherCommunicationPage() {
                                                 : sending
                                                 ? "Sending..."
                                                 : (activeCategory === "STUDENT" && studentTargetMode === "ALL") || (activeCategory === "PARENT" && parentTargetMode === "ALL")
-                                                ? "Broadcast"
+                                                ? "Broadcast All"
                                                 : (activeCategory === "STUDENT" && studentTargetMode === "SECTION") || (activeCategory === "PARENT" && parentTargetMode === "SECTION")
-                                                ? "Broadcast"
+                                                ? "Broadcast Section"
                                                 : "Send"}
                                         </span>
                                     </button>

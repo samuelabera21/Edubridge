@@ -227,6 +227,38 @@ export const getMyStudentAssessments = async (req: Request, res: Response) => {
     }
 };
 
+export const startMyStudentAssessment = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        const userId = req.user?.id;
+        const id = req.params.id as string | undefined;
+        if (!organizationId || !userId) return res.status(403).json({ error: "Missing school scope or authentication" });
+        if (!id) return res.status(400).json({ error: "Assessment ID is required" });
+
+        const result = await StudentService.startStudentAssessment(userId, organizationId, id);
+        return res.json(result);
+    } catch (error: any) {
+        console.error("Error starting assessment:", error);
+        return res.status(400).json({ error: error?.message || "Failed to start assessment" });
+    }
+};
+
+export const submitMyStudentAssessment = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        const userId = req.user?.id;
+        const id = req.params.id as string | undefined;
+        if (!organizationId || !userId) return res.status(403).json({ error: "Missing school scope or authentication" });
+        if (!id) return res.status(400).json({ error: "Assessment ID is required" });
+
+        const result = await StudentService.submitStudentAssessment(userId, organizationId, id, req.body || {});
+        return res.json(result);
+    } catch (error: any) {
+        console.error("Error submitting assessment:", error);
+        return res.status(400).json({ error: error?.message || "Failed to submit assessment" });
+    }
+};
+
 export const getMyLearningActivities = async (req: Request, res: Response) => {
     try {
         const organizationId = (req as any).accessScope?.id;
@@ -254,6 +286,21 @@ export const getMyLearningSubmissions = async (req: Request, res: Response) => {
     } catch (error) {
         console.error("Error fetching student learning submissions:", error);
         return res.status(500).json({ error: "Internal server error" });
+    }
+};
+
+export const submitMyLearningActivity = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        const userId = req.user?.id;
+        const { id } = req.params;
+        if (!organizationId || !userId) return res.status(403).json({ error: "Missing school scope or authentication" });
+
+        const submission = await StudentService.submitStudentLearningActivity(userId, organizationId, id as string, req.body || {});
+        return res.json(submission);
+    } catch (error: any) {
+        console.error("Error submitting learning activity:", error);
+        return res.status(400).json({ error: error?.message || "Failed to submit learning activity" });
     }
 };
 
@@ -384,9 +431,22 @@ export const submitMyAttendanceExplanation = async (req: Request, res: Response)
 
         const explanation = await StudentService.submitAttendanceExplanation(userId, organizationId, absenceDate, recipientTeacherId, description, attachmentData, attachmentName);
         if (!explanation) return res.status(404).json({ error: "Student enrollment not found" });
-        return res.status(201).json(explanation);
-    } catch (error) {
+        return res.json(explanation);
+    } catch (error: any) {
         console.error("Error submitting attendance explanation:", error);
+        return res.status(500).json({ error: error?.message || "Internal server error" });
+    }
+};
+
+export const getMyAttendanceExplanations = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        const userId = req.user?.id;
+        if (!organizationId || !userId) return res.status(403).json({ error: "Missing school scope or authentication" });
+        const explanations = await StudentService.getStudentAttendanceExplanations(userId, organizationId);
+        if (!explanations) return res.status(404).json({ error: "Student enrollment not found" });
+        return res.json(explanations);
+    } catch {
         return res.status(500).json({ error: "Internal server error" });
     }
 };

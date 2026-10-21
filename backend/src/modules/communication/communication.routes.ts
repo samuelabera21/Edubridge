@@ -10,6 +10,7 @@ import {
     markAnnouncementRead,
     getMyNotifications,
     markNotificationRead,
+    markAllNotificationsRead,
     getUnreadNotificationCount,
     sendMessage,
     getMyMessages,
@@ -33,6 +34,7 @@ const router = Router();
 // Every authenticated user (Federal, Region, Zone, Woreda, School) can access their own notifications.
 router.get("/notifications", requireAuth(), getMyNotifications);
 router.get("/notifications/unread-count", requireAuth(), getUnreadNotificationCount);
+router.patch("/notifications/read-all", requireAuth(), markAllNotificationsRead);
 router.patch("/notifications/:id/read", requireAuth(), markNotificationRead);
 
 // Announcement Acknowledgment & Read Actions (Accessible to any recipient user)

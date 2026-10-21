@@ -14,6 +14,9 @@ import {
     GraduationCap,
     BookOpen,
     ChevronRight,
+    ChevronUp,
+    ChevronDown,
+    ArrowLeft,
     Search,
     AlertCircle,
     CheckCircle2,
@@ -175,6 +178,7 @@ export default function HierarchicalReportsView({
 
     const [scopeMode, setScopeMode] = useState<"CURRENT_AND_DESCENDANTS" | "CURRENT_ONLY">("CURRENT_AND_DESCENDANTS");
     const [selectedAcademicYearId, setSelectedAcademicYearId] = useState<string>("");
+    const [showFilters, setShowFilters] = useState<boolean>(false);
 
     // Report data & loading state
     const [reportData, setReportData] = useState<EducationSummaryReportData | null>(null);
@@ -466,6 +470,115 @@ export default function HierarchicalReportsView({
         return sums;
     }, [reportData]);
 
+    // Format jurisdiction names with clean Title Case (handles "sidama" -> "Sidama", etc.)
+    const formatJurisdictionName = (name: string) => {
+        if (!name) return "";
+        return name
+            .split(" ")
+            .map(word => {
+                if (!word) return "";
+                if (word === word.toUpperCase() && word.length > 1 && !["AFAR", "AMHARA", "OROMIA", "SIDAMA", "TIGRAY", "HAWASA"].includes(word)) {
+                    return word;
+                }
+                return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+            })
+            .join(" ");
+    };
+
+    // Calculate dynamic super-header groups for official statistical publication table
+    const columnGroups = useMemo(() => {
+        if (!reportData?.breakdown?.columns) return [];
+        const cols = reportData.breakdown.columns;
+
+        const adminKeys = new Set(["name", "zonesCount", "woredasCount", "schoolsCount", "status", "establishedYear", "gradeName", "sectionsCount"]);
+        const studentKeys = new Set(["maleStudents", "femaleStudents", "studentsCount"]);
+        const teacherKeys = new Set(["maleTeachers", "femaleTeachers", "teachersCount"]);
+
+        const adminCols = cols.filter(c => adminKeys.has(c.key));
+        const studentCols = cols.filter(c => studentKeys.has(c.key));
+        const teacherCols = cols.filter(c => teacherKeys.has(c.key));
+        const ratioCols = cols.filter(c => c.key === "ptr");
+
+        const groups: Array<{ title: string; colSpan: number }> = [];
+
+        if (adminCols.length > 0) {
+            let title = "Jurisdiction";
+            if (reportData.breakdown.level === "GRADE_SECTION") title = "Class Structure";
+            else if (reportData.breakdown.level === "SCHOOL") title = "School Profile";
+            groups.push({ title, colSpan: adminCols.length });
+        }
+        if (studentCols.length > 0) {
+            groups.push({ title: "Students", colSpan: studentCols.length });
+        }
+        if (teacherCols.length > 0) {
+            groups.push({ title: "Teachers", colSpan: teacherCols.length });
+        }
+        if (ratioCols.length > 0) {
+            groups.push({ title: "PTR", colSpan: ratioCols.length });
+        }
+
+        return groups;
+    }, [reportData?.breakdown]);
+
+    // Clean government table title derived from breakdown tier
+    const cleanTableTitle = useMemo(() => {
+        if (!reportData?.breakdown) return "Distribution & Statistics";
+        switch (reportData.breakdown.level) {
+            case "REGION":
+                return "Regional Breakdown";
+            case "ZONE":
+                return "Zonal Breakdown";
+            case "WOREDA":
+                return "Woreda Breakdown";
+            case "SCHOOL":
+                return "School Breakdown";
+            case "GRADE_SECTION":
+                return "Grade & Section Breakdown";
+            default:
+                return reportData.breakdown.title || "Administrative Breakdown";
+        }
+    }, [reportData?.breakdown]);
+
+    // Clean unit count label (e.g., "6 Regions", "1 Zone", "17 Schools")
+    const unitLabel = useMemo(() => {
+        if (!reportData?.breakdown) return "";
+        const count = filteredBreakdownRows.length;
+        switch (reportData.breakdown.level) {
+            case "REGION":
+                return `${count} ${count === 1 ? "Region" : "Regions"}`;
+            case "ZONE":
+                return `${count} ${count === 1 ? "Zone" : "Zones"}`;
+            case "WOREDA":
+                return `${count} ${count === 1 ? "Woreda" : "Woredas"}`;
+            case "SCHOOL":
+                return `${count} ${count === 1 ? "School" : "Schools"}`;
+            case "GRADE_SECTION":
+                return `${count} ${count === 1 ? "Grade" : "Grades"}`;
+            default:
+                return `${count} ${count === 1 ? "Record" : "Records"}`;
+        }
+    }, [reportData?.breakdown, filteredBreakdownRows.length]);
+
+    // Clean contextual search placeholder
+    const searchPlaceholder = useMemo(() => {
+        if (!reportData?.breakdown) return "Search...";
+        switch (reportData.breakdown.level) {
+            case "REGION":
+                return "Search region...";
+            case "ZONE":
+                return "Search zone...";
+            case "WOREDA":
+                return "Search woreda...";
+            case "SCHOOL":
+                return "Search school...";
+            case "GRADE_SECTION":
+                return "Search grade...";
+            default:
+                return "Search...";
+        }
+    }, [reportData?.breakdown]);
+
+
     const getTierBadge = (type: string) => {
         switch (type) {
             case "FEDERAL":
@@ -484,112 +597,167 @@ export default function HierarchicalReportsView({
     };
 
     return (
-        <div className="space-y-4 max-w-7xl mx-auto pb-10">
-            {/* Clean Government Header Container */}
-            <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="space-y-6 max-w-7xl mx-auto pb-12">
+            {/* 1. Page Header (Single Dynamic Government Title) */}
+            <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 pb-4 border-b border-slate-200">
                 <div className="space-y-1">
-                    <h1 className="text-lg md:text-xl font-bold text-slate-900 tracking-tight">
-                        Education Summary & Disaggregated Analytics
-                    </h1>
-                    <p className="text-xs text-slate-500 max-w-3xl leading-relaxed">
-                        Cross-hierarchy statistical rollups, enrollment, staffing ratios, and retention profiles.
+                    <p className="text-xs font-medium text-slate-500">
+                        Federal Democratic Republic of Ethiopia • Ministry of Education
                     </p>
+
+                    <div className="flex items-center gap-2.5 pt-0.5">
+                        <h1 className="text-2xl md:text-3xl font-extrabold text-slate-900 tracking-tight">
+                            {reportData
+                                ? reportData.targetOrganization.type === "FEDERAL"
+                                    ? "National Education Statistical Abstract"
+                                    : `${formatJurisdictionName(reportData.targetOrganization.name)} — Education Statistical Abstract`
+                                : "National Education Statistical Abstract"}
+                        </h1>
+                        {reportData && getTierBadge(reportData.targetOrganization.type)}
+                    </div>
                 </div>
 
-                {/* Export Buttons */}
+                {/* Filter & Export Actions */}
                 <div className="flex items-center gap-2 shrink-0">
+                    <button
+                        onClick={() => setShowFilters(prev => !prev)}
+                        className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold border transition-colors cursor-pointer ${
+                            showFilters
+                                ? "bg-slate-100 border-slate-400 text-slate-900"
+                                : "bg-white hover:bg-slate-50 border-slate-300 text-slate-700"
+                        }`}
+                        title="Toggle Scope & Filters"
+                    >
+                        <Filter className="w-3.5 h-3.5 text-slate-500" />
+                        <span>{showFilters ? "Hide Filters" : "Filter Scope"}</span>
+                    </button>
+
                     <button
                         onClick={() => handleExport("csv")}
                         disabled={!reportData || exportingCsv || generating}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 transition-colors shadow-2xs disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
-                        title="Export Summary Data to CSV"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                        title="Download Raw Disaggregated Data (CSV)"
                     >
                         <Download className="w-3.5 h-3.5 text-slate-500" />
-                        <span>{exportingCsv ? "Exporting CSV..." : "Export CSV"}</span>
+                        <span>{exportingCsv ? "Exporting..." : "Download CSV"}</span>
                     </button>
 
                     <button
                         onClick={() => handleExport("excel")}
                         disabled={!reportData || exportingExcel || generating}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white transition-colors shadow-2xs disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
-                        title="Export Styled Excel Report"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-[#4085b3] hover:bg-[#336e96] text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                        title="Export Official Statistical Abstract (.xlsx)"
                     >
                         <FileSpreadsheet className="w-3.5 h-3.5" />
-                        <span>{exportingExcel ? "Exporting Excel..." : "Export Excel (.xlsx)"}</span>
+                        <span>{exportingExcel ? "Exporting..." : "Export Excel (.xlsx)"}</span>
                     </button>
                 </div>
             </div>
 
-            {/* Scope Configuration Card */}
-            <div className="bg-white rounded-xl border border-slate-200 p-4 sm:p-5 shadow-2xs space-y-4">
-                <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-                    <div className="flex items-center gap-2 text-slate-800 font-bold text-xs uppercase tracking-wider">
-                        <Filter className="w-3.5 h-3.5 text-blue-600" />
-                        <span>Report Configuration & Administrative Scope</span>
-                    </div>
-                </div>
-
-                {/* Level Selector & Cascading Filters */}
-                <div className="space-y-3">
-                    <div className="space-y-1.5">
-                        <label className="text-xs font-semibold text-slate-700">Target Level / Scope *</label>
-                        <select
-                            value={targetLevelCategory}
-                            onChange={e => {
-                                const newLevel = e.target.value;
-                                setTargetLevelCategory(newLevel);
-                                if (newLevel === "FEDERAL" || (newLevel === userScopeOrg?.type && newLevel === "REGION")) {
-                                    setFilterRegionId("");
-                                    setFilterZoneId("");
-                                    setFilterWoredaId("");
-                                    setFilterSchoolId("");
-                                    if (userScopeOrg?.id) {
-                                        setSelectedOrgId(userScopeOrg.id);
-                                        generateReport(userScopeOrg.id, scopeMode, selectedAcademicYearId);
+            {/* 2. Integrated Scope & Query Bar (Collapsible - Only shown when user clicks Filter Scope) */}
+            {showFilters && (
+                <div className="p-4 bg-slate-50 border border-slate-200 rounded-md space-y-3">
+                    <div className="flex flex-wrap items-end gap-3">
+                        <div className="flex-1 min-w-[220px] space-y-1">
+                            <label className="text-xs font-bold text-slate-800">Governance Tier Scope *</label>
+                            <select
+                                value={targetLevelCategory}
+                                onChange={e => {
+                                    const newLevel = e.target.value;
+                                    setTargetLevelCategory(newLevel);
+                                    if (newLevel === "FEDERAL" || (newLevel === userScopeOrg?.type && newLevel === "REGION")) {
+                                        setFilterRegionId("");
+                                        setFilterZoneId("");
+                                        setFilterWoredaId("");
+                                        setFilterSchoolId("");
+                                        if (userScopeOrg?.id) {
+                                            setSelectedOrgId(userScopeOrg.id);
+                                            generateReport(userScopeOrg.id, scopeMode, selectedAcademicYearId);
+                                        }
+                                    } else if (newLevel === "REGION") {
+                                        setFilterZoneId("");
+                                        setFilterWoredaId("");
+                                        setFilterSchoolId("");
+                                    } else if (newLevel === "ZONE") {
+                                        setFilterWoredaId("");
+                                        setFilterSchoolId("");
+                                    } else if (newLevel === "WOREDA") {
+                                        setFilterSchoolId("");
                                     }
-                                } else if (newLevel === "REGION") {
-                                    setFilterZoneId("");
-                                    setFilterWoredaId("");
-                                    setFilterSchoolId("");
-                                } else if (newLevel === "ZONE") {
-                                    setFilterWoredaId("");
-                                    setFilterSchoolId("");
-                                } else if (newLevel === "WOREDA") {
-                                    setFilterSchoolId("");
-                                }
-                            }}
-                            disabled={loadingScope || generating}
-                            className="w-full text-xs font-medium bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-800 focus:bg-white focus:outline-blue-500 transition-all"
+                                }}
+                                disabled={loadingScope || generating}
+                                className="w-full text-xs font-medium bg-white border border-slate-300 px-3 py-2 text-slate-800 focus:outline-[#4085b3]"
+                            >
+                                {userScopeOrg?.type === "FEDERAL" && (
+                                    <option value="FEDERAL">National Overview (Entire Country)</option>
+                                )}
+                                {(userScopeOrg?.type === "FEDERAL" || userScopeOrg?.type === "REGION") && (
+                                    <option value="REGION">
+                                        {userScopeOrg?.type === "FEDERAL" ? "Target Specific Region (Regional Scope)" : "Regional Overview (Entire Region)"}
+                                    </option>
+                                )}
+                                {(userScopeOrg?.type === "FEDERAL" || userScopeOrg?.type === "REGION" || userScopeOrg?.type === "ZONE") && (
+                                    <option value="ZONE">
+                                        {userScopeOrg?.type === "ZONE" ? "Zonal Overview (Entire Zone)" : "Target Specific Zone (Zonal Scope)"}
+                                    </option>
+                                )}
+                                {(userScopeOrg?.type === "FEDERAL" || userScopeOrg?.type === "REGION" || userScopeOrg?.type === "ZONE" || userScopeOrg?.type === "WOREDA") && (
+                                    <option value="WOREDA">
+                                        {userScopeOrg?.type === "WOREDA" ? "Woreda Overview (Entire Woreda)" : "Target Specific Woreda (Woreda Scope)"}
+                                    </option>
+                                )}
+                                <option value="SCHOOL">
+                                    {userScopeOrg?.type === "SCHOOL" ? "School Overview (My School)" : "Target Specific School (School Scope)"}
+                                </option>
+                            </select>
+                        </div>
+
+                        <div className="w-full sm:w-56 space-y-1">
+                            <label className="text-xs font-bold text-slate-800">Hierarchy Depth</label>
+                            <select
+                                value={scopeMode}
+                                onChange={e => setScopeMode(e.target.value as any)}
+                                disabled={loadingScope || generating}
+                                className="w-full text-xs bg-white border border-slate-300 px-3 py-2 text-slate-800 focus:outline-[#4085b3]"
+                            >
+                                <option value="CURRENT_AND_DESCENDANTS">Current Unit & All Descendants</option>
+                                <option value="CURRENT_ONLY">Current Organization Only</option>
+                            </select>
+                        </div>
+
+                        <div className="w-full sm:w-52 space-y-1">
+                            <label className="text-xs font-bold text-slate-800">Academic Year</label>
+                            <select
+                                value={selectedAcademicYearId}
+                                onChange={e => setSelectedAcademicYearId(e.target.value)}
+                                disabled={loadingScope || generating}
+                                className="w-full text-xs bg-white border border-slate-300 px-3 py-2 text-slate-800 focus:outline-[#4085b3]"
+                            >
+                                <option value="">All Academic Years</option>
+                                {academicYears.map(ay => (
+                                    <option key={ay.id} value={ay.id}>
+                                        {ay.name} ({ay.status})
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+
+                        <button
+                            onClick={() => generateReport()}
+                            disabled={generating || loadingScope}
+                            className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold bg-[#4085b3] hover:bg-[#336e96] active:bg-[#2b5d80] text-white transition-colors disabled:opacity-50 cursor-pointer shrink-0"
                         >
-                            {userScopeOrg?.type === "FEDERAL" && (
-                                <option value="FEDERAL">National Overview (Entire Country)</option>
-                            )}
-                            {(userScopeOrg?.type === "FEDERAL" || userScopeOrg?.type === "REGION") && (
-                                <option value="REGION">
-                                    {userScopeOrg?.type === "FEDERAL" ? "Target Specific Region (Region Scope)" : "Regional Overview (Entire Region)"}
-                                </option>
-                            )}
-                            {(userScopeOrg?.type === "FEDERAL" || userScopeOrg?.type === "REGION" || userScopeOrg?.type === "ZONE") && (
-                                <option value="ZONE">
-                                    {userScopeOrg?.type === "ZONE" ? "Zonal Overview (Entire Zone)" : "Target Specific Zone (Zone Scope)"}
-                                </option>
-                            )}
-                            {(userScopeOrg?.type === "FEDERAL" || userScopeOrg?.type === "REGION" || userScopeOrg?.type === "ZONE" || userScopeOrg?.type === "WOREDA") && (
-                                <option value="WOREDA">
-                                    {userScopeOrg?.type === "WOREDA" ? "Woreda Overview (Entire Woreda)" : "Target Specific Woreda (Woreda Scope)"}
-                                </option>
-                            )}
-                            <option value="SCHOOL">
-                                {userScopeOrg?.type === "SCHOOL" ? "School Overview (My School)" : "Target Specific School (School Scope)"}
-                            </option>
-                        </select>
+                            <RefreshCw className={`w-3.5 h-3.5 ${generating ? "animate-spin" : ""}`} />
+                            <span>{generating ? "Querying..." : "Apply Scope"}</span>
+                        </button>
                     </div>
 
+                    {/* Cascading Jurisdictions (when targeting lower level) */}
                     {targetLevelCategory !== "FEDERAL" && (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 bg-slate-50/80 p-3.5 rounded-lg border border-slate-200">
+                        <div className="flex flex-wrap items-center gap-2.5 pt-1">
                             {userScopeOrg?.type === "FEDERAL" && (
-                                <div className="space-y-1">
-                                    <label className="text-[11px] font-semibold text-slate-600">1. Select Region *</label>
+                                <div className="flex-1 min-w-[160px] space-y-1">
+                                    <label className="text-[11px] font-bold text-slate-700">Region</label>
                                     <select
                                         value={filterRegionId}
                                         onChange={e => {
@@ -604,7 +772,7 @@ export default function HierarchicalReportsView({
                                             }
                                         }}
                                         disabled={loadingScope || generating}
-                                        className="w-full text-xs bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-slate-800 focus:outline-blue-500 transition-all"
+                                        className="w-full text-xs bg-white border border-slate-300 px-2.5 py-1.5 text-slate-800 focus:outline-[#4085b3]"
                                     >
                                         <option value="">-- Choose Region --</option>
                                         {regionsList.map(r => (
@@ -616,10 +784,8 @@ export default function HierarchicalReportsView({
 
                             {(targetLevelCategory === "ZONE" || targetLevelCategory === "WOREDA" || targetLevelCategory === "SCHOOL") &&
                                 (userScopeOrg?.type === "FEDERAL" || userScopeOrg?.type === "REGION") && (
-                                <div className="space-y-1">
-                                    <label className="text-[11px] font-semibold text-slate-600">
-                                        {userScopeOrg?.type === "FEDERAL" ? "2. Select Zone *" : "1. Select Zone *"}
-                                    </label>
+                                <div className="flex-1 min-w-[160px] space-y-1">
+                                    <label className="text-[11px] font-bold text-slate-700">Zone</label>
                                     <select
                                         value={filterZoneId}
                                         onChange={e => {
@@ -633,7 +799,7 @@ export default function HierarchicalReportsView({
                                             }
                                         }}
                                         disabled={loadingScope || generating || (userScopeOrg?.type === "FEDERAL" && !filterRegionId)}
-                                        className="w-full text-xs bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-slate-800 focus:outline-blue-500 transition-all disabled:bg-slate-100 disabled:text-slate-400"
+                                        className="w-full text-xs bg-white border border-slate-300 px-2.5 py-1.5 text-slate-800 focus:outline-[#4085b3] disabled:bg-slate-100 disabled:text-slate-400"
                                     >
                                         <option value="">
                                             {userScopeOrg?.type === "FEDERAL" && !filterRegionId ? "-- Choose Region First --" : "-- Choose Zone --"}
@@ -647,10 +813,8 @@ export default function HierarchicalReportsView({
 
                             {(targetLevelCategory === "WOREDA" || targetLevelCategory === "SCHOOL") &&
                                 (userScopeOrg?.type === "FEDERAL" || userScopeOrg?.type === "REGION" || userScopeOrg?.type === "ZONE") && (
-                                <div className="space-y-1">
-                                    <label className="text-[11px] font-semibold text-slate-600">
-                                        {userScopeOrg?.type === "FEDERAL" ? "3. Select Woreda *" : userScopeOrg?.type === "REGION" ? "2. Select Woreda *" : "1. Select Woreda *"}
-                                    </label>
+                                <div className="flex-1 min-w-[160px] space-y-1">
+                                    <label className="text-[11px] font-bold text-slate-700">Woreda</label>
                                     <select
                                         value={filterWoredaId}
                                         onChange={e => {
@@ -664,11 +828,11 @@ export default function HierarchicalReportsView({
                                         }}
                                         disabled={
                                             loadingScope ||
-                                             generating ||
+                                            generating ||
                                             (userScopeOrg?.type === "FEDERAL" && (!filterRegionId || !filterZoneId)) ||
                                             (userScopeOrg?.type === "REGION" && !filterZoneId)
                                         }
-                                        className="w-full text-xs bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-slate-800 focus:outline-blue-500 transition-all disabled:bg-slate-100 disabled:text-slate-400"
+                                        className="w-full text-xs bg-white border border-slate-300 px-2.5 py-1.5 text-slate-800 focus:outline-[#4085b3] disabled:bg-slate-100 disabled:text-slate-400"
                                     >
                                         <option value="">
                                             {(!filterZoneId && (userScopeOrg?.type === "FEDERAL" || userScopeOrg?.type === "REGION")) ? "-- Choose Zone First --" : "-- Choose Woreda --"}
@@ -681,10 +845,8 @@ export default function HierarchicalReportsView({
                             )}
 
                             {targetLevelCategory === "SCHOOL" && userScopeOrg?.type !== "SCHOOL" && (
-                                <div className="space-y-1">
-                                    <label className="text-[11px] font-semibold text-slate-600">
-                                        {userScopeOrg?.type === "FEDERAL" ? "4. Select School *" : userScopeOrg?.type === "REGION" ? "3. Select School *" : "2. Select School *"}
-                                    </label>
+                                <div className="flex-1 min-w-[160px] space-y-1">
+                                    <label className="text-[11px] font-bold text-slate-700">School</label>
                                     <select
                                         value={filterSchoolId}
                                         onChange={e => {
@@ -696,7 +858,7 @@ export default function HierarchicalReportsView({
                                             }
                                         }}
                                         disabled={loadingScope || generating || (!filterWoredaId && userScopeOrg?.type !== "SCHOOL")}
-                                        className="w-full text-xs bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-slate-800 focus:outline-blue-500 transition-all disabled:bg-slate-100 disabled:text-slate-400"
+                                        className="w-full text-xs bg-white border border-slate-300 px-2.5 py-1.5 text-slate-800 focus:outline-[#4085b3] disabled:bg-slate-100 disabled:text-slate-400"
                                     >
                                         <option value="">
                                             {!filterWoredaId ? "-- Choose Woreda First --" : "-- Choose School --"}
@@ -710,248 +872,276 @@ export default function HierarchicalReportsView({
                         </div>
                     )}
                 </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
-                    <div className="space-y-1.5">
-                        <label className="text-xs font-semibold text-slate-700">Hierarchy Depth</label>
-                        <select
-                            value={scopeMode}
-                            onChange={e => setScopeMode(e.target.value as any)}
-                            disabled={loadingScope || generating}
-                            className="w-full text-xs bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-800 focus:bg-white focus:outline-blue-500 transition-all"
-                        >
-                            <option value="CURRENT_AND_DESCENDANTS">Current & All Descendants</option>
-                            <option value="CURRENT_ONLY">Current Organization Only</option>
-                        </select>
-                    </div>
-
-                    <div className="space-y-1.5">
-                        <label className="text-xs font-semibold text-slate-700">Academic Year (Optional)</label>
-                        <select
-                            value={selectedAcademicYearId}
-                            onChange={e => setSelectedAcademicYearId(e.target.value)}
-                            disabled={loadingScope || generating}
-                            className="w-full text-xs bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 text-slate-800 focus:bg-white focus:outline-blue-500 transition-all"
-                        >
-                            <option value="">All Academic Years</option>
-                            {academicYears.map(ay => (
-                                <option key={ay.id} value={ay.id}>
-                                    {ay.name} ({ay.status})
-                                </option>
-                            ))}
-                        </select>
-                    </div>
-                </div>
-
-                <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-2">
-                    <div className="flex items-center gap-2">
-                        <span className="text-xs font-semibold text-slate-600">Report Type:</span>
-                        <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium bg-slate-100 text-slate-800 border border-slate-200">
-                            Education Summary Report (Authoritative)
-                        </span>
-                    </div>
-
-                    <button
-                        onClick={() => generateReport()}
-                        disabled={generating || loadingScope}
-                        className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white shadow-2xs transition-all disabled:opacity-50 cursor-pointer"
-                    >
-                        <RefreshCw className={`w-3.5 h-3.5 ${generating ? "animate-spin" : ""}`} />
-                        <span>{generating ? "Generating Live Report..." : "Generate Report"}</span>
-                    </button>
-                </div>
-            </div>
+            )}
 
             {error && (
-                <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex items-start gap-3 text-red-800 text-xs">
+                <div className="bg-red-50 border-l-4 border-red-600 p-4 flex items-start gap-3 text-red-900 text-xs">
                     <AlertCircle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
-                    <div className="space-y-1">
-                        <span className="font-semibold">Unable to generate report:</span>
-                        <p>{error}</p>
+                    <div>
+                        <span className="font-bold">Unable to generate report: </span>
+                        <span>{error}</span>
                     </div>
                 </div>
             )}
 
             {generating && !reportData && (
-                <div className="bg-white rounded-xl border border-slate-200 p-8 text-center space-y-3">
-                    <RefreshCw className="w-6 h-6 text-blue-600 animate-spin mx-auto" />
-                    <p className="text-sm font-semibold text-slate-800">Aggregating live data across authorized hierarchy...</p>
+                <div className="py-12 text-center space-y-3">
+                    <RefreshCw className="w-6 h-6 text-[#4085b3] animate-spin mx-auto" />
+                    <p className="text-sm font-semibold text-slate-800">Aggregating live administrative data across authorized hierarchy...</p>
                 </div>
             )}
 
             {reportData && (
-                <div className="space-y-4">
-                    {/* Lineage & Scope Banner */}
-                    <div className="bg-white rounded-xl border border-slate-200 p-4 sm:p-5 shadow-2xs space-y-3">
-                        <div className="flex flex-wrap items-center gap-1.5 text-xs text-slate-500">
-                            <span className="font-semibold text-slate-700">Hierarchy:</span>
-                            {reportData.lineage.slice().reverse().map((item, idx) => (
-                                <React.Fragment key={item.id}>
-                                    {idx > 0 && <ChevronRight className="w-3 h-3 text-slate-400" />}
-                                    <button
-                                        onClick={() => handleDrillDownRow(item.id)}
-                                        className={`hover:underline font-medium cursor-pointer ${
-                                            item.id === reportData.targetOrganization.id
-                                                ? "text-blue-700 font-bold"
-                                                : "text-slate-600 hover:text-slate-900"
-                                        }`}
-                                    >
-                                        {item.name}
-                                    </button>
-                                </React.Fragment>
-                            ))}
-                        </div>
-
-                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-2.5 border-t border-slate-100">
-                            <div className="space-y-1">
-                                <div className="flex items-center gap-2">
-                                    <h2 className="text-base sm:text-lg font-bold text-slate-900">{reportData.title}</h2>
-                                    {getTierBadge(reportData.targetOrganization.type)}
-                                </div>
-                                <p className="text-xs text-slate-500">
-                                    Mode:{" "}
-                                    <span className="font-medium text-slate-700">
-                                        {reportData.scopeMode === "CURRENT_AND_DESCENDANTS"
-                                            ? "Target Unit & All Descendants"
-                                            : "Target Unit Only"}
-                                    </span>{" "}
-                                    • Generated: {new Date(reportData.generatedAt).toLocaleString()}
+                <div className="space-y-6">
+                    {/* Key Indicators Strip (Official Public Sector KPI Grid with Top-to-Bottom Hover Fill) */}
+                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+                        {/* 1. Total Learners */}
+                        <div className="relative overflow-hidden group bg-slate-50 border border-slate-200 border-t-2 border-t-[#4085b3] p-3.5 flex flex-col justify-between transition-shadow duration-300 hover:shadow-md cursor-default">
+                            <div className="absolute inset-0 bg-[#4085b3] -translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-out pointer-events-none" />
+                            <div className="relative z-10">
+                                <span className="text-[11px] font-bold text-slate-700 uppercase tracking-wider block transition-colors duration-300 group-hover:text-blue-100">
+                                    Total Learners
+                                </span>
+                                <p className="text-2xl sm:text-3xl font-extrabold text-slate-900 tabular-nums font-mono mt-1 transition-colors duration-300 group-hover:text-white">
+                                    {reportData.metrics.totalStudents.toLocaleString()}
                                 </p>
                             </div>
-
-                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 w-fit">
-                                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                                <span>Live System Data</span>
-                            </span>
-                        </div>
-                    </div>
-
-                    {/* Executive KPI Cards */}
-                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-                        {/* Students Card */}
-                        <div className="bg-white rounded-xl border border-slate-200 p-3.5 shadow-2xs space-y-1">
-                            <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block">Students</span>
-                            <p className="text-xl sm:text-2xl font-bold text-slate-900">
-                                {reportData.metrics.totalStudents.toLocaleString()}
-                            </p>
-                            <p className="text-[11px] text-slate-500">
-                                Male: {reportData.metrics.maleStudents.toLocaleString()} • Female: {reportData.metrics.femaleStudents.toLocaleString()}
+                            <p className="relative z-10 text-[11px] text-slate-600 mt-2.5 pt-2 border-t border-slate-200 transition-colors duration-300 group-hover:text-blue-50 group-hover:border-white/20">
+                                M: {reportData.metrics.maleStudents.toLocaleString()} • F: {reportData.metrics.femaleStudents.toLocaleString()}
                             </p>
                         </div>
 
-                        {/* Teachers Card */}
-                        <div className="bg-white rounded-xl border border-slate-200 p-3.5 shadow-2xs space-y-1">
-                            <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block">Teachers</span>
-                            <p className="text-xl sm:text-2xl font-bold text-slate-900">
-                                {reportData.metrics.totalTeachers.toLocaleString()}
-                            </p>
-                            <p className="text-[11px] text-slate-500">
-                                Male: {reportData.metrics.maleTeachers.toLocaleString()} • Female: {reportData.metrics.femaleTeachers.toLocaleString()}
+                        {/* 2. Teaching Faculty */}
+                        <div className="relative overflow-hidden group bg-slate-50 border border-slate-200 border-t-2 border-t-[#4085b3] p-3.5 flex flex-col justify-between transition-shadow duration-300 hover:shadow-md cursor-default">
+                            <div className="absolute inset-0 bg-[#4085b3] -translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-out pointer-events-none" />
+                            <div className="relative z-10">
+                                <span className="text-[11px] font-bold text-slate-700 uppercase tracking-wider block transition-colors duration-300 group-hover:text-blue-100">
+                                    Teaching Faculty
+                                </span>
+                                <p className="text-2xl sm:text-3xl font-extrabold text-slate-900 tabular-nums font-mono mt-1 transition-colors duration-300 group-hover:text-white">
+                                    {reportData.metrics.totalTeachers.toLocaleString()}
+                                </p>
+                            </div>
+                            <p className="relative z-10 text-[11px] text-slate-600 mt-2.5 pt-2 border-t border-slate-200 transition-colors duration-300 group-hover:text-blue-50 group-hover:border-white/20">
+                                M: {reportData.metrics.maleTeachers.toLocaleString()} • F: {reportData.metrics.femaleTeachers.toLocaleString()}
                             </p>
                         </div>
 
-                        {/* PTR */}
-                        <div className="bg-white rounded-xl border border-slate-200 p-3.5 shadow-2xs space-y-1">
-                            <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block">Pupil-Teacher Ratio</span>
-                            <p className="text-xl sm:text-2xl font-bold text-slate-900">
-                                {reportData.metrics.pupilTeacherRatio} : 1
+                        {/* 3. Pupil-Teacher Ratio */}
+                        <div className="relative overflow-hidden group bg-slate-50 border border-slate-200 border-t-2 border-t-[#4085b3] p-3.5 flex flex-col justify-between transition-shadow duration-300 hover:shadow-md cursor-default">
+                            <div className="absolute inset-0 bg-[#4085b3] -translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-out pointer-events-none" />
+                            <div className="relative z-10">
+                                <span className="text-[11px] font-bold text-slate-700 uppercase tracking-wider block transition-colors duration-300 group-hover:text-blue-100">
+                                    Pupil-Teacher Ratio
+                                </span>
+                                <p className="text-2xl sm:text-3xl font-extrabold text-slate-900 tabular-nums font-mono mt-1 transition-colors duration-300 group-hover:text-white">
+                                    {reportData.metrics.pupilTeacherRatio} : 1
+                                </p>
+                            </div>
+                            <p className="relative z-10 text-[11px] text-slate-600 mt-2.5 pt-2 border-t border-slate-200 transition-colors duration-300 group-hover:text-blue-50 group-hover:border-white/20">
+                                Target Standard: ≤ 40 : 1
                             </p>
-                            <p className="text-[11px] text-slate-400">Students / Teacher</p>
                         </div>
 
-                        {/* GPI */}
-                        <div className="bg-white rounded-xl border border-slate-200 p-3.5 shadow-2xs space-y-1">
-                            <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block">Gender Parity</span>
-                            <p className="text-xl sm:text-2xl font-bold text-slate-900">
-                                {reportData.metrics.genderParityIndex}
+                        {/* 4. Gender Parity (GPI) */}
+                        <div className="relative overflow-hidden group bg-slate-50 border border-slate-200 border-t-2 border-t-[#4085b3] p-3.5 flex flex-col justify-between transition-shadow duration-300 hover:shadow-md cursor-default">
+                            <div className="absolute inset-0 bg-[#4085b3] -translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-out pointer-events-none" />
+                            <div className="relative z-10">
+                                <span className="text-[11px] font-bold text-slate-700 uppercase tracking-wider block transition-colors duration-300 group-hover:text-blue-100">
+                                    Gender Parity (GPI)
+                                </span>
+                                <p className="text-2xl sm:text-3xl font-extrabold text-slate-900 tabular-nums font-mono mt-1 transition-colors duration-300 group-hover:text-white">
+                                    {reportData.metrics.genderParityIndex}
+                                </p>
+                            </div>
+                            <p className="relative z-10 text-[11px] text-slate-600 mt-2.5 pt-2 border-t border-slate-200 transition-colors duration-300 group-hover:text-blue-50 group-hover:border-white/20">
+                                {reportData.metrics.genderParityIndex >= 0.97 && reportData.metrics.genderParityIndex <= 1.03
+                                    ? "Parity Achieved (0.97–1.03)"
+                                    : reportData.metrics.genderParityIndex < 0.97
+                                    ? "Male Favoring Disparity"
+                                    : "Female Favoring"}
                             </p>
-                            <p className="text-[11px] text-slate-400">F / M Ratio</p>
                         </div>
 
-                        {/* Schools */}
-                        <div className="bg-white rounded-xl border border-slate-200 p-3.5 shadow-2xs space-y-1">
-                            <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block">Schools</span>
-                            <p className="text-xl sm:text-2xl font-bold text-slate-900">
-                                {reportData.metrics.schoolsCount.toLocaleString()}
+                        {/* 5. Schools */}
+                        <div className="relative overflow-hidden group bg-slate-50 border border-slate-200 border-t-2 border-t-[#4085b3] p-3.5 flex flex-col justify-between transition-shadow duration-300 hover:shadow-md cursor-default">
+                            <div className="absolute inset-0 bg-[#4085b3] -translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-out pointer-events-none" />
+                            <div className="relative z-10">
+                                <span className="text-[11px] font-bold text-slate-700 uppercase tracking-wider block transition-colors duration-300 group-hover:text-blue-100">
+                                    Schools
+                                </span>
+                                <p className="text-2xl sm:text-3xl font-extrabold text-slate-900 tabular-nums font-mono mt-1 transition-colors duration-300 group-hover:text-white">
+                                    {reportData.metrics.schoolsCount.toLocaleString()}
+                                </p>
+                            </div>
+                            <p className="relative z-10 text-[11px] text-slate-600 mt-2.5 pt-2 border-t border-slate-200 transition-colors duration-300 group-hover:text-blue-50 group-hover:border-white/20">
+                                Operational Facilities
                             </p>
-                            <p className="text-[11px] text-slate-400">Total Institutions</p>
                         </div>
 
-                        {/* Units */}
-                        <div className="bg-white rounded-xl border border-slate-200 p-3.5 shadow-2xs space-y-1">
-                            <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block">Admin Units</span>
-                            <p className="text-xl sm:text-2xl font-bold text-slate-900">
-                                {(
-                                    reportData.metrics.regionsCount +
-                                    reportData.metrics.zonesCount +
-                                    reportData.metrics.woredasCount
-                                ).toLocaleString()}
-                            </p>
-                            <p className="text-[11px] text-slate-400">
+                        {/* 6. Admin Units */}
+                        <div className="relative overflow-hidden group bg-slate-50 border border-slate-200 border-t-2 border-t-[#4085b3] p-3.5 flex flex-col justify-between transition-shadow duration-300 hover:shadow-md cursor-default">
+                            <div className="absolute inset-0 bg-[#4085b3] -translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-out pointer-events-none" />
+                            <div className="relative z-10">
+                                <span className="text-[11px] font-bold text-slate-700 uppercase tracking-wider block transition-colors duration-300 group-hover:text-blue-100">
+                                    Admin Units
+                                </span>
+                                <p className="text-2xl sm:text-3xl font-extrabold text-slate-900 tabular-nums font-mono mt-1 transition-colors duration-300 group-hover:text-white">
+                                    {(
+                                        reportData.metrics.regionsCount +
+                                        reportData.metrics.zonesCount +
+                                        reportData.metrics.woredasCount
+                                    ).toLocaleString()}
+                                </p>
+                            </div>
+                            <p className="relative z-10 text-[11px] text-slate-600 mt-2.5 pt-2 border-t border-slate-200 transition-colors duration-300 group-hover:text-blue-50 group-hover:border-white/20">
                                 {reportData.metrics.regionsCount > 0 ? `${reportData.metrics.regionsCount} Reg ` : ""}
                                 {reportData.metrics.zonesCount > 0 ? `${reportData.metrics.zonesCount} Zon ` : ""}
-                                {reportData.metrics.woredasCount > 0 ? `${reportData.metrics.woredasCount} Wor` : "Sub-units"}
+                                {reportData.metrics.woredasCount > 0 ? `${reportData.metrics.woredasCount} Wor` : "Jurisdictions"}
                             </p>
                         </div>
                     </div>
 
-                    {/* Breakdown Data Table */}
-                    <div className="bg-white rounded-xl border border-slate-200 shadow-2xs overflow-hidden space-y-3 p-4">
-                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-3 border-b border-slate-100">
-                            <div className="space-y-0.5">
-                                <h3 className="text-sm font-bold text-slate-900">{reportData.breakdown.title}</h3>
-                                <p className="text-xs text-slate-500">
-                                    Showing {filteredBreakdownRows.length} of {reportData.breakdown.rows.length} rows • Click any row to drill down into its sub-hierarchy
-                                </p>
+                    {/* 5. Breakdown Data Table (Official Government Grouped Layout) */}
+                    <div className="space-y-3 pt-2">
+                        {/* Higher-Tier Navigation Bar (Visible when drilled down) */}
+                        {reportData.lineage.length > 1 && (
+                            <div className="flex flex-wrap items-center justify-between gap-3 p-2.5 bg-slate-50 border border-slate-200 text-xs">
+                                <div className="flex items-center gap-2">
+                                    <span className="text-xs font-semibold text-slate-500">Location:</span>
+                                    <nav aria-label="Table Breadcrumb" className="flex flex-wrap items-center gap-1.5 text-xs text-slate-600">
+                                        {reportData.lineage.slice().reverse().map((item, idx) => {
+                                            const isCurrent = item.id === reportData.targetOrganization.id;
+                                            return (
+                                                <React.Fragment key={item.id}>
+                                                    {idx > 0 && <ChevronRight className="w-3 h-3 text-slate-400" />}
+                                                    {isCurrent ? (
+                                                        <span className="font-bold text-slate-900">{formatJurisdictionName(item.name)}</span>
+                                                    ) : (
+                                                        <button
+                                                            onClick={() => handleDrillDownRow(item.id)}
+                                                            className="text-[#4085b3] hover:text-[#2b5d80] hover:underline font-medium cursor-pointer"
+                                                        >
+                                                            {formatJurisdictionName(item.name)}
+                                                        </button>
+                                                    )}
+                                                </React.Fragment>
+                                            );
+                                        })}
+                                    </nav>
+                                </div>
+
+                                <div className="flex items-center gap-2">
+                                    <button
+                                        onClick={() => handleDrillDownRow(reportData.lineage[1].id)}
+                                        className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold bg-white hover:bg-slate-100 text-slate-700 hover:text-slate-900 border border-slate-300 transition-colors cursor-pointer"
+                                        title={`Return to ${reportData.lineage[1].name}`}
+                                    >
+                                        <ArrowLeft className="w-3.5 h-3.5 text-slate-500" />
+                                        <span>Up to {formatJurisdictionName(reportData.lineage[1].name)}</span>
+                                    </button>
+
+                                    {reportData.lineage.length > 2 && (
+                                        <button
+                                            onClick={() => handleDrillDownRow(reportData.lineage[reportData.lineage.length - 1].id)}
+                                            className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold bg-white hover:bg-slate-100 text-[#4085b3] hover:text-[#2b5d80] border border-slate-300 transition-colors cursor-pointer"
+                                            title="Return to National Scope"
+                                        >
+                                            <span>National Overview</span>
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                            <div className="flex items-center gap-2">
+                                <h3 className="text-sm font-semibold text-slate-900 tracking-tight">{cleanTableTitle}</h3>
+                                <span className="px-2 py-0.5 rounded text-[11px] font-medium bg-slate-100 text-slate-600 border border-slate-200">
+                                    {unitLabel}
+                                </span>
                             </div>
 
-                            <div className="relative w-full sm:w-60">
-                                <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                            <div className="relative w-full sm:w-64">
+                                <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
                                 <input
                                     type="text"
                                     value={tableSearch}
                                     onChange={e => setTableSearch(e.target.value)}
-                                    placeholder="Filter by name..."
-                                    className="w-full text-xs bg-slate-50 border border-slate-200 rounded-lg pl-8 pr-3 py-1.5 text-slate-800 focus:bg-white focus:outline-blue-500 transition-all"
+                                    placeholder={searchPlaceholder}
+                                    className="w-full text-xs bg-white border border-slate-300 pl-8 pr-3 py-1.5 text-slate-800 focus:outline-[#4085b3] placeholder:text-slate-400"
                                 />
                             </div>
                         </div>
 
-                        {/* Table */}
-                        <div className="overflow-x-auto border border-slate-200 rounded-lg">
+                        {/* Table with Two-Tier Grouped Super-Headers */}
+                        <div className="overflow-x-auto border-t border-slate-300">
                             <table className="w-full text-left border-collapse text-xs">
                                 <thead>
-                                    <tr className="bg-slate-50 border-b border-slate-200 text-slate-700 font-semibold uppercase tracking-wider text-[11px]">
-                                        {reportData.breakdown.columns.map(col => (
+                                    {/* Super-Header Row */}
+                                    <tr className="border-b border-slate-200 text-slate-600 bg-slate-100/90 text-[11px] font-semibold tracking-normal">
+                                        {columnGroups.map((grp, gIdx) => (
                                             <th
-                                                key={col.key}
-                                                onClick={() => handleSort(col.key)}
-                                                className={`px-3 py-2.5 cursor-pointer select-none hover:bg-slate-100 transition-colors ${
-                                                    col.align === "right"
-                                                        ? "text-right"
-                                                        : col.align === "center"
-                                                        ? "text-center"
-                                                        : "text-left"
+                                                key={grp.title}
+                                                colSpan={grp.colSpan}
+                                                className={`py-2 px-3 border-r border-slate-300 last:border-r-0 ${
+                                                    gIdx === 0 ? "text-left" : "text-center"
                                                 }`}
                                             >
-                                                <div
-                                                    className={`inline-flex items-center gap-1.5 ${
-                                                        col.align === "right" ? "flex-row-reverse" : ""
-                                                    }`}
-                                                >
-                                                    <span>{col.label}</span>
-                                                    <ArrowUpDown className="w-3 h-3 text-slate-400" />
-                                                </div>
+                                                {grp.title}
                                             </th>
                                         ))}
-                                        <th className="px-3 py-2.5 text-center w-20">Action</th>
+                                    </tr>
+
+                                    {/* Sub-Header Column Labels */}
+                                    <tr className="border-b-2 border-slate-800 text-slate-800 text-xs font-semibold bg-slate-50/80">
+                                        {reportData.breakdown.columns.map(col => {
+                                            const isSorted = sortColumn === col.key;
+                                            let displayLabel = col.label;
+                                            if (col.key === "maleStudents" || col.key === "maleTeachers") displayLabel = "Male";
+                                            else if (col.key === "femaleStudents" || col.key === "femaleTeachers") displayLabel = "Female";
+                                            else if (col.key === "studentsCount" || col.key === "teachersCount") displayLabel = "Total";
+                                            else if (col.key === "ptr") displayLabel = "PTR";
+                                            else if (col.key === "zonesCount") displayLabel = "Zones";
+                                            else if (col.key === "woredasCount") displayLabel = "Woredas";
+                                            else if (col.key === "schoolsCount") displayLabel = "Schools";
+                                            else if (col.key === "sectionsCount") displayLabel = "Sections";
+
+                                            return (
+                                                <th
+                                                    key={col.key}
+                                                    onClick={() => handleSort(col.key)}
+                                                    className={`py-2.5 px-3 cursor-pointer select-none transition-colors group/th hover:bg-slate-100/90 ${
+                                                        col.align === "right"
+                                                            ? "text-right"
+                                                            : col.align === "center"
+                                                            ? "text-center"
+                                                            : "text-left"
+                                                    } ${isSorted ? "bg-slate-100 text-slate-950 font-bold" : ""}`}
+                                                    title={`Sort by ${displayLabel}`}
+                                                >
+                                                    <div className={`inline-flex items-center gap-1 ${col.align === "right" ? "flex-row-reverse" : ""}`}>
+                                                        <span>{displayLabel}</span>
+                                                        {isSorted ? (
+                                                            sortDirection === "asc" ? (
+                                                                <ChevronUp className="w-3.5 h-3.5 text-[#4085b3] shrink-0" />
+                                                            ) : (
+                                                                <ChevronDown className="w-3.5 h-3.5 text-[#4085b3] shrink-0" />
+                                                            )
+                                                        ) : (
+                                                            <ArrowUpDown className="w-2.5 h-2.5 text-slate-300 opacity-0 group-hover/th:opacity-100 transition-opacity shrink-0" />
+                                                        )}
+                                                    </div>
+                                                </th>
+                                            );
+                                        })}
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-slate-100 text-slate-800">
+                                <tbody className="divide-y divide-slate-200 text-slate-800">
                                     {filteredBreakdownRows.length === 0 ? (
                                         <tr>
                                             <td
-                                                colSpan={reportData.breakdown.columns.length + 1}
+                                                colSpan={reportData.breakdown.columns.length}
                                                 className="px-4 py-8 text-center text-slate-400 text-xs"
                                             >
                                                 No breakdown records match your search query.
@@ -964,43 +1154,71 @@ export default function HierarchicalReportsView({
                                                 onClick={() => row.id && handleDrillDownRow(row.id)}
                                                 className="hover:bg-slate-50 cursor-pointer transition-colors"
                                             >
-                                                {reportData.breakdown.columns.map(col => {
+                                                {reportData.breakdown.columns.map((col, cIdx) => {
                                                     const cellVal = row[col.key];
+
+                                                    // Column 0: Jurisdiction Name (Interactive drill link)
+                                                    if (cIdx === 0) {
+                                                        const isDrillable = row.id && reportData.breakdown.level !== "GRADE_SECTION";
+                                                        return (
+                                                            <td key={col.key} className="py-2.5 px-3 text-left">
+                                                                {isDrillable ? (
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={(e) => {
+                                                                            e.stopPropagation();
+                                                                            handleDrillDownRow(row.id);
+                                                                        }}
+                                                                        className="inline-flex items-center gap-1.5 font-bold text-[#4085b3] hover:text-[#2b5d80] hover:underline text-left cursor-pointer group/link"
+                                                                        title={`Drill down into ${formatJurisdictionName(row.name)}`}
+                                                                    >
+                                                                        <span>{formatJurisdictionName(row.name)}</span>
+                                                                        <ChevronRight className="w-3.5 h-3.5 text-slate-400 group-hover/link:text-[#4085b3] transition-colors" />
+                                                                    </button>
+                                                                ) : (
+                                                                    <span className="font-bold text-slate-900">
+                                                                        {formatJurisdictionName(row.name || row.gradeName || "—")}
+                                                                    </span>
+                                                                )}
+                                                            </td>
+                                                        );
+                                                    }
+
+                                                    // Numeric Columns
+                                                    if (col.isNumeric) {
+                                                        if (col.key === "ptr") {
+                                                            const numVal = typeof cellVal === "number" ? cellVal : Number(cellVal);
+                                                            return (
+                                                                <td key={col.key} className="py-2.5 px-3 text-right font-medium tabular-nums font-mono text-slate-900">
+                                                                    {numVal > 0 ? numVal.toFixed(1) : <span className="text-slate-300 font-mono">—</span>}
+                                                                </td>
+                                                            );
+                                                        }
+
+                                                        const countVal = typeof cellVal === "number" ? cellVal : Number(cellVal);
+                                                        return (
+                                                            <td key={col.key} className="py-2.5 px-3 text-right font-medium tabular-nums font-mono">
+                                                                {countVal > 0 ? (
+                                                                    <span className="text-slate-900 font-semibold">{countVal.toLocaleString()}</span>
+                                                                ) : (
+                                                                    <span className="text-slate-300 font-mono">—</span>
+                                                                )}
+                                                            </td>
+                                                        );
+                                                    }
+
+                                                    // Text/Status Columns
                                                     return (
                                                         <td
                                                             key={col.key}
-                                                            className={`px-3 py-2.5 ${
-                                                                col.align === "right"
-                                                                    ? "text-right font-medium"
-                                                                    : col.align === "center"
-                                                                    ? "text-center"
-                                                                    : "text-left font-semibold text-slate-900"
+                                                            className={`py-2.5 px-3 ${
+                                                                col.align === "center" ? "text-center" : "text-left font-medium text-slate-800"
                                                             }`}
                                                         >
-                                                            {col.isNumeric && typeof cellVal === "number"
-                                                                ? col.key === "ptr" ? cellVal.toFixed(1) : cellVal.toLocaleString()
-                                                                : cellVal !== undefined && cellVal !== null
-                                                                ? String(cellVal)
-                                                                : "—"}
+                                                            {cellVal !== undefined && cellVal !== null ? String(cellVal) : "—"}
                                                         </td>
                                                     );
                                                 })}
-                                                <td className="px-3 py-2.5 text-center">
-                                                    {row.id && reportData.breakdown.level !== "GRADE_SECTION" ? (
-                                                        <button
-                                                            onClick={e => {
-                                                                e.stopPropagation();
-                                                                handleDrillDownRow(row.id);
-                                                            }}
-                                                            className="inline-flex items-center gap-1 text-[11px] font-semibold text-blue-600 hover:text-blue-800 hover:underline cursor-pointer"
-                                                        >
-                                                            <CornerDownRight className="w-3 h-3" />
-                                                            <span>Drill</span>
-                                                        </button>
-                                                    ) : (
-                                                        <span className="text-slate-400 text-[10px]">Leaf</span>
-                                                    )}
-                                                </td>
                                             </tr>
                                         ))
                                     )}
@@ -1009,26 +1227,33 @@ export default function HierarchicalReportsView({
                                 {/* Aggregate Totals Footer */}
                                 {tableTotals && filteredBreakdownRows.length > 0 && (
                                     <tfoot>
-                                        <tr className="bg-slate-50 font-bold border-t border-slate-200 text-slate-900">
+                                        <tr className="border-t-2 border-b-2 border-slate-900 font-bold text-slate-950 bg-slate-100/80 text-xs">
                                             {reportData.breakdown.columns.map((col, colIdx) => (
                                                 <td
                                                     key={col.key}
-                                                    className={`px-3 py-2.5 ${
+                                                    className={`py-3 px-3 ${
                                                         colIdx === 0
-                                                            ? "text-left text-slate-900 font-bold"
+                                                            ? "text-left text-slate-950 font-bold"
                                                             : col.align === "right"
-                                                            ? "text-right text-slate-900 font-bold"
-                                                            : "text-center"
+                                                            ? "text-right text-slate-950 font-bold tabular-nums font-mono"
+                                                            : "text-center font-bold"
                                                     }`}
                                                 >
                                                     {colIdx === 0
-                                                        ? "TOTAL / AGGREGATE"
+                                                        ? reportData.breakdown.level === "REGION"
+                                                            ? "National Total"
+                                                            : "Total"
                                                         : col.isNumeric && tableTotals[col.key] !== undefined
-                                                        ? col.key === "ptr" ? `${tableTotals[col.key]}` : tableTotals[col.key].toLocaleString()
-                                                        : ""}
+                                                        ? col.key === "ptr"
+                                                            ? tableTotals[col.key] > 0
+                                                                ? `${tableTotals[col.key].toFixed(1)}`
+                                                                : "—"
+                                                            : tableTotals[col.key] === 0
+                                                            ? "—"
+                                                            : tableTotals[col.key].toLocaleString()
+                                                        : "—"}
                                                 </td>
                                             ))}
-                                            <td className="px-3 py-2.5 text-center text-slate-400 text-[10px]">—</td>
                                         </tr>
                                     </tfoot>
                                 )}
@@ -1036,134 +1261,115 @@ export default function HierarchicalReportsView({
                         </div>
                     </div>
 
-                    {/* Dedicated Analytical Breakdowns Section */}
+                    {/* 6. Disaggregation Section (Clean 3-Column Layout - No Card Boxes) */}
                     {reportData.analytics && (
-                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                            {/* Card 1: Gender & Demographic Balance */}
-                            <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-2xs space-y-4">
-                                <div className="flex items-center gap-2 pb-2.5 border-b border-slate-100">
-                                    <PieChart className="w-4 h-4 text-slate-700" />
-                                    <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider">Gender & Demographic Balance</h4>
-                                </div>
+                        <div className="pt-6 border-t border-slate-200 space-y-4">
+                            <h3 className="text-sm font-semibold text-slate-900">
+                                Demographic & Operational Breakdown
+                            </h3>
 
-                                <div className="space-y-4">
-                                    {/* Students Gender Split */}
-                                    <div className="space-y-1.5">
-                                        <div className="flex justify-between text-xs">
-                                            <span className="font-semibold text-slate-700">Student Enrollment</span>
-                                            <span className="font-medium text-slate-600">
-                                                Female: {reportData.analytics.gender.femaleStudentPct}%
-                                            </span>
-                                        </div>
-                                        <div className="h-2 bg-slate-100 rounded-full overflow-hidden flex">
-                                            <div
-                                                className="bg-blue-600"
-                                                style={{ width: `${100 - reportData.analytics.gender.femaleStudentPct}%` }}
-                                            />
-                                            <div
-                                                className="bg-rose-500"
-                                                style={{ width: `${reportData.analytics.gender.femaleStudentPct}%` }}
-                                            />
-                                        </div>
-                                        <div className="flex justify-between text-[11px] text-slate-500">
-                                            <span>Male: {reportData.analytics.gender.maleStudents.toLocaleString()}</span>
-                                            <span>Female: {reportData.analytics.gender.femaleStudents.toLocaleString()}</span>
-                                        </div>
-                                    </div>
+                            <div className="grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-slate-200">
+                                {/* Ledger 1: Gender & Demographic Equity */}
+                                <div className="space-y-3 pb-6 md:pb-0 md:pr-8">
+                                    <h4 className="text-xs font-semibold text-slate-900 pb-2 border-b border-slate-200">
+                                        Demographic & Gender Census
+                                    </h4>
 
-                                    {/* Teachers Gender Split */}
-                                    <div className="space-y-1.5 pt-3 border-t border-slate-100">
-                                        <div className="flex justify-between text-xs">
-                                            <span className="font-semibold text-slate-700">Teaching Faculty</span>
-                                            <span className="font-medium text-slate-600">
-                                                Female: {reportData.analytics.gender.femaleTeacherPct}%
-                                            </span>
-                                        </div>
-                                        <div className="h-2 bg-slate-100 rounded-full overflow-hidden flex">
-                                            <div
-                                                className="bg-teal-600"
-                                                style={{ width: `${100 - reportData.analytics.gender.femaleTeacherPct}%` }}
-                                            />
-                                            <div
-                                                className="bg-amber-500"
-                                                style={{ width: `${reportData.analytics.gender.femaleTeacherPct}%` }}
-                                            />
-                                        </div>
-                                        <div className="flex justify-between text-[11px] text-slate-500">
-                                            <span>Male: {reportData.analytics.gender.maleTeachers.toLocaleString()}</span>
-                                            <span>Female: {reportData.analytics.gender.femaleTeachers.toLocaleString()}</span>
-                                        </div>
-                                    </div>
-
-                                    <div className="bg-slate-50 rounded-lg p-2.5 flex justify-between items-center text-xs border border-slate-200/60">
-                                        <span className="font-medium text-slate-600">Gender Parity Index (GPI)</span>
-                                        <span className="font-bold text-slate-900 bg-white px-2 py-0.5 rounded border border-slate-200">
-                                            {reportData.analytics.gender.genderParityIndex}
-                                        </span>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Card 2: Teacher Qualifications & Workforce Profile */}
-                            <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-2xs space-y-4">
-                                <div className="flex items-center gap-2 pb-2.5 border-b border-slate-100">
-                                    <Award className="w-4 h-4 text-slate-700" />
-                                    <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider">Faculty Qualifications</h4>
-                                </div>
-
-                                <div className="space-y-3 text-xs">
-                                    {[
-                                        { label: "Doctorate (PhD)", count: reportData.analytics.staffing.qualifications.doctorate },
-                                        { label: "Master's Degree (MA/MSc)", count: reportData.analytics.staffing.qualifications.masters },
-                                        { label: "Bachelor's Degree (BA/BSc)", count: reportData.analytics.staffing.qualifications.bachelors },
-                                        { label: "Diploma (10+3 / 12+2)", count: reportData.analytics.staffing.qualifications.diploma },
-                                        { label: "Certificate / Other", count: reportData.analytics.staffing.qualifications.certificate + reportData.analytics.staffing.qualifications.other }
-                                    ].map(item => {
-                                        const total = reportData.metrics.totalTeachers || 1;
-                                        const pct = ((item.count / total) * 100).toFixed(1);
-                                        return (
-                                            <div key={item.label} className="space-y-1">
-                                                <div className="flex justify-between items-center">
-                                                    <span className="text-slate-600 font-medium">{item.label}</span>
-                                                    <span className="font-semibold text-slate-900">
-                                                        {item.count} <span className="text-slate-400 font-normal text-[11px]">({pct}%)</span>
-                                                    </span>
-                                                </div>
-                                                <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                                                    <div className="h-full bg-slate-700" style={{ width: `${pct}%` }} />
-                                                </div>
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            </div>
-
-                            {/* Card 3: Student Cohort & Retention Status */}
-                            <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-2xs space-y-4">
-                                <div className="flex items-center gap-2 pb-2.5 border-b border-slate-100">
-                                    <Activity className="w-4 h-4 text-slate-700" />
-                                    <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider">Student Retention Profile</h4>
-                                </div>
-
-                                <div className="space-y-2 text-xs">
-                                    {[
-                                        { label: "Active / Enrolled Cohort", count: reportData.analytics.studentRetention.enrolled + reportData.analytics.studentRetention.active },
-                                        { label: "Transferred Out", count: reportData.analytics.studentRetention.transferred },
-                                        { label: "Withdrawn", count: reportData.analytics.studentRetention.withdrawn },
-                                        { label: "Dropped Out", count: reportData.analytics.studentRetention.droppedOut },
-                                        { label: "Graduated / Promoted", count: reportData.analytics.studentRetention.graduated }
-                                    ].map(st => {
-                                        const total = reportData.metrics.totalStudents || 1;
-                                        const pct = ((st.count / total) * 100).toFixed(1);
-                                        return (
-                                            <div key={st.label} className="flex items-center justify-between p-2 rounded-lg bg-slate-50 border border-slate-100">
-                                                <span className="font-medium text-slate-700">{st.label}</span>
-                                                <span className="font-semibold text-slate-900">
-                                                    {st.count.toLocaleString()} <span className="text-slate-400 font-normal text-[11px]">({pct}%)</span>
+                                    <div className="space-y-4 text-xs pt-1">
+                                        {/* Student Enrollment */}
+                                        <div className="space-y-1.5">
+                                            <div className="flex justify-between items-center text-slate-800">
+                                                <span className="font-medium">Student Enrollment</span>
+                                                <span className="font-bold tabular-nums font-mono text-slate-900">
+                                                    {reportData.analytics.gender.totalStudents > 0
+                                                        ? reportData.analytics.gender.totalStudents.toLocaleString()
+                                                        : "—"}
                                                 </span>
                                             </div>
-                                        );
-                                    })}
+                                            <div className="flex justify-between text-[11px] text-slate-500">
+                                                <span>Male: {reportData.analytics.gender.maleStudents.toLocaleString()}</span>
+                                                <span>Female: {reportData.analytics.gender.femaleStudents.toLocaleString()}</span>
+                                            </div>
+                                        </div>
+
+                                        {/* Teaching Faculty */}
+                                        <div className="space-y-1.5 pt-3 border-t border-slate-100">
+                                            <div className="flex justify-between items-center text-slate-800">
+                                                <span className="font-medium">Teaching Faculty</span>
+                                                <span className="font-bold tabular-nums font-mono text-slate-900">
+                                                    {reportData.analytics.gender.totalTeachers > 0
+                                                        ? reportData.analytics.gender.totalTeachers.toLocaleString()
+                                                        : "—"}
+                                                </span>
+                                            </div>
+                                            <div className="flex justify-between text-[11px] text-slate-500">
+                                                <span>Male: {reportData.analytics.gender.maleTeachers.toLocaleString()}</span>
+                                                <span>Female: {reportData.analytics.gender.femaleTeachers.toLocaleString()}</span>
+                                            </div>
+                                        </div>
+
+                                        {/* Parity Index */}
+                                        <div className="flex justify-between items-center pt-3 border-t border-slate-100">
+                                            <span className="font-medium text-slate-800">Gender Parity Index (GPI)</span>
+                                            <span className="font-bold text-sm text-slate-900 tabular-nums font-mono">
+                                                {reportData.analytics.gender.genderParityIndex > 0
+                                                    ? reportData.analytics.gender.genderParityIndex.toFixed(2)
+                                                    : "—"}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Ledger 2: Faculty Qualifications */}
+                                <div className="space-y-3 py-6 md:py-0 md:px-8">
+                                    <h4 className="text-xs font-semibold text-slate-900 pb-2 border-b border-slate-200">
+                                        Faculty Qualifications
+                                    </h4>
+
+                                    <div className="divide-y divide-slate-100 text-xs">
+                                        {[
+                                            { label: "Doctorate (PhD)", count: reportData.analytics.staffing.qualifications.doctorate },
+                                            { label: "Master's Degree (MA/MSc)", count: reportData.analytics.staffing.qualifications.masters },
+                                            { label: "Bachelor's Degree (BA/BSc)", count: reportData.analytics.staffing.qualifications.bachelors },
+                                            { label: "Diploma (10+3 / 12+2)", count: reportData.analytics.staffing.qualifications.diploma },
+                                            { label: "Certificate / Other", count: reportData.analytics.staffing.qualifications.certificate + reportData.analytics.staffing.qualifications.other }
+                                        ].map(item => (
+                                            <div key={item.label} className="py-2.5 flex items-center justify-between">
+                                                <span className="text-slate-700">{item.label}</span>
+                                                <span className={`tabular-nums font-mono text-right ${
+                                                    item.count > 0 ? "font-bold text-slate-900" : "text-slate-300"
+                                                }`}>
+                                                    {item.count > 0 ? item.count.toLocaleString() : "—"}
+                                                </span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {/* Ledger 3: Student Cohort & Retention Status */}
+                                <div className="space-y-3 pt-6 md:pt-0 md:pl-8">
+                                    <h4 className="text-xs font-semibold text-slate-900 pb-2 border-b border-slate-200">
+                                        Student Retention Profile
+                                    </h4>
+
+                                    <div className="divide-y divide-slate-100 text-xs">
+                                        {[
+                                            { label: "Active / Enrolled Cohort", count: reportData.analytics.studentRetention.enrolled + reportData.analytics.studentRetention.active },
+                                            { label: "Transferred Out", count: reportData.analytics.studentRetention.transferred },
+                                            { label: "Withdrawn", count: reportData.analytics.studentRetention.withdrawn },
+                                            { label: "Dropped Out", count: reportData.analytics.studentRetention.droppedOut },
+                                            { label: "Graduated / Promoted", count: reportData.analytics.studentRetention.graduated }
+                                        ].map(st => (
+                                            <div key={st.label} className="py-2.5 flex items-center justify-between">
+                                                <span className="text-slate-700">{st.label}</span>
+                                                <span className={`tabular-nums font-mono text-right ${
+                                                    st.count > 0 ? "font-bold text-slate-900" : "text-slate-300"
+                                                }`}>
+                                                    {st.count > 0 ? st.count.toLocaleString() : "—"}
+                                                </span>
+                                            </div>
+                                        ))}
+                                    </div>
                                 </div>
                             </div>
                         </div>

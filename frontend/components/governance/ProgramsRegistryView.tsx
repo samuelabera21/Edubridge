@@ -3,37 +3,30 @@
 import { useState, useEffect, useMemo } from "react";
 import { useSearchParams } from "next/navigation";
 import { fetchApi } from "../../lib/api";
+import { useAuth } from "../../hooks/useAuth";
 import {
-    Compass,
-    Target,
-    Calendar,
-    Clock,
-    CheckCircle2,
-    AlertCircle,
     Search,
-    Filter,
     Plus,
     X,
-    Eye,
     Paperclip,
-    ExternalLink,
     RefreshCw,
-    Building2,
-    Layers,
-    MapPin,
-    School,
-    Shield,
     ChevronLeft,
     ChevronRight,
     Loader2,
     ArrowUpRight,
     Send,
     CheckSquare,
-    Check,
-    Bell,
-    Users
+    CheckCircle2,
+    AlertCircle,
+    Target,
+    ShieldCheck,
+    FileText,
+    LayoutList,
+    LayoutGrid,
+    Filter
 } from "lucide-react";
 import ProgramCreatePublishView from "./ProgramCreatePublishView";
+import GovernanceSubnav from "./GovernanceSubnav";
 
 export interface ProgramRecipientTracking {
     id: string;
@@ -68,6 +61,11 @@ export interface ProgramItem {
     targetLevelAll: boolean;
     targetLevels: string[];
     cascadeDescendants: boolean;
+    targetOrganizationUnits?: Array<{
+        id?: string;
+        organizationId?: string;
+        organization?: { id: string; name: string; type: string };
+    }>;
     isCreatedByMe?: boolean;
     createdOrganization: { id: string; name: string; type: string };
     creator?: { id: string; name: string; email: string } | null;
@@ -99,32 +97,50 @@ export interface ProgramItem {
 export interface ProgramsRegistryViewProps {
     tierName?: string;
     tierType?: "FEDERAL" | "REGION" | "ZONE" | "WOREDA" | "SCHOOL";
+    organizationId?: string | null;
     canCreateProgram?: boolean;
     initialProgramId?: string | null;
     initialProgramTitle?: string | null;
+    showSubnav?: boolean;
 }
 
 export default function ProgramsRegistryView({
     tierName = "Administration",
     tierType = "FEDERAL",
+    organizationId,
     canCreateProgram = true,
     initialProgramId,
-    initialProgramTitle
+    initialProgramTitle,
+    showSubnav = true
 }: ProgramsRegistryViewProps) {
+    const { authData } = useAuth(false);
     const searchParams = useSearchParams();
     const targetProgramId = initialProgramId || searchParams?.get("programId") || searchParams?.get("id");
     const targetProgramTitle = initialProgramTitle || searchParams?.get("programTitle");
+
+    // Resolve the active organization ID: prefer prop, otherwise match tierType against user's access scopes
+    const activeOrgId = useMemo(() => {
+        if (organizationId) return organizationId;
+        if (!authData?.access?.length) return null;
+        const matchingAccess = authData.access.find((a: any) => a.scope?.type === tierType);
+        return matchingAccess?.scope?.id || null;
+    }, [organizationId, authData, tierType]);
 
     const [programs, setPrograms] = useState<ProgramItem[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
+    // View presentation mode (table = default, cards = clean DfE card grid)
+    const [viewMode, setViewMode] = useState<"table" | "cards">("table");
+
     // Navigation & Filter Mode
-    const [activeTab, setActiveTab] = useState<"ALL" | "RECEIVED" | "CREATED" | "ACTIVE" | "COMPLETED">("ALL");
+    const [originFilter, setOriginFilter] = useState<"ALL" | "RECEIVED" | "CREATED">("ALL");
+    const [receivedFromFilter, setReceivedFromFilter] = useState<string>("ALL");
     const [searchQuery, setSearchQuery] = useState("");
     const [priorityFilter, setPriorityFilter] = useState<string>("ALL");
     const [statusFilter, setStatusFilter] = useState<string>("ALL");
-    const [sourceFilter, setSourceFilter] = useState<"ALL" | "FEDERAL" | "REGION" | "ZONE" | "WOREDA" | "SCHOOL" | "CREATED" | "RECEIVED">("ALL");
+    const [targetScopeFilter, setTargetScopeFilter] = useState<"ALL" | "ALL_TIERS" | "REGION" | "ZONE" | "WOREDA" | "SCHOOL">("ALL");
+    const [showFilters, setShowFilters] = useState(false);
     const [isCreatingProgram, setIsCreatingProgram] = useState(false);
     const [cascadingParentProgram, setCascadingParentProgram] = useState<ProgramItem | null>(null);
 
@@ -142,13 +158,16 @@ export default function ProgramsRegistryView({
 
     // Pagination
     const [page, setPage] = useState(1);
-    const [pageSize, setPageSize] = useState(9); // 9 for 3-column grid
+    const [pageSize, setPageSize] = useState(9); // 9 aligns well with both 3-column cards and tables
 
     const loadPrograms = async () => {
         setLoading(true);
         setError(null);
         try {
-            const res = await fetchApi("/programs");
+            const query = activeOrgId ? `?organizationId=${activeOrgId}` : "";
+            const res = await fetchApi(`/programs${query}`, {
+                headers: activeOrgId ? { "x-organization-id": activeOrgId } : {}
+            });
             if (!res.ok) {
                 const errJson = await res.json().catch(() => ({}));
                 throw new Error(errJson.message || "Failed to load programs & initiatives");
@@ -167,12 +186,15 @@ export default function ProgramsRegistryView({
 
     useEffect(() => {
         loadPrograms();
-    }, []);
+    }, [activeOrgId]);
 
     const loadProgramDetail = async (id: string) => {
         setDetailLoading(true);
         try {
-            const res = await fetchApi(`/programs/${id}`);
+            const query = activeOrgId ? `?organizationId=${activeOrgId}` : "";
+            const res = await fetchApi(`/programs/${id}${query}`, {
+                headers: activeOrgId ? { "x-organization-id": activeOrgId } : {}
+            });
             if (res.ok) {
                 const json = await res.json();
                 setSelectedProgram(json.data);
@@ -192,25 +214,21 @@ export default function ProgramsRegistryView({
         if (!title || !list || list.length === 0) return null;
         const normTitle = title.toLowerCase().trim();
 
-        // 1. Exact match
         let found = list.find(p => p.name.toLowerCase().trim() === normTitle);
         if (found) return found;
 
-        // 2. Starts with / Prefix match
         found = list.find(p => {
             const normName = p.name.toLowerCase().trim();
             return normName.startsWith(normTitle) || normTitle.startsWith(normName);
         });
         if (found) return found;
 
-        // 3. Substring includes match
         found = list.find(p => {
             const normName = p.name.toLowerCase().trim();
             return normName.includes(normTitle) || normTitle.includes(normName);
         });
         if (found) return found;
 
-        // 4. Token similarity match
         const tokens = normTitle.split(/\s+/).filter(w => w.length > 2);
         if (tokens.length > 0) {
             found = list.find(p => {
@@ -230,7 +248,6 @@ export default function ProgramsRegistryView({
             const pool = list && list.length > 0 ? list : programs;
             let match = matchProgramByTitle(title, pool);
             if (!match) {
-                // Fetch fresh programs list
                 const freshList = await loadPrograms();
                 match = matchProgramByTitle(title, freshList);
             }
@@ -240,7 +257,6 @@ export default function ProgramsRegistryView({
         }
     };
 
-    // Auto-open detail if targetProgramId or targetProgramTitle exists on mount or URL change
     useEffect(() => {
         if (targetProgramId) {
             loadProgramDetail(targetProgramId);
@@ -249,7 +265,6 @@ export default function ProgramsRegistryView({
         }
     }, [targetProgramId, targetProgramTitle, programs.length]);
 
-    // Real-time custom event listener for in-app notification clicks
     useEffect(() => {
         const handleOpenDetailEvent = (e: any) => {
             const { programId, programTitle } = e?.detail || {};
@@ -271,8 +286,10 @@ export default function ProgramsRegistryView({
     const handleAcknowledge = async (programId: string) => {
         setSubmittingAction(true);
         try {
-            const res = await fetchApi(`/programs/${programId}/acknowledge`, {
+            const query = activeOrgId ? `?organizationId=${activeOrgId}` : "";
+            const res = await fetchApi(`/programs/${programId}/acknowledge${query}`, {
                 method: "POST",
+                headers: activeOrgId ? { "x-organization-id": activeOrgId } : {},
                 body: JSON.stringify({ notes: actionNotes || "Acknowledged by administrative desk." })
             });
             if (!res.ok) {
@@ -295,8 +312,10 @@ export default function ProgramsRegistryView({
     const handleUpdateImplementationStatus = async (programId: string) => {
         setSubmittingAction(true);
         try {
-            const res = await fetchApi(`/programs/${programId}/implementation-status`, {
+            const query = activeOrgId ? `?organizationId=${activeOrgId}` : "";
+            const res = await fetchApi(`/programs/${programId}/implementation-status${query}`, {
                 method: "PATCH",
+                headers: activeOrgId ? { "x-organization-id": activeOrgId } : {},
                 body: JSON.stringify({
                     status: actionStatus,
                     notes: actionNotes
@@ -319,118 +338,245 @@ export default function ProgramsRegistryView({
         }
     };
 
-    // Tier classifier helper matching Policies & Directives
-    const getProgramTier = (p: ProgramItem): "FEDERAL" | "REGION" | "ZONE" | "WOREDA" | "SCHOOL" => {
-        const orgType = (p.createdOrganization?.type || "").toUpperCase();
-        if (orgType === "FEDERAL") return "FEDERAL";
-        if (orgType === "REGION") return "REGION";
-        if (orgType === "ZONE") return "ZONE";
-        if (orgType === "WOREDA") return "WOREDA";
-        if (orgType === "SCHOOL") return "SCHOOL";
-
-        const orgName = (p.createdOrganization?.name || "").toLowerCase();
-        if (orgName.includes("federal") || orgName.includes("ministry") || orgName.includes("platform") || orgName.includes("national")) return "FEDERAL";
-        if (orgName.includes("region") || orgName.includes("bureau")) return "REGION";
-        if (orgName.includes("zone") || orgName.includes("department")) return "ZONE";
-        if (orgName.includes("woreda") || orgName.includes("district") || orgName.includes("office")) return "WOREDA";
-        if (orgName.includes("school")) return "SCHOOL";
-
-        return "FEDERAL";
+    const matchesTargetScope = (p: ProgramItem, filter: string): boolean => {
+        if (filter === "ALL") return true;
+        if (filter === "ALL_TIERS") {
+            return Boolean(p.targetLevelAll);
+        }
+        if (p.targetLevels && p.targetLevels.includes(filter)) {
+            return true;
+        }
+        if (p.targetOrganizationUnits && p.targetOrganizationUnits.some(tu => tu.organization?.type === filter)) {
+            return true;
+        }
+        if (p.implementations && p.implementations.some(imp => imp.organization?.type === filter)) {
+            return true;
+        }
+        return false;
     };
 
-    // Source level counts matching Policies and Directives
-    const federalCount = useMemo(() => programs.filter(p => getProgramTier(p) === "FEDERAL").length, [programs]);
-    const regionCount = useMemo(() => programs.filter(p => getProgramTier(p) === "REGION").length, [programs]);
-    const zoneCount = useMemo(() => programs.filter(p => getProgramTier(p) === "ZONE").length, [programs]);
-    const woredaCount = useMemo(() => programs.filter(p => getProgramTier(p) === "WOREDA").length, [programs]);
+    const matchesReceivedFrom = (p: ProgramItem, filter: string): boolean => {
+        if (filter === "ALL") return true;
+        const orgType = (p.createdOrganization?.type || "").toUpperCase();
+        const orgName = (p.createdOrganization?.name || "").toLowerCase();
 
-    // Filter programs
+        if (filter === "FEDERAL") {
+            return orgType === "FEDERAL" || orgName.includes("federal") || orgName.includes("ministry") || orgName.includes("edubridge");
+        }
+        if (filter === "REGION") {
+            return orgType === "REGION" || orgName.includes("region") || orgName.includes("bureau");
+        }
+        if (filter === "ZONE") {
+            return orgType === "ZONE" || orgName.includes("zone") || orgName.includes("department");
+        }
+        if (filter === "WOREDA") {
+            return orgType === "WOREDA" || orgName.includes("woreda") || orgName.includes("office");
+        }
+        return orgType === filter;
+    };
+
     const filteredPrograms = useMemo(() => {
         return programs.filter(p => {
-            // Pill / Active tab filter
-            if (activeTab === "RECEIVED" && p.isCreatedByMe) return false;
-            if (activeTab === "CREATED" && !p.isCreatedByMe) return false;
-            if (activeTab === "ACTIVE" && p.status !== "ACTIVE" && p.status !== "PUBLISHED") return false;
-            if (activeTab === "COMPLETED" && p.status !== "COMPLETED" && p.userImplementation?.status !== "COMPLETED") return false;
+            // Origin filter: created by us vs received
+            if (originFilter === "RECEIVED" && p.isCreatedByMe) return false;
+            if (originFilter === "CREATED" && !p.isCreatedByMe) return false;
 
-            // Source filter dropdown (Upper levels & Hierarchy tiers matching Policies and Directives)
-            if (sourceFilter === "FEDERAL") {
-                if (getProgramTier(p) !== "FEDERAL") return false;
-            } else if (sourceFilter === "REGION") {
-                if (getProgramTier(p) !== "REGION") return false;
-            } else if (sourceFilter === "ZONE") {
-                if (getProgramTier(p) !== "ZONE") return false;
-            } else if (sourceFilter === "WOREDA") {
-                if (getProgramTier(p) !== "WOREDA") return false;
-            } else if (sourceFilter === "SCHOOL") {
-                if (getProgramTier(p) !== "SCHOOL") return false;
-            } else if (sourceFilter === "CREATED") {
-                if (!p.isCreatedByMe) return false;
-            } else if (sourceFilter === "RECEIVED") {
-                if (p.isCreatedByMe) return false;
+            // Received from (issuing authority) filter
+            if (receivedFromFilter !== "ALL" && !matchesReceivedFrom(p, receivedFromFilter)) return false;
+
+            // Target scope filter
+            if (targetScopeFilter !== "ALL" && !matchesTargetScope(p, targetScopeFilter)) return false;
+
+            if (priorityFilter !== "ALL" && p.priority !== priorityFilter) return false;
+            if (statusFilter !== "ALL") {
+                const deskStatus = getProgramDeskStatus(p).type;
+                if (statusFilter === "PUBLISHED" && deskStatus !== "PUBLISHED") return false;
+                if (statusFilter === "ACKNOWLEDGED" && deskStatus !== "ACKNOWLEDGED") return false;
+                if (statusFilter === "PENDING" && deskStatus !== "PENDING") return false;
+                if (statusFilter === "IN_PROGRESS" && deskStatus !== "IN_PROGRESS") return false;
+                if (statusFilter === "COMPLETED" && deskStatus !== "COMPLETED") return false;
+                if (statusFilter === "DRAFT" && deskStatus !== "DRAFT") return false;
             }
 
-            // Priority filter dropdown
-            if (priorityFilter !== "ALL" && p.priority !== priorityFilter) return false;
-
-            // Status filter dropdown
-            if (statusFilter !== "ALL" && p.status !== statusFilter) return false;
-
-            // Search query
             if (searchQuery.trim()) {
                 const q = searchQuery.toLowerCase().trim();
-                const matchesName = p.name.toLowerCase().includes(q);
+                const matchesName = p.name?.toLowerCase().includes(q);
                 const matchesObj = p.objective?.toLowerCase().includes(q);
                 const matchesOrg = p.createdOrganization?.name?.toLowerCase().includes(q);
                 const matchesAction = p.requiredAction?.toLowerCase().includes(q);
-                if (!matchesName && !matchesObj && !matchesOrg && !matchesAction) return false;
+                const matchesScope = p.targetLevelAll
+                    ? "all subordinate units".includes(q)
+                    : p.targetLevels?.some(tl => tl.toLowerCase().includes(q));
+                if (!matchesName && !matchesObj && !matchesOrg && !matchesAction && !matchesScope) return false;
             }
 
             return true;
         });
-    }, [programs, activeTab, sourceFilter, priorityFilter, statusFilter, searchQuery]);
+    }, [programs, originFilter, receivedFromFilter, targetScopeFilter, priorityFilter, statusFilter, searchQuery]);
 
-    // Reset pagination on filter change
     useEffect(() => {
         setPage(1);
-    }, [activeTab, sourceFilter, priorityFilter, statusFilter, searchQuery, pageSize]);
+    }, [originFilter, receivedFromFilter, targetScopeFilter, priorityFilter, statusFilter, searchQuery, pageSize, viewMode]);
 
-    // Paginated programs
     const totalPages = Math.max(1, Math.ceil(filteredPrograms.length / pageSize));
     const paginatedPrograms = useMemo(() => {
         const start = (page - 1) * pageSize;
         return filteredPrograms.slice(start, start + pageSize);
     }, [filteredPrograms, page, pageSize]);
 
-    // Summary metrics
-    const metrics = useMemo(() => {
-        const total = programs.length;
-        const active = programs.filter(p => p.status === "ACTIVE" || p.status === "PUBLISHED").length;
-        const pendingSignoff = programs.filter(p => !p.isCreatedByMe && p.userImplementation?.status === "PENDING").length;
-        const completed = programs.filter(p => p.status === "COMPLETED" || p.userImplementation?.status === "COMPLETED").length;
-        return { total, active, pendingSignoff, completed };
-    }, [programs]);
-
-    // Modal tracking implementations filtered
     const modalImplementations = useMemo(() => {
         if (!selectedProgram?.tracking?.implementations) return [];
         return selectedProgram.tracking.implementations.filter(imp => {
-            if (trackingStatusFilter !== "ALL" && imp.status !== trackingStatusFilter) return false;
+            if (trackingStatusFilter !== "ALL") {
+                if (trackingStatusFilter === "ACKNOWLEDGED") {
+                    if (!imp.isAcknowledged) return false;
+                } else if (trackingStatusFilter === "PENDING") {
+                    if (imp.isAcknowledged || imp.status !== "PENDING") return false;
+                } else if (imp.status !== trackingStatusFilter) {
+                    return false;
+                }
+            }
             if (trackingSearch.trim()) {
                 const q = trackingSearch.toLowerCase().trim();
                 const matchesName = imp.organization?.name?.toLowerCase().includes(q);
                 const matchesType = imp.organization?.type?.toLowerCase().includes(q);
                 const matchesNotes = imp.notes?.toLowerCase().includes(q);
-                if (!matchesName && !matchesType && !matchesNotes) return false;
+                const matchesUser = imp.acknowledgedByUser?.name?.toLowerCase().includes(q) || imp.acknowledgedByUser?.email?.toLowerCase().includes(q);
+                if (!matchesName && !matchesType && !matchesNotes && !matchesUser) return false;
             }
             return true;
         });
     }, [selectedProgram, trackingStatusFilter, trackingSearch]);
 
+    const activeFilterCount = useMemo(() => {
+        let count = 0;
+        if (originFilter !== "ALL") count++;
+        if (tierType !== "FEDERAL" && receivedFromFilter !== "ALL") count++;
+        if (targetScopeFilter !== "ALL") count++;
+        if (priorityFilter !== "ALL") count++;
+        if (statusFilter !== "ALL") count++;
+        return count;
+    }, [originFilter, tierType, receivedFromFilter, targetScopeFilter, priorityFilter, statusFilter]);
+
+    const hasActiveFilters = searchQuery !== "" || activeFilterCount > 0;
+
+    const clearAllFilters = () => {
+        setSearchQuery("");
+        setOriginFilter("ALL");
+        setReceivedFromFilter("ALL");
+        setTargetScopeFilter("ALL");
+        setPriorityFilter("ALL");
+        setStatusFilter("ALL");
+    };
+
+    const getCleanCardMessage = (item: ProgramItem) => {
+        const rawObj = item.objective?.trim() || "";
+        const rawDesc = item.description?.trim() || "";
+        const name = item.name?.trim() || "";
+        const nameLower = name.toLowerCase();
+
+        // Helper to test if text is repetitive dev filler or gibberish
+        const isGibberishOrRepetitive = (text: string) => {
+            if (!text || text.length < 5) return true;
+            const lower = text.toLowerCase();
+            // Repeats the initiative title
+            if (nameLower && (lower === nameLower || lower.includes(nameLower))) {
+                return true;
+            }
+            // Repetitive characters or word patterns (e.g. "aaaaa", "AllAllAll", "testtest")
+            if (/(.)\1{4,}/i.test(text) || /([a-zA-Z]{2,6})\1{2,}/i.test(text)) {
+                return true;
+            }
+            // Too few unique words with excessive length
+            const words = lower.split(/\s+/).filter(Boolean);
+            if (words.length <= 2 && text.length > 20) return true;
+            return false;
+        };
+
+        // If objective is a legitimate readable human sentence
+        if (rawObj && !isGibberishOrRepetitive(rawObj)) {
+            const firstSentence = rawObj.split(/[.!?]\s+/)[0];
+            return firstSentence.length > 110 ? `${firstSentence.substring(0, 107)}...` : firstSentence;
+        }
+
+        // Else if description is a legitimate readable sentence
+        if (rawDesc && !isGibberishOrRepetitive(rawDesc)) {
+            const firstSentence = rawDesc.split(/[.!?]\s+/)[0];
+            return firstSentence.length > 110 ? `${firstSentence.substring(0, 107)}...` : firstSentence;
+        }
+
+        // Clean public-sector summary sentence matching DfE card reference
+        const authority = item.createdOrganization?.name || "Federal Ministry";
+        const scope = item.targetLevelAll
+            ? "all administrative tiers"
+            : item.targetLevels?.join(", ") || "subordinate units";
+        return `Strategic initiative issued by ${authority} for delivery across ${scope}.`;
+    };
+
+    // Returns governance desk status for table, cards, and filtering
+    const getProgramDeskStatus = (item: ProgramItem) => {
+        if (item.status === "DRAFT") {
+            return {
+                label: "Draft",
+                className: "text-slate-500 font-medium",
+                type: "DRAFT"
+            };
+        }
+
+        // A single target is when it's explicitly targeted to 1 unit, or recipient count is exactly 1 (and not a broadcast to all units)
+        const targetUnitsCount = item.targetOrganizationUnits?.length || 0;
+        const totalRecipients = item.totalRecipients ?? item.tracking?.totalRecipients ?? item.implementations?.length ?? 0;
+        const isSingleTarget = targetUnitsCount === 1 || (totalRecipients === 1 && !item.targetLevelAll);
+
+        // When sent to multiple levels/units, show 'Published' on registry table/cards.
+        // Detailed per-unit delivery is inspected in the slide-over drawer.
+        if (!isSingleTarget) {
+            return {
+                label: "Published",
+                className: "text-slate-700 font-medium",
+                type: "PUBLISHED"
+            };
+        }
+
+        // Single target: exactly 1 targeted unit
+        const userImp = item.userImplementation || (item.implementations && item.implementations.length === 1 ? item.implementations[0] : null);
+        const impStatus = userImp?.status;
+        const acked = item.acknowledgedCount ?? item.tracking?.acknowledgedCount ?? 0;
+
+        if (impStatus === "COMPLETED" || (item.completedCount && item.completedCount >= 1)) {
+            return {
+                label: "Completed",
+                className: "text-slate-700 font-medium",
+                type: "COMPLETED"
+            };
+        }
+        if (impStatus === "IN_PROGRESS" || (item.inProgressCount && item.inProgressCount >= 1)) {
+            return {
+                label: "In progress",
+                className: "text-slate-700 font-medium",
+                type: "IN_PROGRESS"
+            };
+        }
+        if (impStatus === "ACKNOWLEDGED" || userImp?.isAcknowledged || acked >= 1) {
+            return {
+                label: "Acknowledged",
+                className: "text-slate-700 font-medium",
+                type: "ACKNOWLEDGED"
+            };
+        }
+
+        return {
+            label: "Pending",
+            className: "text-slate-700 font-medium",
+            type: "PENDING"
+        };
+    };
+
     if (isCreatingProgram || cascadingParentProgram) {
         return (
             <ProgramCreatePublishView
                 parentProgram={cascadingParentProgram}
+                organizationId={activeOrgId}
                 onBack={() => {
                     setIsCreatingProgram(false);
                     setCascadingParentProgram(null);
@@ -445,200 +591,347 @@ export default function ProgramsRegistryView({
     }
 
     return (
-        <div className="space-y-6 font-sans">
-            {/* Action Toast */}
+        <div className="space-y-6 font-sans text-slate-900 max-w-7xl">
+            {/* Top Subnav (Option A: Policies & Programs Governance Hub) */}
+            {showSubnav && (
+                <GovernanceSubnav activeTab="programs" programsCount={programs.length} />
+            )}
+
+            {/* Notification Toast */}
             {actionToast && (
                 <div
-                    className={`p-3.5 rounded-xl border text-xs flex items-center justify-between shadow-sm animate-in fade-in ${
+                    role="alert"
+                    className={`p-3.5 border-l-4 text-sm flex items-center justify-between ${
                         actionToast.type === "success"
-                            ? "bg-emerald-50 border-emerald-200 text-emerald-800"
-                            : "bg-rose-50 border-rose-200 text-rose-800"
+                            ? "bg-slate-50 border-emerald-600 text-slate-900"
+                            : "bg-slate-50 border-rose-600 text-slate-900"
                     }`}
                 >
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2.5">
                         {actionToast.type === "success" ? (
-                            <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                            <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
                         ) : (
-                            <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+                            <AlertCircle className="w-5 h-5 text-rose-600 shrink-0" />
                         )}
-                        <span>{actionToast.text}</span>
+                        <span className="font-medium">{actionToast.text}</span>
                     </div>
-                    <button onClick={() => setActionToast(null)} className="text-slate-400 hover:text-slate-600 cursor-pointer">
-                        <X className="w-3.5 h-3.5" />
+                    <button
+                        type="button"
+                        onClick={() => setActionToast(null)}
+                        className="text-slate-400 hover:text-slate-600 p-1 cursor-pointer"
+                        aria-label="Dismiss"
+                    >
+                        <X className="w-4 h-4" />
                     </button>
                 </div>
             )}
 
-            {/* Metric Overview Cards (Interactive Filters) */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                <div
-                    onClick={() => {
-                        setActiveTab("ALL");
-                        setStatusFilter("ALL");
-                    }}
-                    className={`bg-white rounded-2xl border p-5 shadow-xs transition-all cursor-pointer ${
-                        activeTab === "ALL" && statusFilter === "ALL"
-                            ? "border-blue-400 ring-2 ring-blue-500/10 shadow-xs"
-                            : "border-slate-200 hover:border-slate-300"
-                    }`}
-                >
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
-                        Total Programs
-                    </span>
-                    <p className="text-2xl font-bold text-slate-900 mt-1">{metrics.total}</p>
-                    <span className="text-[11px] text-slate-400 mt-0.5 block">Strategic initiatives</span>
-                </div>
-
-                <div
-                    onClick={() => {
-                        setActiveTab("ACTIVE");
-                        setStatusFilter("ALL");
-                    }}
-                    className={`bg-white rounded-2xl border p-5 shadow-xs transition-all cursor-pointer ${
-                        activeTab === "ACTIVE"
-                            ? "border-blue-400 ring-2 ring-blue-500/10 shadow-xs bg-blue-50/20"
-                            : "border-slate-200 hover:border-slate-300"
-                    }`}
-                >
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
-                        Active Initiatives
-                    </span>
-                    <p className="text-2xl font-bold text-blue-600 mt-1">{metrics.active}</p>
-                    <span className="text-[11px] text-slate-400 mt-0.5 block">Under execution</span>
-                </div>
-
-                <div
-                    onClick={() => {
-                        setActiveTab("RECEIVED");
-                        setStatusFilter("ALL");
-                    }}
-                    className={`bg-white rounded-2xl border p-5 shadow-xs transition-all cursor-pointer ${
-                        activeTab === "RECEIVED"
-                            ? "border-amber-400 ring-2 ring-amber-500/10 shadow-xs bg-amber-50/20"
-                            : "border-slate-200 hover:border-slate-300"
-                    }`}
-                >
-                    <span className="text-[10px] font-bold text-amber-700 uppercase tracking-wider block">
-                        Pending Action / Sign-off
-                    </span>
-                    <div className="flex items-baseline gap-2 mt-1">
-                        <p className="text-2xl font-bold text-amber-800">{metrics.pendingSignoff}</p>
-                        {metrics.pendingSignoff > 0 && (
-                            <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-amber-100 text-amber-800">
-                                Requires Action
-                            </span>
-                        )}
+            {/* Error Banner */}
+            {error && (
+                <div role="alert" className="p-4 border-l-4 border-rose-600 bg-rose-50 text-slate-900 text-sm flex items-center justify-between">
+                    <div>
+                        <strong className="font-semibold">There is a problem loading the registry:</strong> {error}
                     </div>
-                    <span className="text-[11px] text-slate-400 mt-0.5 block">Subordinate desks</span>
+                    <button
+                        type="button"
+                        onClick={() => loadPrograms()}
+                        className="text-sm font-semibold text-[#4085b3] hover:underline cursor-pointer ml-4"
+                    >
+                        Try again
+                    </button>
                 </div>
+            )}
 
-                <div
-                    onClick={() => {
-                        setActiveTab("COMPLETED");
-                        setStatusFilter("ALL");
-                    }}
-                    className={`bg-white rounded-2xl border p-5 shadow-xs transition-all cursor-pointer ${
-                        activeTab === "COMPLETED"
-                            ? "border-emerald-400 ring-2 ring-emerald-500/10 shadow-xs bg-emerald-50/20"
-                            : "border-slate-200 hover:border-slate-300"
-                    }`}
-                >
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
-                        Completed
-                    </span>
-                    <p className="text-2xl font-bold text-emerald-700 mt-1">{metrics.completed}</p>
-                    <span className="text-[11px] text-slate-400 mt-0.5 block">Fully accomplished</span>
-                </div>
+            {/* 1. PAGE HEADER (Clean single-line header) */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-200">
+                <h1 className="text-2xl font-bold tracking-tight text-slate-900">
+                    Programs and initiatives
+                </h1>
+
+                {canCreateProgram && (
+                    <button
+                        type="button"
+                        onClick={() => setIsCreatingProgram(true)}
+                        className="px-3.5 py-1.5 bg-[#4085b3] hover:bg-[#32698e] text-white text-sm font-medium rounded transition-colors inline-flex items-center gap-1.5 self-start sm:self-auto cursor-pointer"
+                    >
+                        <Plus className="w-4 h-4" />
+                        <span>Issue initiative</span>
+                    </button>
+                )}
             </div>
 
-            {/* Programs Registry Main Card */}
-            <div className="bg-white rounded-2xl border border-slate-200 p-6 space-y-5 shadow-xs">
-                {/* Header Row */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-3 border-b border-slate-100">
-                    <div>
-                        <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
-                            <Compass className="w-5 h-5 text-blue-600" />
-                            <span>National & Regional Programs Registry</span>
-                        </h3>
-                        <p className="text-xs text-slate-500 mt-0.5">
-                            Action-oriented strategic initiatives and execution tracking across the hierarchy.
-                        </p>
-                    </div>
-
-                    <div className="flex items-center gap-2 self-start sm:self-auto shrink-0">
-                        <button
-                            type="button"
-                            onClick={() => loadPrograms()}
-                            className="p-2 border border-slate-200 hover:bg-slate-50 text-slate-600 rounded-xl transition-colors cursor-pointer"
-                            title="Refresh Programs"
-                        >
-                            <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin text-blue-600" : ""}`} />
-                        </button>
-
-                        {canCreateProgram && (
-                            <button
-                                onClick={() => setIsCreatingProgram(true)}
-                                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-xs transition-colors cursor-pointer"
-                            >
-                                <Plus className="w-4 h-4" />
-                                <span>Issue Program / Initiative</span>
-                            </button>
-                        )}
-                    </div>
-                </div>
-
-                {/* Filter and Tab Toolbar (Clean Dropdown Style matching Federal Policies & Directives) */}
-                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 pt-0.5">
-                    <div className="flex flex-wrap items-center gap-2 flex-1">
-                        {/* Search Input */}
-                        <div className="relative w-full sm:w-64">
-                            <Search className="w-3.5 h-3.5 absolute left-3 top-2.5 text-slate-400" />
+            {/* 2. TOOLBAR: SEARCH, FILTERS & VIEW SWITCHER (Unified in one clean row) */}
+            <div className="space-y-3 pt-1">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                    {/* Left: Search input + Filters toggle button + Refresh */}
+                    <div className="flex items-center gap-2.5 flex-1 max-w-lg">
+                        <div className="relative flex-1">
+                            <Search className="w-4 h-4 absolute left-3 top-2.5 text-slate-400 pointer-events-none" />
                             <input
+                                id="program-search"
                                 type="text"
                                 value={searchQuery}
                                 onChange={e => setSearchQuery(e.target.value)}
-                                placeholder="Search program, objective, action..."
-                                className="w-full pl-8 pr-7 py-1.5 text-xs border border-slate-200 rounded-lg focus:outline-none focus:border-slate-400 text-slate-800 placeholder-slate-400 bg-white"
+                                placeholder="Search initiatives by title, target, or keywords..."
+                                className="w-full pl-9 pr-8 py-2 text-sm bg-white border border-slate-300 rounded text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-[#4085b3] focus:border-[#4085b3]"
                             />
                             {searchQuery && (
                                 <button
+                                    type="button"
                                     onClick={() => setSearchQuery("")}
-                                    className="absolute right-2.5 top-2 text-slate-400 hover:text-slate-600"
+                                    className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600 cursor-pointer"
+                                    aria-label="Clear search"
                                 >
-                                    <X className="w-3 h-3" />
+                                    <X className="w-4 h-4" />
                                 </button>
                             )}
                         </div>
 
-                        {/* Source Filter Dropdown (matching Policies & Directives upper levels) */}
-                        <div className="w-full sm:w-48">
-                            <select
-                                value={sourceFilter}
-                                onChange={e => setSourceFilter(e.target.value as any)}
-                                className="w-full px-2.5 py-1.5 border border-slate-200 rounded-lg text-xs font-medium text-slate-700 bg-white focus:outline-none focus:border-slate-400 cursor-pointer"
+                        {/* Filters Toggle Button */}
+                        <button
+                            type="button"
+                            onClick={() => setShowFilters(prev => !prev)}
+                            className={`px-3 py-2 text-sm font-medium rounded border transition-colors flex items-center gap-1.5 cursor-pointer shrink-0 ${
+                                showFilters || activeFilterCount > 0
+                                    ? "bg-[#4085b3] text-white border-[#4085b3]"
+                                    : "bg-white text-slate-700 border-slate-300 hover:bg-slate-50"
+                            }`}
+                            title="Filter initiatives"
+                        >
+                            <Filter className="w-4 h-4" />
+                            <span>Filters</span>
+                            {activeFilterCount > 0 && (
+                                <span className={`text-xs px-1.5 py-0.2 rounded-full font-bold ${
+                                    showFilters || activeFilterCount > 0 ? "bg-white text-[#4085b3]" : "bg-[#4085b3] text-white"
+                                }`}>
+                                    {activeFilterCount}
+                                </span>
+                            )}
+                        </button>
+
+                        {/* Refresh */}
+                        <button
+                            type="button"
+                            onClick={() => loadPrograms()}
+                            className="p-2 border border-slate-300 hover:bg-slate-50 text-slate-700 rounded transition-colors cursor-pointer shrink-0"
+                            title="Reload registry data"
+                            aria-label="Reload registry data"
+                        >
+                            <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin text-[#4085b3]" : ""}`} />
+                        </button>
+                    </div>
+
+                    {/* Right: Table / Cards View Switcher */}
+                    <div className="flex items-center gap-1">
+                        <button
+                            type="button"
+                            onClick={() => setViewMode("table")}
+                            className={`px-2.5 py-1.5 text-xs font-medium rounded transition-colors flex items-center gap-1.5 cursor-pointer ${
+                                viewMode === "table"
+                                    ? "bg-[#4085b3] text-white"
+                                    : "text-slate-600 hover:text-slate-900 border border-slate-300 bg-white"
+                            }`}
+                            title="Display as administrative table"
+                        >
+                            <LayoutList className="w-3.5 h-3.5" />
+                            <span>Table</span>
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setViewMode("cards")}
+                            className={`px-2.5 py-1.5 text-xs font-medium rounded transition-colors flex items-center gap-1.5 cursor-pointer ${
+                                viewMode === "cards"
+                                    ? "bg-[#4085b3] text-white"
+                                    : "text-slate-600 hover:text-slate-900 border border-slate-300 bg-white"
+                            }`}
+                            title="Display as DfE summary cards"
+                        >
+                            <LayoutGrid className="w-3.5 h-3.5" />
+                            <span>Cards</span>
+                        </button>
+                    </div>
+                </div>
+
+                {/* Active Filter Chips / Tags (MoJ / DfE Pattern) */}
+                {activeFilterCount > 0 && (
+                    <div className="flex flex-wrap items-center gap-2 text-xs">
+                        <span className="text-slate-500 font-medium">Applied:</span>
+                        {originFilter !== "ALL" && (
+                            <button
+                                type="button"
+                                onClick={() => setOriginFilter("ALL")}
+                                className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-slate-100 hover:bg-slate-200 text-slate-800 transition-colors cursor-pointer"
                             >
-                                <option value="ALL">All Sources ({programs.length})</option>
-                                <option value="FEDERAL">Federal Ministry ({federalCount})</option>
-                                {(tierType === "REGION" || tierType === "ZONE" || tierType === "WOREDA" || tierType === "SCHOOL" || regionCount > 0) && (
-                                    <option value="REGION">Regional Bureau ({regionCount})</option>
-                                )}
-                                {(tierType === "ZONE" || tierType === "WOREDA" || tierType === "SCHOOL" || zoneCount > 0) && (
-                                    <option value="ZONE">Zonal Dept ({zoneCount})</option>
-                                )}
-                                {(tierType === "WOREDA" || tierType === "SCHOOL" || woredaCount > 0) && (
-                                    <option value="WOREDA">Woreda Office ({woredaCount})</option>
+                                <span>Ownership: {originFilter === "CREATED" ? "Created by us" : "Received"}</span>
+                                <X className="w-3.5 h-3.5 text-slate-500 hover:text-slate-900" />
+                            </button>
+                        )}
+                        {tierType !== "FEDERAL" && receivedFromFilter !== "ALL" && (
+                            <button
+                                type="button"
+                                onClick={() => setReceivedFromFilter("ALL")}
+                                className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-slate-100 hover:bg-slate-200 text-slate-800 transition-colors cursor-pointer"
+                            >
+                                <span>
+                                    From: {
+                                        receivedFromFilter === "FEDERAL" ? "Federal Ministry" :
+                                        receivedFromFilter === "REGION" ? "Regional Bureau" :
+                                        receivedFromFilter === "ZONE" ? "Zone Department" :
+                                        receivedFromFilter === "WOREDA" ? "Woreda Office" : receivedFromFilter
+                                    }
+                                </span>
+                                <X className="w-3.5 h-3.5 text-slate-500 hover:text-slate-900" />
+                            </button>
+                        )}
+                        {targetScopeFilter !== "ALL" && (
+                            <button
+                                type="button"
+                                onClick={() => setTargetScopeFilter("ALL")}
+                                className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-slate-100 hover:bg-slate-200 text-slate-800 transition-colors cursor-pointer"
+                            >
+                                <span>
+                                    Target: {
+                                        targetScopeFilter === "ALL_TIERS" ? "All subordinate units" :
+                                        targetScopeFilter === "REGION" ? "Regions" :
+                                        targetScopeFilter === "ZONE" ? "Zones" :
+                                        targetScopeFilter === "WOREDA" ? "Woredas" :
+                                        targetScopeFilter === "SCHOOL" ? "Schools" : targetScopeFilter
+                                    }
+                                </span>
+                                <X className="w-3.5 h-3.5 text-slate-500 hover:text-slate-900" />
+                            </button>
+                        )}
+                        {priorityFilter !== "ALL" && (
+                            <button
+                                type="button"
+                                onClick={() => setPriorityFilter("ALL")}
+                                className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-slate-100 hover:bg-slate-200 text-slate-800 transition-colors cursor-pointer"
+                            >
+                                <span>Priority: {priorityFilter.charAt(0) + priorityFilter.slice(1).toLowerCase()}</span>
+                                <X className="w-3.5 h-3.5 text-slate-500 hover:text-slate-900" />
+                            </button>
+                        )}
+                        {statusFilter !== "ALL" && (
+                            <button
+                                type="button"
+                                onClick={() => setStatusFilter("ALL")}
+                                className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-slate-100 hover:bg-slate-200 text-slate-800 transition-colors cursor-pointer"
+                            >
+                                <span>
+                                    Status: {
+                                        statusFilter === "PUBLISHED" ? "Published" :
+                                        statusFilter === "ACKNOWLEDGED" ? "Acknowledged" :
+                                        statusFilter === "PENDING" ? "Pending" :
+                                        statusFilter === "IN_PROGRESS" ? "In progress" :
+                                        statusFilter === "COMPLETED" ? "Completed" :
+                                        statusFilter === "DRAFT" ? "Draft" : statusFilter
+                                    }
+                                </span>
+                                <X className="w-3.5 h-3.5 text-slate-500 hover:text-slate-900" />
+                            </button>
+                        )}
+                        <button
+                            type="button"
+                            onClick={clearAllFilters}
+                            className="text-xs text-[#4085b3] hover:underline font-semibold ml-1 cursor-pointer"
+                        >
+                            Clear all
+                        </button>
+                    </div>
+                )}
+
+                {/* Collapsible Secondary Filters Panel */}
+                {showFilters && (
+                    <div className={`p-4 bg-slate-50 border border-slate-200 rounded grid grid-cols-1 sm:grid-cols-2 ${
+                        tierType === "FEDERAL" ? "lg:grid-cols-4" : "lg:grid-cols-5"
+                    } gap-4`}>
+                        {/* Ownership / Origin */}
+                        <div>
+                            <label htmlFor="origin-filter" className="block text-xs font-semibold text-slate-700 mb-1">
+                                Ownership
+                            </label>
+                            <select
+                                id="origin-filter"
+                                value={originFilter}
+                                onChange={e => setOriginFilter(e.target.value as any)}
+                                className="w-full py-1.5 px-2.5 text-sm bg-white border border-slate-300 rounded text-slate-800 focus:outline-none focus:ring-1 focus:ring-[#4085b3] focus:border-[#4085b3] cursor-pointer"
+                            >
+                                <option value="ALL">All initiatives ({programs.length})</option>
+                                <option value="CREATED">Created by our desk ({programs.filter(p => p.isCreatedByMe).length})</option>
+                                {tierType !== "FEDERAL" && (
+                                    <option value="RECEIVED">Received from higher tiers ({programs.filter(p => !p.isCreatedByMe).length})</option>
                                 )}
                             </select>
                         </div>
 
-                        {/* Priority Filter Dropdown */}
-                        <div className="w-full sm:w-36">
+                        {/* Received from (Issuing Authority) - Only for tiers below Federal */}
+                        {tierType !== "FEDERAL" && (
+                            <div>
+                                <label htmlFor="received-from-filter" className="block text-xs font-semibold text-slate-700 mb-1">
+                                    Received from
+                                </label>
+                                <select
+                                    id="received-from-filter"
+                                    value={receivedFromFilter}
+                                    onChange={e => setReceivedFromFilter(e.target.value)}
+                                    disabled={originFilter === "CREATED"}
+                                    className={`w-full py-1.5 px-2.5 text-sm bg-white border border-slate-300 rounded text-slate-800 focus:outline-none focus:ring-1 focus:ring-[#4085b3] focus:border-[#4085b3] ${
+                                        originFilter === "CREATED" ? "opacity-50 cursor-not-allowed bg-slate-100" : "cursor-pointer"
+                                    }`}
+                                >
+                                    <option value="ALL">All issuing authorities</option>
+                                    <option value="FEDERAL">Federal Ministry</option>
+                                    {tierType !== "REGION" && (
+                                        <option value="REGION">Regional Bureau</option>
+                                    )}
+                                    {tierType !== "REGION" && tierType !== "ZONE" && (
+                                        <option value="ZONE">Zone Department</option>
+                                    )}
+                                    {(tierType === "SCHOOL" || !tierType) && (
+                                        <option value="WOREDA">Woreda Office</option>
+                                    )}
+                                </select>
+                            </div>
+                        )}
+
+                        {/* Target Scope - strictly subordinate levels only */}
+                        <div>
+                            <label htmlFor="target-scope-filter" className="block text-xs font-semibold text-slate-700 mb-1">
+                                Target scope
+                            </label>
                             <select
+                                id="target-scope-filter"
+                                value={targetScopeFilter}
+                                onChange={e => setTargetScopeFilter(e.target.value as any)}
+                                className="w-full py-1.5 px-2.5 text-sm bg-white border border-slate-300 rounded text-slate-800 focus:outline-none focus:ring-1 focus:ring-[#4085b3] focus:border-[#4085b3] cursor-pointer"
+                            >
+                                <option value="ALL">All target scopes</option>
+                                <option value="ALL_TIERS">All subordinate units</option>
+                                {tierType === "FEDERAL" && (
+                                    <option value="REGION">Regional Bureaus</option>
+                                )}
+                                {(tierType === "FEDERAL" || tierType === "REGION") && (
+                                    <option value="ZONE">Zone Departments</option>
+                                )}
+                                {(tierType === "FEDERAL" || tierType === "REGION" || tierType === "ZONE") && (
+                                    <option value="WOREDA">Woreda Offices</option>
+                                )}
+                                <option value="SCHOOL">Schools</option>
+                            </select>
+                        </div>
+
+                        {/* Priority */}
+                        <div>
+                            <label htmlFor="priority-filter" className="block text-xs font-semibold text-slate-700 mb-1">
+                                Priority level
+                            </label>
+                            <select
+                                id="priority-filter"
                                 value={priorityFilter}
                                 onChange={e => setPriorityFilter(e.target.value)}
-                                className="w-full px-2.5 py-1.5 border border-slate-200 rounded-lg text-xs font-medium text-slate-700 bg-white focus:outline-none focus:border-slate-400 cursor-pointer"
+                                className="w-full py-1.5 px-2.5 text-sm bg-white border border-slate-300 rounded text-slate-800 focus:outline-none focus:ring-1 focus:ring-[#4085b3] focus:border-[#4085b3] cursor-pointer"
                             >
-                                <option value="ALL">All Priorities</option>
+                                <option value="ALL">All priorities</option>
                                 <option value="CRITICAL">Critical</option>
                                 <option value="URGENT">Urgent</option>
                                 <option value="HIGH">High</option>
@@ -647,590 +940,415 @@ export default function ProgramsRegistryView({
                             </select>
                         </div>
 
-                        {/* Status Filter Dropdown */}
-                        <div className="w-full sm:w-36">
+                        {/* Status */}
+                        <div>
+                            <label htmlFor="status-filter" className="block text-xs font-semibold text-slate-700 mb-1">
+                                Current status
+                            </label>
                             <select
+                                id="status-filter"
                                 value={statusFilter}
                                 onChange={e => setStatusFilter(e.target.value)}
-                                className="w-full px-2.5 py-1.5 border border-slate-200 rounded-lg text-xs font-medium text-slate-700 bg-white focus:outline-none focus:border-slate-400 cursor-pointer"
+                                className="w-full py-1.5 px-2.5 text-sm bg-white border border-slate-300 rounded text-slate-800 focus:outline-none focus:ring-1 focus:ring-[#4085b3] focus:border-[#4085b3] cursor-pointer"
                             >
-                                <option value="ALL">All Statuses</option>
-                                <option value="ACTIVE">Active</option>
+                                <option value="ALL">All statuses</option>
                                 <option value="PUBLISHED">Published</option>
+                                <option value="ACKNOWLEDGED">Acknowledged</option>
+                                <option value="PENDING">Pending</option>
+                                <option value="IN_PROGRESS">In progress</option>
                                 <option value="COMPLETED">Completed</option>
-                                <option value="CLOSED">Closed</option>
                                 <option value="DRAFT">Draft</option>
                             </select>
                         </div>
-
-                        {/* Reset Filter Button */}
-                        {(searchQuery || sourceFilter !== "ALL" || priorityFilter !== "ALL" || statusFilter !== "ALL" || activeTab !== "ALL") && (
-                            <button
-                                onClick={() => {
-                                    setSearchQuery("");
-                                    setSourceFilter("ALL");
-                                    setPriorityFilter("ALL");
-                                    setStatusFilter("ALL");
-                                    setActiveTab("ALL");
-                                }}
-                                className="px-2.5 py-1.5 text-xs text-blue-600 hover:text-blue-800 font-semibold flex items-center gap-1 hover:underline cursor-pointer"
-                                title="Reset all filters"
-                            >
-                                <X className="w-3.5 h-3.5" />
-                                <span>Reset</span>
-                            </button>
-                        )}
                     </div>
+                )}
+            </div>
 
-                    {/* Source Tab Pills */}
-                    <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl shrink-0 text-xs font-medium text-slate-600 self-start lg:self-auto">
-                        <button
-                            onClick={() => setActiveTab("ALL")}
-                            className={`px-3 py-1 rounded-lg transition-colors cursor-pointer ${
-                                activeTab === "ALL" ? "bg-white text-slate-900 font-bold shadow-xs" : "hover:text-slate-900"
-                            }`}
-                        >
-                            All ({programs.length})
-                        </button>
-                        <button
-                            onClick={() => setActiveTab("RECEIVED")}
-                            className={`px-3 py-1 rounded-lg transition-colors cursor-pointer ${
-                                activeTab === "RECEIVED" ? "bg-white text-slate-900 font-bold shadow-xs" : "hover:text-slate-900"
-                            }`}
-                        >
-                            Received ({programs.filter(p => !p.isCreatedByMe).length})
-                        </button>
-                        <button
-                            onClick={() => setActiveTab("CREATED")}
-                            className={`px-3 py-1 rounded-lg transition-colors cursor-pointer ${
-                                activeTab === "CREATED" ? "bg-white text-slate-900 font-bold shadow-xs" : "hover:text-slate-900"
-                            }`}
-                        >
-                            Created ({programs.filter(p => p.isCreatedByMe).length})
-                        </button>
-                    </div>
-                </div>
-
-                {/* Loading State */}
+            {/* 4. REGISTRY CONTENT: TABLE VIEW OR DfE CARDS VIEW */}
+            <div>
+                {/* Loading state */}
                 {loading && (
-                    <div className="py-20 text-center text-slate-400">
-                        <RefreshCw className="w-6 h-6 animate-spin mx-auto text-blue-600 mb-2" />
-                        <span className="text-xs font-medium">Loading strategic initiatives & programs...</span>
+                    <div className="py-20 text-center text-slate-500">
+                        <RefreshCw className="w-6 h-6 animate-spin mx-auto text-[#4085b3] mb-2" />
+                        <span className="text-sm font-medium">Loading initiatives...</span>
                     </div>
                 )}
 
                 {/* Empty State */}
                 {!loading && filteredPrograms.length === 0 && (
-                    <div className="py-16 text-center border border-dashed border-slate-200 rounded-2xl bg-slate-50/50 p-6 space-y-3">
-                        <Compass className="w-10 h-10 mx-auto text-slate-300" />
-                        <div>
-                            <h4 className="text-sm font-bold text-slate-800">No programs found</h4>
-                            <p className="text-xs text-slate-500 max-w-sm mx-auto mt-0.5">
-                                No initiatives match the selected filter criteria or search query.
-                            </p>
-                        </div>
-                        {canCreateProgram && (
+                    <div className="py-16 text-center border-t border-b border-slate-200">
+                        <FileText className="w-10 h-10 mx-auto text-slate-300 stroke-1 mb-2" />
+                        <h2 className="text-base font-semibold text-slate-900">No initiatives found</h2>
+                        <p className="text-sm text-slate-500 max-w-sm mx-auto mt-1">
+                            {hasActiveFilters
+                                ? "No records match your selected filters. Try clearing filters to see all initiatives."
+                                : "No programs or initiatives have been registered yet."}
+                        </p>
+                        {hasActiveFilters ? (
                             <button
-                                onClick={() => setIsCreatingProgram(true)}
-                                className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold transition-colors inline-flex items-center gap-1.5 shadow-2xs"
+                                type="button"
+                                onClick={clearAllFilters}
+                                className="mt-4 px-3 py-1.5 border border-slate-300 text-slate-700 hover:bg-slate-50 rounded text-sm font-medium cursor-pointer"
                             >
-                                <Plus className="w-3.5 h-3.5" />
-                                <span>Create New Initiative</span>
+                                Clear all filters
+                            </button>
+                        ) : canCreateProgram && (
+                            <button
+                                type="button"
+                                onClick={() => setIsCreatingProgram(true)}
+                                className="mt-4 px-4 py-2 bg-[#4085b3] hover:bg-[#32698e] text-white rounded text-sm font-medium cursor-pointer"
+                            >
+                                Issue initiative
                             </button>
                         )}
                     </div>
                 )}
 
-                {/* Card Grid View (Simple Text Rectangle Card with Hover) */}
-                {!loading && filteredPrograms.length > 0 && (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {paginatedPrograms.map(item => {
-                            const isRecipient = !item.isCreatedByMe;
-                            const impStatus = item.userImplementation?.status || "PENDING";
-                            const isAck = item.userImplementation?.isAcknowledged || false;
-
-                            const isNational = Boolean(item.targetLevelAll && (!item.targetLevels || item.targetLevels.length === 0));
-                            const targetUnitsCount = item.totalRecipients || 0;
-
-                            const isFederalCreator = item.createdOrganization?.type === "FEDERAL";
-
-                            return (
-                                <div
-                                    key={item.id}
-                                    onClick={() => loadProgramDetail(item.id)}
-                                    className="group relative rounded-xl border border-slate-200 p-4 bg-white flex flex-col justify-between transition-all duration-200 cursor-pointer hover:shadow-md hover:-translate-y-0.5 hover:border-blue-400"
-                                >
-                                    <div>
-                                        {/* Top Row Badges: Scope / Authority, Status & Priority */}
-                                        <div className="flex items-center justify-between gap-1.5 mb-2.5">
-                                            <div className="flex items-center gap-1.5 flex-wrap">
-                                                {/* Scope / Authority Badge */}
-                                                {isFederalCreator ? (
-                                                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-900 text-white flex items-center gap-1 shrink-0">
-                                                        <Building2 className="w-2.5 h-2.5 text-blue-400" />
-                                                        <span>Federal</span>
-                                                    </span>
-                                                ) : isNational ? (
-                                                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-50 text-blue-800 border border-blue-200 shrink-0">
-                                                        National
-                                                    </span>
-                                                ) : (
-                                                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-200 shrink-0">
-                                                        {item.createdOrganization?.type || "Initiative"}
-                                                    </span>
-                                                )}
-
-                                                {/* Status Badge */}
+                {/* OPTION A: THE ADMINISTRATIVE TABLE (GOV.UK Standard) */}
+                {!loading && filteredPrograms.length > 0 && viewMode === "table" && (
+                    <div className="overflow-x-auto border-t border-slate-200">
+                        <table className="w-full table-fixed text-left text-sm border-collapse">
+                            <caption className="sr-only">Programs and initiatives registry</caption>
+                            <thead>
+                                <tr className="border-b-2 border-slate-300 text-xs font-semibold text-slate-700">
+                                    <th scope="col" className="py-3 pr-3 font-semibold w-[30%]">Initiative</th>
+                                    <th scope="col" className="py-3 px-3 font-semibold w-[18%] whitespace-nowrap">Issuing authority</th>
+                                    <th scope="col" className="py-3 px-3 font-semibold w-[16%] whitespace-nowrap">Target scope</th>
+                                    <th scope="col" className="py-3 px-3 font-semibold w-[13%] whitespace-nowrap">Deadline</th>
+                                    <th scope="col" className="py-3 px-2 font-semibold w-[10%] whitespace-nowrap">Priority</th>
+                                    <th scope="col" className="py-3 px-2 font-semibold w-[11%] whitespace-nowrap">Status</th>
+                                    <th scope="col" className="py-3 pl-2 pr-1 font-semibold w-[8%] text-right whitespace-nowrap">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-200">
+                                {paginatedPrograms.map(item => (
+                                    <tr
+                                        key={item.id}
+                                        onClick={() => loadProgramDetail(item.id)}
+                                        className="hover:bg-slate-50/90 transition-colors cursor-pointer group"
+                                    >
+                                        {/* Initiative Title (Strictly truncated single line) */}
+                                        <td className="py-3.5 pr-3 overflow-hidden">
+                                            <div className="flex items-center gap-1.5 min-w-0">
                                                 <span
-                                                    className={`px-1.5 py-0.5 rounded text-[9px] font-bold tracking-wide uppercase border ${
-                                                        item.status === "ACTIVE"
-                                                            ? "bg-blue-50 text-blue-700 border-blue-200"
-                                                            : item.status === "COMPLETED"
-                                                            ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                                                            : item.status === "PUBLISHED"
-                                                            ? "bg-blue-50 text-blue-700 border border-blue-200"
-                                                            : item.status === "CLOSED"
-                                                            ? "bg-rose-50 text-rose-700 border border-rose-200"
-                                                            : "bg-slate-100 text-slate-700 border border-slate-200"
-                                                    }`}
+                                                    className="text-[#4085b3] group-hover:underline font-semibold text-sm truncate block"
+                                                    title={item.name}
                                                 >
-                                                    {item.status}
+                                                    {item.name}
                                                 </span>
-                                            </div>
-
-                                            {/* Priority & Attachment Indicator */}
-                                            <div className="flex items-center gap-1 shrink-0">
-                                                {item.priority === "CRITICAL" || item.priority === "URGENT" ? (
-                                                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold bg-rose-50 text-rose-700 border border-rose-200">
-                                                        <span className="w-1.5 h-1.5 rounded-full bg-rose-600 animate-pulse"></span>
-                                                        {item.priority}
-                                                    </span>
-                                                ) : item.priority === "HIGH" ? (
-                                                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
-                                                        <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
-                                                        HIGH
-                                                    </span>
-                                                ) : null}
-
                                                 {item.attachmentUrl && (
-                                                    <span title="Has attachment" className="p-0.5 text-slate-400">
-                                                        <Paperclip className="w-3 h-3" />
+                                                    <span title="Contains official attachment" className="text-slate-400 shrink-0">
+                                                        <Paperclip className="w-3.5 h-3.5" />
+                                                    </span>
+                                                )}
+                                                {item.parentProgram && (
+                                                    <span className="text-slate-500 bg-slate-100 px-1 py-0.5 rounded text-[9px] shrink-0 font-medium">
+                                                        Cascaded
                                                     </span>
                                                 )}
                                             </div>
-                                        </div>
+                                        </td>
 
-                                        {/* Program Name - 2 lines clamp */}
-                                        <h4 className="text-sm font-bold text-slate-900 group-hover:text-blue-600 transition-colors line-clamp-2 leading-snug mb-1">
-                                            {item.name}
-                                        </h4>
+                                        {/* Issuing Authority (Single line truncate) */}
+                                        <td className="py-3.5 px-3 text-xs text-slate-700 truncate" title={item.createdOrganization?.name || "EduBridge Platform"}>
+                                            {item.createdOrganization?.name || "EduBridge Platform"}
+                                        </td>
 
-                                        {/* Objective Snippet */}
-                                        <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed mb-2.5">
-                                            {item.objective || item.description}
-                                        </p>
+                                        {/* Target Scope (Single line truncate) */}
+                                        <td className="py-3.5 px-3 text-xs text-slate-700 truncate" title={item.targetLevelAll ? "All subordinate units" : (item.targetLevels?.join(", ") || "Targeted units")}>
+                                            {item.targetLevelAll ? "All subordinate units" : (item.targetLevels?.join(", ") || "Targeted units")}
+                                        </td>
 
-                                        {/* Cascaded Parent Tag if applicable */}
-                                        {item.parentProgram && (
-                                            <div className="text-[10px] text-blue-600 font-semibold flex items-center gap-1 mb-2">
-                                                <Target className="w-2.5 h-2.5" />
-                                                <span className="truncate">Cascaded: {item.parentProgram.name}</span>
-                                            </div>
-                                        )}
+                                        {/* Execution Deadline (Single line) */}
+                                        <td className="py-3.5 px-3 text-xs text-slate-700 tabular-nums whitespace-nowrap">
+                                            {new Date(item.endDate).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
+                                        </td>
 
-                                        {/* Issuing Desk Metadata */}
-                                        <div className="flex items-center gap-1.5 text-[11px] text-slate-400 mb-3 truncate">
-                                            <span>Issued by</span>
-                                            <span className="font-semibold text-slate-700 truncate">
-                                                {item.createdOrganization?.name || "Official Ministry"}
+                                        {/* Priority */}
+                                        <td className="py-3.5 px-2 text-xs text-slate-700 whitespace-nowrap">
+                                            {item.priority.charAt(0) + item.priority.slice(1).toLowerCase()}
+                                        </td>
+
+                                        {/* Status (Single line text) */}
+                                        <td className="py-3.5 px-2 text-xs text-slate-700 whitespace-nowrap">
+                                            {getProgramDeskStatus(item).label}
+                                        </td>
+
+                                        {/* Action Link (Always visible, right-aligned) */}
+                                        <td className="py-3.5 pl-2 pr-1 text-right whitespace-nowrap">
+                                            <span className="text-xs font-semibold text-[#4085b3] group-hover:underline inline-flex items-center gap-0.5">
+                                                <span>View</span>
+                                                <ArrowUpRight className="w-3.5 h-3.5" />
                                             </span>
-                                            <span>•</span>
-                                            <span>{item.isCreatedByMe ? "Created by Us" : "Incoming"}</span>
-                                        </div>
-                                    </div>
-
-                                    {/* Card Footer: Timeline & Compliance/Execution Status */}
-                                    <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-2 mt-auto">
-                                        <div className="flex items-center gap-1 text-[11px] font-semibold text-slate-600 shrink-0">
-                                            <Clock className="w-3 h-3 text-slate-400" />
-                                            <span>
-                                                Due {new Date(item.endDate).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
-                                            </span>
-                                        </div>
-
-                                        <div className="shrink-0">
-                                            {isRecipient ? (
-                                                <span
-                                                    className={`px-2 py-0.5 rounded text-[10px] font-bold tracking-wide inline-flex items-center gap-1 ${
-                                                        impStatus === "COMPLETED"
-                                                            ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                                                            : impStatus === "IN_PROGRESS"
-                                                            ? "bg-blue-50 text-blue-700 border border-blue-200"
-                                                            : impStatus === "ACKNOWLEDGED"
-                                                            ? "bg-blue-50 text-blue-700 border border-blue-200"
-                                                            : impStatus === "BLOCKED"
-                                                            ? "bg-rose-50 text-rose-700 border border-rose-200"
-                                                            : "bg-amber-50 text-amber-700 border border-amber-200"
-                                                    }`}
-                                                >
-                                                    {impStatus === "COMPLETED" && <CheckCircle2 className="w-3 h-3 text-emerald-600" />}
-                                                    <span>{impStatus === "IN_PROGRESS" ? "IN PROGRESS" : impStatus.replace("_", " ")}</span>
-                                                </span>
-                                            ) : (
-                                                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200 flex items-center gap-1">
-                                                    <CheckCircle2 className="w-3 h-3 text-blue-600" />
-                                                    <span>
-                                                        {item.completedCount || 0}/{item.totalRecipients || 0} completed
-                                                    </span>
-                                                </span>
-                                            )}
-                                        </div>
-                                    </div>
-                                </div>
-                            );
-                        })}
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
                     </div>
                 )}
 
-                {/* Clean Pagination Footer */}
-                {filteredPrograms.length > 0 && (
-                    <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-3 border-t border-slate-100 text-xs text-slate-500">
-                        <div className="flex items-center gap-3">
-                            <span>
-                                Showing{" "}
-                                <strong className="text-slate-800">
-                                    {(page - 1) * pageSize + 1}
-                                </strong>{" "}
-                                to{" "}
-                                <strong className="text-slate-800">
-                                    {Math.min(page * pageSize, filteredPrograms.length)}
-                                </strong>{" "}
-                                of{" "}
-                                <strong className="text-slate-800">{filteredPrograms.length}</strong> initiatives
-                            </span>
+                {/* OPTION B: DfE CLEAN CARDS (Signature Department for Education pattern with deep navy hover) */}
+                {!loading && filteredPrograms.length > 0 && viewMode === "cards" && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 pt-1">
+                        {paginatedPrograms.map(item => (
+                            <div
+                                key={item.id}
+                                onClick={() => loadProgramDetail(item.id)}
+                                className="group relative bg-white border border-slate-300 p-6 flex flex-col justify-between min-h-[175px] hover:bg-[#002d54] hover:border-[#002d54] transition-all duration-150 cursor-pointer"
+                            >
+                                <div>
+                                    {/* Header: Title */}
+                                    <h2 className="text-xl font-bold text-[#4085b3] group-hover:text-white transition-colors leading-snug break-words [overflow-wrap:anywhere] [word-break:break-word] line-clamp-2">
+                                        {item.name}
+                                    </h2>
 
-                            <div className="flex items-center gap-1.5 border-l border-slate-200 pl-3">
-                                <span className="text-[11px] text-slate-400">Cards per page:</span>
-                                <select
-                                    value={pageSize}
-                                    onChange={e => setPageSize(Number(e.target.value))}
-                                    className="px-1.5 py-0.5 border border-slate-200 rounded text-xs font-medium text-slate-700 bg-white focus:outline-none cursor-pointer"
-                                >
-                                    <option value={6}>6</option>
-                                    <option value={9}>9</option>
-                                    <option value={18}>18</option>
-                                    <option value={30}>30</option>
-                                </select>
+                                    {/* Single Clean Message */}
+                                    <p className="text-sm text-slate-800 group-hover:text-white transition-colors mt-2.5 leading-relaxed line-clamp-2 break-words">
+                                        {getCleanCardMessage(item)}
+                                    </p>
+                                </div>
+
+                                {/* Minimal Footer: Due Date & Status */}
+                                <div className="mt-5 pt-3 border-t border-slate-200 group-hover:border-white/20 flex items-center justify-between text-xs text-slate-500 group-hover:text-white/80 transition-colors">
+                                    <span className="tabular-nums">
+                                        Due: {new Date(item.endDate).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
+                                    </span>
+                                    <span className="text-xs font-medium text-slate-600 group-hover:text-white/90">
+                                        {getProgramDeskStatus(item).label}
+                                    </span>
+                                </div>
                             </div>
+                        ))}
+                    </div>
+                )}
+
+                {/* 5. PAGINATION (GOV.UK style simple row) */}
+                {!loading && filteredPrograms.length > 0 && (
+                    <div className="py-4 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-600 mt-4">
+                        <div>
+                            Showing <strong className="text-slate-900 font-semibold">{(page - 1) * pageSize + 1}</strong> to{" "}
+                            <strong className="text-slate-900 font-semibold">{Math.min(page * pageSize, filteredPrograms.length)}</strong> of{" "}
+                            <strong className="text-slate-900 font-semibold">{filteredPrograms.length}</strong> initiatives
                         </div>
 
-                        <div className="flex items-center gap-1">
+                        <div className="flex items-center gap-2">
                             <button
+                                type="button"
                                 onClick={() => setPage(prev => Math.max(1, prev - 1))}
                                 disabled={page === 1}
-                                className={`p-1.5 rounded-lg border border-slate-200 transition-colors ${
-                                    page === 1
-                                        ? "text-slate-300 border-slate-100 cursor-not-allowed"
-                                        : "text-slate-600 hover:bg-slate-50 hover:text-slate-900 cursor-pointer"
+                                className={`px-2.5 py-1 rounded border border-slate-300 text-xs font-medium transition-colors ${
+                                    page === 1 ? "text-slate-300 border-slate-200 cursor-not-allowed" : "text-slate-700 hover:bg-slate-50 cursor-pointer"
                                 }`}
-                                title="Previous page"
                             >
-                                <ChevronLeft className="w-3.5 h-3.5" />
+                                Previous
                             </button>
 
-                            {Array.from({ length: totalPages }, (_, i) => i + 1)
-                                .filter(p => {
-                                    if (totalPages <= 5) return true;
-                                    if (p === 1 || p === totalPages) return true;
-                                    return Math.abs(p - page) <= 1;
-                                })
-                                .map((p, idx, arr) => {
-                                    const prevP = arr[idx - 1];
-                                    return (
-                                        <div key={p} className="flex items-center">
-                                            {prevP && p - prevP > 1 && (
-                                                <span className="px-1 text-slate-400 text-xs">...</span>
-                                            )}
-                                            <button
-                                                onClick={() => setPage(p)}
-                                                className={`min-w-[28px] h-7 px-2 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${
-                                                    page === p
-                                                        ? "bg-blue-600 text-white shadow-2xs"
-                                                        : "text-slate-600 hover:bg-slate-100"
-                                                }`}
-                                            >
-                                                {p}
-                                            </button>
-                                        </div>
-                                    );
-                                })}
+                            <span className="px-1 text-slate-600">
+                                Page {page} of {totalPages}
+                            </span>
 
                             <button
+                                type="button"
                                 onClick={() => setPage(prev => Math.min(totalPages, prev + 1))}
                                 disabled={page === totalPages}
-                                className={`p-1.5 rounded-lg border border-slate-200 transition-colors ${
-                                    page === totalPages
-                                        ? "text-slate-300 border-slate-100 cursor-not-allowed"
-                                        : "text-slate-600 hover:bg-slate-50 hover:text-slate-900 cursor-pointer"
+                                className={`px-2.5 py-1 rounded border border-slate-300 text-xs font-medium transition-colors ${
+                                    page === totalPages ? "text-slate-300 border-slate-200 cursor-not-allowed" : "text-slate-700 hover:bg-slate-50 cursor-pointer"
                                 }`}
-                                title="Next page"
                             >
-                                <ChevronRight className="w-3.5 h-3.5" />
+                                Next
                             </button>
                         </div>
                     </div>
                 )}
             </div>
 
-            {/* SLIDE-OVER DETAIL DRAWER (Right-Hand Panel) */}
+            {/* 6. SLIDE-OVER DETAIL DRAWER (GOV.UK Official Summary List Pattern) */}
             {selectedProgram && (
-                <div className="fixed inset-0 z-50 overflow-hidden animate-in fade-in">
+                <div className="fixed inset-0 z-50 overflow-hidden" role="dialog" aria-modal="true" aria-labelledby="docket-title">
                     {/* Backdrop */}
                     <div
-                        className="absolute inset-0 bg-black/40 backdrop-blur-xs transition-opacity"
+                        className="absolute inset-0 bg-slate-900/40 transition-opacity"
                         onClick={() => setSelectedProgram(null)}
                     />
 
-                    {/* Right-Hand Drawer Panel */}
-                    <div className="fixed inset-y-0 right-0 max-w-2xl w-full bg-white shadow-2xl flex flex-col z-50 animate-in slide-in-from-right duration-200 border-l border-slate-200">
-                        {/* Drawer Header */}
-                        <div className="p-5 border-b border-slate-200 bg-slate-50/80 flex items-center justify-between gap-3 shrink-0">
-                            <div className="flex flex-wrap items-center gap-2">
-                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold bg-white text-slate-800 border border-slate-200 shadow-2xs">
-                                    <Compass className="w-3.5 h-3.5 text-blue-600 shrink-0" />
-                                    <span>{selectedProgram.createdOrganization?.name || "Issuing Authority"}</span>
-                                </span>
-
-                                <span
-                                    className={`px-2 py-0.5 rounded text-[10px] font-bold tracking-wide uppercase border ${
-                                        selectedProgram.status === "ACTIVE"
-                                            ? "bg-blue-50 text-blue-700 border-blue-200"
-                                            : selectedProgram.status === "COMPLETED"
-                                            ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                                            : "bg-slate-100 text-slate-700 border border-slate-200"
-                                    }`}
+                    {/* Drawer Panel */}
+                    <div className="fixed inset-y-0 right-0 max-w-2xl w-full bg-white shadow-xl flex flex-col z-50 border-l border-slate-300 overflow-hidden">
+                        {/* Header */}
+                        <div className="p-5 sm:p-6 border-b border-slate-200 bg-slate-50/90 flex items-start justify-between gap-4 shrink-0">
+                            <div className="min-w-0 flex-1 pr-2">
+                                <div className="flex items-center gap-2 mb-2 flex-wrap text-xs text-slate-500">
+                                    <span className="font-mono tracking-wide uppercase">
+                                        REF: PRG-{selectedProgram.id.substring(0, 8).toUpperCase()}
+                                    </span>
+                                    <span>·</span>
+                                    <span className="font-medium text-slate-700">
+                                        {getProgramDeskStatus(selectedProgram).label}
+                                    </span>
+                                </div>
+                                <h2
+                                    id="docket-title"
+                                    className="text-xl sm:text-2xl font-bold text-slate-900 leading-snug break-words [overflow-wrap:anywhere] [word-break:break-word]"
                                 >
-                                    {selectedProgram.status}
-                                </span>
-
-                                <span
-                                    className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                                        selectedProgram.priority === "CRITICAL" || selectedProgram.priority === "URGENT"
-                                            ? "bg-rose-50 text-rose-700 border border-rose-200"
-                                            : selectedProgram.priority === "HIGH"
-                                            ? "bg-amber-50 text-amber-700 border border-amber-200"
-                                            : "bg-slate-100 text-slate-700"
-                                    }`}
-                                >
-                                    {selectedProgram.priority} PRIORITY
-                                </span>
+                                    {selectedProgram.name}
+                                </h2>
                             </div>
 
                             <button
                                 type="button"
                                 onClick={() => setSelectedProgram(null)}
-                                className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-200/60 rounded-lg transition-colors cursor-pointer"
-                                title="Close Panel"
+                                className="p-1.5 text-slate-500 hover:text-slate-800 hover:bg-slate-200 rounded transition-colors cursor-pointer shrink-0 -mr-1 -mt-1"
+                                aria-label="Close"
                             >
                                 <X className="w-5 h-5" />
                             </button>
                         </div>
 
-                        {/* Drawer Scrollable Body */}
-                        <div className="p-6 overflow-y-auto space-y-5 flex-1 text-slate-800">
-                            {/* Title & Cascaded info */}
-                            <div>
-                                <h3 className="text-xl font-bold text-slate-900 leading-snug">
-                                    {selectedProgram.name}
-                                </h3>
-                                {selectedProgram.parentProgram && (
-                                    <div className="mt-1.5 flex items-center gap-1.5 text-xs text-blue-700 font-semibold bg-blue-50/70 p-2 rounded-lg border border-blue-200">
-                                        <Target className="w-3.5 h-3.5 text-blue-600 shrink-0" />
-                                        <span>Cascaded from Higher Level: {selectedProgram.parentProgram.name}</span>
+                        {/* Scrollable Content */}
+                        <div className="p-6 overflow-y-auto space-y-6 flex-1 text-slate-900">
+                            {/* GOV.UK Summary List */}
+                            <dl className="divide-y divide-slate-200 border-t border-b border-slate-200 text-sm">
+                                <div className="py-3 grid grid-cols-3 gap-2">
+                                    <dt className="text-slate-600 font-medium">Issuing authority</dt>
+                                    <dd className="col-span-2 text-slate-900">
+                                        {selectedProgram.createdOrganization?.name || "EduBridge Platform"} ({selectedProgram.createdOrganization?.type || "FEDERAL"})
+                                    </dd>
+                                </div>
+                                <div className="py-3 grid grid-cols-3 gap-2">
+                                    <dt className="text-slate-600 font-medium">Target scope</dt>
+                                    <dd className="col-span-2 text-slate-900">
+                                        {selectedProgram.targetLevelAll ? "All subordinate units" : selectedProgram.targetLevels?.join(", ") || "Targeted units"}
+                                    </dd>
+                                </div>
+                                <div className="py-3 grid grid-cols-3 gap-2">
+                                    <dt className="text-slate-600 font-medium">Execution period</dt>
+                                    <dd className="col-span-2 text-slate-900 tabular-nums">
+                                        {new Date(selectedProgram.startDate).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
+                                        {" "}to{" "}
+                                        <span className="font-semibold">
+                                            {new Date(selectedProgram.endDate).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
+                                        </span>
+                                    </dd>
+                                </div>
+                                <div className="py-3 grid grid-cols-3 gap-2">
+                                    <dt className="text-slate-600 font-medium">Priority</dt>
+                                    <dd className="col-span-2 text-slate-900">
+                                        {selectedProgram.priority.charAt(0) + selectedProgram.priority.slice(1).toLowerCase()}
+                                    </dd>
+                                </div>
+                                <div className="py-3 grid grid-cols-3 gap-2">
+                                    <dt className="text-slate-600 font-medium">Current status</dt>
+                                    <dd className="col-span-2 text-slate-900">
+                                        {selectedProgram.status.charAt(0) + selectedProgram.status.slice(1).toLowerCase()}
+                                    </dd>
+                                </div>
+                            </dl>
+
+                            {/* Strategic Objective */}
+                            {selectedProgram.objective && (
+                                <div>
+                                    <h3 className="text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">
+                                        Strategic objective
+                                    </h3>
+                                    <div className="text-sm text-slate-900 leading-relaxed break-words [overflow-wrap:anywhere] [word-break:break-word] bg-slate-50 p-3.5 border-l-3 border-[#4085b3]">
+                                        {selectedProgram.objective}
                                     </div>
-                                )}
-                            </div>
+                                </div>
+                            )}
 
-                            {/* Key Metadata Grid */}
-                            <div className="grid grid-cols-2 gap-3 p-3.5 bg-slate-50 rounded-xl border border-slate-100 text-xs">
-                                <div>
-                                    <span className="text-slate-400 text-[11px] block">Start Date</span>
-                                    <span className="font-semibold text-slate-800">
-                                        {new Date(selectedProgram.startDate).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}
-                                    </span>
-                                </div>
-                                <div>
-                                    <span className="text-slate-400 text-[11px] block">Execution Deadline</span>
-                                    <span className="font-semibold text-rose-600">
-                                        {new Date(selectedProgram.endDate).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}
-                                    </span>
-                                </div>
-                                <div>
-                                    <span className="text-slate-400 text-[11px] block">Target Level / Scope</span>
-                                    <span className="font-semibold text-slate-800">
-                                        {selectedProgram.targetLevelAll ? "All Subordinate Tiers" : selectedProgram.targetLevels?.join(", ") || "Targeted Units"}
-                                    </span>
-                                </div>
-                                <div>
-                                    <span className="text-slate-400 text-[11px] block">Cascade Mode</span>
-                                    <span className="font-semibold text-slate-800">
-                                        {selectedProgram.cascadeDescendants ? "Cascades to Subordinates" : "Direct Units Only"}
-                                    </span>
-                                </div>
-                            </div>
-
-                            {/* In-App Notification Dispatch Banner */}
-                            <div className="p-3.5 rounded-xl bg-blue-50/70 border border-blue-200/80 flex items-center justify-between gap-3 text-xs">
-                                <div className="flex items-center gap-2.5 text-blue-900 font-semibold">
-                                    <Bell className="w-4 h-4 text-blue-600 shrink-0" />
-                                    <span>Program Dispatch Status: <strong className="text-blue-950 font-bold">Active Across Hierarchy</strong></span>
-                                </div>
-                                <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-blue-600 text-white shadow-2xs">
-                                    Live on Recipient Desks
-                                </span>
-                            </div>
-
-                            {/* Strategic Objective Card */}
-                            <div>
-                                <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2 flex items-center gap-1.5">
-                                    <Target className="w-3.5 h-3.5 text-blue-600" />
-                                    <span>Strategic Objective</span>
-                                </div>
-                                <div className="text-xs sm:text-sm text-slate-800 bg-blue-50/30 p-4 rounded-xl border border-blue-100 leading-relaxed font-sans">
-                                    {selectedProgram.objective}
-                                </div>
-                            </div>
-
-                            {/* Scope & Description */}
+                            {/* Description */}
                             {selectedProgram.description && (
                                 <div>
-                                    <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">
-                                        Scope & Description
-                                    </div>
-                                    <div className="text-xs sm:text-sm text-slate-800 bg-slate-50 p-4 rounded-xl border border-slate-200 leading-relaxed whitespace-pre-wrap font-sans">
+                                    <h3 className="text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">
+                                        Scope & description
+                                    </h3>
+                                    <div className="text-sm text-slate-800 leading-relaxed whitespace-pre-wrap break-words [overflow-wrap:anywhere] [word-break:break-word]">
                                         {selectedProgram.description}
                                     </div>
                                 </div>
                             )}
 
-                            {/* Required Action */}
+                            {/* Mandatory Action */}
                             {selectedProgram.requiredAction && (
                                 <div>
-                                    <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">
-                                        Required Implementation Action
-                                    </div>
-                                    <div className="text-xs sm:text-sm text-slate-900 font-medium bg-slate-50 p-4 rounded-xl border border-slate-200 leading-relaxed">
+                                    <h3 className="text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">
+                                        Required action
+                                    </h3>
+                                    <div className="text-sm text-slate-900 leading-relaxed break-words [overflow-wrap:anywhere] [word-break:break-word]">
                                         {selectedProgram.requiredAction}
                                     </div>
                                 </div>
                             )}
 
-                            {/* Implementation Instructions */}
+                            {/* Instructions */}
                             {selectedProgram.instructions && (
                                 <div>
-                                    <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">
-                                        Official Implementation Instructions
-                                    </div>
-                                    <div className="text-xs text-slate-800 bg-slate-50 p-4 rounded-xl border border-slate-200 leading-relaxed whitespace-pre-wrap font-sans">
+                                    <h3 className="text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">
+                                        Implementation instructions
+                                    </h3>
+                                    <div className="text-sm text-slate-800 leading-relaxed whitespace-pre-wrap break-words [overflow-wrap:anywhere] [word-break:break-word]">
                                         {selectedProgram.instructions}
                                     </div>
                                 </div>
                             )}
 
-                            {/* Attached Guidelines / Media */}
+                            {/* Attachment Link */}
                             {selectedProgram.attachmentUrl && (
-                                <div className="space-y-2">
-                                    <div className="text-xs font-semibold text-slate-600 flex items-center justify-between">
-                                        <span className="flex items-center gap-1.5">
-                                            <Paperclip className="w-3.5 h-3.5 text-slate-400" />
-                                            <span>Guideline Attachment: {selectedProgram.attachmentName || "Supporting Document"}</span>
-                                        </span>
+                                <div>
+                                    <h3 className="text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">
+                                        Supporting documentation
+                                    </h3>
+                                    <div className="flex items-center justify-between p-3 border border-slate-200 text-sm">
+                                        <div className="flex items-center gap-2 truncate">
+                                            <Paperclip className="w-4 h-4 text-slate-500 shrink-0" />
+                                            <span className="truncate">{selectedProgram.attachmentName || "Guideline Document"}</span>
+                                        </div>
                                         <a
                                             href={selectedProgram.attachmentUrl}
                                             target="_blank"
                                             rel="noopener noreferrer"
-                                            className="text-blue-600 hover:underline text-xs flex items-center gap-1 font-semibold"
+                                            className="text-sm text-[#4085b3] hover:underline font-semibold inline-flex items-center gap-1 shrink-0 ml-3"
                                         >
-                                            <ArrowUpRight className="w-3 h-3" />
-                                            <span>Open Original</span>
+                                            <ArrowUpRight className="w-3.5 h-3.5" />
+                                            <span>Download</span>
                                         </a>
                                     </div>
-
-                                    {selectedProgram.attachmentUrl.includes("image") ||
-                                    selectedProgram.attachmentUrl.includes("images.unsplash.com") ||
-                                    /\.(jpg|jpeg|png|gif|webp|svg|avif)($|\?)/i.test(selectedProgram.attachmentUrl) ? (
-                                        <div className="rounded-xl border border-slate-200 overflow-hidden bg-slate-50 p-2">
-                                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                                            <img
-                                                src={selectedProgram.attachmentUrl}
-                                                alt={selectedProgram.attachmentName || "Attachment"}
-                                                className="w-full max-h-[300px] object-contain rounded-lg"
-                                            />
-                                        </div>
-                                    ) : (
-                                        <div className="flex items-center justify-between p-3.5 bg-slate-50 rounded-xl border border-slate-200 text-xs">
-                                            <div className="flex items-center gap-2 font-semibold text-slate-800">
-                                                <Paperclip className="w-4 h-4 text-slate-500" />
-                                                <span>{selectedProgram.attachmentName || "Official Guideline Document"}</span>
-                                            </div>
-                                            <a
-                                                href={selectedProgram.attachmentUrl}
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                                className="px-3 py-1.5 bg-white border border-slate-200 text-slate-700 hover:bg-slate-100 rounded-lg text-xs font-semibold flex items-center gap-1 shadow-2xs"
-                                            >
-                                                <ArrowUpRight className="w-3 h-3" />
-                                                <span>Download Document</span>
-                                            </a>
-                                        </div>
-                                    )}
                                 </div>
                             )}
 
-                            {/* RECIPIENT EXECUTION PANEL (For recipient desks) */}
+                            {/* Recipient Execution Panel */}
                             {!selectedProgram.isCreatedByMe && (
-                                <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
-                                    <h4 className="text-xs font-bold text-slate-900 flex items-center justify-between">
-                                        <span>Your Desk Execution Status</span>
-                                        <span
-                                            className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                                                selectedProgram.userImplementation?.status === "COMPLETED"
-                                                    ? "bg-emerald-100 text-emerald-800"
-                                                    : selectedProgram.userImplementation?.status === "IN_PROGRESS"
-                                                    ? "bg-blue-100 text-blue-800"
-                                                    : "bg-amber-100 text-amber-800"
-                                            }`}
-                                        >
-                                            {selectedProgram.userImplementation?.status?.replace("_", " ") || "PENDING"}
-                                        </span>
-                                    </h4>
+                                <div className="border border-slate-200 p-4 bg-slate-50 space-y-3">
+                                    <h3 className="text-sm font-semibold text-slate-900">
+                                        Your desk status: {selectedProgram.userImplementation?.status?.replace("_", " ") || "PENDING"}
+                                    </h3>
 
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                                         <div>
-                                            <label className="text-[11px] font-semibold text-slate-700 block mb-1">
-                                                Update Execution Status
+                                            <label className="block text-slate-700 font-medium mb-1">
+                                                Update status
                                             </label>
                                             <select
                                                 value={actionStatus}
                                                 onChange={e => setActionStatus(e.target.value)}
-                                                className="w-full p-2 text-xs border border-slate-200 rounded-lg bg-white text-slate-800 cursor-pointer"
+                                                className="w-full p-2 border border-slate-300 rounded bg-white text-slate-800"
                                             >
-                                                <option value="ACKNOWLEDGED">Acknowledged / Reviewed</option>
-                                                <option value="IN_PROGRESS">In Progress (Execution Started)</option>
-                                                <option value="COMPLETED">Completed (Action Fulfilled)</option>
-                                                <option value="BLOCKED">Blocked / Hindered</option>
+                                                <option value="ACKNOWLEDGED">Acknowledged</option>
+                                                <option value="IN_PROGRESS">In progress</option>
+                                                <option value="COMPLETED">Completed</option>
+                                                <option value="BLOCKED">Blocked</option>
                                             </select>
                                         </div>
                                         <div>
-                                            <label className="text-[11px] font-semibold text-slate-700 block mb-1">
-                                                Implementation Remarks / Action Report
+                                            <label className="block text-slate-700 font-medium mb-1">
+                                                Remarks
                                             </label>
                                             <input
                                                 type="text"
                                                 value={actionNotes}
                                                 onChange={e => setActionNotes(e.target.value)}
-                                                placeholder="e.g. Action completed and recorded."
-                                                className="w-full p-2 text-xs border border-slate-200 rounded-lg bg-white text-slate-800"
+                                                placeholder="Action report or notes..."
+                                                className="w-full p-2 border border-slate-300 rounded bg-white text-slate-800"
                                             />
                                         </div>
                                     </div>
@@ -1238,177 +1356,156 @@ export default function ProgramsRegistryView({
                                     <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-200">
                                         {!selectedProgram.userImplementation?.isAcknowledged ? (
                                             <button
+                                                type="button"
                                                 onClick={() => handleAcknowledge(selectedProgram.id)}
                                                 disabled={submittingAction}
-                                                className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 cursor-pointer shadow-xs"
+                                                className="px-3.5 py-1.5 bg-[#4085b3] hover:bg-[#32698e] text-white text-xs font-medium rounded inline-flex items-center gap-1.5 cursor-pointer"
                                             >
                                                 <CheckSquare className="w-3.5 h-3.5" />
-                                                <span>Acknowledge Receipt</span>
+                                                <span>Acknowledge receipt</span>
                                             </button>
                                         ) : (
-                                            <span className="text-[11px] text-emerald-700 font-medium flex items-center gap-1">
-                                                <CheckCircle2 className="w-3.5 h-3.5" />
-                                                <span>Acknowledged on {new Date(selectedProgram.userImplementation.acknowledgedAt || "").toLocaleDateString()}</span>
+                                            <span className="text-xs text-emerald-800 font-medium inline-flex items-center gap-1">
+                                                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                                                <span>
+                                                    Acknowledged{selectedProgram.userImplementation?.acknowledgedByUser?.name ? ` by ${selectedProgram.userImplementation.acknowledgedByUser.name}` : ""} on {new Date(selectedProgram.userImplementation?.acknowledgedAt || "").toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
+                                                </span>
                                             </span>
                                         )}
 
                                         <button
+                                            type="button"
                                             onClick={() => handleUpdateImplementationStatus(selectedProgram.id)}
                                             disabled={submittingAction}
-                                            className="px-4 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 cursor-pointer shadow-xs"
+                                            className="px-3.5 py-1.5 bg-slate-800 hover:bg-slate-900 text-white text-xs font-medium rounded inline-flex items-center gap-1.5 cursor-pointer"
                                         >
                                             {submittingAction ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
-                                            <span>Update Execution Progress</span>
+                                            <span>Update status</span>
                                         </button>
                                     </div>
-
-                                    {/* Cascade Subordinate Initiative Option (for intermediate tiers) */}
-                                    {tierType !== "SCHOOL" && (
-                                        <div className="pt-3 border-t border-slate-200/80 flex items-center justify-between">
-                                            <span className="text-[11px] text-slate-500">
-                                                Need to localize instructions for lower tiers?
-                                            </span>
-                                            <button
-                                                onClick={() => {
-                                                    const parent = selectedProgram;
-                                                    setSelectedProgram(null);
-                                                    setCascadingParentProgram(parent);
-                                                }}
-                                                className="px-3 py-1 bg-white border border-slate-300 hover:bg-slate-100 text-slate-800 rounded-lg text-xs font-semibold flex items-center gap-1 cursor-pointer"
-                                            >
-                                                <Plus className="w-3 h-3" />
-                                                <span>Cascade Subordinate Initiative</span>
-                                            </button>
-                                        </div>
-                                    )}
                                 </div>
                             )}
 
-                            {/* SUBORDINATE DELIVERY & IMPLEMENTATION TRACKING (For creator) */}
+                            {/* Delivery Tracking Table (For creator desk) */}
                             {selectedProgram.isCreatedByMe && selectedProgram.tracking && (
-                                <div className="space-y-3 pt-2 border-t border-slate-100">
+                                <div className="space-y-3 pt-4 border-t border-slate-200">
+                                    {/* Clean Section Header */}
                                     <div className="flex items-center justify-between">
-                                        <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
-                                            Jurisdiction Delivery & Implementation Tracking
-                                        </h4>
-                                        <span className="text-xs font-bold text-blue-700">
-                                            {selectedProgram.tracking.completedCount} / {selectedProgram.tracking.totalRecipients} Completed ({selectedProgram.tracking.totalRecipients > 0 ? Math.round((selectedProgram.tracking.completedCount / selectedProgram.tracking.totalRecipients) * 100) : 0}%)
-                                        </span>
+                                        <h3 className="font-semibold text-slate-900 text-sm">
+                                            Jurisdiction delivery tracking
+                                        </h3>
                                     </div>
 
-                                    {/* Brand Blue Progress Bar */}
-                                    <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                                        <div
-                                            className="h-full bg-blue-600 rounded-full transition-all duration-300"
-                                            style={{
-                                                width: `${selectedProgram.tracking.totalRecipients > 0 ? Math.round((selectedProgram.tracking.completedCount / selectedProgram.tracking.totalRecipients) * 100) : 0}%`
-                                            }}
-                                        />
-                                    </div>
-
-                                    {/* Metric Chips */}
-                                    <div className="grid grid-cols-4 gap-2 text-center text-xs">
-                                        <div className="p-2 bg-slate-50 border border-slate-200 rounded-xl">
-                                            <span className="text-[10px] text-slate-400 uppercase font-bold block">Total Units</span>
-                                            <p className="text-sm font-bold text-slate-800 mt-0.5">{selectedProgram.tracking.totalRecipients}</p>
-                                        </div>
-                                        <div className="p-2 bg-slate-50 border border-slate-200 rounded-xl">
-                                            <span className="text-[10px] text-slate-400 uppercase font-bold block">Acknowledged</span>
-                                            <p className="text-sm font-bold text-blue-700 mt-0.5">{selectedProgram.tracking.acknowledgedCount}</p>
-                                        </div>
-                                        <div className="p-2 bg-slate-50 border border-slate-200 rounded-xl">
-                                            <span className="text-[10px] text-slate-400 uppercase font-bold block">In Progress</span>
-                                            <p className="text-sm font-bold text-amber-700 mt-0.5">{selectedProgram.tracking.inProgressCount}</p>
-                                        </div>
-                                        <div className="p-2 bg-slate-50 border border-slate-200 rounded-xl">
-                                            <span className="text-[10px] text-slate-400 uppercase font-bold block">Completed</span>
-                                            <p className="text-sm font-bold text-emerald-700 mt-0.5">{selectedProgram.tracking.completedCount}</p>
-                                        </div>
-                                    </div>
-
-                                    {/* Search & Filter inside tracking */}
-                                    <div className="flex items-center justify-between gap-2 pt-1">
-                                        <div className="relative flex-1 max-w-xs">
-                                            <Search className="w-3.5 h-3.5 absolute left-2.5 top-2.5 text-slate-400" />
+                                    {/* Tracking Search & Status Filter Toolbar */}
+                                    <div className="flex items-center gap-2">
+                                        <div className="relative flex-1">
+                                            <Search className="w-3.5 h-3.5 absolute left-2.5 top-2 text-slate-400 pointer-events-none" />
                                             <input
                                                 type="text"
                                                 value={trackingSearch}
                                                 onChange={e => setTrackingSearch(e.target.value)}
-                                                placeholder="Search recipient unit or remarks..."
-                                                className="w-full pl-8 pr-3 py-1.5 text-xs border border-slate-200 rounded-lg focus:outline-none text-slate-800"
+                                                placeholder="Search recipient unit or official..."
+                                                className="w-full pl-8 pr-7 py-1.5 text-xs bg-white border border-slate-300 rounded text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-[#4085b3] focus:border-[#4085b3]"
                                             />
+                                            {trackingSearch && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setTrackingSearch("")}
+                                                    className="absolute right-2 top-2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                                                    aria-label="Clear filter"
+                                                >
+                                                    <X className="w-3.5 h-3.5" />
+                                                </button>
+                                            )}
                                         </div>
 
                                         <select
                                             value={trackingStatusFilter}
                                             onChange={e => setTrackingStatusFilter(e.target.value)}
-                                            className="px-2.5 py-1.5 border border-slate-200 rounded-lg text-xs font-medium text-slate-700 bg-white cursor-pointer"
+                                            className="py-1.5 px-2.5 text-xs bg-white border border-slate-300 rounded text-slate-800 focus:outline-none focus:ring-1 focus:ring-[#4085b3] focus:border-[#4085b3] cursor-pointer shrink-0"
                                         >
-                                            <option value="ALL">All Statuses</option>
-                                            <option value="PENDING">Pending</option>
+                                            <option value="ALL">All statuses</option>
                                             <option value="ACKNOWLEDGED">Acknowledged</option>
-                                            <option value="IN_PROGRESS">In Progress</option>
+                                            <option value="IN_PROGRESS">In progress</option>
                                             <option value="COMPLETED">Completed</option>
+                                            <option value="PENDING">Pending</option>
+                                            <option value="BLOCKED">Blocked</option>
                                         </select>
                                     </div>
 
-                                    {/* Tracking Table */}
-                                    <div className="max-h-60 overflow-y-auto border border-slate-200 rounded-xl">
-                                        <table className="w-full text-left text-xs">
-                                            <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 font-semibold uppercase tracking-wider text-[10px] sticky top-0">
+                                    {/* Detailed Delivery Tracking Table */}
+                                    <div className="max-h-72 overflow-y-auto border border-slate-200 rounded text-xs bg-white shadow-xs">
+                                        <table className="w-full text-left border-collapse">
+                                            <thead className="bg-slate-50 border-b border-slate-200 text-slate-700 font-semibold sticky top-0 z-10">
                                                 <tr>
-                                                    <th className="py-2.5 px-3">Jurisdiction</th>
-                                                    <th className="py-2.5 px-3">Tier</th>
-                                                    <th className="py-2.5 px-3">Execution Status</th>
-                                                    <th className="py-2.5 px-3">Ack Date</th>
-                                                    <th className="py-2.5 px-3">Remarks / Report</th>
+                                                    <th scope="col" className="py-2.5 px-3 w-[45%]">Recipient unit</th>
+                                                    <th scope="col" className="py-2.5 px-2.5 w-[22%]">Status</th>
+                                                    <th scope="col" className="py-2.5 px-3 w-[33%]">Acknowledged by</th>
                                                 </tr>
                                             </thead>
-                                            <tbody className="divide-y divide-slate-100 text-slate-700 font-normal">
+                                            <tbody className="divide-y divide-slate-100">
                                                 {modalImplementations.length === 0 ? (
                                                     <tr>
-                                                        <td colSpan={5} className="py-6 text-center text-slate-400">
-                                                            No recipient units match the tracking filter.
+                                                        <td colSpan={3} className="py-6 text-center text-slate-400">
+                                                            No recipient units match your search or filter.
                                                         </td>
                                                     </tr>
                                                 ) : (
-                                                    modalImplementations.map(imp => (
-                                                        <tr key={imp.id} className="hover:bg-slate-50">
-                                                            <td className="py-2.5 px-3 font-bold text-slate-900">
-                                                                {imp.organization.name}
-                                                            </td>
-                                                            <td className="py-2.5 px-3">
-                                                                <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-700">
-                                                                    {imp.organization.type}
-                                                                </span>
-                                                            </td>
-                                                            <td className="py-2.5 px-3">
-                                                                <span
-                                                                    className={`px-2 py-0.5 rounded text-[10px] font-bold tracking-wide inline-block ${
-                                                                        imp.status === "COMPLETED"
-                                                                            ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                                                                            : imp.status === "IN_PROGRESS"
-                                                                            ? "bg-amber-50 text-amber-700 border border-amber-200"
-                                                                            : imp.status === "ACKNOWLEDGED"
-                                                                            ? "bg-blue-50 text-blue-700 border border-blue-200"
-                                                                            : imp.status === "BLOCKED"
-                                                                            ? "bg-rose-50 text-rose-700 border border-rose-200"
-                                                                            : "bg-slate-100 text-slate-700 border border-slate-200"
-                                                                    }`}
-                                                                >
-                                                                    {imp.status === "IN_PROGRESS" ? "IN PROGRESS" : imp.status.replace("_", " ")}
-                                                                </span>
-                                                            </td>
-                                                            <td className="py-2.5 px-3 text-slate-500 text-[11px]">
-                                                                {imp.acknowledgedAt
-                                                                    ? new Date(imp.acknowledgedAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })
-                                                                    : "—"}
-                                                            </td>
-                                                            <td className="py-2.5 px-3 text-slate-600 text-[11px] max-w-[200px] truncate" title={imp.notes || ""}>
-                                                                {imp.notes || "—"}
-                                                            </td>
-                                                        </tr>
-                                                    ))
+                                                    modalImplementations.map(imp => {
+                                                        const isAck = imp.isAcknowledged || !!imp.acknowledgedAt || !!imp.acknowledgedByUser;
+                                                        return (
+                                                            <tr key={imp.id} className="hover:bg-slate-50/80 transition-colors">
+                                                                {/* Recipient Unit & Tier */}
+                                                                <td className="py-2.5 px-3 align-top">
+                                                                    <div className="font-medium text-slate-900 leading-snug break-words [overflow-wrap:anywhere]">
+                                                                        {imp.organization.name}
+                                                                    </div>
+                                                                    <div className="text-[10px] font-mono text-slate-500 uppercase tracking-wider mt-0.5">
+                                                                        {imp.organization.type}
+                                                                    </div>
+                                                                </td>
+
+                                                                {/* Status */}
+                                                                <td className="py-2.5 px-2.5 align-top whitespace-nowrap text-xs text-slate-700 font-medium">
+                                                                    {imp.status.replace("_", " ").toLowerCase().replace(/^\w/, c => c.toUpperCase())}
+                                                                </td>
+
+                                                                {/* Acknowledged by & Timestamp */}
+                                                                <td className="py-2.5 px-3 align-top">
+                                                                    {isAck ? (
+                                                                        <div className="space-y-0.5">
+                                                                            <div className="font-medium text-slate-900 flex items-center gap-1">
+                                                                                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                                                                                <span className="break-words [overflow-wrap:anywhere]">
+                                                                                    {imp.acknowledgedByUser?.name || "Administrative desk"}
+                                                                                </span>
+                                                                            </div>
+                                                                            {imp.acknowledgedByUser?.email && (
+                                                                                <div className="text-[11px] text-slate-500 truncate" title={imp.acknowledgedByUser.email}>
+                                                                                    {imp.acknowledgedByUser.email}
+                                                                                </div>
+                                                                            )}
+                                                                            {imp.acknowledgedAt && (
+                                                                                <div className="text-[10px] text-slate-500 tabular-nums">
+                                                                                    {new Date(imp.acknowledgedAt).toLocaleDateString("en-GB", {
+                                                                                        day: "numeric",
+                                                                                        month: "short",
+                                                                                        year: "numeric",
+                                                                                        hour: "2-digit",
+                                                                                        minute: "2-digit"
+                                                                                    })}
+                                                                                </div>
+                                                                            )}
+                                                                        </div>
+                                                                    ) : (
+                                                                        <span className="text-slate-400 text-[11px] italic">
+                                                                            Awaiting acknowledgment
+                                                                        </span>
+                                                                    )}
+                                                                </td>
+                                                            </tr>
+                                                        );
+                                                    })
                                                 )}
                                             </tbody>
                                         </table>
@@ -1417,17 +1514,14 @@ export default function ProgramsRegistryView({
                             )}
                         </div>
 
-                        {/* Drawer Footer */}
-                        <div className="p-4 bg-slate-50 border-t border-slate-200 flex items-center justify-between shrink-0">
-                            <span className="text-xs text-slate-400 font-medium">
-                                National & Regional Governance Desk
-                            </span>
+                        {/* Footer */}
+                        <div className="p-4 bg-slate-50 border-t border-slate-200 flex justify-end shrink-0">
                             <button
                                 type="button"
                                 onClick={() => setSelectedProgram(null)}
-                                className="px-4 py-2 bg-white border border-slate-200 hover:bg-slate-100 text-slate-700 rounded-xl text-xs font-bold transition-colors cursor-pointer shadow-2xs"
+                                className="px-3.5 py-1.5 border border-slate-300 hover:bg-slate-100 text-slate-700 text-sm font-medium rounded cursor-pointer"
                             >
-                                Close Panel
+                                Close
                             </button>
                         </div>
                     </div>

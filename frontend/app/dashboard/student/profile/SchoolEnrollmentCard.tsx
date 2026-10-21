@@ -43,8 +43,8 @@ export default function SchoolEnrollmentCard() {
       </div>
 
       <div className="space-y-4">
-        <div className="rounded-2xl border border-gray-200 bg-emerald-50/40 p-4">
-          <div className="mb-2 flex items-center gap-2 text-[#006b3f]">
+        <div className="rounded-2xl border border-blue-200/80 bg-blue-50/50 p-4">
+          <div className="mb-2 flex items-center gap-2 text-[#184973]">
             <Building2 className="h-4 w-4" />
             <span className="text-sm font-semibold uppercase tracking-[0.15em]">School</span>
           </div>
@@ -76,21 +76,21 @@ export default function SchoolEnrollmentCard() {
 
         <div className="grid gap-3 rounded-2xl border border-gray-200 bg-gray-50 p-4 sm:grid-cols-2">
           <div className="flex items-start gap-3">
-            <School className="mt-0.5 h-4 w-4 text-[#006b3f]" />
+            <School className="mt-0.5 h-4 w-4 text-[#184973]" />
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.2em] text-gray-500">Current grade</p>
               <p className="font-semibold text-gray-900">{profile.gradeName}</p>
             </div>
           </div>
           <div className="flex items-start gap-3">
-            <CalendarClock className="mt-0.5 h-4 w-4 text-[#006b3f]" />
+            <CalendarClock className="mt-0.5 h-4 w-4 text-[#184973]" />
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.2em] text-gray-500">Academic year</p>
               <p className="font-semibold text-gray-900">{profile.academicYear}</p>
             </div>
           </div>
           <div className="flex items-start gap-3 sm:col-span-2">
-            <ShieldCheck className="mt-0.5 h-4 w-4 text-[#006b3f]" />
+            <ShieldCheck className="mt-0.5 h-4 w-4 text-[#184973]" />
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.2em] text-gray-500">Status</p>
               <p className="font-semibold text-gray-900">{profile.enrollmentStatus}</p>
