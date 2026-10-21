@@ -1,21 +1,61 @@
 import { Request, Response } from "express";
 import { ProgramService } from "./program.service.js";
 import { HierarchyScopeService } from "../hierarchy/hierarchy-scope.service.js";
+import { prisma } from "../../infrastructure/prisma/client.js";
 
 async function resolveActorScope(req: Request) {
     if ((req as any).accessScope) {
         return (req as any).accessScope;
     }
     const userId = (req as any).user?.id;
-    if (userId) {
+    if (!userId) return null;
+
+    const requestedOrgId =
+        (req.headers["x-organization-id"] as string) ||
+        (req.headers["x-scope-id"] as string) ||
+        (req.query?.organizationId as string);
+
+    if (requestedOrgId) {
         try {
-            const scope = await HierarchyScopeService.getAccessibleOrganizationScope(userId);
-            return scope.currentOrganization;
-        } catch {
-            return null;
+            // Check if user has an authorized role assignment for this requested organization
+            const assignment = await prisma.roleAssignment.findFirst({
+                where: {
+                    userId,
+                    scopeId: requestedOrgId
+                },
+                include: { scope: true }
+            });
+            if (assignment?.scope) {
+                return assignment.scope;
+            }
+
+            // If user has system administrator / federal admin role, resolve the requested unit directly
+            const superAdminAssignment = await prisma.roleAssignment.findFirst({
+                where: {
+                    userId,
+                    role: { name: { in: ["ADMIN", "ADMINISTRATOR", "SUPER_ADMIN", "FEDERAL_ADMIN"] } }
+                }
+            });
+            if (superAdminAssignment) {
+                const targetOrg = await prisma.organizationUnit.findUnique({
+                    where: { id: requestedOrgId },
+                    select: { id: true, name: true, type: true, parentId: true }
+                });
+                if (targetOrg) {
+                    return targetOrg;
+                }
+            }
+        } catch (err) {
+            console.warn("[program.controller] Error resolving requested organization scope:", err);
         }
     }
-    return null;
+
+    try {
+        const scope = await HierarchyScopeService.getAccessibleOrganizationScope(userId);
+        return scope.currentOrganization;
+    } catch {
+        return null;
+    }
 }
 
 export async function createProgramHandler(req: Request, res: Response) {

@@ -16,7 +16,8 @@ import {
     Sparkles,
     User,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { fetchApi } from "../../../lib/api";
 import StudentSubNavigation, { type StudentNavGroup } from "./components/StudentSubNavigation";
 
 const studentNavGroups: StudentNavGroup[] = [
@@ -95,9 +96,9 @@ const studentNavGroups: StudentNavGroup[] = [
         label: "Learning Resources",
         icon: FileText,
         links: [
-            { label: "Recommended Resources", href: "/dashboard/student/resources" },
-            { label: "School Resources", href: "/dashboard/student/resources" },
-            { label: "Approved External Links", href: "/dashboard/student/resources" },
+            { label: "Recommended Resources", href: "/dashboard/student/resources/recommended" },
+            { label: "School Resources", href: "/dashboard/student/resources/school" },
+            { label: "Approved External Links", href: "/dashboard/student/resources/links" },
         ],
     },
     {
@@ -105,9 +106,9 @@ const studentNavGroups: StudentNavGroup[] = [
         label: "AI Study Assistant",
         icon: Sparkles,
         links: [
-            { label: "Explain Concepts", href: "/dashboard/student/assistant" },
-            { label: "Guided Practice", href: "/dashboard/student/assistant" },
-            { label: "Study Planning", href: "/dashboard/student/assistant" },
+            { label: "Explain Concepts", href: "/dashboard/student/assistant?mode=explain" },
+            { label: "Guided Practice", href: "/dashboard/student/assistant?mode=practice" },
+            { label: "Study Planning", href: "/dashboard/student/assistant?mode=plan" },
         ],
     },
 ];
@@ -132,6 +133,19 @@ export default function StudentNavigation({ collapsed, onToggleCollapse }: { col
             return Object.fromEntries(Object.keys(current).map((groupKey) => [groupKey, groupKey === key && willOpen])) as Record<string, boolean>;
         });
     };
+
+    const [unreadCount, setUnreadCount] = useState<number>(0);
+
+    useEffect(() => {
+        fetchApi("/communication/notifications/unread-count")
+            .then(async (res) => {
+                if (res.ok) {
+                    const data = await res.json();
+                    if (typeof data.count === "number") setUnreadCount(data.count);
+                }
+            })
+            .catch(() => {});
+    }, [pathname]);
 
     const isActive = (href: string) => pathname === href || pathname.startsWith(`${href}/`);
 
@@ -208,9 +222,19 @@ export default function StudentNavigation({ collapsed, onToggleCollapse }: { col
                         }`}
                     >
                         <div className={`flex items-center ${collapsed ? "" : "space-x-3"}`}>
-                            <Bell className="w-4 h-4 shrink-0 text-amber-300/90" />
+                            <div className="relative">
+                                <Bell className="w-4 h-4 shrink-0 text-amber-300/90" />
+                                {unreadCount > 0 && (
+                                    <span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-amber-400 animate-pulse" />
+                                )}
+                            </div>
                             {!collapsed && <span>Notifications</span>}
                         </div>
+                        {!collapsed && unreadCount > 0 && (
+                            <span className="rounded-full bg-amber-400 text-slate-900 px-1.5 py-0.2 text-[10px] font-black">
+                                {unreadCount}
+                            </span>
+                        )}
                     </Link>
                 </nav>
             </div>

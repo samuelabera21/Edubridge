@@ -2027,14 +2027,16 @@ export class TeacherService {
                     update: {
                         score: r.score,
                         feedback: r.feedback,
-                        gradedById: userId
+                        gradedById: userId,
+                        status: "GRADED"
                     },
                     create: {
                         assessmentId: assessment.id,
                         enrollmentId: r.enrollmentId,
                         score: r.score,
                         feedback: r.feedback,
-                        gradedById: userId
+                        gradedById: userId,
+                        status: "GRADED"
                     }
                 });
             }

@@ -164,6 +164,81 @@ export async function createGoogleFormHandler(req: Request, res: Response) {
     }
 }
 
+export async function getGoogleFormSchemaHandler(req: Request, res: Response) {
+    try {
+        const id = String(req.params.id);
+        const actorScope = await resolveActorScope(req);
+        const userId = (req as any).user?.id;
+
+        const request = await DataRequestService.getDataRequestById(id, actorScope, userId);
+        const googleFormId = (request as any).googleForm?.googleFormId;
+
+        if (!googleFormId) {
+            return res.status(400).json({
+                success: false,
+                message: "No Google Form has been generated for this Data Request yet. Please generate the form first."
+            });
+        }
+
+        const fields = await GoogleFormsService.getGoogleFormSchema(googleFormId);
+
+        return res.status(200).json({
+            success: true,
+            message: `Fetched ${fields.length} question(s) from Google Form.`,
+            data: { fields, googleFormId }
+        });
+    } catch (error: any) {
+        console.error("Error in getGoogleFormSchemaHandler:", error);
+        return res.status(500).json({
+            success: false,
+            message: error.message || "Failed to fetch Google Form schema"
+        });
+    }
+}
+
+export async function syncGoogleFormSchemaHandler(req: Request, res: Response) {
+    try {
+        const id = String(req.params.id);
+        const actorScope = await resolveActorScope(req);
+        const userId = (req as any).user?.id;
+        const ipAddress = (req.headers["x-forwarded-for"] as string) || req.socket.remoteAddress || undefined;
+
+        const request = await DataRequestService.getDataRequestById(id, actorScope, userId);
+        const googleFormId = (request as any).googleForm?.googleFormId;
+
+        if (!googleFormId) {
+            return res.status(400).json({
+                success: false,
+                message: "No Google Form has been generated for this Data Request yet."
+            });
+        }
+
+        const fetchedFields = await GoogleFormsService.getGoogleFormSchema(googleFormId);
+
+        if (fetchedFields.length === 0) {
+            return res.status(200).json({
+                success: true,
+                message: "No custom questions found in Google Form yet.",
+                data: { fields: [], count: 0 }
+            });
+        }
+
+        await DataRequestService.replaceDataRequestFields(id, fetchedFields, userId, ipAddress);
+
+        return res.status(200).json({
+            success: true,
+            message: `Synced ${fetchedFields.length} question(s) from Google Form into EduBridge.`,
+            data: { fields: fetchedFields, count: fetchedFields.length }
+        });
+    } catch (error: any) {
+        console.error("Error in syncGoogleFormSchemaHandler:", error);
+        return res.status(500).json({
+            success: false,
+            message: error.message || "Failed to sync Google Form schema"
+        });
+    }
+}
+
 export async function syncGoogleFormResponsesHandler(req: Request, res: Response) {
     try {
         const id = String(req.params.id);

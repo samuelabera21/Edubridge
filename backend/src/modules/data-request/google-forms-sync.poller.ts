@@ -145,20 +145,37 @@ export class GoogleFormsSyncPoller {
 
                     if (existingSub) {
                         const isSameAnswers = areResponsesEqual(existingSub.responseData as any, gResp.answers);
+                        const isAlreadyReviewed =
+                            existingSub.status === DataRequestSubmissionStatus.ACCEPTED ||
+                            existingSub.status === DataRequestSubmissionStatus.RETURNED;
+
+                        const hasNewerGoogleSubmission = Boolean(
+                            existingSub.reviewedAt &&
+                            gResp.lastSubmittedTime &&
+                            new Date(gResp.lastSubmittedTime).getTime() > new Date(existingSub.reviewedAt).getTime()
+                        );
+
                         if (!isSameAnswers) {
-                            // Answers were updated/resubmitted by the respondent
+                            const nextSubStatus = isAlreadyReviewed && !hasNewerGoogleSubmission
+                                ? existingSub.status
+                                : DataRequestSubmissionStatus.UNDER_REVIEW;
+
+                            const nextTargetStatus = isAlreadyReviewed && !hasNewerGoogleSubmission
+                                ? (existingSub.status === DataRequestSubmissionStatus.ACCEPTED ? DataRequestTargetStatus.ACCEPTED : DataRequestTargetStatus.RETURNED)
+                                : DataRequestTargetStatus.SUBMITTED;
+
                             await prisma.dataRequestSubmission.update({
                                 where: { id: existingSub.id },
                                 data: {
                                     googleResponseId: gResp.responseId,
                                     responseData: gResp.answers,
-                                    status: DataRequestSubmissionStatus.UNDER_REVIEW,
+                                    status: nextSubStatus,
                                     updatedAt: new Date()
                                 }
                             });
                             await prisma.dataRequestTarget.update({
                                 where: { id: matchedTarget.id },
-                                data: { status: DataRequestTargetStatus.SUBMITTED }
+                                data: { status: nextTargetStatus }
                             });
                         } else if (!existingSub.googleResponseId && gResp.responseId) {
                             // Only link googleResponseId if it wasn't linked yet, preserve current status

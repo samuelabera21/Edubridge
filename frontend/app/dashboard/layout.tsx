@@ -296,9 +296,31 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
     const isTeacherRoute = (pathname === "/dashboard/teacher" || pathname.startsWith("/dashboard/teacher/")) && roleName === "TEACHER";
     const isStudentRoute = (pathname === "/dashboard/student" || pathname.startsWith("/dashboard/student/")) || roleName === "STUDENT";
 
+    const getActiveDeskOrgId = () => {
+        if (!authData?.access?.length) return undefined;
+        if (pathname.startsWith("/dashboard/federal")) {
+            return authData.access.find((a: any) => a.scope?.type === "FEDERAL")?.scope?.id;
+        }
+        if (pathname.startsWith("/dashboard/region")) {
+            return authData.access.find((a: any) => a.scope?.type === "REGION")?.scope?.id;
+        }
+        if (pathname.startsWith("/dashboard/zone")) {
+            return authData.access.find((a: any) => a.scope?.type === "ZONE")?.scope?.id;
+        }
+        if (pathname.startsWith("/dashboard/woreda")) {
+            return authData.access.find((a: any) => a.scope?.type === "WOREDA")?.scope?.id;
+        }
+        const schoolScope = authData.access.find((a: any) => a.scope?.type === "SCHOOL")?.scope?.id;
+        return schoolScope || primaryAccess?.scope?.id;
+    };
+
     const loadNotifications = async () => {
         try {
-            const res = await fetchApi("/communication/notifications");
+            const activeOrgId = getActiveDeskOrgId();
+            const query = activeOrgId ? `?organizationId=${activeOrgId}` : "";
+            const res = await fetchApi(`/communication/notifications${query}`, {
+                headers: activeOrgId ? { "x-organization-id": activeOrgId } : {}
+            });
             if (res.ok) {
                 const data = await res.json();
                 if (Array.isArray(data)) {
@@ -313,7 +335,12 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
 
     const markNotificationAsRead = async (id: string, link?: string | null) => {
         try {
-            await fetchApi(`/communication/notifications/${id}/read`, { method: "PATCH" });
+            const activeOrgId = getActiveDeskOrgId();
+            const query = activeOrgId ? `?organizationId=${activeOrgId}` : "";
+            await fetchApi(`/communication/notifications/${id}/read${query}`, {
+                method: "PATCH",
+                headers: activeOrgId ? { "x-organization-id": activeOrgId } : {}
+            });
             setNotificationsList(prev => prev.map(n => n.id === id ? { ...n, isRead: true } : n));
             setUnreadCount(prev => Math.max(0, prev - 1));
         } catch {}

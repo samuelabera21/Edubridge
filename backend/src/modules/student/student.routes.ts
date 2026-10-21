@@ -10,8 +10,11 @@ import {
     getStudentProfile,
     getStudentDashboard,
     getMyStudentAssessments,
+    startMyStudentAssessment,
+    submitMyStudentAssessment,
     getMyLearningActivities,
     getMyLearningSubmissions,
+    submitMyLearningActivity,
     getMySupportActivities,
     getMyStudentAttendance,
     getMyAttendanceTeachers,
@@ -22,6 +25,7 @@ import {
     sendMyCommunicationMessage,
     getMyNotifications,
     submitMyAttendanceExplanation,
+    getMyAttendanceExplanations,
     getTransfersHandler,
     executeProgressionHandler,
     getApprovalsHandler,
@@ -142,7 +146,10 @@ router.get("/me", requireScope("SCHOOL"), getStudentProfile);
 
 router.get("/dashboard", requireScope("SCHOOL"), getStudentDashboard);
 router.get("/assessments", requireScope("SCHOOL"), getMyStudentAssessments);
+router.post("/assessments/:id/start", requireScope("SCHOOL"), startMyStudentAssessment);
+router.post("/assessments/:id/submit", requireScope("SCHOOL"), submitMyStudentAssessment);
 router.get("/learning/activities", requireScope("SCHOOL"), getMyLearningActivities);
+router.post("/learning/activities/:id/submit", requireScope("SCHOOL"), submitMyLearningActivity);
 router.get("/learning/submissions", requireScope("SCHOOL"), getMyLearningSubmissions);
 router.get("/support", requireScope("SCHOOL"), getMySupportActivities);
 router.get("/attendance", requireScope("SCHOOL"), getMyStudentAttendance);
@@ -154,6 +161,7 @@ router.get("/communication/messages", requireScope("SCHOOL"), getMyCommunication
 router.post("/communication/messages", requireScope("SCHOOL"), sendMyCommunicationMessage);
 router.get("/notifications", requireScope("SCHOOL"), getMyNotifications);
 router.post("/attendance/explanation", requireScope("SCHOOL"), submitMyAttendanceExplanation);
+router.get("/attendance/explanations", requireScope("SCHOOL"), getMyAttendanceExplanations);
 
 /**
  * @openapi

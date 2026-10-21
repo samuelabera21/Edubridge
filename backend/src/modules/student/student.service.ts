@@ -1,5 +1,6 @@
 import { prisma } from "../../infrastructure/prisma/client.js";
 import { EnrollmentStatus, EnrollmentType, DocumentVerificationStatus, AnnouncementTarget } from "../../generated/prisma/enums.js";
+import { emitNewMessageToUsers, getIO } from "../../infrastructure/socket/socket.service.js";
 
 export interface GuardianInput {
     id?: string;
@@ -1158,13 +1159,14 @@ export class StudentService {
 
     static async getStudentAttendance(userId: string, organizationId: string, startDate?: string, endDate?: string) {
         const student = await this.getStudentByUserId(userId, organizationId);
-        const enrollment = student?.enrollments[0];
-        if (!student || !enrollment) return null;
+        if (!student || !student.enrollments.length) return null;
+
+        const enrollmentIds = student.enrollments.map(e => e.id);
 
         return prisma.studentAttendance.findMany({
             where: {
                 organizationId,
-                enrollmentId: enrollment.id,
+                enrollmentId: { in: enrollmentIds },
                 ...(startDate || endDate ? {
                     date: {
                         ...(startDate ? { gte: new Date(startDate) } : {}),
@@ -1172,14 +1174,19 @@ export class StudentService {
                     }
                 } : {})
             },
-            include: { classPeriod: true },
+            include: { 
+                classPeriod: true,
+                recordedBy: { select: { id: true, name: true, email: true } }
+            },
             orderBy: { date: "desc" }
         });
     }
 
     static async getStudentAttendanceTeachers(userId: string, organizationId: string) {
         const student = await this.getStudentByUserId(userId, organizationId);
-        const enrollment = student?.enrollments[0];
+        if (!student || !student.enrollments.length) return null;
+
+        const enrollment = student.enrollments.find(e => e.status === "ENROLLED") || student.enrollments[0];
         if (!enrollment) return null;
 
         return prisma.teacher.findMany({
@@ -1187,45 +1194,69 @@ export class StudentService {
                 organizationId,
                 assignments: {
                     some: {
-                        academicYearId: enrollment.academicYearId,
-                        schoolGradeId: enrollment.schoolGradeId,
-                        sectionId: enrollment.sectionId
+                        OR: [
+                            { sectionId: enrollment.sectionId },
+                            { schoolGradeId: enrollment.schoolGradeId },
+                            { sectionId: null }
+                        ]
                     }
                 }
             },
-            select: { id: true, firstName: true, lastName: true },
+            select: { 
+                id: true, 
+                firstName: true, 
+                lastName: true,
+                email: true,
+                photoUrl: true,
+                assignments: {
+                    where: {
+                        OR: [
+                            { sectionId: enrollment.sectionId },
+                            { schoolGradeId: enrollment.schoolGradeId },
+                            { sectionId: null }
+                        ]
+                    },
+                    select: { subject: { select: { name: true, code: true } } }
+                }
+            },
             orderBy: [{ firstName: "asc" }, { lastName: "asc" }]
+        });
+    }
+
+    static async getStudentAttendanceExplanations(userId: string, organizationId: string) {
+        const student = await this.getStudentByUserId(userId, organizationId);
+        if (!student || !student.enrollments.length) return null;
+
+        const enrollmentIds = student.enrollments.map(e => e.id);
+
+        return prisma.supportFlag.findMany({
+            where: {
+                organizationId,
+                enrollmentId: { in: enrollmentIds },
+                type: "ATTENDANCE"
+            },
+            orderBy: { createdAt: "desc" }
         });
     }
 
     static async getStudentDigitalResources(userId: string, organizationId: string) {
         const student = await this.getStudentByUserId(userId, organizationId);
-        const enrollment = student?.enrollments[0];
-        if (!student || !enrollment) return null;
+        if (!student || !student.enrollments.length) return null;
+
+        const enrollment = student.enrollments.find(e => e.status === "ENROLLED") || student.enrollments[0];
+        if (!enrollment) return null;
+
+        const gradeLevel = enrollment.schoolGrade?.grade?.level;
+        const gradeName = enrollment.schoolGrade?.grade?.name;
 
         return prisma.digitalResource.findMany({
             where: {
                 organizationId,
                 status: "PUBLISHED",
                 OR: [
-                    { academicYearId: null },
-                    { academicYearId: enrollment.academicYearId }
-                ],
-                AND: [
-                    {
-                        OR: [
-                            { gradeName: null },
-                            { gradeName: enrollment.schoolGrade.grade.name },
-                            { gradeName: String(enrollment.schoolGrade.grade.level) }
-                        ]
-                    },
-                    {
-                        OR: [
-                            { recommendations: { some: { enrollmentId: enrollment.id } } },
-                            { recommendations: { some: { academicYearId: enrollment.academicYearId, schoolGradeId: enrollment.schoolGradeId, sectionId: enrollment.sectionId } } },
-                            { recommendations: { none: {} } }
-                        ]
-                    }
+                    { gradeName: null },
+                    ...(gradeName ? [{ gradeName }] : []),
+                    ...(gradeLevel ? [{ gradeName: String(gradeLevel) }, { gradeName: `Grade ${gradeLevel}` }] : [])
                 ]
             },
             include: {
@@ -1233,7 +1264,7 @@ export class StudentService {
                     where: {
                         OR: [
                             { enrollmentId: enrollment.id },
-                            { academicYearId: enrollment.academicYearId, schoolGradeId: enrollment.schoolGradeId, sectionId: enrollment.sectionId }
+                            { schoolGradeId: enrollment.schoolGradeId }
                         ]
                     },
                     select: { note: true, teacher: { select: { firstName: true, lastName: true } } }
@@ -1245,17 +1276,21 @@ export class StudentService {
 
     static async getStudentCommunicationTeachers(userId: string, organizationId: string) {
         const student = await this.getStudentByUserId(userId, organizationId);
-        const enrollment = student?.enrollments[0];
-        if (!student || !enrollment) return null;
+        if (!student || !student.enrollments.length) return null;
+
+        const enrollment = student.enrollments.find(e => e.status === "ENROLLED") || student.enrollments[0];
+        if (!enrollment) return null;
 
         return prisma.teacher.findMany({
             where: {
                 organizationId,
                 assignments: {
                     some: {
-                        academicYearId: enrollment.academicYearId,
-                        schoolGradeId: enrollment.schoolGradeId,
-                        sectionId: enrollment.sectionId
+                        OR: [
+                            { sectionId: enrollment.sectionId },
+                            { schoolGradeId: enrollment.schoolGradeId },
+                            { sectionId: null }
+                        ]
                     }
                 }
             },
@@ -1267,9 +1302,11 @@ export class StudentService {
                 userId: true,
                 assignments: {
                     where: {
-                        academicYearId: enrollment.academicYearId,
-                        schoolGradeId: enrollment.schoolGradeId,
-                        sectionId: enrollment.sectionId
+                        OR: [
+                            { sectionId: enrollment.sectionId },
+                            { schoolGradeId: enrollment.schoolGradeId },
+                            { sectionId: null }
+                        ]
                     },
                     select: { subject: { select: { name: true } } }
                 }
@@ -1312,6 +1349,18 @@ export class StudentService {
         const teacherUserIds = teachers.map((teacher) => teacher.userId).filter((value): value is string => Boolean(value));
         if (otherUserId && !teacherUserIds.includes(otherUserId)) throw new Error("Teacher is not assigned to your current section");
 
+        if (otherUserId) {
+            await prisma.message.updateMany({
+                where: {
+                    senderId: otherUserId,
+                    receiverId: userId,
+                    isRead: false
+                },
+                data: { isRead: true }
+            });
+            getIO()?.to(`user:${otherUserId}`).emit("messages_read", { byUserId: userId });
+        }
+
         return prisma.message.findMany({
             where: {
                 OR: [
@@ -1333,57 +1382,262 @@ export class StudentService {
         const assignedTeacher = teachers.some((teacher) => teacher.userId === receiverId);
         if (!assignedTeacher) throw new Error("Teacher is not assigned to your current section");
 
-        return prisma.message.create({
+        const message = await prisma.message.create({
             data: { organizationId, senderId: userId, receiverId, content },
             include: {
                 sender: { select: { id: true, name: true } },
                 receiver: { select: { id: true, name: true } }
             }
         });
+
+        emitNewMessageToUsers(message);
+        return message;
     }
 
     static async getStudentAssessments(userId: string, organizationId: string) {
         const student = await this.getStudentByUserId(userId, organizationId);
-        const enrollment = student?.enrollments[0];
-        if (!student || !enrollment) return null;
+        if (!student || !student.enrollments.length) return null;
+
+        const enrollment = student.enrollments.find(e => e.status === "ENROLLED") || student.enrollments[0];
+        const enrollmentIds = student.enrollments.map(e => e.id);
+        const sectionIds = student.enrollments.map(e => e.sectionId).filter(Boolean) as string[];
+        const gradeIds = student.enrollments.map(e => e.schoolGradeId).filter(Boolean) as string[];
 
         return prisma.assessment.findMany({
             where: {
                 organizationId,
-                academicYearId: enrollment.academicYearId,
-                teachingAssignment: {
-                    schoolGradeId: enrollment.schoolGradeId,
-                    sectionId: enrollment.sectionId
-                }
+                OR: [
+                    { results: { some: { enrollmentId: { in: enrollmentIds } } } },
+                    {
+                        teachingAssignment: {
+                            OR: [
+                                ...(sectionIds.length ? [{ sectionId: { in: sectionIds } }] : []),
+                                ...(gradeIds.length ? [{ schoolGradeId: { in: gradeIds } }] : [])
+                            ]
+                        }
+                    }
+                ]
             },
             include: {
                 teachingAssignment: {
                     include: { subject: true, teacher: true, schoolGrade: { include: { grade: true } }, section: true }
                 },
-                results: { where: { enrollmentId: enrollment.id } }
+                results: {
+                    where: { enrollmentId: { in: enrollmentIds } },
+                    include: {
+                        gradedBy: { select: { id: true, name: true, email: true } }
+                    }
+                }
             },
             orderBy: [{ dueDate: "asc" }, { createdAt: "desc" }]
         });
     }
 
+    static async startStudentAssessment(userId: string, organizationId: string, assessmentId: string) {
+        const student = await this.getStudentByUserId(userId, organizationId);
+        if (!student || !student.enrollments.length) throw new Error("Student enrollment not found");
+
+        const enrollment = student.enrollments.find(e => e.status === "ENROLLED") || student.enrollments[0];
+        if (!enrollment) throw new Error("Student enrollment not found");
+        const sectionIds = student.enrollments.map(e => e.sectionId).filter(Boolean) as string[];
+        const gradeIds = student.enrollments.map(e => e.schoolGradeId).filter(Boolean) as string[];
+
+        const assessment = await prisma.assessment.findFirst({
+            where: {
+                id: assessmentId,
+                organizationId,
+                OR: [
+                    { results: { some: { enrollmentId: enrollment.id } } },
+                    {
+                        teachingAssignment: {
+                            OR: [
+                                ...(sectionIds.length ? [{ sectionId: { in: sectionIds } }] : []),
+                                ...(gradeIds.length ? [{ schoolGradeId: { in: gradeIds } }] : [])
+                            ]
+                        }
+                    }
+                ]
+            }
+        });
+        if (!assessment) throw new Error("Assessment not found or not assigned to your section");
+
+        const existing = await prisma.studentResult.findUnique({
+            where: {
+                assessmentId_enrollmentId: {
+                    assessmentId,
+                    enrollmentId: enrollment.id
+                }
+            }
+        });
+
+        if (existing) {
+            return existing;
+        }
+
+        return prisma.studentResult.create({
+            data: {
+                assessmentId,
+                enrollmentId: enrollment.id,
+                status: "IN_PROGRESS",
+                startedAt: new Date()
+            }
+        });
+    }
+
+    static async submitStudentAssessment(userId: string, organizationId: string, assessmentId: string, data: { solutionNotes?: string; score?: number }) {
+        const student = await this.getStudentByUserId(userId, organizationId);
+        if (!student || !student.enrollments.length) throw new Error("Student enrollment not found");
+
+        const enrollment = student.enrollments.find(e => e.status === "ENROLLED") || student.enrollments[0];
+        if (!enrollment) throw new Error("Student enrollment not found");
+        const sectionIds = student.enrollments.map(e => e.sectionId).filter(Boolean) as string[];
+        const gradeIds = student.enrollments.map(e => e.schoolGradeId).filter(Boolean) as string[];
+
+        const assessment = await prisma.assessment.findFirst({
+            where: {
+                id: assessmentId,
+                organizationId,
+                OR: [
+                    { results: { some: { enrollmentId: enrollment.id } } },
+                    {
+                        teachingAssignment: {
+                            OR: [
+                                ...(sectionIds.length ? [{ sectionId: { in: sectionIds } }] : []),
+                                ...(gradeIds.length ? [{ schoolGradeId: { in: gradeIds } }] : [])
+                            ]
+                        }
+                    }
+                ]
+            }
+        });
+        if (!assessment) throw new Error("Assessment not found or not assigned to your section");
+
+        const existing = await prisma.studentResult.findUnique({
+            where: {
+                assessmentId_enrollmentId: {
+                    assessmentId,
+                    enrollmentId: enrollment.id
+                }
+            }
+        });
+
+        const feedbackText = data.solutionNotes?.trim() ? `Submission Note: ${data.solutionNotes.trim()}` : undefined;
+
+        if (existing) {
+            return prisma.studentResult.update({
+                where: { id: existing.id },
+                data: {
+                    status: existing.status === "GRADED" ? "GRADED" : "SUBMITTED",
+                    submittedAt: new Date(),
+                    ...(feedbackText && !existing.feedback ? { feedback: feedbackText } : {})
+                }
+            });
+        }
+
+        return prisma.studentResult.create({
+            data: {
+                assessmentId,
+                enrollmentId: enrollment.id,
+                status: "SUBMITTED",
+                startedAt: new Date(),
+                submittedAt: new Date(),
+                feedback: feedbackText
+            }
+        });
+    }
+
+    static async submitStudentLearningActivity(userId: string, organizationId: string, activityId: string, data: { contentUrl?: string; notes?: string }) {
+        const student = await this.getStudentByUserId(userId, organizationId);
+        if (!student || !student.enrollments.length) throw new Error("Student enrollment not found");
+
+        const enrollment = student.enrollments.find(e => e.status === "ENROLLED") || student.enrollments[0];
+        if (!enrollment) throw new Error("Student enrollment not found");
+        const sectionIds = student.enrollments.map(e => e.sectionId).filter(Boolean) as string[];
+        const gradeIds = student.enrollments.map(e => e.schoolGradeId).filter(Boolean) as string[];
+
+        const activity = await prisma.learningActivity.findFirst({
+            where: {
+                id: activityId,
+                organizationId,
+                OR: [
+                    { submissions: { some: { enrollmentId: enrollment.id } } },
+                    {
+                        teachingAssignment: {
+                            OR: [
+                                ...(sectionIds.length ? [{ sectionId: { in: sectionIds } }] : []),
+                                ...(gradeIds.length ? [{ schoolGradeId: { in: gradeIds } }] : [])
+                            ]
+                        }
+                    }
+                ]
+            },
+            include: {
+                teachingAssignment: {
+                    include: { teacher: true, subject: true }
+                }
+            }
+        });
+        if (!activity) throw new Error("Learning activity not found or not assigned to your section");
+
+        const submission = await prisma.submission.upsert({
+            where: {
+                learningActivityId_enrollmentId: {
+                    learningActivityId: activityId,
+                    enrollmentId: enrollment.id
+                }
+            },
+            update: {
+                status: "SUBMITTED",
+                submittedAt: new Date(),
+                contentUrl: data.contentUrl || data.notes || undefined
+            },
+            create: {
+                learningActivityId: activityId,
+                enrollmentId: enrollment.id,
+                status: "SUBMITTED",
+                submittedAt: new Date(),
+                contentUrl: data.contentUrl || data.notes || null
+            }
+        });
+
+        // Notify teacher if teacher has user account
+        if (activity.teachingAssignment?.teacher?.userId) {
+            await prisma.notification.create({
+                data: {
+                    organizationId,
+                    userId: activity.teachingAssignment.teacher.userId,
+                    title: "Student Assignment Submitted",
+                    content: `${student.firstName} ${student.lastName} submitted work for "${activity.title}".`,
+                    link: "/dashboard/teacher/submissions",
+                    type: "ACADEMIC"
+                }
+            }).catch(() => null);
+        }
+
+        return submission;
+    }
+
     static async getStudentLearningActivities(userId: string, organizationId: string) {
         const student = await this.getStudentByUserId(userId, organizationId);
-        const enrollment = student?.enrollments[0];
-        if (!student || !enrollment) return null;
+        if (!student || !student.enrollments.length) return null;
+
+        const enrollment = student.enrollments.find(e => e.status === "ENROLLED") || student.enrollments[0];
+        const enrollmentIds = student.enrollments.map(e => e.id);
+        const sectionIds = student.enrollments.map(e => e.sectionId).filter(Boolean) as string[];
+        const gradeIds = student.enrollments.map(e => e.schoolGradeId).filter(Boolean) as string[];
 
         return prisma.learningActivity.findMany({
             where: {
                 organizationId,
-                academicYearId: enrollment.academicYearId,
-                teachingAssignment: {
-                    schoolGradeId: enrollment.schoolGradeId,
-                    sectionId: enrollment.sectionId
-                },
                 OR: [
-                    { supportCategory: null },
+                    { submissions: { some: { enrollmentId: { in: enrollmentIds } } } },
                     {
-                        supportCategory: { in: ["RECOMMENDATION", "REMEDIAL", "ENRICHMENT"] },
-                        submissions: { some: { enrollmentId: enrollment.id } }
+                        teachingAssignment: {
+                            OR: [
+                                ...(sectionIds.length ? [{ sectionId: { in: sectionIds } }] : []),
+                                ...(gradeIds.length ? [{ schoolGradeId: { in: gradeIds } }] : [])
+                            ]
+                        }
                     }
                 ]
             },
@@ -1397,7 +1651,7 @@ export class StudentService {
                     }
                 },
                 submissions: {
-                    where: { enrollmentId: enrollment.id },
+                    where: { enrollmentId: { in: enrollmentIds } },
                     include: { activity: true }
                 }
             },
@@ -1407,16 +1661,13 @@ export class StudentService {
 
     static async getStudentLearningSubmissions(userId: string, organizationId: string) {
         const student = await this.getStudentByUserId(userId, organizationId);
-        const enrollment = student?.enrollments[0];
-        if (!student || !enrollment) return null;
+        if (!student || !student.enrollments.length) return null;
+
+        const enrollmentIds = student.enrollments.map(e => e.id);
 
         return prisma.submission.findMany({
             where: {
-                enrollmentId: enrollment.id,
-                activity: {
-                    organizationId,
-                    academicYearId: enrollment.academicYearId
-                }
+                enrollmentId: { in: enrollmentIds }
             },
             include: {
                 activity: {
@@ -1438,22 +1689,34 @@ export class StudentService {
 
     static async getStudentSupportActivities(userId: string, organizationId: string) {
         const student = await this.getStudentByUserId(userId, organizationId);
-        const enrollment = student?.enrollments[0];
-        if (!student || !enrollment) return null;
+        if (!student || !student.enrollments.length) return null;
+
+        const enrollment = student.enrollments.find(e => e.status === "ENROLLED") || student.enrollments[0];
+        if (!enrollment) return null;
+        const enrollmentIds = student.enrollments.map(e => e.id);
 
         const activities = await prisma.learningActivity.findMany({
             where: {
                 organizationId,
-                academicYearId: enrollment.academicYearId,
                 supportCategory: { in: ["RECOMMENDATION", "REMEDIAL", "ENRICHMENT"] },
-                submissions: { some: { enrollmentId: enrollment.id } }
+                OR: [
+                    { submissions: { some: { enrollmentId: { in: enrollmentIds } } } },
+                    {
+                        teachingAssignment: {
+                            OR: [
+                                ...(enrollment.sectionId ? [{ sectionId: enrollment.sectionId }] : []),
+                                ...(enrollment.schoolGradeId ? [{ schoolGradeId: enrollment.schoolGradeId }] : [])
+                            ]
+                        }
+                    }
+                ]
             },
             include: {
                 teachingAssignment: {
                     include: { subject: true, teacher: true }
                 },
                 submissions: {
-                    where: { enrollmentId: enrollment.id },
+                    where: { enrollmentId: { in: enrollmentIds } },
                     select: { status: true, submittedAt: true, grade: true, feedback: true }
                 }
             },
@@ -1530,14 +1793,17 @@ export class StudentService {
                     some: {
                         academicYearId: enrollment.academicYearId,
                         schoolGradeId: enrollment.schoolGradeId,
-                        sectionId: enrollment.sectionId
+                        OR: [
+                            { sectionId: enrollment.sectionId },
+                            { sectionId: null }
+                        ]
                     }
                 }
             }
         });
         if (!teacher) throw new Error("Selected teacher is not assigned to your section");
 
-        return prisma.supportFlag.create({
+        const flag = await prisma.supportFlag.create({
             data: {
                 organizationId,
                 enrollmentId: enrollment.id,
@@ -1550,5 +1816,19 @@ export class StudentService {
                 raisedById: userId
             }
         });
+
+        if (teacher.userId) {
+            await prisma.notification.create({
+                data: {
+                    organizationId,
+                    userId: teacher.userId,
+                    title: "Attendance Excuse Submitted",
+                    content: `${student.firstName} ${student.lastName} submitted an absence explanation for ${new Date(absenceDate).toLocaleDateString()}: "${description.slice(0, 120)}"`,
+                    link: "/dashboard/teacher"
+                }
+            }).catch((err) => console.warn("Could not dispatch notification to teacher", err));
+        }
+
+        return flag;
     }
 }

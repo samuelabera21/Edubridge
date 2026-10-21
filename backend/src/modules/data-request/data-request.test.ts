@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { DataRequestService } from "./data-request.service.js";
+import { DataRequestService, areResponsesEqual } from "./data-request.service.js";
 import { GoogleFormsService } from "./google-forms.service.js";
 import { prisma } from "../../infrastructure/prisma/client.js";
 import {
@@ -21,7 +21,9 @@ vi.mock("../../infrastructure/prisma/client.js", () => ({
             update: vi.fn()
         },
         dataRequestField: {
-            update: vi.fn()
+            update: vi.fn(),
+            deleteMany: vi.fn(),
+            createMany: vi.fn()
         },
         dataRequestTarget: {
             createMany: vi.fn(),
@@ -37,7 +39,8 @@ vi.mock("../../infrastructure/prisma/client.js", () => ({
         },
         googleFormIntegration: {
             upsert: vi.fn(),
-            update: vi.fn()
+            update: vi.fn(),
+            updateMany: vi.fn()
         },
         organizationUnit: {
             findMany: vi.fn(),
@@ -513,6 +516,136 @@ describe("EduBridge — Data Request & Real Google Forms Integration Service", (
             expect(requests.length).toBe(1);
             expect(requests[0]!.googleResponderUri).toBe("https://docs.google.com/forms/d/e/1FAIpQLSc_test_form_id/viewform");
             expect(requests[0]!.myTargetStatus).toBe(DataRequestTargetStatus.PENDING);
+        });
+    });
+
+    describe("5. Native Google Forms Question Schema Sync", () => {
+        it("5.1 Successfully replaces fields with synced questions from Google Forms", async () => {
+            vi.mocked(prisma.dataRequest.findUnique).mockResolvedValueOnce({
+                id: "dr-test-schema",
+                createdOrganizationId: "fed-1",
+                fields: []
+            } as any);
+
+            vi.mocked((prisma as any).dataRequestField.deleteMany).mockResolvedValueOnce({ count: 0 });
+            vi.mocked((prisma as any).dataRequestField.createMany).mockResolvedValueOnce({ count: 2 });
+            vi.mocked((prisma as any).googleFormIntegration.updateMany).mockResolvedValueOnce({ count: 1 });
+
+            await DataRequestService.replaceDataRequestFields(
+                "dr-test-schema",
+                [
+                    { id: "item-1", label: "Number of students enrolled", fieldType: "NUMBER", required: true, order: 1 },
+                    { id: "item-2", label: "School facility condition", fieldType: "SINGLE_SELECT", required: false, options: ["Good", "Fair"], order: 2 }
+                ],
+                "user-fed-1"
+            );
+
+            expect((prisma as any).dataRequestField.deleteMany).toHaveBeenCalledWith({
+                where: { requestId: "dr-test-schema" }
+            });
+
+            expect((prisma as any).dataRequestField.createMany).toHaveBeenCalledWith({
+                data: expect.arrayContaining([
+                    expect.objectContaining({ label: "Number of students enrolled", fieldType: "NUMBER" }),
+                    expect.objectContaining({ label: "School facility condition", fieldType: "SINGLE_SELECT" })
+                ])
+            });
+        });
+    });
+
+    describe("6. File Upload Answers & Review Decision Invariance", () => {
+        it("6.1 areResponsesEqual recognizes equal responses with file upload badges and URLs", () => {
+            const respA = {
+                "Student List File": "Roster_2026.xlsx:::https://drive.google.com/file/d/12345/view",
+                "Total Count": "150"
+            };
+            const respB = {
+                "Student List File": "Different_Name.xlsx:::https://drive.google.com/file/d/12345/view",
+                "Total Count": "150"
+            };
+
+            // Both point to the exact same Google Drive file URL
+            expect(areResponsesEqual(respA, respB)).toBe(true);
+        });
+
+        it("6.2 syncGoogleFormResponses preserves ACCEPTED status and does not revert to UNDER_REVIEW", async () => {
+            const mockRequest = {
+                id: "req-reviewed-1",
+                title: "Annual School Census",
+                targets: [
+                    {
+                        id: "target-1",
+                        organizationId: "school-1",
+                        status: DataRequestTargetStatus.ACCEPTED,
+                        organization: { id: "school-1", name: "Hawassa Primary School", type: OrganizationUnitType.SCHOOL }
+                    }
+                ],
+                googleForm: {
+                    id: "gf-1",
+                    googleFormId: "gform-123",
+                    status: GoogleFormIntegrationStatus.ACTIVE
+                },
+                fields: [
+                    { id: "f1", label: "Student Roster", fieldType: "SHORT_TEXT" }
+                ]
+            };
+
+            vi.mocked(prisma.dataRequest.findUnique).mockResolvedValue(mockRequest as any);
+
+            // Existing submission is already ACCEPTED with reviewedAt timestamp
+            const reviewedAt = new Date("2026-10-20T10:00:00Z");
+            const existingSub = {
+                id: "sub-1",
+                requestId: "req-reviewed-1",
+                organizationId: "school-1",
+                status: DataRequestSubmissionStatus.ACCEPTED,
+                reviewedAt,
+                responseData: { "Student Roster": "old_roster.xlsx:::https://drive.google.com/file/d/999/view" }
+            };
+
+            vi.mocked(prisma.dataRequestSubmission.findFirst).mockResolvedValue(existingSub as any);
+            vi.mocked(prisma.dataRequestSubmission.update).mockResolvedValue({ ...existingSub } as any);
+            vi.mocked(prisma.dataRequestTarget.update).mockResolvedValue({ id: "target-1" } as any);
+            vi.mocked(prisma.googleFormIntegration.update).mockResolvedValue({ id: "gf-1" } as any);
+
+            // Mock Google Forms returning a response submitted BEFORE the review timestamp (9:00 AM < 10:00 AM)
+            vi.spyOn(GoogleFormsService, "syncFormResponses").mockResolvedValueOnce([
+                {
+                    responseId: "resp-g-1",
+                    createTime: "2026-10-20T09:00:00Z",
+                    lastSubmittedTime: "2026-10-20T09:00:00Z",
+                    answers: {
+                        "Student Roster": "new_format.xlsx:::https://drive.google.com/file/d/123/view",
+                        "Hawassa Primary School": "Hawassa Primary School"
+                    }
+                }
+            ]);
+
+            const result = await DataRequestService.syncGoogleFormResponses(
+                "req-reviewed-1",
+                { id: "fed-1", type: OrganizationUnitType.FEDERAL, name: "Federal MoE" },
+                "user-fed-1"
+            );
+
+            // Submission status must remain ACCEPTED!
+            expect(prisma.dataRequestSubmission.update).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    where: { id: "sub-1" },
+                    data: expect.objectContaining({
+                        status: DataRequestSubmissionStatus.ACCEPTED
+                    })
+                })
+            );
+
+            // Target status must remain ACCEPTED!
+            expect(prisma.dataRequestTarget.update).toHaveBeenCalledWith(
+                expect.objectContaining({
+                    where: { id: "target-1" },
+                    data: expect.objectContaining({
+                        status: DataRequestTargetStatus.ACCEPTED
+                    })
+                })
+            );
         });
     });
 });

@@ -41,8 +41,8 @@ export default function StudentInfoCard() {
     <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
       <div className="mb-5 flex items-center justify-between gap-3">
         <h2 className="text-lg font-semibold text-gray-900">Student Information</h2>
-        <div className="rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.2em] text-[#006b3f]">
-          Read only
+        <div className="rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.2em] text-[#184973]">
+          Official Record
         </div>
       </div>
 
@@ -50,7 +50,7 @@ export default function StudentInfoCard() {
         {photoUrl ? (
           <img src={photoUrl} alt={profile.fullName} className="h-20 w-20 rounded-full border-2 border-white object-cover shadow-sm" />
         ) : (
-          <div className="flex h-20 w-20 items-center justify-center rounded-full bg-emerald-100 text-[#006b3f]">
+          <div className="flex h-20 w-20 items-center justify-center rounded-full bg-blue-100 text-[#184973]">
             <UserCircle2 className="h-12 w-12" />
           </div>
         )}

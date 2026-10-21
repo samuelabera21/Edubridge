@@ -42,6 +42,7 @@ export default function ProgramsPage() {
             <ProgramsRegistryView
                 tierName={unitName}
                 tierType={unitType}
+                organizationId={activeScope?.id}
                 canCreateProgram={unitType !== "SCHOOL"}
                 initialProgramId={programId}
                 initialProgramTitle={programTitle}

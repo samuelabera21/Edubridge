@@ -5,6 +5,10 @@ import { sendPasswordResetEmail } from "../email/email.service.js";
 
 const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:3001";
 
+const googleClientId = process.env.GOOGLE_CLIENT_ID?.replace(/^["']|["']$/g, "").trim();
+const googleClientSecret = process.env.GOOGLE_CLIENT_SECRET?.replace(/^["']|["']$/g, "").trim();
+const googleRedirectUri = process.env.GOOGLE_AUTH_CALLBACK_URL?.replace(/^["']|["']$/g, "").trim() || "http://localhost:3001/api/auth/callback/google";
+
 export const auth = betterAuth({
     baseURL: process.env.BETTER_AUTH_URL || "http://localhost:3001/api/auth",
     database: prismaAdapter(prisma, {
@@ -27,11 +31,15 @@ export const auth = betterAuth({
     },
 
     socialProviders: {
-        google: {
-            clientId: process.env.GOOGLE_CLIENT_ID || "",
-            clientSecret: process.env.GOOGLE_CLIENT_SECRET || "",
-            redirectURI: process.env.GOOGLE_AUTH_CALLBACK_URL || "http://localhost:3001/api/auth/callback/google",
-        },
+        ...(googleClientId && googleClientSecret
+            ? {
+                google: {
+                    clientId: googleClientId,
+                    clientSecret: googleClientSecret,
+                    redirectURI: googleRedirectUri,
+                },
+            }
+            : {}),
     },
 
     account: {

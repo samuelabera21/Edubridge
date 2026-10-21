@@ -398,6 +398,108 @@ export class GoogleFormsService {
     }
 
     /**
+     * Fetches the schema (questions) of a Google Form and maps them back to EduBridge field types.
+     * Called when the administrator clicks "Sync Questions from Google Form".
+     */
+    static async getGoogleFormSchema(googleFormId: string): Promise<GoogleFormFieldInput[]> {
+        if (!this.isConfigured() || !this.hasAuthorizedTokens() || googleFormId.startsWith("1FAIpQLSc_")) {
+            return [
+                {
+                    id: "mock_1",
+                    label: "Total Number of Classrooms",
+                    fieldType: "NUMBER",
+                    required: true,
+                    description: "Physical classrooms currently available for instruction",
+                    order: 1
+                },
+                {
+                    id: "mock_2",
+                    label: "Does the school have electricity?",
+                    fieldType: "YES_NO",
+                    required: true,
+                    description: "Continuous or solar electricity supply",
+                    order: 2
+                },
+                {
+                    id: "mock_3",
+                    label: "Primary Water Source",
+                    fieldType: "SINGLE_SELECT",
+                    required: true,
+                    options: ["Piped Water", "Borehole / Well", "Rainwater Tank", "None"],
+                    order: 3
+                }
+            ];
+        }
+
+        const auth = this.getOAuth2Client();
+        const forms = google.forms({ version: "v1", auth });
+
+        const formMeta = await forms.forms.get({ formId: googleFormId });
+        const items = formMeta.data.items || [];
+
+        const fields: GoogleFormFieldInput[] = [];
+
+        for (const item of items) {
+            const title = (item.title || "").trim();
+            if (!title) continue;
+
+            // Skip the auto-injected school identifier question
+            if (
+                title.toLowerCase().includes("school / organization") ||
+                title.toLowerCase().includes("respondent school") ||
+                title.toLowerCase().includes("unit name")
+            ) {
+                continue;
+            }
+
+            const qi = item.questionItem?.question;
+            if (!qi) continue; // skip section headers / text items
+
+            let fieldType: GoogleFormFieldInput["fieldType"] = "SHORT_TEXT";
+            let options: string[] = [];
+
+            if (qi.textQuestion) {
+                fieldType = qi.textQuestion.paragraph ? "LONG_TEXT" : "SHORT_TEXT";
+            } else if (qi.dateQuestion) {
+                fieldType = "DATE";
+            } else if (qi.scaleQuestion) {
+                fieldType = "NUMBER";
+            } else if (qi.choiceQuestion) {
+                const choices = qi.choiceQuestion.options || [];
+                options = choices.map((o: any) => o.value || "").filter(Boolean);
+
+                if (qi.choiceQuestion.type === "CHECKBOX") {
+                    fieldType = "MULTI_SELECT";
+                } else if (
+                    options.length === 2 &&
+                    options.map((o) => o.toLowerCase()).sort().join(",") === "no,yes"
+                ) {
+                    fieldType = "YES_NO";
+                    options = [];
+                } else {
+                    fieldType = "SINGLE_SELECT";
+                }
+            } else if (qi.fileUploadQuestion) {
+                fieldType = "SHORT_TEXT";
+            } else if (qi.ratingQuestion || qi.rowQuestion) {
+                fieldType = "NUMBER";
+            }
+
+            fields.push({
+                id: item.itemId || `item_${fields.length + 1}`,
+                label: title,
+                fieldType,
+                required: Boolean(qi.required),
+                description: item.description || "",
+                options,
+                order: fields.length + 1
+            });
+        }
+
+        return fields;
+    }
+
+    /**
      * Synchronizes live responses from Google Forms API for a specific Google Form.
      * Automatically maps numerical Google question IDs to human question titles.
      */
@@ -464,7 +566,19 @@ export class GoogleFormsService {
                     if (r.answers) {
                         for (const [questionId, answerObj] of Object.entries(r.answers)) {
                             const textAnswers = (answerObj as any).textAnswers?.answers || [];
-                            const val = textAnswers.map((a: any) => a.value).join(", ");
+                            const fileUploadAnswers = (answerObj as any).fileUploadAnswers?.answers || [];
+
+                            let val = "";
+                            if (fileUploadAnswers.length > 0) {
+                                val = fileUploadAnswers.map((f: any) => {
+                                    const driveUrl = `https://drive.google.com/file/d/${f.fileId}/view`;
+                                    const fileName = f.fileName || "Uploaded File";
+                                    return `${fileName}:::${driveUrl}`;
+                                }).join(", ");
+                            } else if (textAnswers.length > 0) {
+                                val = textAnswers.map((a: any) => a.value).join(", ");
+                            }
+
                             const humanLabel = questionTitleMap[questionId] || questionId;
                             answers[humanLabel] = val;
                         }

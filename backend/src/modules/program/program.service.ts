@@ -362,7 +362,7 @@ export class ProgramService {
         if (tab === "all" || tab === "created") {
             const created = await prisma.program.findMany({
                 where: {
-                    ...(actorScope.type === "FEDERAL" ? {} : { createdOrganizationId: actorScope.id }),
+                    createdOrganizationId: actorScope.id,
                     ...(queryOptions?.status ? { status: queryOptions.status } : {}),
                     ...(queryOptions?.priority ? { priority: queryOptions.priority } : {})
                 },
@@ -550,6 +550,29 @@ export class ProgramService {
     }
 
     /**
+     * Resolves the canonical dashboard link for the creator desk depending on its tier type.
+     */
+    private static getProgramCreatorNotificationLink(program: {
+        id: string;
+        createdOrganization?: { type: OrganizationUnitType | string } | null;
+    }): string {
+        const creatorType = program.createdOrganization?.type;
+        if (creatorType === "FEDERAL") {
+            return `/dashboard/federal?tab=programs&programId=${program.id}`;
+        }
+        if (creatorType === "REGION") {
+            return `/dashboard/region?tab=programs&programId=${program.id}`;
+        }
+        if (creatorType === "ZONE") {
+            return `/dashboard/zone?tab=programs&programId=${program.id}`;
+        }
+        if (creatorType === "WOREDA") {
+            return `/dashboard/woreda?tab=programs&programId=${program.id}`;
+        }
+        return `/dashboard/programs?programId=${program.id}`;
+    }
+
+    /**
      * Gets a single program with detailed lineage, recipient implementation tracking, and subordinate cascading.
      */
     static async getProgramById(
@@ -728,20 +751,31 @@ export class ProgramService {
         // Dispatch in-app notification to program creator / issuer
         try {
             if (prisma.notification?.create) {
-                const creatorLink = program.createdOrganization?.type === "FEDERAL"
-                    ? `/dashboard/federal?tab=programs&programId=${program.id}`
-                    : `/dashboard/programs?programId=${program.id}`;
+                const creatorLink = ProgramService.getProgramCreatorNotificationLink(program);
 
-                await prisma.notification.create({
-                    data: {
-                        userId: program.createdBy,
-                        organizationId: program.createdOrganizationId,
-                        title: `Program Acknowledged: ${program.name}`,
-                        content: `${actorScope.name} has acknowledged receipt of "${program.name}". Remarks: ${notes?.trim() || "No remarks"}`,
-                        link: creatorLink,
-                        isRead: false
-                    }
+                const creatorRoleAssignments = await prisma.roleAssignment.findMany({
+                    where: { scopeId: program.createdOrganizationId },
+                    select: { userId: true }
                 });
+
+                const targetUserIds = new Set<string>();
+                if (program.createdBy) targetUserIds.add(program.createdBy);
+                for (const ra of creatorRoleAssignments) {
+                    if (ra.userId) targetUserIds.add(ra.userId);
+                }
+
+                for (const recipientUserId of targetUserIds) {
+                    await prisma.notification.create({
+                        data: {
+                            userId: recipientUserId,
+                            organizationId: program.createdOrganizationId,
+                            title: `Program Acknowledged: ${program.name}`,
+                            content: `${actorScope.name} has acknowledged receipt of "${program.name}". Remarks: ${notes?.trim() || "No remarks"}`,
+                            link: creatorLink,
+                            isRead: false
+                        }
+                    });
+                }
             }
         } catch (notifErr) {
             console.warn("[ProgramService] Creator Notification creation failed:", notifErr);
@@ -865,21 +899,32 @@ export class ProgramService {
         // Dispatch in-app notification to program creator / issuer
         try {
             if (prisma.notification?.create) {
-                const creatorLink = program.createdOrganization?.type === "FEDERAL"
-                    ? `/dashboard/federal?tab=programs&programId=${program.id}`
-                    : `/dashboard/programs?programId=${program.id}`;
-
+                const creatorLink = ProgramService.getProgramCreatorNotificationLink(program);
                 const statusLabel = input.status.replace("_", " ");
-                await prisma.notification.create({
-                    data: {
-                        userId: program.createdBy,
-                        organizationId: program.createdOrganizationId,
-                        title: `Program Status Update (${statusLabel}): ${program.name}`,
-                        content: `${actorScope.name} updated implementation to ${statusLabel} for "${program.name}". Remarks: ${input.notes?.trim() || "No remarks"}`,
-                        link: creatorLink,
-                        isRead: false
-                    }
+
+                const creatorRoleAssignments = await prisma.roleAssignment.findMany({
+                    where: { scopeId: program.createdOrganizationId },
+                    select: { userId: true }
                 });
+
+                const targetUserIds = new Set<string>();
+                if (program.createdBy) targetUserIds.add(program.createdBy);
+                for (const ra of creatorRoleAssignments) {
+                    if (ra.userId) targetUserIds.add(ra.userId);
+                }
+
+                for (const recipientUserId of targetUserIds) {
+                    await prisma.notification.create({
+                        data: {
+                            userId: recipientUserId,
+                            organizationId: program.createdOrganizationId,
+                            title: `Program Status Update (${statusLabel}): ${program.name}`,
+                            content: `${actorScope.name} updated implementation to ${statusLabel} for "${program.name}". Remarks: ${input.notes?.trim() || "No remarks"}`,
+                            link: creatorLink,
+                            isRead: false
+                        }
+                    });
+                }
             }
         } catch (notifErr) {
             console.warn("[ProgramService] Creator Notification creation failed:", notifErr);
