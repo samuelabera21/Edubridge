@@ -563,212 +563,139 @@ export default function DataRequestCreateView({
         };
     }, [successData?.id]);
 
-    // Success Screen
+    // Clean Government Success Receipt Screen
     if (successData) {
         return (
-            <div className="bg-white border border-slate-200/90 rounded-2xl p-6 md:p-8 max-w-3xl mx-auto space-y-6 shadow-sm">
-                <div className="text-center space-y-2">
-                    <div className="w-14 h-14 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto shadow-xs">
-                        <CheckCircle2 className="w-8 h-8" />
+            <div className="bg-white border border-slate-200 rounded-lg p-6 md:p-8 max-w-3xl mx-auto space-y-6 text-slate-800 font-sans shadow-xs">
+                <div className="pb-4 border-b border-slate-200 flex items-start justify-between gap-4">
+                    <div>
+                        <div className="flex items-center gap-2 text-xs text-emerald-700 font-medium mb-1">
+                            <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                            <span>Data request and form created successfully</span>
+                        </div>
+                        <h1 className="text-xl font-bold text-slate-900">{successData.title}</h1>
+                        <p className="text-xs text-slate-500 mt-1">
+                            Form initialized for {successData.targetCount} targeted organization unit(s).
+                        </p>
                     </div>
-                    <h2 className="text-xl font-bold text-slate-900">Data Request & Google Form Created!</h2>
-                    <p className="text-xs md:text-sm text-slate-500 max-w-xl mx-auto">
-                        "{successData.title}" has been initialized and linked to a live Google Form for {successData.targetCount} targeted unit(s).
-                    </p>
+                    <button
+                        type="button"
+                        onClick={() => onCreated ? onCreated(successData.id) : onBack?.()}
+                        className="px-4 py-2 bg-[#4085b3] hover:bg-[#32698e] text-white text-xs font-semibold rounded cursor-pointer transition-colors shrink-0"
+                    >
+                        Done — View request
+                    </button>
                 </div>
 
-                {/* Step 1: Open Google Forms to Design Questions */}
-                <div className="bg-gradient-to-r from-purple-50 to-indigo-50 border border-purple-200/80 rounded-2xl p-5 space-y-3">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                        <div className="space-y-1">
-                            <span className="text-[11px] font-bold uppercase tracking-wider text-purple-700 bg-purple-100/80 px-2 py-0.5 rounded-md inline-block">
-                                Step 1 • Design Questions
-                            </span>
-                            <h3 className="text-sm font-bold text-slate-900">Add Questions in Google Forms</h3>
-                            <p className="text-xs text-slate-600 leading-relaxed">
-                                Use Google Forms' native drag-and-drop editor to add short text, multiple choice, numbers, or dates.
-                            </p>
-                        </div>
-
+                {/* Form Links & Access */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="p-4 border border-slate-200 rounded space-y-2 bg-slate-50">
+                        <span className="text-xs font-semibold text-slate-900 block">1. Form Questions</span>
+                        <p className="text-xs text-slate-600 leading-relaxed">
+                            Open the generated form in Google Forms to add, reorder, or adjust survey questions.
+                        </p>
                         {successData.googleFormEditUrl && (
                             <a
                                 href={successData.googleFormEditUrl}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-purple-600 hover:bg-purple-700 text-white text-xs font-semibold rounded-xl transition-all shadow-sm shrink-0 cursor-pointer active:scale-95"
+                                className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#4085b3] hover:underline pt-1"
                             >
-                                <ExternalLink className="w-4 h-4" />
-                                <span>Open in Google Forms ↗</span>
+                                <span>Open in Google Forms</span>
+                                <ExternalLink className="w-3.5 h-3.5" />
                             </a>
                         )}
                     </div>
 
-                    <div className="text-[11px] text-purple-800/90 bg-white/70 border border-purple-200/60 rounded-xl px-3 py-2 flex items-center gap-2">
-                        <Sparkles className="w-3.5 h-3.5 text-purple-600 shrink-0" />
-                        <span>
-                            <strong>Zero-Click Sync:</strong> Add questions in Google Forms and switch back here — EduBridge detects your changes automatically!
-                        </span>
+                    <div className="p-4 border border-slate-200 rounded space-y-2 bg-slate-50">
+                        <span className="text-xs font-semibold text-slate-900 block">2. Public Responder Link</span>
+                        <p className="text-xs text-slate-600 leading-relaxed">
+                            Official URL distributed to schools and targeted units to submit returns.
+                        </p>
+                        <div className="flex items-center gap-1.5 pt-1">
+                            <input
+                                type="text"
+                                readOnly
+                                value={successData.googleResponderUri}
+                                className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded text-xs font-mono text-slate-700 select-all"
+                            />
+                            <button
+                                type="button"
+                                onClick={() => copyToClipboard(successData.googleResponderUri)}
+                                className="px-2.5 py-1.5 bg-white hover:bg-slate-100 border border-slate-300 text-slate-700 text-xs font-medium rounded transition-colors cursor-pointer shrink-0"
+                                title="Copy link"
+                            >
+                                {copiedLink ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                            </button>
+                        </div>
                     </div>
                 </div>
 
-                {/* Step 2: Live Synced Questions Preview */}
-                <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5 space-y-3">
-                    <div className="flex items-center justify-between pb-2 border-b border-slate-200">
-                        <div className="flex items-center gap-2">
-                            <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wide">
-                                Step 2 • Imported Questions ({syncedQuestions.length})
-                            </h3>
-                            {syncedQuestions.length > 0 ? (
-                                <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-700 bg-emerald-100/80 px-2 py-0.5 rounded-md">
-                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                                    Auto-Synced
-                                </span>
-                            ) : (
-                                <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-amber-700 bg-amber-100/80 px-2 py-0.5 rounded-md">
-                                    <Loader2 className="w-3 h-3 animate-spin" />
-                                    Waiting for questions...
-                                </span>
-                            )}
-                        </div>
-
+                {/* Synced Questions Table */}
+                <div className="space-y-3 pt-2">
+                    <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-slate-900">
+                            Questions in form ({syncedQuestions.length})
+                        </span>
                         <div className="flex items-center gap-2">
                             {lastSyncedTime && (
-                                <span className="text-[11px] text-slate-400 hidden sm:inline">
-                                    Updated {lastSyncedTime}
+                                <span className="text-[11px] text-slate-400">
+                                    Last checked {lastSyncedTime}
                                 </span>
                             )}
                             <button
                                 type="button"
                                 onClick={() => syncQuestionsFromGoogleForm(successData.id, false)}
                                 disabled={syncingQuestions}
-                                className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 text-xs font-medium rounded-lg transition-colors cursor-pointer"
-                                title="Force sync from Google Forms"
+                                className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-white hover:bg-slate-50 border border-slate-300 text-slate-700 text-xs font-medium rounded cursor-pointer transition-colors"
                             >
-                                <RefreshCw className={`w-3.5 h-3.5 ${syncingQuestions ? "animate-spin text-blue-600" : "text-slate-500"}`} />
-                                <span>{syncingQuestions ? "Checking..." : "Sync Now"}</span>
+                                <RefreshCw className={`w-3 h-3 ${syncingQuestions ? "animate-spin text-[#4085b3]" : "text-slate-500"}`} />
+                                <span>{syncingQuestions ? "Checking..." : "Sync questions"}</span>
                             </button>
                         </div>
                     </div>
 
                     {syncedQuestions.length === 0 ? (
-                        <div className="bg-white border border-dashed border-slate-300 rounded-xl p-6 text-center space-y-2">
-                            <div className="w-9 h-9 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center mx-auto">
-                                <FileSpreadsheet className="w-5 h-5" />
-                            </div>
-                            <p className="text-xs font-semibold text-slate-700">No questions found yet</p>
-                            <p className="text-[11px] text-slate-500 max-w-sm mx-auto">
-                                Click <strong>"Open in Google Forms ↗"</strong> above, add your survey questions in Google Forms, then switch back to this tab.
-                            </p>
+                        <div className="p-6 border border-dashed border-slate-300 rounded text-center text-xs text-slate-500">
+                            No questions detected yet. Add questions in Google Forms and click "Sync questions" above.
                         </div>
                     ) : (
-                        <div className="overflow-x-auto border border-slate-200 rounded-xl bg-white shadow-2xs">
+                        <div className="border border-slate-200 rounded overflow-hidden">
                             <table className="w-full text-xs text-left">
                                 <thead className="bg-slate-50 text-slate-700 border-b border-slate-200 font-semibold text-[11px]">
                                     <tr>
                                         <th className="px-3 py-2 w-10 text-center">#</th>
-                                        <th className="px-3 py-2">Question Title</th>
+                                        <th className="px-3 py-2">Question</th>
                                         <th className="px-3 py-2">Type</th>
                                         <th className="px-3 py-2">Required</th>
                                         <th className="px-3 py-2">Details / Choices</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-100 text-slate-700">
-                                    {syncedQuestions.map((q: any, idx: number) => {
-                                        const typeLabels: Record<string, { label: string; badge: string }> = {
-                                            SHORT_TEXT: { label: "Short Text", badge: "bg-slate-100 text-slate-700 border-slate-200" },
-                                            LONG_TEXT: { label: "Paragraph", badge: "bg-blue-50 text-blue-700 border-blue-200" },
-                                            NUMBER: { label: "Number", badge: "bg-purple-50 text-purple-700 border-purple-200" },
-                                            YES_NO: { label: "Yes / No", badge: "bg-emerald-50 text-emerald-700 border-emerald-200" },
-                                            DATE: { label: "Date", badge: "bg-amber-50 text-amber-700 border-amber-200" },
-                                            SINGLE_SELECT: { label: "Single Choice", badge: "bg-indigo-50 text-indigo-700 border-indigo-200" },
-                                            MULTI_SELECT: { label: "Checkboxes", badge: "bg-cyan-50 text-cyan-700 border-cyan-200" }
-                                        };
-                                        const meta = typeLabels[q.fieldType] || { label: q.fieldType, badge: "bg-slate-100 text-slate-700" };
-
-                                        return (
-                                            <tr key={q.id || idx} className="hover:bg-slate-50/70">
-                                                <td className="px-3 py-2 text-center text-slate-400 font-mono text-[11px]">
-                                                    {idx + 1}
-                                                </td>
-                                                <td className="px-3 py-2 font-medium text-slate-900">
-                                                    {q.label}
-                                                </td>
-                                                <td className="px-3 py-2">
-                                                    <span className={`px-2 py-0.5 rounded text-[10px] font-semibold border ${meta.badge}`}>
-                                                        {meta.label}
-                                                    </span>
-                                                </td>
-                                                <td className="px-3 py-2">
-                                                    {q.required ? (
-                                                        <span className="text-[11px] font-semibold text-red-600">Required</span>
-                                                    ) : (
-                                                        <span className="text-[11px] text-slate-400">Optional</span>
-                                                    )}
-                                                </td>
-                                                <td className="px-3 py-2 text-slate-500 text-[11px] max-w-xs truncate">
-                                                    {q.options && q.options.length > 0
-                                                        ? q.options.join(", ")
-                                                        : q.description || "—"}
-                                                </td>
-                                            </tr>
-                                        );
-                                    })}
+                                    {syncedQuestions.map((q: any, idx: number) => (
+                                        <tr key={q.id || idx} className="hover:bg-slate-50">
+                                            <td className="px-3 py-2 text-center text-slate-400 font-mono text-[11px]">{idx + 1}</td>
+                                            <td className="px-3 py-2 font-medium text-slate-900">{q.label}</td>
+                                            <td className="px-3 py-2 text-slate-600">{q.fieldType}</td>
+                                            <td className="px-3 py-2">{q.required ? <span className="font-semibold text-rose-600">Yes</span> : "Optional"}</td>
+                                            <td className="px-3 py-2 text-slate-500 text-[11px] max-w-xs truncate">
+                                                {q.options && q.options.length > 0 ? q.options.join(", ") : q.description || "—"}
+                                            </td>
+                                        </tr>
+                                    ))}
                                 </tbody>
                             </table>
                         </div>
                     )}
                 </div>
 
-                {/* Step 3: Public Submission URL */}
-                <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 text-left space-y-2.5">
-                    <div className="flex items-center justify-between">
-                        <span className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
-                            <FileSpreadsheet className="w-4 h-4 text-blue-600" />
-                            Public Responder URL (Distributed to Schools)
-                        </span>
-                        <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-100/80 px-2 py-0.5 rounded-md">
-                            Active
-                        </span>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                        <input
-                            type="text"
-                            readOnly
-                            value={successData.googleResponderUri}
-                            className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-mono text-slate-700 select-all"
-                        />
-                        <button
-                            type="button"
-                            onClick={() => copyToClipboard(successData.googleResponderUri)}
-                            className="px-3 py-1.5 bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 text-xs font-medium rounded-lg transition-colors cursor-pointer shrink-0"
-                            title="Copy link"
-                        >
-                            {copiedLink ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />}
-                        </button>
-                    </div>
-
-                    <div className="flex items-center gap-2 pt-1">
-                        <a
-                            href={successData.googleResponderUri}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-xl transition-colors cursor-pointer"
-                        >
-                            <ExternalLink className="w-3.5 h-3.5" />
-                            <span>Preview Public Form</span>
-                        </a>
-                    </div>
-                </div>
-
-                {/* Bottom Navigation */}
-                <div className="flex items-center justify-center gap-3 pt-2">
+                <div className="pt-4 border-t border-slate-200 flex items-center justify-end">
                     <button
                         type="button"
                         onClick={() => onCreated ? onCreated(successData.id) : onBack?.()}
-                        className="px-6 py-2.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold rounded-xl transition-all cursor-pointer shadow-sm active:scale-95"
+                        className="px-5 py-2 bg-[#4085b3] hover:bg-[#32698e] text-white text-xs font-semibold rounded cursor-pointer transition-colors"
                     >
-                        Done — View Request Ledger & Responses
+                        Done — View request
                     </button>
                 </div>
             </div>
@@ -776,72 +703,94 @@ export default function DataRequestCreateView({
     }
 
     return (
-        <div className="space-y-6 max-w-5xl mx-auto pb-16">
-            {/* Top Navigation */}
-            <div className="flex items-center justify-between gap-4">
-                <button
-                    type="button"
-                    onClick={onBack}
-                    className="inline-flex items-center gap-2 text-xs font-semibold text-slate-600 hover:text-slate-900 transition-colors cursor-pointer"
-                >
-                    <ArrowLeft className="w-4 h-4" />
-                    <span>Back to Data Requests</span>
-                </button>
+        <div className="max-w-3xl mx-auto py-6 px-4 font-sans text-slate-800 space-y-6">
+            {/* Top Minimal Bar */}
+            <div className="flex items-center justify-between pb-4 mb-5 border-b border-slate-200">
+                <div className="flex items-center gap-2.5">
+                    <button
+                        type="button"
+                        onClick={onBack}
+                        className="p-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-100 cursor-pointer"
+                        title="Back to data requests"
+                    >
+                        <ArrowLeft className="w-4 h-4" />
+                    </button>
+                    <div>
+                        <h1 className="text-base font-bold text-slate-900">New Data Request</h1>
+                        <p className="text-xs text-slate-500">Initiate an administrative data collection request across the education hierarchy.</p>
+                    </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                    <button
+                        type="button"
+                        onClick={onBack}
+                        className="px-3 py-1.5 text-xs font-medium text-slate-600 border border-slate-200 rounded hover:bg-slate-50 cursor-pointer"
+                    >
+                        Cancel
+                    </button>
+                    <button
+                        type="button"
+                        onClick={handleCreateAndGenerateGoogleForm}
+                        disabled={submitting}
+                        className="inline-flex items-center gap-1.5 px-4 py-1.5 text-xs font-semibold text-white bg-[#4085b3] hover:bg-[#32698e] rounded disabled:opacity-50 shadow-xs cursor-pointer transition-colors"
+                    >
+                        {submitting ? (
+                            <>
+                                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                <span>{progressStatus || "Creating..."}</span>
+                            </>
+                        ) : (
+                            <>
+                                <FileSpreadsheet className="w-3.5 h-3.5" />
+                                <span>Create & Generate Form</span>
+                            </>
+                        )}
+                    </button>
+                </div>
             </div>
 
-            {/* Google OAuth Connection Status Card */}
-            {!isGoogleConnected ? (
-                <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs shadow-sm">
-                    <div className="flex items-center gap-2.5">
+            {/* Google OAuth Connection Warning (Only shown when not authorized) */}
+            {!isGoogleConnected && (
+                <div className="p-4 bg-amber-50 border border-amber-200 rounded text-xs text-amber-900 flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2">
                         <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
-                        <div>
-                            <span className="font-semibold text-amber-900">Google Account Authorization Required: </span>
-                            <span className="text-amber-700">Connect your Google account to create live Google Forms.</span>
-                        </div>
+                        <span>Google account connection is required to automatically generate linked forms in Google Drive.</span>
                     </div>
                     {googleAuthUrl && (
                         <button
                             type="button"
                             onClick={handleConnectGoogle}
-                            className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-amber-600 hover:bg-amber-700 text-white font-semibold rounded-xl transition-colors cursor-pointer shrink-0 shadow-sm"
+                            className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white font-semibold rounded text-xs transition-colors cursor-pointer shrink-0"
                         >
-                            <Link2 className="w-3.5 h-3.5" />
-                            <span>Connect Google Account</span>
+                            Connect Google Account
                         </button>
                     )}
                 </div>
-            ) : (
-                <div className="bg-emerald-50 border border-emerald-200 rounded-2xl px-4 py-2.5 flex items-center justify-between text-xs text-emerald-800 shadow-sm">
-                    <div className="flex items-center gap-2 font-medium">
-                        <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                        <span>Google Forms API Connected & Ready</span>
-                    </div>
-                    <span className="text-[10px] text-emerald-700 font-semibold bg-white border border-emerald-200 px-2.5 py-0.5 rounded-full shadow-2xs">
-                        Authorized
-                    </span>
-                </div>
             )}
 
-            {/* Error Message */}
+            {/* Error Alert */}
             {error && (
-                <div className="p-4 bg-red-50 border border-red-200 rounded-2xl flex items-center gap-3 text-xs font-medium text-red-800 shadow-sm">
-                    <AlertCircle className="w-4 h-4 shrink-0 text-red-600" />
-                    <span>{error}</span>
+                <div className="p-3.5 rounded bg-rose-50 border border-rose-200 text-xs text-rose-800 flex items-start justify-between gap-2">
+                    <div className="flex items-center gap-1.5">
+                        <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+                        <span>{error}</span>
+                    </div>
+                    <button onClick={() => setError(null)} className="text-rose-500 hover:text-rose-700 cursor-pointer">
+                        <X className="w-3.5 h-3.5" />
+                    </button>
                 </div>
             )}
 
-            {/* Section 1: Target Audience */}
-            <div className="bg-white border border-slate-200/90 rounded-2xl p-6 shadow-sm space-y-4">
-                <div className="pb-3 border-b border-slate-100">
-                    <h2 className="text-base font-bold text-slate-900">1. Target Audience</h2>
-                    <p className="text-xs text-slate-500 mt-0.5">Define which jurisdictions or specific organizations must submit data.</p>
-                </div>
-
-                <div className="space-y-3">
+            {/* Main Clean Form Card */}
+            <div className="bg-white border border-slate-200 rounded-lg p-6 space-y-6 shadow-xs">
+                {/* 1. Target Jurisdiction & Scope */}
+                <div className="space-y-3 pb-6 border-b border-slate-200">
                     <div>
                         <label className="block text-xs font-bold text-slate-800 mb-1">
-                            Target Audience <span className="text-rose-500">*</span>
+                            Target Audience / Scope <span className="text-rose-500">*</span>
                         </label>
+                        <p className="text-xs text-slate-500 mb-2">Select which administrative level or specific institution must submit returns.</p>
                         <select
                             value={targetType}
                             onChange={(e) => {
@@ -852,7 +801,7 @@ export default function DataRequestCreateView({
                                 setSelectedWoredaId("");
                                 setSelectedSchoolId("");
                             }}
-                            className="w-full border border-slate-300 rounded-lg p-2.5 text-xs bg-white focus:ring-1 focus:ring-blue-600 font-medium text-slate-800 cursor-pointer"
+                            className="w-full border border-slate-300 rounded p-2 text-xs bg-white focus:ring-1 focus:ring-[#4085b3] focus:border-[#4085b3] font-medium text-slate-800 cursor-pointer"
                         >
                             {userTier === "FEDERAL" && (
                                 <>
@@ -900,13 +849,13 @@ export default function DataRequestCreateView({
                     {targetType === "SPECIFIC_REGION" && (
                         <div className="pt-2">
                             <label className="block text-xs font-bold text-slate-800 mb-1">
-                                1. Region <span className="text-rose-500">*</span>
+                                Region <span className="text-rose-500">*</span>
                             </label>
                             <SearchableSelect
                                 options={regionOptions}
                                 value={selectedRegionId}
                                 onChange={(val) => setSelectedRegionId(val)}
-                                placeholder="-- Region --"
+                                placeholder="Select region"
                                 searchPlaceholder="Type region..."
                             />
                         </div>
@@ -916,25 +865,25 @@ export default function DataRequestCreateView({
                     {targetType === "ALL_ZONES" && (
                         <div className="pt-2">
                             <label className="block text-xs font-bold text-slate-800 mb-1">
-                                1. Region <span className="text-rose-500">*</span>
+                                Region <span className="text-rose-500">*</span>
                             </label>
                             <SearchableSelect
                                 options={regionOptions}
                                 value={selectedRegionId}
                                 onChange={(val) => setSelectedRegionId(val)}
-                                placeholder="-- Region --"
+                                placeholder="Select region"
                                 searchPlaceholder="Type region..."
                             />
                         </div>
                     )}
 
-                    {/* Drill-down: Specific Zone (Searchable Region -> Zone) */}
+                    {/* Drill-down: Specific Zone */}
                     {targetType === "SPECIFIC_ZONE" && (
                         <div className={`pt-2 grid grid-cols-1 ${userTier === "FEDERAL" ? "sm:grid-cols-2" : ""} gap-2.5`}>
                             {userTier === "FEDERAL" && (
                                 <div>
                                     <label className="block text-xs font-bold text-slate-800 mb-1">
-                                        1. Region <span className="text-rose-500">*</span>
+                                        Region <span className="text-rose-500">*</span>
                                     </label>
                                     <SearchableSelect
                                         options={regionOptions}
@@ -943,21 +892,21 @@ export default function DataRequestCreateView({
                                             setSelectedRegionId(val);
                                             setSelectedZoneId("");
                                         }}
-                                        placeholder="-- Region --"
+                                        placeholder="Select region"
                                         searchPlaceholder="Type region..."
                                     />
                                 </div>
                             )}
                             <div>
                                 <label className="block text-xs font-bold text-slate-800 mb-1">
-                                    {userTier === "FEDERAL" ? "2. Zone" : "1. Zone"} <span className="text-rose-500">*</span>
+                                    Zone <span className="text-rose-500">*</span>
                                 </label>
                                 <SearchableSelect
                                     options={zoneOptions}
                                     value={selectedZoneId}
                                     disabled={userTier === "FEDERAL" && !selectedRegionId}
                                     onChange={(val) => setSelectedZoneId(val)}
-                                    placeholder="-- Zone --"
+                                    placeholder="Select zone"
                                     searchPlaceholder="Type zone..."
                                 />
                             </div>
@@ -970,7 +919,7 @@ export default function DataRequestCreateView({
                             {userTier === "FEDERAL" && (
                                 <div>
                                     <label className="block text-xs font-bold text-slate-800 mb-1">
-                                        1. Region <span className="text-rose-500">*</span>
+                                        Region <span className="text-rose-500">*</span>
                                     </label>
                                     <SearchableSelect
                                         options={regionOptions}
@@ -979,34 +928,34 @@ export default function DataRequestCreateView({
                                             setSelectedRegionId(val);
                                             setSelectedZoneId("");
                                         }}
-                                        placeholder="-- Region --"
+                                        placeholder="Select region"
                                         searchPlaceholder="Type region..."
                                     />
                                 </div>
                             )}
                             <div>
                                 <label className="block text-xs font-bold text-slate-800 mb-1">
-                                    {userTier === "FEDERAL" ? "2. Zone" : "1. Zone"} <span className="text-rose-500">*</span>
+                                    Zone <span className="text-rose-500">*</span>
                                 </label>
                                 <SearchableSelect
                                     options={zoneOptions}
                                     value={selectedZoneId}
                                     disabled={userTier === "FEDERAL" && !selectedRegionId}
                                     onChange={(val) => setSelectedZoneId(val)}
-                                    placeholder="-- Zone --"
+                                    placeholder="Select zone"
                                     searchPlaceholder="Type zone..."
                                 />
                             </div>
                         </div>
                     )}
 
-                    {/* Drill-down: Specific Woreda (Searchable Region -> Zone -> Woreda) */}
+                    {/* Drill-down: Specific Woreda */}
                     {targetType === "SPECIFIC_WOREDA" && (
                         <div className={`pt-2 grid grid-cols-1 ${userTier === "FEDERAL" ? "sm:grid-cols-3" : userTier === "REGION" ? "sm:grid-cols-2" : ""} gap-2.5`}>
                             {userTier === "FEDERAL" && (
                                 <div>
                                     <label className="block text-xs font-bold text-slate-800 mb-1">
-                                        1. Region <span className="text-rose-500">*</span>
+                                        Region <span className="text-rose-500">*</span>
                                     </label>
                                     <SearchableSelect
                                         options={regionOptions}
@@ -1016,7 +965,7 @@ export default function DataRequestCreateView({
                                             setSelectedZoneId("");
                                             setSelectedWoredaId("");
                                         }}
-                                        placeholder="-- Region --"
+                                        placeholder="Select region"
                                         searchPlaceholder="Type region..."
                                     />
                                 </div>
@@ -1024,7 +973,7 @@ export default function DataRequestCreateView({
                             {(userTier === "FEDERAL" || userTier === "REGION") && (
                                 <div>
                                     <label className="block text-xs font-bold text-slate-800 mb-1">
-                                        {userTier === "FEDERAL" ? "2. Zone" : "1. Zone"} <span className="text-rose-500">*</span>
+                                        Zone <span className="text-rose-500">*</span>
                                     </label>
                                     <SearchableSelect
                                         options={zoneOptions}
@@ -1034,21 +983,21 @@ export default function DataRequestCreateView({
                                             setSelectedZoneId(val);
                                             setSelectedWoredaId("");
                                         }}
-                                        placeholder="-- Zone --"
+                                        placeholder="Select zone"
                                         searchPlaceholder="Type zone..."
                                     />
                                 </div>
                             )}
                             <div>
                                 <label className="block text-xs font-bold text-slate-800 mb-1">
-                                    {userTier === "FEDERAL" ? "3. Woreda" : userTier === "REGION" ? "2. Woreda" : "1. Woreda"} <span className="text-rose-500">*</span>
+                                    Woreda <span className="text-rose-500">*</span>
                                 </label>
                                 <SearchableSelect
                                     options={woredaOptions}
                                     value={selectedWoredaId}
                                     disabled={(userTier === "FEDERAL" || userTier === "REGION") && !selectedZoneId}
                                     onChange={(val) => setSelectedWoredaId(val)}
-                                    placeholder="-- Woreda --"
+                                    placeholder="Select woreda"
                                     searchPlaceholder="Type woreda..."
                                 />
                             </div>
@@ -1061,7 +1010,7 @@ export default function DataRequestCreateView({
                             {userTier === "FEDERAL" && (
                                 <div>
                                     <label className="block text-xs font-bold text-slate-800 mb-1">
-                                        1. Region <span className="text-rose-500">*</span>
+                                        Region <span className="text-rose-500">*</span>
                                     </label>
                                     <SearchableSelect
                                         options={regionOptions}
@@ -1071,7 +1020,7 @@ export default function DataRequestCreateView({
                                             setSelectedZoneId("");
                                             setSelectedWoredaId("");
                                         }}
-                                        placeholder="-- Region --"
+                                        placeholder="Select region"
                                         searchPlaceholder="Type region..."
                                     />
                                 </div>
@@ -1079,7 +1028,7 @@ export default function DataRequestCreateView({
                             {(userTier === "FEDERAL" || userTier === "REGION") && (
                                 <div>
                                     <label className="block text-xs font-bold text-slate-800 mb-1">
-                                        {userTier === "FEDERAL" ? "2. Zone" : "1. Zone"} <span className="text-rose-500">*</span>
+                                        Zone <span className="text-rose-500">*</span>
                                     </label>
                                     <SearchableSelect
                                         options={zoneOptions}
@@ -1089,21 +1038,21 @@ export default function DataRequestCreateView({
                                             setSelectedZoneId(val);
                                             setSelectedWoredaId("");
                                         }}
-                                        placeholder="-- Zone --"
+                                        placeholder="Select zone"
                                         searchPlaceholder="Type zone..."
                                     />
                                 </div>
                             )}
                             <div>
                                 <label className="block text-xs font-bold text-slate-800 mb-1">
-                                    {userTier === "FEDERAL" ? "3. Woreda" : userTier === "REGION" ? "2. Woreda" : "1. Woreda"} <span className="text-rose-500">*</span>
+                                    Woreda <span className="text-rose-500">*</span>
                                 </label>
                                 <SearchableSelect
                                     options={woredaOptions}
                                     value={selectedWoredaId}
                                     disabled={(userTier === "FEDERAL" || userTier === "REGION") && !selectedZoneId}
                                     onChange={(val) => setSelectedWoredaId(val)}
-                                    placeholder="-- Woreda --"
+                                    placeholder="Select woreda"
                                     searchPlaceholder="Type woreda..."
                                 />
                             </div>
@@ -1116,7 +1065,7 @@ export default function DataRequestCreateView({
                             {userTier === "FEDERAL" && (
                                 <div>
                                     <label className="block text-xs font-bold text-slate-800 mb-1">
-                                        1. Region <span className="text-rose-500">*</span>
+                                        Region <span className="text-rose-500">*</span>
                                     </label>
                                     <SearchableSelect
                                         options={regionOptions}
@@ -1127,7 +1076,7 @@ export default function DataRequestCreateView({
                                             setSelectedWoredaId("");
                                             setSelectedSchoolId("");
                                         }}
-                                        placeholder="-- Region --"
+                                        placeholder="Select region"
                                         searchPlaceholder="Type region..."
                                     />
                                 </div>
@@ -1136,7 +1085,7 @@ export default function DataRequestCreateView({
                             {(userTier === "FEDERAL" || userTier === "REGION") && (
                                 <div>
                                     <label className="block text-xs font-bold text-slate-800 mb-1">
-                                        {userTier === "FEDERAL" ? "2. Zone" : "1. Zone"} <span className="text-rose-500">*</span>
+                                        Zone <span className="text-rose-500">*</span>
                                     </label>
                                     <SearchableSelect
                                         options={zoneOptions}
@@ -1147,7 +1096,7 @@ export default function DataRequestCreateView({
                                             setSelectedWoredaId("");
                                             setSelectedSchoolId("");
                                         }}
-                                        placeholder="-- Zone --"
+                                        placeholder="Select zone"
                                         searchPlaceholder="Type zone..."
                                     />
                                 </div>
@@ -1156,7 +1105,7 @@ export default function DataRequestCreateView({
                             {(userTier === "FEDERAL" || userTier === "REGION" || userTier === "ZONE") && (
                                 <div>
                                     <label className="block text-xs font-bold text-slate-800 mb-1">
-                                        {userTier === "FEDERAL" ? "3. Woreda" : userTier === "REGION" ? "2. Woreda" : "1. Woreda"} <span className="text-rose-500">*</span>
+                                        Woreda <span className="text-rose-500">*</span>
                                     </label>
                                     <SearchableSelect
                                         options={woredaOptions}
@@ -1166,7 +1115,7 @@ export default function DataRequestCreateView({
                                             setSelectedWoredaId(val);
                                             setSelectedSchoolId("");
                                         }}
-                                        placeholder="-- Woreda --"
+                                        placeholder="Select woreda"
                                         searchPlaceholder="Type woreda..."
                                     />
                                 </div>
@@ -1174,43 +1123,33 @@ export default function DataRequestCreateView({
 
                             <div>
                                 <label className="block text-xs font-bold text-slate-800 mb-1">
-                                    {userTier === "FEDERAL" ? "4. School" : userTier === "REGION" ? "3. School" : userTier === "ZONE" ? "2. School" : "1. School"} <span className="text-rose-500">*</span>
+                                    School <span className="text-rose-500">*</span>
                                 </label>
                                 <SearchableSelect
                                     options={schoolOptions}
                                     value={selectedSchoolId}
                                     disabled={userTier !== "WOREDA" && !selectedWoredaId}
                                     onChange={(val) => setSelectedSchoolId(val)}
-                                    placeholder="-- School --"
+                                    placeholder="Select school"
                                     searchPlaceholder="Type school..."
                                 />
                             </div>
                         </div>
                     )}
 
-                    {/* Resolved Target Summary Banner */}
+                    {/* Resolved Target Scope Indicator */}
                     {resolvedTargetSummary && (
-                        <div className="p-3 bg-blue-50/70 border border-blue-200 rounded-xl flex items-center justify-between text-xs text-blue-900 mt-2">
-                            <div className="flex items-center gap-2">
-                                <CheckCircle2 className="w-4 h-4 text-blue-600 shrink-0" />
-                                <span>{resolvedTargetSummary.description}</span>
-                            </div>
-                            <span className="font-bold bg-white px-2.5 py-0.5 rounded-md border border-blue-200 text-blue-700 shadow-2xs">
-                                {resolvedTargetSummary.count} target unit(s)
+                        <div className="pt-2 text-xs text-slate-600 flex items-center justify-between border-t border-slate-100">
+                            <span>Target: <strong className="text-slate-800">{resolvedTargetSummary.description}</strong></span>
+                            <span className="font-semibold text-slate-900 tabular-nums">
+                                {resolvedTargetSummary.count} organization unit(s)
                             </span>
                         </div>
                     )}
                 </div>
-            </div>
 
-            {/* Section 2: Basic Information */}
-            <div className="bg-white border border-slate-200/90 rounded-2xl p-6 shadow-sm space-y-4">
-                <div className="pb-3 border-b border-slate-100">
-                    <h2 className="text-base font-bold text-slate-900">2. Data Request Details</h2>
-                    <p className="text-xs text-slate-500 mt-0.5">Define the title, purpose, priority, and timeline for this request.</p>
-                </div>
-
-                <div className="space-y-4">
+                {/* 2. Request Details */}
+                <div className="space-y-4 pb-6 border-b border-slate-200">
                     <div>
                         <label className="block text-xs font-bold text-slate-800 mb-1">
                             Data Request Title <span className="text-rose-500">*</span>
@@ -1220,7 +1159,7 @@ export default function DataRequestCreateView({
                             placeholder="e.g. 2026 National School ICT & Lab Equipment Survey"
                             value={title}
                             onChange={(e) => setTitle(e.target.value)}
-                            className="w-full border border-slate-300 rounded-lg p-2.5 text-xs focus:ring-1 focus:ring-blue-600 focus:outline-none font-medium text-slate-800"
+                            className="w-full border border-slate-300 rounded p-2 text-xs focus:ring-1 focus:ring-[#4085b3] focus:border-[#4085b3] text-slate-900"
                         />
                     </div>
 
@@ -1230,7 +1169,7 @@ export default function DataRequestCreateView({
                             <select
                                 value={priority}
                                 onChange={(e) => setPriority(e.target.value as any)}
-                                className="w-full border border-slate-300 rounded-lg p-2 text-xs focus:ring-1 focus:ring-blue-600 font-medium text-slate-800"
+                                className="w-full border border-slate-300 rounded p-2 text-xs focus:ring-1 focus:ring-[#4085b3] focus:border-[#4085b3] text-slate-800 bg-white"
                             >
                                 <option value="LOW">Low</option>
                                 <option value="NORMAL">Normal</option>
@@ -1247,7 +1186,7 @@ export default function DataRequestCreateView({
                                 type="date"
                                 value={startDate}
                                 onChange={(e) => setStartDate(e.target.value)}
-                                className="w-full border border-slate-300 rounded-lg p-2 text-xs focus:ring-1 focus:ring-blue-600 font-medium text-slate-800"
+                                className="w-full border border-slate-300 rounded p-2 text-xs focus:ring-1 focus:ring-[#4085b3] focus:border-[#4085b3] text-slate-800 bg-white"
                             />
                         </div>
 
@@ -1259,108 +1198,68 @@ export default function DataRequestCreateView({
                                 type="date"
                                 value={deadline}
                                 onChange={(e) => setDeadline(e.target.value)}
-                                className="w-full border border-slate-300 rounded-lg p-2 text-xs focus:ring-1 focus:ring-blue-600 font-medium text-slate-800"
+                                className="w-full border border-slate-300 rounded p-2 text-xs focus:ring-1 focus:ring-[#4085b3] focus:border-[#4085b3] text-slate-800 bg-white"
                             />
                         </div>
                     </div>
 
                     <div>
                         <label className="block text-xs font-bold text-slate-800 mb-1">
-                            Objective & Scope Description <span className="text-rose-500">*</span>
+                            Scope and Objective <span className="text-rose-500">*</span>
                         </label>
                         <textarea
                             rows={3}
-                            placeholder="Describe what information is being gathered and why (e.g. Assessment for nationwide high school computer lab modernization)..."
+                            placeholder="Describe what information is being gathered and why..."
                             value={objective}
                             onChange={(e) => setObjective(e.target.value)}
-                            className="w-full border border-slate-300 rounded-lg p-2.5 text-xs focus:ring-1 focus:ring-blue-600 focus:outline-none font-medium text-slate-800 resize-none"
+                            className="w-full border border-slate-300 rounded p-2 text-xs focus:ring-1 focus:ring-[#4085b3] focus:border-[#4085b3] text-slate-900 resize-none"
                         />
                     </div>
                 </div>
-            </div>
 
-            {/* Section 3: Google Forms Native Question Design */}
-            <div className="bg-white border border-slate-200/90 rounded-2xl p-6 shadow-sm space-y-4">
-                <div className="flex items-start justify-between gap-4 pb-3 border-b border-slate-100">
-                    <div>
-                        <div className="flex items-center gap-2">
-                            <h2 className="text-base font-bold text-slate-900">3. Question Design (Google Forms)</h2>
-                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-50 text-purple-700 border border-purple-200">
-                                Native Google Forms
-                            </span>
-                        </div>
-                        <p className="text-xs text-slate-500 mt-1">
-                            Questions are designed directly using Google Forms' native drag-and-drop editor.
-                        </p>
-                    </div>
-                    <div className="w-10 h-10 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center shrink-0 border border-purple-100">
-                        <FileSpreadsheet className="w-5 h-5" />
+                {/* 3. Form & Questionnaire */}
+                <div className="space-y-2">
+                    <label className="block text-xs font-bold text-slate-800">
+                        Form and Questionnaire
+                    </label>
+                    <p className="text-xs text-slate-600 leading-relaxed">
+                        An official Google Form will be automatically created in your connected Google account. You will receive an immediate link to add or reorder survey questions, and all responses submitted by schools will sync automatically into EduBridge.
+                    </p>
+                    <div className="pt-2 text-[11px] text-slate-500 flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block"></span>
+                        <span>Google Forms integration ready</span>
                     </div>
                 </div>
 
-                <div className="bg-slate-50/80 border border-slate-200/80 rounded-xl p-4 space-y-3">
-                    <div className="flex items-start gap-3">
-                        <Sparkles className="w-4 h-4 text-purple-600 mt-0.5 shrink-0" />
-                        <div className="space-y-1 text-xs">
-                            <p className="font-semibold text-slate-800">
-                                How question creation works:
-                            </p>
-                            <p className="text-slate-600 leading-relaxed">
-                                Once you click <strong>"Create & Generate Google Form"</strong> below, an official Google Form will be generated in your Google Drive. You can open it to add, reorder, and configure questions natively. EduBridge will automatically detect and import your questions whenever you switch back!
-                            </p>
-                        </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1 text-[11px]">
-                        <div className="bg-white border border-slate-200 rounded-lg p-2.5 text-center shadow-2xs">
-                            <span className="font-semibold text-slate-800 block">Short & Long Text</span>
-                            <span className="text-slate-400 text-[10px]">Open-ended text responses</span>
-                        </div>
-                        <div className="bg-white border border-slate-200 rounded-lg p-2.5 text-center shadow-2xs">
-                            <span className="font-semibold text-slate-800 block">Multiple Choice</span>
-                            <span className="text-slate-400 text-[10px]">Single & Checkboxes</span>
-                        </div>
-                        <div className="bg-white border border-slate-200 rounded-lg p-2.5 text-center shadow-2xs">
-                            <span className="font-semibold text-slate-800 block">Numbers & Dates</span>
-                            <span className="text-slate-400 text-[10px]">Numeric counts & time</span>
-                        </div>
-                        <div className="bg-white border border-slate-200 rounded-lg p-2.5 text-center shadow-2xs">
-                            <span className="font-semibold text-purple-700 block">Zero-Click Sync</span>
-                            <span className="text-slate-400 text-[10px]">Auto-syncs on tab switch</span>
-                        </div>
-                    </div>
+                {/* Form Footer Actions */}
+                <div className="pt-4 border-t border-slate-200 flex items-center justify-end gap-2">
+                    <button
+                        type="button"
+                        onClick={onBack}
+                        disabled={submitting}
+                        className="px-4 py-2 border border-slate-300 hover:bg-slate-50 text-slate-700 text-xs font-medium rounded transition-colors cursor-pointer"
+                    >
+                        Cancel
+                    </button>
+                    <button
+                        type="button"
+                        onClick={handleCreateAndGenerateGoogleForm}
+                        disabled={submitting}
+                        className="px-5 py-2 bg-[#4085b3] hover:bg-[#32698e] text-white text-xs font-semibold rounded transition-colors cursor-pointer disabled:opacity-50 inline-flex items-center gap-1.5"
+                    >
+                        {submitting ? (
+                            <>
+                                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                <span>{progressStatus || "Creating..."}</span>
+                            </>
+                        ) : (
+                            <>
+                                <FileSpreadsheet className="w-3.5 h-3.5" />
+                                <span>Create & Generate Form</span>
+                            </>
+                        )}
+                    </button>
                 </div>
-            </div>
-
-            {/* Submission Actions */}
-            <div className="flex items-center justify-end gap-3 pt-4">
-                <button
-                    type="button"
-                    onClick={onBack}
-                    disabled={submitting}
-                    className="px-5 py-2.5 bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 text-xs font-semibold rounded-xl transition-colors cursor-pointer"
-                >
-                    Cancel
-                </button>
-
-                <button
-                    type="button"
-                    onClick={handleCreateAndGenerateGoogleForm}
-                    disabled={submitting}
-                    className="inline-flex items-center gap-2 px-6 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-xs md:text-sm font-semibold rounded-xl transition-all cursor-pointer shadow-sm active:scale-95"
-                >
-                    {submitting ? (
-                        <>
-                            <Loader2 className="w-4 h-4 animate-spin" />
-                            <span>{progressStatus || "Creating..."}</span>
-                        </>
-                    ) : (
-                        <>
-                            <FileSpreadsheet className="w-4 h-4" />
-                            <span>Create & Generate Google Form</span>
-                        </>
-                    )}
-                </button>
             </div>
         </div>
     );
