@@ -306,12 +306,20 @@ export class DirectiveService {
 
         const issuedWithStats = await Promise.all(
             issuedDirectives.map(async d => {
-                const [readCount, acknowledgedCount] = await Promise.all([
+                const [readCount, acknowledgedCount, myAck] = await Promise.all([
                     prisma.directiveAcknowledgment.count({
                         where: { directiveId: d.id, isRead: true }
                     }),
                     prisma.directiveAcknowledgment.count({
                         where: { directiveId: d.id, isAcknowledged: true }
+                    }),
+                    prisma.directiveAcknowledgment.findUnique({
+                        where: {
+                            directiveId_organizationId: {
+                                directiveId: d.id,
+                                organizationId: actorScope.id
+                            }
+                        }
                     })
                 ]);
 
@@ -321,6 +329,14 @@ export class DirectiveService {
                     totalRecipients: d._count?.acknowledgments ?? 0,
                     readCount,
                     acknowledgedCount,
+                    userAcknowledgment: myAck
+                        ? {
+                              isRead: myAck.isRead,
+                              isAcknowledged: myAck.isAcknowledged,
+                              acknowledgedAt: myAck.acknowledgedAt,
+                              acknowledgmentNotes: myAck.acknowledgmentNotes
+                          }
+                        : null,
                     targetLevels: d.targetLevels,
                     cascadeDescendants: d.cascadeDescendants
                 };
@@ -576,6 +592,7 @@ export class DirectiveService {
 
         return {
             ...directive,
+            isIssuedByMe: isIssuer,
             userAcknowledgment,
             tracking
         };
