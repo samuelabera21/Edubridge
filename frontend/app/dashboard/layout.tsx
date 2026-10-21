@@ -2,7 +2,7 @@
 
 import { useState, useEffect, Suspense } from "react";
 import { useAuth } from "../../hooks/useAuth";
-import { Loader2, BookOpen, LogOut, LayoutDashboard, Building, Search, Lock, ChevronDown, ChevronRight, Calendar, Users, GraduationCap, ClipboardCheck, FileText, Settings, User, Megaphone, Bell, MessageSquare, Package, AlertOctagon, TrendingUp, HeartHandshake, BarChart2, Sparkles, Menu, Brain, Landmark, Layers, UserCheck } from "lucide-react";
+import { Loader2, BookOpen, LogOut, LayoutDashboard, Building, Search, Lock, ChevronDown, ChevronRight, Calendar, Users, GraduationCap, ClipboardCheck, FileText, Settings, User, Megaphone, Bell, MessageSquare, Package, AlertOctagon, TrendingUp, HeartHandshake, BarChart2, Sparkles, Menu, Brain, Landmark, Layers, UserCheck, Shield } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { fetchApi } from "../../lib/api";
@@ -392,6 +392,17 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
         }
     }, [isTeacherRoute, pathname, authData]);
 
+    useEffect(() => {
+        const originalHtmlOverflow = document.documentElement.style.overflow;
+        const originalBodyOverflow = document.body.style.overflow;
+        document.documentElement.style.overflow = "hidden";
+        document.body.style.overflow = "hidden";
+        return () => {
+            document.documentElement.style.overflow = originalHtmlOverflow;
+            document.body.style.overflow = originalBodyOverflow;
+        };
+    }, []);
+
     const toggleMenu = (key: string) => {
         setOpenMenus(prev => ({ ...prev, [key]: !prev[key] }));
     };
@@ -538,30 +549,61 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
     };
 
     return (
-        <div className="h-screen flex flex-col bg-[#f4f5f7] font-sans">
+        <div className="fixed inset-0 flex flex-col bg-[#f4f5f7] font-sans overflow-hidden">
+            {/* Top Federal Masthead Strip */}
+            <div className="bg-[#0b1c2d] text-slate-300 text-[11px] px-6 py-1.5 flex items-center justify-between border-b border-[#162f49] select-none shrink-0">
+                <div className="flex items-center space-x-2">
+                    <span className="font-semibold text-white tracking-wider uppercase text-[10px]">
+                        Federal Democratic Republic of Ethiopia
+                    </span>
+                    <span className="text-slate-500">•</span>
+                    <span className="text-slate-300">Ministry of Education</span>
+                </div>
+                <div className="hidden sm:flex items-center space-x-3 text-[10px] text-slate-400">
+                    <span className="font-medium text-slate-300">National EMIS Portal</span>
+                    <span className="text-slate-600">|</span>
+                    <span className="text-emerald-400 flex items-center gap-1 font-semibold">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                        Official System
+                    </span>
+                </div>
+            </div>
+
             {/* Top Navigation Bar */}
-            <header className="bg-white border-b border-gray-200 h-16 flex items-center justify-between px-6 z-10">
+            <header className="bg-white border-b border-gray-200 h-14 flex items-center justify-between px-6 z-10 shrink-0">
                 <div className="flex items-center space-x-3">
-                    <Link href="/dashboard" className="flex items-center space-x-2.5 group">
-                        <div className="w-8 h-8 rounded-lg bg-[#4085b3] flex items-center justify-center text-white shadow-xs transition-transform group-hover:scale-105">
+                    <Link href="/dashboard" className="flex items-center space-x-3 group">
+                        <div className="w-8 h-8 rounded-md bg-[#4085b3] flex items-center justify-center text-white shadow-xs transition-transform group-hover:scale-105">
                             <GraduationCap className="w-5 h-5" />
                         </div>
-                        <span className="text-lg font-bold text-slate-900 tracking-tight">
-                            Edu<span className="text-[#4085b3]">Bridge</span>
-                        </span>
+                        <div className="flex flex-col">
+                            <div className="flex items-center space-x-2">
+                                <span className="text-base font-bold text-slate-900 tracking-tight leading-none">
+                                    Edu<span className="text-[#4085b3]">Bridge</span>
+                                </span>
+                                <span className="text-[10px] font-bold text-slate-500 tracking-wider uppercase px-1.5 py-0.5 bg-slate-100 rounded border border-slate-200">
+                                    EMIS
+                                </span>
+                            </div>
+                            <span className="text-[10px] font-medium text-slate-500 tracking-normal mt-0.5">
+                                National Education Management Information System
+                            </span>
+                        </div>
                     </Link>
                 </div>
 
-                <div className="hidden md:flex items-center space-x-5">
-                    {/* Search Input */}
-                    <div className="relative">
-                        <input 
-                            type="text" 
-                            placeholder={isTeacherRoute ? "Search (students, classes, assignments...)" : "Search ..."} 
-                            className="bg-gray-100 border border-gray-200 text-xs rounded-xl pl-9 pr-4 py-2 focus:ring-2 focus:ring-blue-500 outline-none w-64 md:w-80 text-gray-700 placeholder-gray-400"
-                        />
-                        <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
-                    </div>
+                <div className="flex items-center space-x-4">
+                    {/* Teacher-specific search */}
+                    {isTeacherRoute && (
+                        <div className="relative">
+                            <input 
+                                type="text" 
+                                placeholder="Search (students, classes, assignments...)" 
+                                className="bg-slate-50 border border-slate-200 text-xs rounded-md pl-8 pr-3 py-1.5 focus:bg-white focus:border-[#4085b3] focus:ring-1 focus:ring-[#4085b3] outline-none w-64 text-slate-800 placeholder-slate-400 transition-colors"
+                            />
+                            <Search className="absolute left-2.5 top-2 h-3.5 w-3.5 text-slate-400" />
+                        </div>
+                    )}
 
                     {/* In-App Notifications Bell for All Roles */}
                     <div className="relative">
@@ -819,31 +861,40 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
                     <div className="relative border-l pl-4 border-gray-200">
                         <button 
                             onClick={() => setShowProfileDropdown(!showProfileDropdown)}
-                            className="flex items-center space-x-2.5 hover:opacity-80 transition-opacity focus:outline-none cursor-pointer"
+                            className="flex items-center space-x-2.5 hover:opacity-90 transition-opacity focus:outline-none cursor-pointer"
                         >
-                            <div className="w-8 h-8 rounded-full bg-[#4085b3] border border-white flex items-center justify-center text-white font-bold text-xs shadow-2xs">
-                                {authData?.user?.name ? authData.user.name.split(' ').map((n: string) => n[0]).join('') : "Y"}
+                            <div className="w-8 h-8 rounded-md bg-[#4085b3] border border-slate-200 flex items-center justify-center text-white font-bold text-xs shadow-xs">
+                                {authData?.user?.name ? authData.user.name.split(' ').map((n: string) => n[0]).join('') : "A"}
                             </div>
                             <div className="hidden sm:block text-left">
-                                <p className="text-xs font-bold text-gray-800 leading-tight">{authData?.user?.name || "Mr. Yohannes"}</p>
-                                <p className="text-[10px] text-gray-500 font-medium leading-tight">{isTeacherRoute ? "Teacher" : roleName}</p>
+                                <p className="text-xs font-bold text-slate-800 leading-tight">{authData?.user?.name || "Federal Administrator"}</p>
+                                <p className="text-[10px] text-slate-500 font-medium leading-tight">
+                                    {isTeacherRoute ? "Teacher" : isAdministrativeRoute ? "Federal Admin" : roleName}
+                                </p>
                             </div>
-                            <ChevronDown className={`w-3.5 h-3.5 text-gray-400 transition-transform ${showProfileDropdown ? "rotate-180" : ""}`} />
+                            <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform ${showProfileDropdown ? "rotate-180" : ""}`} />
                         </button>
 
                         {/* Dropdown Menu Popup */}
                         {showProfileDropdown && (
                             <div 
-                                className="absolute right-0 mt-3 w-56 bg-white rounded-2xl shadow-xl border border-gray-100 py-2 z-50 text-xs font-medium text-gray-700 animate-in fade-in slide-in-from-top-2 duration-150"
+                                className="absolute right-0 mt-3 w-60 bg-white rounded-lg shadow-lg border border-slate-200 py-2 z-50 text-xs font-medium text-slate-700 animate-in fade-in slide-in-from-top-2 duration-150"
                                 onMouseLeave={() => setShowProfileDropdown(false)}
                             >
                                 {/* Header info */}
-                                <div className="px-4 py-2.5 border-b border-gray-100 bg-gray-50/50">
-                                    <p className="font-bold text-gray-900 text-xs">{authData?.user?.name || "System Administrator"}</p>
-                                    <p className="text-[10px] text-gray-500 truncate">{authData?.user?.email || "admin@edubridge.local"}</p>
-                                    <span className="inline-block mt-1 px-2 py-0.5 bg-blue-50 text-[#4085b3] rounded font-bold text-[9px]">
-                                        {isTeacherRoute ? "TEACHER ROLE" : roleName}
-                                    </span>
+                                <div className="px-4 py-2.5 border-b border-slate-100 bg-slate-50/70">
+                                    <p className="font-bold text-slate-900 text-xs">{authData?.user?.name || "Federal Administrator"}</p>
+                                    <p className="text-[10px] text-slate-500 truncate mt-0.5">{authData?.user?.email || "admin@moe.gov.et"}</p>
+                                    <div className="mt-1.5 flex items-center gap-1.5">
+                                        <span className="inline-block px-2 py-0.5 bg-slate-100 text-slate-700 border border-slate-200 rounded font-semibold text-[9px] uppercase tracking-wider">
+                                            {isTeacherRoute ? "Teacher" : isAdministrativeRoute ? "Federal Admin" : roleName}
+                                        </span>
+                                        {isAdministrativeRoute && (
+                                            <span className="text-[10px] text-slate-400">
+                                                MoE Federal Desk
+                                            </span>
+                                        )}
+                                    </div>
                                 </div>
 
                                 {/* Teacher-specific Links */}
@@ -888,7 +939,7 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
                 </div>
             </header>
 
-            <div className="flex flex-1 overflow-hidden">
+            <div className="flex flex-1 overflow-hidden min-h-0">
                 {/* Sidebar */}
                 {isAdministrativeRoute || isFederalScope || isHierarchyAdminAccess(primaryAccess) ? (
                     <AdministrativeNavigation
@@ -897,7 +948,7 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
                     />
                 ) : isTeacherRoute ? (
                     <aside
-                        className={`bg-[#184973] border-r border-[#265e8e] flex flex-col hidden md:flex overflow-y-auto text-blue-100 font-sans shadow-lg shrink-0 transition-all duration-300 ease-in-out ${sidebarCollapsed ? "w-16" : "w-64"}`}
+                        className={`h-full bg-[#184973] border-r border-[#265e8e] flex flex-col hidden md:flex overflow-y-auto text-blue-100 font-sans shadow-lg shrink-0 transition-all duration-300 ease-in-out ${sidebarCollapsed ? "w-16" : "w-64"}`}
                         style={{ scrollbarWidth: "none", msOverflowStyle: "none" } as React.CSSProperties}
                     >
                         {/* Sidebar Header with collapse toggle */}
@@ -1226,7 +1277,7 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
                     <StudentNavigation collapsed={sidebarCollapsed} onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)} />
                 ) : (
                     <aside
-                        className={`bg-[#184973] border-r border-[#265e8e] flex flex-col hidden md:flex overflow-y-auto scrollbar-hide text-blue-100 font-sans shadow-lg shrink-0 transition-all duration-300 ease-in-out ${sidebarCollapsed ? "w-16" : "w-64"}`}
+                        className={`h-full bg-[#184973] border-r border-[#265e8e] flex flex-col hidden md:flex overflow-y-auto scrollbar-hide text-blue-100 font-sans shadow-lg shrink-0 transition-all duration-300 ease-in-out ${sidebarCollapsed ? "w-16" : "w-64"}`}
                         style={{ scrollbarWidth: "none", msOverflowStyle: "none" } as React.CSSProperties}
                     >
                         {/* Sidebar Header with collapse toggle */}
@@ -1826,7 +1877,7 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
                 )}
 
                 {/* Main Content Area */}
-                <main className="flex-1 flex flex-col overflow-y-auto">
+                <main className="flex-1 flex flex-col overflow-y-auto min-h-0 bg-[#f4f5f7]">
                     
                     {/* Page Content Padding */}
                     <div className={isTeacherRoute ? "p-4 md:p-6" : "p-6 md:p-8"}>
