@@ -398,7 +398,11 @@ export const getParentChildAttendance = async (req: Request, res: Response) => {
             return res.status(404).json({ error: "Parent profile not found" });
         }
 
-        const studentId = req.params.studentId;
+        const studentId = req.params.studentId as string;
+        if (!studentId) {
+            return res.status(400).json({ error: "Student ID is required" });
+        }
+
         const link = await prisma.parentStudent.findUnique({
             where: {
                 parentId_studentId: {
@@ -449,7 +453,11 @@ export const getParentChildAcademics = async (req: Request, res: Response) => {
             return res.status(404).json({ error: "Parent profile not found" });
         }
 
-        const studentId = req.params.studentId;
+        const studentId = req.params.studentId as string;
+        if (!studentId) {
+            return res.status(400).json({ error: "Student ID is required" });
+        }
+
         const link = await prisma.parentStudent.findUnique({
             where: {
                 parentId_studentId: {
@@ -500,7 +508,11 @@ export const getParentChildTeachers = async (req: Request, res: Response) => {
             return res.status(404).json({ error: "Parent profile not found" });
         }
 
-        const studentId = req.params.studentId;
+        const studentId = req.params.studentId as string;
+        if (!studentId) {
+            return res.status(400).json({ error: "Student ID is required" });
+        }
+
         const link = await prisma.parentStudent.findUnique({
             where: {
                 parentId_studentId: {
@@ -541,8 +553,7 @@ export const getParentChildTeachers = async (req: Request, res: Response) => {
                             select: {
                                 id: true,
                                 email: true,
-                                firstName: true,
-                                lastName: true
+                                name: true
                             }
                         }
                     }
@@ -553,14 +564,14 @@ export const getParentChildTeachers = async (req: Request, res: Response) => {
 
         const teachersMap = new Map<string, any>();
         assignments.forEach(asg => {
-            if (asg.teacher?.user) {
-                const userId = asg.teacher.user.id;
+            if (asg.teacher) {
+                const userId = asg.teacher.user?.id || asg.teacher.id;
                 if (!teachersMap.has(userId)) {
                     teachersMap.set(userId, {
-                        userId: asg.teacher.user.id,
+                        userId: asg.teacher.user?.id || asg.teacher.userId,
                         teacherId: asg.teacher.id,
-                        fullName: `${asg.teacher.firstName || asg.teacher.user.firstName} ${asg.teacher.lastName || asg.teacher.user.lastName}`,
-                        email: asg.teacher.user.email,
+                        fullName: `${asg.teacher.firstName || ""} ${asg.teacher.lastName || ""}`.trim() || asg.teacher.user?.name || "Teacher",
+                        email: asg.teacher.user?.email || asg.teacher.email || "",
                         subjects: [asg.subject.name],
                         isHomeroom: asg.sectionId === enrollment.sectionId
                     });
@@ -596,13 +607,27 @@ export const getParentMessages = async (req: Request, res: Response) => {
                 ]
             },
             include: {
-                sender: { select: { id: true, firstName: true, lastName: true, email: true } },
-                receiver: { select: { id: true, firstName: true, lastName: true, email: true } }
+                sender: { select: { id: true, name: true, email: true, image: true } },
+                receiver: { select: { id: true, name: true, email: true, image: true } }
             },
             orderBy: { createdAt: "asc" }
         });
 
-        return res.json(messages);
+        const formatted = messages.map(m => ({
+            ...m,
+            sender: m.sender ? {
+                ...m.sender,
+                firstName: m.sender.name?.split(" ")[0] || m.sender.name,
+                lastName: m.sender.name?.split(" ").slice(1).join(" ") || ""
+            } : null,
+            receiver: m.receiver ? {
+                ...m.receiver,
+                firstName: m.receiver.name?.split(" ")[0] || m.receiver.name,
+                lastName: m.receiver.name?.split(" ").slice(1).join(" ") || ""
+            } : null
+        }));
+
+        return res.json(formatted);
     } catch (error: any) {
         console.error("Error fetching parent messages:", error);
         return res.status(500).json({ error: error.message || "Failed to load messages" });
@@ -626,11 +651,27 @@ export const sendParentMessage = async (req: Request, res: Response) => {
         // Resolve organization
         let orgId = organizationId;
         if (!orgId) {
-            const user = await prisma.user.findUnique({
-                where: { id: userId },
+            const roleAssignment = await prisma.roleAssignment.findFirst({
+                where: { userId },
+                select: { scopeId: true }
+            });
+            orgId = roleAssignment?.scopeId;
+        }
+
+        if (!orgId) {
+            const enrollment = await prisma.studentEnrollment.findFirst({
+                where: {
+                    student: {
+                        parents: {
+                            some: {
+                                parent: { userId }
+                            }
+                        }
+                    }
+                },
                 select: { organizationId: true }
             });
-            orgId = user?.organizationId;
+            orgId = enrollment?.organizationId;
         }
 
         if (!orgId) {
@@ -647,12 +688,26 @@ export const sendParentMessage = async (req: Request, res: Response) => {
                 isRead: false
             },
             include: {
-                sender: { select: { id: true, firstName: true, lastName: true, email: true } },
-                receiver: { select: { id: true, firstName: true, lastName: true, email: true } }
+                sender: { select: { id: true, name: true, email: true, image: true } },
+                receiver: { select: { id: true, name: true, email: true, image: true } }
             }
         });
 
-        return res.status(201).json(message);
+        const formatted = {
+            ...message,
+            sender: message.sender ? {
+                ...message.sender,
+                firstName: message.sender.name?.split(" ")[0] || message.sender.name,
+                lastName: message.sender.name?.split(" ").slice(1).join(" ") || ""
+            } : null,
+            receiver: message.receiver ? {
+                ...message.receiver,
+                firstName: message.receiver.name?.split(" ")[0] || message.receiver.name,
+                lastName: message.receiver.name?.split(" ").slice(1).join(" ") || ""
+            } : null
+        };
+
+        return res.status(201).json(formatted);
     } catch (error: any) {
         console.error("Error sending parent message:", error);
         return res.status(500).json({ error: error.message || "Failed to send message" });
@@ -672,13 +727,22 @@ export const getParentAnnouncements = async (req: Request, res: Response) => {
                 ]
             },
             include: {
-                author: { select: { firstName: true, lastName: true, email: true } }
+                author: { select: { id: true, name: true, email: true } }
             },
             orderBy: { createdAt: "desc" },
             take: 20
         });
 
-        return res.json(announcements);
+        const formatted = announcements.map(a => ({
+            ...a,
+            author: a.author ? {
+                ...a.author,
+                firstName: a.author.name?.split(" ")[0] || a.author.name,
+                lastName: a.author.name?.split(" ").slice(1).join(" ") || ""
+            } : null
+        }));
+
+        return res.json(formatted);
     } catch (error: any) {
         console.error("Error fetching announcements:", error);
         return res.status(500).json({ error: error.message || "Failed to load announcements" });
@@ -744,7 +808,10 @@ export const requestParentMeeting = async (req: Request, res: Response) => {
 export const getParentChildActivities = async (req: Request, res: Response) => {
     try {
         const organizationId = (req as any).accessScope?.id;
-        const { studentId } = req.params;
+        const studentId = req.params.studentId as string;
+        if (!studentId) {
+            return res.status(400).json({ error: "Student ID is required" });
+        }
 
         const userEmail = req.user?.email;
         if (!userEmail) return res.status(401).json({ error: "Unauthorized" });
