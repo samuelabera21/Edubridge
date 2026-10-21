@@ -8,6 +8,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { fetchApi } from "../../lib/api";
 import { getPrimaryAccess, isHierarchyAdminAccess } from "../../lib/auth-access";
 import StudentNavigation from "./student/StudentNavigation";
+import ParentNavigation from "./parent/ParentNavigation";
 import AdministrativeNavigation from "../../components/governance/AdministrativeNavigation";
 
 
@@ -295,6 +296,7 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
     const isAdministrativeRoute = pathname.startsWith("/dashboard/federal") || pathname.startsWith("/dashboard/region") || pathname.startsWith("/dashboard/zone") || pathname.startsWith("/dashboard/woreda");
     const isTeacherRoute = (pathname === "/dashboard/teacher" || pathname.startsWith("/dashboard/teacher/")) && roleName === "TEACHER";
     const isStudentRoute = (pathname === "/dashboard/student" || pathname.startsWith("/dashboard/student/")) || roleName === "STUDENT";
+    const isParentRoute = (pathname === "/dashboard/parent" || pathname.startsWith("/dashboard/parent/")) || roleName === "PARENT";
 
     const loadNotifications = async () => {
         try {
@@ -799,7 +801,7 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
                             </div>
                             <div className="hidden sm:block text-left">
                                 <p className="text-xs font-bold text-gray-800 leading-tight">{authData?.user?.name || "Mr. Yohannes"}</p>
-                                <p className="text-[10px] text-gray-500 font-medium leading-tight">{isTeacherRoute ? "Teacher" : roleName}</p>
+                                <p className="text-[10px] text-gray-500 font-medium leading-tight">{isTeacherRoute ? "Teacher" : isStudentRoute ? "Student" : isParentRoute ? "Parent" : roleName}</p>
                             </div>
                             <ChevronDown className={`w-3.5 h-3.5 text-gray-400 transition-transform ${showProfileDropdown ? "rotate-180" : ""}`} />
                         </button>
@@ -1199,6 +1201,8 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
                     </aside>
                 ) : isStudentRoute ? (
                     <StudentNavigation collapsed={sidebarCollapsed} onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)} />
+                ) : isParentRoute ? (
+                    <ParentNavigation collapsed={sidebarCollapsed} onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)} />
                 ) : (
                     <aside
                         className={`bg-[#184973] border-r border-[#265e8e] flex flex-col hidden md:flex overflow-y-auto scrollbar-hide text-blue-100 font-sans shadow-lg shrink-0 transition-all duration-300 ease-in-out ${sidebarCollapsed ? "w-16" : "w-64"}`}
