@@ -511,38 +511,36 @@ function PlacementWorkspaceContent() {
 
     return (
         <div className="space-y-6 max-w-7xl mx-auto pb-12">
-            {/* Header */}
+            {/* Clean Government Header */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-4">
                 <div>
                     <div className="flex items-center gap-3">
-                        <div className="p-2 rounded-lg bg-[#4085b3]/10 text-[#4085b3]">
-                            <Layers className="w-5 h-5" />
-                        </div>
-                        <div>
-                            <h1 className="text-xl font-bold text-slate-900">Classroom Placement &amp; Roster Management</h1>
-                            <p className="text-xs text-slate-500 mt-0.5">
-                                Step 5: Assign enrolled students to sections, manage classroom occupancy, and maintain official rosters.
-                            </p>
-                        </div>
+                        <h1 className="text-xl font-bold text-slate-900">Classroom Placement</h1>
+                        <span className="text-xs font-medium px-2 py-0.5 rounded bg-slate-100 text-slate-700 border border-slate-200">
+                            {workspace?.schoolGrade?.grade?.name || currentGradeName}
+                        </span>
                     </div>
+                    <p className="text-xs text-slate-500 mt-1">
+                        Assign enrolled students to sections and manage classroom occupancy.
+                    </p>
                 </div>
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2.5">
                     <Link href="/dashboard/students/enrollments">
-                        <Button variant="outline" size="sm" className="text-slate-700 border-slate-300 hover:bg-slate-50">
+                        <button className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-700 bg-white border border-slate-300 rounded-md shadow-2xs hover:border-[#4085b3] hover:text-[#4085b3] hover:bg-[#4085b3]/5 transition-all duration-200 cursor-pointer">
                             Enrollment Ledger
-                        </Button>
+                        </button>
                     </Link>
                     <Link href="/dashboard/students">
-                        <Button variant="outline" size="sm" className="text-slate-700 border-slate-300 hover:bg-slate-50">
+                        <button className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-700 bg-white border border-slate-300 rounded-md shadow-2xs hover:border-[#4085b3] hover:text-[#4085b3] hover:bg-[#4085b3]/5 transition-all duration-200 cursor-pointer">
                             Student Directory
-                        </Button>
+                        </button>
                     </Link>
                 </div>
             </div>
 
             {/* Notification Banners */}
             {successMessage && (
-                <div className="p-3.5 bg-emerald-50 border border-emerald-200 rounded-lg text-emerald-800 text-xs flex items-center justify-between shadow-xs animate-in fade-in duration-200">
+                <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-md text-emerald-800 text-xs flex items-center justify-between animate-in fade-in duration-200">
                     <div className="flex items-center gap-2">
                         <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
                         <span className="font-medium">{successMessage}</span>
@@ -554,7 +552,7 @@ function PlacementWorkspaceContent() {
             )}
 
             {errorMessage && (
-                <div className="p-3.5 bg-rose-50 border border-rose-200 rounded-lg text-rose-800 text-xs flex items-center justify-between shadow-xs animate-in fade-in duration-200">
+                <div className="p-3 bg-rose-50 border border-rose-200 rounded-md text-rose-800 text-xs flex items-center justify-between animate-in fade-in duration-200">
                     <div className="flex items-center gap-2">
                         <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
                         <span className="font-medium">{errorMessage}</span>
@@ -566,161 +564,176 @@ function PlacementWorkspaceContent() {
             )}
 
             {isYearLocked && (
-                <div className="p-3.5 bg-amber-50 border border-amber-200 rounded-lg text-amber-900 text-xs flex items-center gap-2.5 shadow-xs">
+                <div className="p-3 bg-amber-50 border border-amber-200 rounded-md text-amber-900 text-xs flex items-center gap-2.5">
                     <Lock className="w-4 h-4 text-amber-600 shrink-0" />
                     <div>
-                        <span className="font-semibold">Academic Year is {currentYear?.status}:</span> Placement and reassignment mutations are strictly read-only for closed or archived sessions to preserve historical operational records.
+                        <span className="font-semibold">Academic Year is {currentYear?.status}:</span> Placement and reassignment are read-only for closed or archived sessions.
                     </div>
                 </div>
             )}
 
-            {/* Cohort Context Bar: Year & Grade Selectors */}
-            <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-xs">
-                <div className="flex flex-wrap items-center justify-between gap-4">
-                    <div className="flex flex-wrap items-center gap-4 w-full sm:w-auto">
-                        {/* Academic Year Selector */}
-                        <div className="flex items-center gap-2">
-                            <label className="text-xs font-semibold text-slate-700 whitespace-nowrap">
-                                Academic Year:
-                            </label>
-                            <select
-                                value={selectedYearId}
-                                onChange={(e) => setSelectedYearId(e.target.value)}
-                                className="text-xs bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 font-medium text-slate-800 focus:bg-white focus:outline-none focus:ring-1 focus:ring-[#4085b3] focus:border-[#4085b3]"
-                            >
-                                {years.map((y) => (
-                                    <option key={y.id} value={y.id}>
-                                        {y.name} {y.status === "ACTIVE" ? "(Active)" : `(${y.status.toLowerCase()})`}
-                                    </option>
-                                ))}
-                            </select>
-                        </div>
-
-                        {/* Grade Cohort Selector */}
-                        <div className="flex items-center gap-2">
-                            <label className="text-xs font-semibold text-slate-700 whitespace-nowrap">
-                                Grade Cohort:
-                            </label>
-                            <select
-                                value={selectedGradeId}
-                                onChange={(e) => setSelectedGradeId(e.target.value)}
-                                disabled={grades.length === 0}
-                                className="text-xs bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 font-medium text-slate-800 focus:bg-white focus:outline-none focus:ring-1 focus:ring-[#4085b3] focus:border-[#4085b3] disabled:opacity-50"
-                            >
-                                {grades.length === 0 ? (
-                                    <option value="">No grades configured</option>
-                                ) : (
-                                    grades.map((g) => (
-                                        <option key={g.id} value={g.id}>
-                                            {g.grade?.name || "Grade"}
-                                        </option>
-                                    ))
-                                )}
-                            </select>
-                        </div>
+            {/* Cohort Context Bar: Clean Inline Toolbar without Heavy Card Wrapper */}
+            <div className="flex flex-wrap items-center justify-between gap-3 text-xs">
+                <div className="flex flex-wrap items-center gap-3">
+                    <div className="flex items-center gap-2">
+                        <span className="text-xs font-medium text-slate-600 whitespace-nowrap">Academic Year:</span>
+                        <select
+                            value={selectedYearId}
+                            onChange={(e) => setSelectedYearId(e.target.value)}
+                            className="text-xs bg-white border border-slate-300 rounded-md px-2.5 py-1.5 font-medium text-slate-800 focus:outline-none focus:border-[#4085b3] hover:border-[#4085b3] shadow-xs transition-colors cursor-pointer"
+                        >
+                            {years.map((y) => (
+                                <option key={y.id} value={y.id}>
+                                    {y.name} {y.status === "ACTIVE" ? "(Active)" : `(${y.status.toLowerCase()})`}
+                                </option>
+                            ))}
+                        </select>
                     </div>
 
                     <div className="flex items-center gap-2">
-                        <Button 
-                            variant="outline" 
-                            size="sm" 
-                            onClick={loadWorkspace} 
-                            disabled={workspaceLoading || !selectedGradeId}
-                            className="text-xs border-slate-300 hover:bg-slate-50"
-                            leftIcon={<RotateCcw className={`w-3.5 h-3.5 ${workspaceLoading ? "animate-spin" : ""}`} />}
+                        <span className="text-xs font-medium text-slate-600 whitespace-nowrap">Grade Cohort:</span>
+                        <select
+                            value={selectedGradeId}
+                            onChange={(e) => setSelectedGradeId(e.target.value)}
+                            disabled={grades.length === 0}
+                            className="text-xs bg-white border border-slate-300 rounded-md px-2.5 py-1.5 font-medium text-slate-800 focus:outline-none focus:border-[#4085b3] hover:border-[#4085b3] shadow-xs disabled:opacity-50 transition-colors cursor-pointer"
                         >
-                            Refresh Workspace
-                        </Button>
+                            {grades.length === 0 ? (
+                                <option value="">No grades configured</option>
+                            ) : (
+                                grades.map((g) => (
+                                    <option key={g.id} value={g.id}>
+                                        {g.grade?.name || "Grade"}
+                                    </option>
+                                ))
+                            )}
+                        </select>
                     </div>
                 </div>
+
+                <button 
+                    onClick={loadWorkspace} 
+                    disabled={workspaceLoading || !selectedGradeId}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-700 bg-white border border-slate-300 rounded-md shadow-2xs hover:border-[#4085b3] hover:text-[#4085b3] hover:bg-[#4085b3]/5 transition-all duration-200 disabled:opacity-50 cursor-pointer"
+                >
+                    <RotateCcw className={`w-3.5 h-3.5 ${workspaceLoading ? "animate-spin" : ""}`} />
+                    <span>Refresh Workspace</span>
+                </button>
             </div>
 
-            {/* Placement KPI Summary Cards */}
+            {/* Placement KPI Summary Cards: Clean blue left-to-right hover fill */}
             {workspace && workspace.schoolGrade && (
-                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3.5">
+                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3">
                     {/* Total Enrolled */}
-                    <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-xs">
-                        <div className="flex items-center justify-between">
-                            <span className="text-xs font-medium text-slate-500">Total Enrolled</span>
-                            <Users className="w-4 h-4 text-slate-400" />
+                    <div className="relative overflow-hidden border border-slate-200 bg-white rounded-lg p-4 flex items-center justify-between group cursor-pointer shadow-2xs hover:border-[#4085b3] transition-all duration-300">
+                        <span className="absolute inset-0 bg-[#4085b3] origin-left scale-x-0 group-hover:scale-x-100 transition-transform duration-300 ease-out pointer-events-none" />
+                        <div className="relative z-10">
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 group-hover:text-blue-100 transition-colors duration-300 block mb-1">
+                                Total Enrolled
+                            </span>
+                            <div className="flex items-baseline gap-1.5">
+                                <span className="text-2xl font-bold text-slate-900 group-hover:text-white transition-colors duration-300 tabular-nums">
+                                    {workspace.summary.totalEnrolled}
+                                </span>
+                                <span className="text-xs font-normal text-slate-400 group-hover:text-blue-100 transition-colors duration-300">
+                                    students
+                                </span>
+                            </div>
+                            <span className="text-[10px] text-slate-400 group-hover:text-blue-100 transition-colors duration-300 block mt-0.5">
+                                {currentGradeName} intake
+                            </span>
                         </div>
-                        <div className="mt-2 flex items-baseline gap-2">
-                            <span className="text-2xl font-bold text-slate-900">{workspace.summary.totalEnrolled}</span>
-                            <span className="text-xs text-slate-500">students</span>
-                        </div>
-                        <p className="text-[11px] text-slate-400 mt-1">Total intake for {currentGradeName}</p>
+                        <Users className="relative z-10 w-5 h-5 text-slate-400 group-hover:text-white transition-colors duration-300 shrink-0" />
                     </div>
 
                     {/* Placed in Sections */}
-                    <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-xs">
-                        <div className="flex items-center justify-between">
-                            <span className="text-xs font-medium text-slate-500">Placed Cohort</span>
-                            <UserCheck className="w-4 h-4 text-emerald-500" />
+                    <div className="relative overflow-hidden border border-slate-200 bg-white rounded-lg p-4 flex items-center justify-between group cursor-pointer shadow-2xs hover:border-[#4085b3] transition-all duration-300">
+                        <span className="absolute inset-0 bg-[#4085b3] origin-left scale-x-0 group-hover:scale-x-100 transition-transform duration-300 ease-out pointer-events-none" />
+                        <div className="relative z-10">
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 group-hover:text-blue-100 transition-colors duration-300 block mb-1">
+                                Placed Cohort
+                            </span>
+                            <div className="flex items-baseline gap-1.5">
+                                <span className="text-2xl font-bold text-slate-900 group-hover:text-white transition-colors duration-300 tabular-nums">
+                                    {workspace.summary.totalPlaced}
+                                </span>
+                                <span className="text-xs font-normal text-slate-400 group-hover:text-blue-100 transition-colors duration-300">
+                                    placed
+                                </span>
+                            </div>
+                            <span className="text-[10px] text-slate-400 group-hover:text-blue-100 transition-colors duration-300 block mt-0.5">
+                                {workspace.summary.totalEnrolled > 0 
+                                    ? `${Math.round((workspace.summary.totalPlaced / workspace.summary.totalEnrolled) * 100)}% of cohort` 
+                                    : "0% of cohort"}
+                            </span>
                         </div>
-                        <div className="mt-2 flex items-baseline gap-2">
-                            <span className="text-2xl font-bold text-emerald-700">{workspace.summary.totalPlaced}</span>
-                            <span className="text-xs text-slate-500">placed</span>
-                        </div>
-                        <p className="text-[11px] text-slate-400 mt-1">
-                            {workspace.summary.totalEnrolled > 0 
-                                ? `${Math.round((workspace.summary.totalPlaced / workspace.summary.totalEnrolled) * 100)}% placed` 
-                                : "0%"}
-                        </p>
+                        <UserCheck className="relative z-10 w-5 h-5 text-slate-400 group-hover:text-white transition-colors duration-300 shrink-0" />
                     </div>
 
                     {/* Unplaced Students */}
-                    <div className={`border rounded-xl p-4 shadow-xs ${workspace.summary.totalUnplaced > 0 ? "bg-amber-50/50 border-amber-200" : "bg-white border-slate-200"}`}>
-                        <div className="flex items-center justify-between">
-                            <span className="text-xs font-medium text-slate-500">Unplaced Pool</span>
-                            <UserPlus className={`w-4 h-4 ${workspace.summary.totalUnplaced > 0 ? "text-amber-500" : "text-slate-400"}`} />
-                        </div>
-                        <div className="mt-2 flex items-baseline gap-2">
-                            <span className={`text-2xl font-bold ${workspace.summary.totalUnplaced > 0 ? "text-amber-800" : "text-slate-900"}`}>
-                                {workspace.summary.totalUnplaced}
+                    <div className="relative overflow-hidden border border-slate-200 bg-white rounded-lg p-4 flex items-center justify-between group cursor-pointer shadow-2xs hover:border-[#4085b3] transition-all duration-300">
+                        <span className="absolute inset-0 bg-[#4085b3] origin-left scale-x-0 group-hover:scale-x-100 transition-transform duration-300 ease-out pointer-events-none" />
+                        <div className="relative z-10">
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 group-hover:text-blue-100 transition-colors duration-300 block mb-1">
+                                Unplaced Pool
                             </span>
-                            <span className="text-xs text-slate-500">awaiting</span>
+                            <div className="flex items-baseline gap-1.5">
+                                <span className="text-2xl font-bold text-slate-900 group-hover:text-white transition-colors duration-300 tabular-nums">
+                                    {workspace.summary.totalUnplaced}
+                                </span>
+                                <span className="text-xs font-normal text-slate-400 group-hover:text-blue-100 transition-colors duration-300">
+                                    awaiting
+                                </span>
+                            </div>
+                            <span className="text-[10px] text-slate-400 group-hover:text-blue-100 transition-colors duration-300 block mt-0.5">
+                                {workspace.summary.totalUnplaced > 0 ? "Require section" : "All placed"}
+                            </span>
                         </div>
-                        <p className="text-[11px] text-slate-500 mt-1">
-                            {workspace.summary.totalUnplaced > 0 ? "Require section placement" : "All students placed"}
-                        </p>
+                        <UserPlus className="relative z-10 w-5 h-5 text-slate-400 group-hover:text-white transition-colors duration-300 shrink-0" />
                     </div>
 
                     {/* Sections Count */}
-                    <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-xs">
-                        <div className="flex items-center justify-between">
-                            <span className="text-xs font-medium text-slate-500">Active Sections</span>
-                            <Layers className="w-4 h-4 text-[#4085b3]" />
+                    <div className="relative overflow-hidden border border-slate-200 bg-white rounded-lg p-4 flex items-center justify-between group cursor-pointer shadow-2xs hover:border-[#4085b3] transition-all duration-300">
+                        <span className="absolute inset-0 bg-[#4085b3] origin-left scale-x-0 group-hover:scale-x-100 transition-transform duration-300 ease-out pointer-events-none" />
+                        <div className="relative z-10">
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 group-hover:text-blue-100 transition-colors duration-300 block mb-1">
+                                Active Sections
+                            </span>
+                            <div className="flex items-baseline gap-1.5">
+                                <span className="text-2xl font-bold text-slate-900 group-hover:text-white transition-colors duration-300 tabular-nums">
+                                    {workspace.summary.totalSections}
+                                </span>
+                                <span className="text-xs font-normal text-slate-400 group-hover:text-blue-100 transition-colors duration-300">
+                                    sections
+                                </span>
+                            </div>
+                            <span className="text-[10px] text-slate-400 group-hover:text-blue-100 transition-colors duration-300 block mt-0.5">
+                                {workspace.summary.fullSectionsCount > 0 ? `${workspace.summary.fullSectionsCount} full` : "Open seats"}
+                            </span>
                         </div>
-                        <div className="mt-2 flex items-baseline gap-2">
-                            <span className="text-2xl font-bold text-slate-900">{workspace.summary.totalSections}</span>
-                            <span className="text-xs text-slate-500">sections</span>
-                        </div>
-                        <p className="text-[11px] text-slate-400 mt-1">
-                            {workspace.summary.fullSectionsCount > 0 ? `${workspace.summary.fullSectionsCount} at full capacity` : "All have seats"}
-                        </p>
+                        <Layers className="relative z-10 w-5 h-5 text-slate-400 group-hover:text-white transition-colors duration-300 shrink-0" />
                     </div>
 
                     {/* Capacity Utilization */}
-                    <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-xs col-span-2 sm:col-span-1">
-                        <div className="flex items-center justify-between">
-                            <span className="text-xs font-medium text-slate-500">Capacity Utilization</span>
-                            <ShieldCheck className="w-4 h-4 text-slate-400" />
+                    <div className="relative overflow-hidden border border-slate-200 bg-white rounded-lg p-4 group cursor-pointer shadow-2xs hover:border-[#4085b3] transition-all duration-300 col-span-2 sm:col-span-1 flex flex-col justify-between">
+                        <span className="absolute inset-0 bg-[#4085b3] origin-left scale-x-0 group-hover:scale-x-100 transition-transform duration-300 ease-out pointer-events-none" />
+                        <div className="relative z-10 flex items-center justify-between">
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 group-hover:text-blue-100 transition-colors duration-300 block">
+                                Capacity
+                            </span>
+                            <ShieldCheck className="w-5 h-5 text-slate-400 group-hover:text-white transition-colors duration-300 shrink-0" />
                         </div>
-                        <div className="mt-2 flex items-baseline gap-1">
-                            <span className="text-2xl font-bold text-slate-900">{workspace.summary.totalOccupancy}</span>
-                            <span className="text-xs text-slate-500">
+                        <div className="relative z-10 mt-1 flex items-baseline gap-1">
+                            <span className="text-2xl font-bold text-slate-900 group-hover:text-white transition-colors duration-300 tabular-nums">
+                                {workspace.summary.totalOccupancy}
+                            </span>
+                            <span className="text-xs font-normal text-slate-400 group-hover:text-blue-100 transition-colors duration-300">
                                 / {workspace.summary.totalCapacity !== null ? workspace.summary.totalCapacity : "∞"}
                             </span>
                         </div>
-                        <div className="w-full bg-slate-100 rounded-full h-1.5 mt-2">
+                        <div className="relative z-10 w-full bg-slate-100 group-hover:bg-white/30 rounded-full h-1.5 mt-2 overflow-hidden transition-colors duration-300">
                             <div 
-                                className={`h-1.5 rounded-full transition-all ${
-                                    workspace.summary.totalCapacity && workspace.summary.totalOccupancy >= workspace.summary.totalCapacity
-                                        ? "bg-rose-500"
-                                        : workspace.summary.totalCapacity && (workspace.summary.totalOccupancy / workspace.summary.totalCapacity) > 0.85
-                                        ? "bg-amber-500"
-                                        : "bg-emerald-500"
-                                }`}
+                                className="h-1.5 rounded-full bg-[#4085b3] group-hover:bg-white transition-all duration-300"
                                 style={{ 
                                     width: workspace.summary.totalCapacity 
                                         ? `${Math.min(100, (workspace.summary.totalOccupancy / workspace.summary.totalCapacity) * 100)}%` 
@@ -741,36 +754,31 @@ function PlacementWorkspaceContent() {
                     message="Please select an academic year and grade cohort to load the placement workspace." 
                 />
             ) : (
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
                     
-                    {/* LEFT PANEL: Unplaced Student Cohort (Col 7 on large screens) */}
-                    <div className="lg:col-span-7 space-y-4">
-                        <div className="bg-white border border-slate-200 rounded-xl shadow-xs overflow-hidden">
+                    {/* LEFT PANEL: Unplaced Students Pool (Col 7 on large screens) */}
+                    <div className="lg:col-span-7">
+                        <div className="bg-white border border-slate-200 rounded-lg shadow-xs overflow-hidden">
                             {/* Panel Header */}
-                            <div className="p-4 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-50/50">
-                                <div>
-                                    <div className="flex items-center gap-2">
-                                        <h2 className="text-sm font-bold text-slate-900">Unplaced Students Pool</h2>
-                                        <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-800 border border-amber-200">
-                                            {workspace.unplacedStudents.length} awaiting
-                                        </span>
-                                    </div>
-                                    <p className="text-xs text-slate-500 mt-0.5">
-                                        Students officially enrolled in {workspace.schoolGrade?.grade?.name || currentGradeName} who have not yet been assigned to a classroom section.
-                                    </p>
+                            <div className="px-4 py-3 border-b border-slate-200 flex items-center justify-between bg-white">
+                                <div className="flex items-center gap-2">
+                                    <h2 className="text-sm font-bold text-slate-900">Unplaced Students Pool</h2>
+                                    <span className="px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-700 border border-slate-200">
+                                        {workspace.unplacedStudents.length} awaiting
+                                    </span>
                                 </div>
                             </div>
 
                             {/* Search & Filter Controls */}
-                            <div className="p-3 border-b border-slate-100 bg-white flex flex-wrap items-center justify-between gap-2.5">
+                            <div className="px-4 py-2.5 border-b border-slate-100 bg-slate-50/50 flex flex-wrap items-center justify-between gap-2.5">
                                 <div className="relative flex-1 min-w-[200px]">
-                                    <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                                    <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
                                     <input
                                         type="text"
-                                        placeholder="Search unplaced students by name or STU-ID..."
+                                        placeholder="Search by student name or STU-ID..."
                                         value={searchQuery}
                                         onChange={(e) => setSearchQuery(e.target.value)}
-                                        className="w-full pl-9 pr-3 py-1.5 text-xs bg-slate-50 border border-slate-300 rounded-lg text-slate-900 placeholder:text-slate-400 focus:bg-white focus:outline-none focus:ring-1 focus:ring-[#4085b3]"
+                                        className="w-full pl-8 pr-8 py-1.5 text-xs bg-white border border-slate-300 rounded-md text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-[#4085b3]"
                                     />
                                     {searchQuery && (
                                         <button 
@@ -784,15 +792,14 @@ function PlacementWorkspaceContent() {
 
                                 {/* Gender Filter */}
                                 <div className="flex items-center gap-1 text-xs">
-                                    <span className="text-slate-400 text-[11px] mr-1">Gender:</span>
                                     {(["ALL", "MALE", "FEMALE"] as const).map((g) => (
                                         <button
                                             key={g}
                                             onClick={() => setGenderFilter(g)}
-                                            className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition-colors ${
+                                            className={`px-2.5 py-1 rounded text-xs font-medium transition-all duration-200 cursor-pointer ${
                                                 genderFilter === g
-                                                    ? "bg-slate-900 text-white"
-                                                    : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                                                    ? "bg-[#4085b3] text-white shadow-2xs"
+                                                    : "bg-white border border-slate-200 text-slate-600 hover:border-[#4085b3] hover:text-[#4085b3] hover:bg-[#4085b3]/5"
                                             }`}
                                         >
                                             {g === "ALL" ? "All" : g === "MALE" ? "Male" : "Female"}
@@ -803,16 +810,16 @@ function PlacementWorkspaceContent() {
 
                             {/* Bulk Action Toolbar (When 1 or more checked) */}
                             {selectedEnrollmentIds.length > 0 && (
-                                <div className="p-3 bg-[#4085b3]/5 border-b border-[#4085b3]/20 flex flex-wrap items-center justify-between gap-3 text-xs">
+                                <div className="px-4 py-2 bg-slate-50 border-b border-slate-200 flex flex-wrap items-center justify-between gap-3 text-xs">
                                     <div className="flex items-center gap-2">
-                                        <span className="font-semibold text-[#4085b3]">
+                                        <span className="font-semibold text-slate-800">
                                             {selectedEnrollmentIds.length} student{selectedEnrollmentIds.length > 1 ? "s" : ""} selected
                                         </span>
                                         <button 
                                             onClick={() => setSelectedEnrollmentIds([])}
-                                            className="text-slate-500 hover:text-slate-700 underline text-[11px]"
+                                            className="text-slate-500 hover:text-[#4085b3] underline text-[11px] cursor-pointer transition-colors"
                                         >
-                                            Clear selection
+                                            Clear
                                         </button>
                                     </div>
 
@@ -821,7 +828,7 @@ function PlacementWorkspaceContent() {
                                             value={bulkTargetSectionId}
                                             onChange={(e) => setBulkTargetSectionId(e.target.value)}
                                             disabled={isYearLocked || actionLoading}
-                                            className="text-xs bg-white border border-[#4085b3]/40 rounded-lg px-3 py-1.5 font-medium text-slate-800 focus:outline-none focus:ring-1 focus:ring-[#4085b3]"
+                                            className="text-xs bg-white border border-slate-300 rounded-md px-2.5 py-1 font-medium text-slate-800 focus:outline-none focus:border-[#4085b3]"
                                         >
                                             <option value="">Choose Target Section...</option>
                                             {workspace.sections
@@ -837,28 +844,28 @@ function PlacementWorkspaceContent() {
                                             size="sm"
                                             disabled={!bulkTargetSectionId || isYearLocked || actionLoading}
                                             onClick={() => handleBulkAssign()}
-                                            className="bg-[#4085b3] hover:bg-[#32698e] text-white text-xs font-medium"
+                                            className="bg-[#4085b3] hover:bg-[#32698e] text-white text-xs font-medium py-1 px-3 h-auto"
                                         >
-                                            {actionLoading ? "Placing..." : `Place ${selectedEnrollmentIds.length} Selected`}
+                                            {actionLoading ? "Placing..." : `Place (${selectedEnrollmentIds.length})`}
                                         </Button>
                                     </div>
                                 </div>
                             )}
 
-                            {/* Unplaced Students List */}
+                            {/* Unplaced Students List Table */}
                             {filteredUnplacedStudents.length === 0 ? (
                                 <div className="p-8 text-center">
-                                    <div className="w-12 h-12 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto mb-3">
-                                        <CheckCircle2 className="w-6 h-6" />
+                                    <div className="w-10 h-10 rounded-full bg-slate-100 text-[#4085b3] flex items-center justify-center mx-auto mb-2.5">
+                                        <CheckCircle2 className="w-5 h-5" />
                                     </div>
-                                    <h3 className="text-sm font-semibold text-slate-900">
+                                    <h3 className="text-xs font-semibold text-slate-900">
                                         {workspace.unplacedStudents.length === 0 
-                                            ? "All Students in this Grade are Placed!" 
+                                            ? "All Students in this Grade are Placed" 
                                             : "No students match your filter"}
                                     </h3>
-                                    <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
+                                    <p className="text-[11px] text-slate-500 mt-0.5">
                                         {workspace.unplacedStudents.length === 0 
-                                            ? `Every student enrolled in ${workspace.schoolGrade?.grade?.name || currentGradeName} is currently assigned to a section.` 
+                                            ? "Every student is assigned to a section." 
                                             : "Try adjusting your search query or gender filter."}
                                     </p>
                                 </div>
@@ -866,7 +873,7 @@ function PlacementWorkspaceContent() {
                                 <div className="overflow-x-auto">
                                     <table className="w-full text-left text-xs border-collapse">
                                         <thead>
-                                            <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 font-semibold">
+                                            <tr className="bg-slate-50/80 border-b border-slate-200 text-slate-600 font-semibold text-[11px]">
                                                 <th className="py-2.5 px-3 w-10 text-center">
                                                     <input
                                                         type="checkbox"
@@ -879,7 +886,7 @@ function PlacementWorkspaceContent() {
                                                 <th className="py-2.5 px-3">Student Name</th>
                                                 <th className="py-2.5 px-3">Student ID</th>
                                                 <th className="py-2.5 px-3">Gender</th>
-                                                <th className="py-2.5 px-3">Intake Type</th>
+                                                <th className="py-2.5 px-3">Intake</th>
                                                 <th className="py-2.5 px-3 text-right">Placement Action</th>
                                             </tr>
                                         </thead>
@@ -910,51 +917,43 @@ function PlacementWorkspaceContent() {
                                                         </td>
                                                         <td className="py-2.5 px-3">
                                                             <div className="font-semibold text-slate-900">{fullName}</div>
-                                                            <span className="text-[11px] text-slate-400">
-                                                                {dob ? `DOB: ${new Date(dob).toLocaleDateString()}` : "Active"}
-                                                            </span>
+                                                            {dob && (
+                                                                <span className="text-[11px] text-slate-400">
+                                                                    DOB: {new Date(dob).toLocaleDateString()}
+                                                                </span>
+                                                            )}
                                                         </td>
                                                         <td className="py-2.5 px-3 font-mono text-slate-600">
                                                             {studentId}
                                                         </td>
-                                                        <td className="py-2.5 px-3">
-                                                            <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold ${
-                                                                gender === "FEMALE" 
-                                                                    ? "bg-purple-50 text-purple-700 border border-purple-200" 
-                                                                    : "bg-blue-50 text-blue-700 border border-blue-200"
-                                                            }`}>
-                                                                {gender}
-                                                            </span>
+                                                        <td className="py-2.5 px-3 capitalize text-slate-700">
+                                                            {gender ? gender.toLowerCase() : "—"}
                                                         </td>
-                                                        <td className="py-2.5 px-3">
-                                                            <span className="text-[11px] font-medium text-slate-600 px-2 py-0.5 rounded bg-slate-100">
-                                                                {item.enrollmentType}
-                                                            </span>
+                                                        <td className="py-2.5 px-3 text-slate-600">
+                                                            {item.enrollmentType}
                                                         </td>
                                                         <td className="py-2.5 px-3 text-right">
-                                                            <div className="inline-flex items-center gap-1.5">
-                                                                <select
-                                                                    id={`place-select-${item.enrollmentId}`}
-                                                                    defaultValue=""
-                                                                    disabled={isYearLocked || actionLoading}
-                                                                    onChange={(e) => {
-                                                                        if (e.target.value) {
-                                                                            handleAssignSingle(item.enrollmentId, e.target.value);
-                                                                            e.target.value = "";
-                                                                        }
-                                                                    }}
-                                                                    className="text-xs bg-slate-50 border border-slate-300 rounded px-2 py-1 font-medium text-slate-700 focus:outline-none focus:border-[#4085b3] disabled:opacity-50"
-                                                                >
-                                                                    <option value="" disabled>Assign to...</option>
-                                                                    {workspace.sections
-                                                                        .filter(s => s.status === "ACTIVE" && (!s.isFull))
-                                                                        .map(s => (
-                                                                            <option key={s.id} value={s.id}>
-                                                                                {s.name} ({s.remainingCapacity !== null ? `${s.remainingCapacity} seats` : "Open"})
-                                                                            </option>
-                                                                        ))}
-                                                                </select>
-                                                            </div>
+                                                            <select
+                                                                id={`place-select-${item.enrollmentId}`}
+                                                                defaultValue=""
+                                                                disabled={isYearLocked || actionLoading}
+                                                                onChange={(e) => {
+                                                                    if (e.target.value) {
+                                                                        handleAssignSingle(item.enrollmentId, e.target.value);
+                                                                        e.target.value = "";
+                                                                    }
+                                                                }}
+                                                                className="text-xs bg-white border border-slate-300 rounded px-2.5 py-1 font-medium text-slate-700 focus:outline-none focus:border-[#4085b3] hover:border-slate-400 disabled:opacity-50 cursor-pointer shadow-xs"
+                                                            >
+                                                                <option value="" disabled>Assign to...</option>
+                                                                {workspace.sections
+                                                                    .filter(s => s.status === "ACTIVE" && (!s.isFull))
+                                                                    .map(s => (
+                                                                        <option key={s.id} value={s.id}>
+                                                                            {s.name} ({s.remainingCapacity !== null ? `${s.remainingCapacity} seats` : "Open"})
+                                                                        </option>
+                                                                    ))}
+                                                            </select>
                                                         </td>
                                                     </tr>
                                                 );
@@ -966,18 +965,13 @@ function PlacementWorkspaceContent() {
                         </div>
                     </div>
 
-                    {/* RIGHT PANEL: Grade Sections & Occupancy (Col 5 on large screens) */}
-                    <div className="lg:col-span-5 space-y-4">
-                        <div className="bg-white border border-slate-200 rounded-xl shadow-xs overflow-hidden">
+                    {/* RIGHT PANEL: Configured Sections (Col 5 on large screens) */}
+                    <div className="lg:col-span-5">
+                        <div className="bg-white border border-slate-200 rounded-lg shadow-xs overflow-hidden">
                             {/* Panel Header */}
-                            <div className="p-4 border-b border-slate-200 flex items-center justify-between bg-slate-50/50">
-                                <div>
-                                    <h2 className="text-sm font-bold text-slate-900">Configured Sections</h2>
-                                    <p className="text-xs text-slate-500 mt-0.5">
-                                        Real-time section occupancy and official rosters for {workspace.schoolGrade?.grade?.name || currentGradeName}.
-                                    </p>
-                                </div>
-                                <span className="text-xs font-semibold px-2 py-0.5 rounded bg-slate-200 text-slate-700">
+                            <div className="px-4 py-3 border-b border-slate-200 flex items-center justify-between bg-white">
+                                <h2 className="text-sm font-bold text-slate-900">Configured Sections</h2>
+                                <span className="text-xs font-medium px-2 py-0.5 rounded bg-slate-100 text-slate-700 border border-slate-200">
                                     {workspace.sections.length} sections
                                 </span>
                             </div>
@@ -985,14 +979,14 @@ function PlacementWorkspaceContent() {
                             {/* Section Cards */}
                             {workspace.sections.length === 0 ? (
                                 <div className="p-8 text-center">
-                                    <Layers className="w-10 h-10 text-slate-300 mx-auto mb-2" />
+                                    <Layers className="w-8 h-8 text-slate-300 mx-auto mb-2" />
                                     <p className="text-xs font-semibold text-slate-700">No Sections Found</p>
-                                    <p className="text-[11px] text-slate-500 mt-1">
-                                        Configure sections for {workspace.schoolGrade?.grade?.name || currentGradeName} in School Configuration (Step 2).
+                                    <p className="text-[11px] text-slate-500 mt-0.5">
+                                        Configure sections for {workspace.schoolGrade?.grade?.name || currentGradeName} in Academics.
                                     </p>
                                 </div>
                             ) : (
-                                <div className="p-4 space-y-3">
+                                <div className="p-3.5 space-y-2.5">
                                     {workspace.sections.map((section) => {
                                         const isInactive = section.status !== "ACTIVE";
                                         const hasCapacity = section.capacity !== null;
@@ -1004,31 +998,30 @@ function PlacementWorkspaceContent() {
                                         return (
                                             <div 
                                                 key={section.id} 
-                                                className={`border rounded-xl p-4 transition-all ${
+                                                className={`border rounded-lg p-3.5 transition-all duration-200 ${
                                                     section.isFull 
-                                                        ? "bg-slate-50/80 border-slate-200" 
+                                                        ? "bg-slate-50/60 border-slate-200" 
                                                         : isInactive 
-                                                        ? "bg-slate-100/50 border-slate-200 opacity-70"
-                                                        : "bg-white border-slate-200 hover:border-slate-300 shadow-xs"
+                                                        ? "bg-slate-50 border-slate-200 opacity-60"
+                                                        : "bg-white border-slate-200 hover:border-[#4085b3] hover:shadow-2xs"
                                                 }`}
                                             >
                                                 <div className="flex items-start justify-between gap-2">
                                                     <div>
                                                         <div className="flex items-center gap-2">
-                                                            <h3 className="text-base font-bold text-slate-900">{section.name}</h3>
-                                                            <span className={`px-2 py-0.5 rounded text-[10px] font-semibold ${
+                                                            <h3 className="text-sm font-bold text-slate-900">Section {section.name}</h3>
+                                                            <span className={`px-2 py-0.5 rounded text-[10px] font-medium ${
                                                                 isInactive
-                                                                    ? "bg-slate-200 text-slate-600"
+                                                                    ? "bg-slate-100 text-slate-600"
                                                                     : section.isFull
-                                                                    ? "bg-rose-100 text-rose-800"
-                                                                    : "bg-emerald-100 text-emerald-800"
-                                                            }`}>
+                                                                    ? "bg-rose-50 text-rose-700 border border-rose-200"
+                                                                    : "bg-slate-100 text-slate-700 border border-slate-200"
+                                                             }`}>
                                                                 {isInactive ? "Inactive" : section.isFull ? "Full" : "Available"}
                                                             </span>
                                                         </div>
-                                                        <p className="text-xs text-slate-500 mt-1 flex items-center gap-1.5">
-                                                            <span>Homeroom:</span>
-                                                            <strong className="text-slate-700 font-medium">
+                                                        <p className="text-xs text-slate-500 mt-1">
+                                                            Homeroom: <strong className="text-slate-700 font-medium">
                                                                 {section.homeroomTeacher 
                                                                     ? `${section.homeroomTeacher.firstName} ${section.homeroomTeacher.fatherName}` 
                                                                     : "Unassigned"}
@@ -1036,34 +1029,28 @@ function PlacementWorkspaceContent() {
                                                         </p>
                                                     </div>
 
-                                                    {/* Occupancy Badge */}
+                                                    {/* Occupancy Indicator */}
                                                     <div className="text-right">
-                                                        <div className="text-sm font-bold text-slate-900">
+                                                        <div className="text-xs font-bold text-slate-900">
                                                             {section.occupancy} 
-                                                            <span className="text-xs text-slate-500 font-normal">
+                                                            <span className="text-[11px] text-slate-500 font-normal">
                                                                 {hasCapacity ? ` / ${section.capacity}` : " enrolled"}
                                                             </span>
                                                         </div>
-                                                        <span className={`text-[11px] font-medium ${
-                                                            section.isFull 
-                                                                ? "text-rose-600 font-semibold" 
-                                                                : remaining !== null && remaining <= 3 
-                                                                ? "text-amber-600 font-medium" 
-                                                                : "text-emerald-700 font-medium"
-                                                        }`}>
+                                                        <span className="text-[11px] text-slate-500">
                                                             {section.isFull 
                                                                 ? "No seats left" 
                                                                 : remaining !== null 
-                                                                ? `${remaining} seat${remaining === 1 ? "" : "s"} left` 
-                                                                : "Open capacity"}
+                                                                ? `${remaining} seats left` 
+                                                                : "Open"}
                                                         </span>
                                                     </div>
                                                 </div>
 
                                                 {/* Visual Capacity Bar */}
                                                 {hasCapacity && (
-                                                    <div className="mt-3">
-                                                        <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
+                                                    <div className="mt-2.5">
+                                                        <div className="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
                                                             <div 
                                                                 className={`h-full rounded-full transition-all ${
                                                                     section.isFull 
@@ -1079,13 +1066,13 @@ function PlacementWorkspaceContent() {
                                                 )}
 
                                                 {/* Action Buttons */}
-                                                <div className="mt-3.5 pt-3 border-t border-slate-100 flex items-center justify-between gap-2 text-xs">
+                                                <div className="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between gap-2 text-xs">
                                                     <Button
                                                         variant="outline"
                                                         size="sm"
                                                         onClick={() => openRoster(section.id)}
-                                                        className="text-xs border-slate-300 hover:bg-slate-50 text-slate-700"
-                                                        leftIcon={<FileSpreadsheet className="w-3.5 h-3.5 text-slate-500" />}
+                                                        className="text-xs hover:border-[#4085b3] hover:text-[#4085b3] hover:bg-[#4085b3]/5 transition-all duration-200 py-1 px-2.5 h-auto group cursor-pointer"
+                                                        leftIcon={<FileSpreadsheet className="w-3.5 h-3.5 text-slate-500 group-hover:text-[#4085b3] transition-colors" />}
                                                     >
                                                         View Roster ({section.occupancy})
                                                     </Button>
@@ -1096,7 +1083,7 @@ function PlacementWorkspaceContent() {
                                                             size="sm"
                                                             disabled={actionLoading || (remaining !== null && selectedEnrollmentIds.length > remaining)}
                                                             onClick={() => handleBulkAssign(section.id)}
-                                                            className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-medium"
+                                                            className="bg-[#4085b3] hover:bg-[#32698e] text-white text-xs font-medium py-1 px-2.5 h-auto"
                                                         >
                                                             Place {selectedEnrollmentIds.length} Here
                                                         </Button>
@@ -1145,17 +1132,17 @@ function PlacementWorkspaceContent() {
                         return (
                             <div className="space-y-4 text-xs">
                                 {/* Printable Header Info */}
-                                <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                                <div className="bg-white border border-slate-200 rounded-lg p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                                     <div>
-                                        <div className="text-base font-bold text-slate-900 flex items-center gap-2">
+                                        <div className="text-sm font-bold text-slate-900 flex items-center gap-2">
                                             <span>{gradeName} — Section {sectionName}</span>
-                                            <span className="text-xs px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 font-semibold">
+                                            <span className="text-xs px-2 py-0.5 rounded bg-slate-100 text-slate-700 border border-slate-200 font-medium">
                                                 {stats.totalStudents ?? stats.totalEnrolled ?? rosterList.length} Enrolled
                                             </span>
                                         </div>
-                                        <p className="text-slate-500 mt-1">
+                                        <p className="text-xs text-slate-500 mt-0.5">
                                             Academic Year: <strong className="text-slate-700">{yearName}</strong> • 
-                                            Homeroom Teacher: <strong className="text-slate-700">{teacherName}</strong>
+                                            Homeroom: <strong className="text-slate-700">{teacherName}</strong>
                                         </p>
                                     </div>
 
@@ -1164,8 +1151,8 @@ function PlacementWorkspaceContent() {
                                             variant="outline"
                                             size="sm"
                                             onClick={() => window.print()}
-                                            className="text-xs border-slate-300 hover:bg-slate-100"
-                                            leftIcon={<Printer className="w-3.5 h-3.5" />}
+                                            className="text-xs hover:border-[#4085b3] hover:text-[#4085b3] hover:bg-[#4085b3]/5 transition-all duration-200 cursor-pointer"
+                                            leftIcon={<Printer className="w-3.5 h-3.5 text-slate-500" />}
                                         >
                                             Print Roster
                                         </Button>
@@ -1174,21 +1161,21 @@ function PlacementWorkspaceContent() {
 
                                 {/* Gender and Capacity breakdown stats */}
                                 <div className="grid grid-cols-4 gap-2 text-center">
-                                    <div className="p-2.5 rounded-lg bg-slate-100 text-slate-800">
-                                        <span className="block text-[10px] text-slate-500 uppercase font-bold">Total Roll</span>
-                                        <span className="text-base font-bold">{stats.totalStudents ?? stats.totalEnrolled ?? rosterList.length}</span>
+                                    <div className="p-2 rounded-md bg-slate-50 border border-slate-200 text-slate-800">
+                                        <span className="block text-[10px] text-slate-500 uppercase font-semibold">Total Roll</span>
+                                        <span className="text-sm font-bold">{stats.totalStudents ?? stats.totalEnrolled ?? rosterList.length}</span>
                                     </div>
-                                    <div className="p-2.5 rounded-lg bg-blue-50 text-blue-800 border border-blue-100">
-                                        <span className="block text-[10px] text-blue-600 uppercase font-bold">Male</span>
-                                        <span className="text-base font-bold">{stats.maleStudents ?? stats.maleCount ?? 0}</span>
+                                    <div className="p-2 rounded-md bg-slate-50 border border-slate-200 text-slate-800">
+                                        <span className="block text-[10px] text-slate-500 uppercase font-semibold">Male</span>
+                                        <span className="text-sm font-bold">{stats.maleStudents ?? stats.maleCount ?? 0}</span>
                                     </div>
-                                    <div className="p-2.5 rounded-lg bg-purple-50 text-purple-800 border border-purple-100">
-                                        <span className="block text-[10px] text-purple-600 uppercase font-bold">Female</span>
-                                        <span className="text-base font-bold">{stats.femaleStudents ?? stats.femaleCount ?? 0}</span>
+                                    <div className="p-2 rounded-md bg-slate-50 border border-slate-200 text-slate-800">
+                                        <span className="block text-[10px] text-slate-500 uppercase font-semibold">Female</span>
+                                        <span className="text-sm font-bold">{stats.femaleStudents ?? stats.femaleCount ?? 0}</span>
                                     </div>
-                                    <div className="p-2.5 rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-100">
-                                        <span className="block text-[10px] text-emerald-600 uppercase font-bold">Seats Left</span>
-                                        <span className="text-base font-bold">
+                                    <div className="p-2 rounded-md bg-slate-50 border border-slate-200 text-slate-800">
+                                        <span className="block text-[10px] text-slate-500 uppercase font-semibold">Seats Left</span>
+                                        <span className="text-sm font-bold">
                                             {(stats.remainingCapacity ?? stats.remainingSeats) !== null && (stats.remainingCapacity ?? stats.remainingSeats) !== undefined 
                                                 ? (stats.remainingCapacity ?? stats.remainingSeats) 
                                                 : "∞"}
@@ -1349,7 +1336,7 @@ function PlacementWorkspaceContent() {
                                 variant="outline"
                                 size="sm"
                                 onClick={() => setReassignModalOpen(false)}
-                                className="border-slate-300 text-slate-700 hover:bg-slate-50"
+                                className="hover:border-[#4085b3] hover:text-[#4085b3] hover:bg-[#4085b3]/5 transition-all duration-200 cursor-pointer"
                             >
                                 Cancel
                             </Button>

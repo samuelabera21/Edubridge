@@ -407,7 +407,7 @@ export const setHomeroomTeacher = async (req: Request, res: Response) => {
         if (!organizationId) return res.status(403).json({ error: "Missing school scope" });
 
         const sectionId = req.params.sectionId as string;
-        const { teacherId } = req.body;
+        const teacherId = req.body.teacherId !== undefined ? req.body.teacherId : req.body.homeroomTeacherId;
 
         const { StaffingService } = await import("../academic/staffing.service.js");
         const updated = await StaffingService.setSectionHomeroomTeacher(organizationId, sectionId, teacherId || null, req.user?.id);

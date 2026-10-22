@@ -145,7 +145,7 @@ export function EditAssignmentModal({ isOpen, onClose, onSuccess, assignment, ac
                         name="subjectId"
                         value={formData.subjectId}
                         onChange={handleChange}
-                        className="w-full px-3 py-2 border border-gray-300 bg-white text-gray-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#006b3f]"
+                        className="w-full px-3 py-2 border border-gray-300 bg-white text-gray-900 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#4085b3] focus:border-[#4085b3]"
                         required
                     >
                         <option value="">Select a subject...</option>
@@ -161,7 +161,7 @@ export function EditAssignmentModal({ isOpen, onClose, onSuccess, assignment, ac
                         name="schoolGradeId"
                         value={formData.schoolGradeId}
                         onChange={handleChange}
-                        className="w-full px-3 py-2 border border-gray-300 bg-white text-gray-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#006b3f]"
+                        className="w-full px-3 py-2 border border-gray-300 bg-white text-gray-900 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#4085b3] focus:border-[#4085b3]"
                         required
                     >
                         <option value="">Select a grade...</option>
@@ -177,7 +177,7 @@ export function EditAssignmentModal({ isOpen, onClose, onSuccess, assignment, ac
                         name="sectionId"
                         value={formData.sectionId}
                         onChange={handleChange}
-                        className="w-full px-3 py-2 border border-gray-300 bg-white text-gray-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#006b3f]"
+                        className="w-full px-3 py-2 border border-gray-300 bg-white text-gray-900 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#4085b3] focus:border-[#4085b3]"
                         disabled={!formData.schoolGradeId || sections.length === 0}
                     >
                         <option value="">All Sections</option>
@@ -196,7 +196,7 @@ export function EditAssignmentModal({ isOpen, onClose, onSuccess, assignment, ac
                         max="20"
                         value={formData.periodsPerWeek}
                         onChange={handleChange}
-                        className="w-full px-3 py-2 border border-gray-300 bg-white text-gray-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#006b3f]"
+                        className="w-full px-3 py-2 border border-gray-300 bg-white text-gray-900 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#4085b3] focus:border-[#4085b3]"
                         required
                     />
                 </div>

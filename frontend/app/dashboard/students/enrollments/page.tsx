@@ -217,14 +217,14 @@ export default function StudentEnrollmentsPage() {
                         Academic-year cohort intake, grade assignments, and unplaced student enrollment records.
                     </p>
                 </div>
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2.5">
                     <Link href="/dashboard/students/placement">
-                        <Button variant="outline" size="sm" className="text-slate-700 border-slate-300 hover:bg-slate-50">
+                        <Button variant="outline" size="sm" className="hover:border-[#4085b3] hover:text-[#4085b3] hover:bg-[#4085b3]/5 transition-all duration-200">
                             Classroom Placement
                         </Button>
                     </Link>
                     <Link href="/dashboard/students">
-                        <Button variant="outline" size="sm" className="text-slate-700 border-slate-300 hover:bg-slate-50">
+                        <Button variant="outline" size="sm" className="hover:border-[#4085b3] hover:text-[#4085b3] hover:bg-[#4085b3]/5 transition-all duration-200">
                             Student Directory
                         </Button>
                     </Link>

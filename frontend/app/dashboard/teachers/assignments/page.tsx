@@ -8,9 +8,10 @@ import { useAuth } from "@/hooks/useAuth";
 import { 
     Plus, Search, Clock, CheckCircle2, ShieldCheck, Check, X, RefreshCw, 
     BookOpen, BarChart3, Calendar, AlertCircle, Ban, ArrowRight, RotateCcw,
-    GraduationCap, Layers, ChevronRight
+    GraduationCap, Layers, ChevronRight, UserCheck
 } from "lucide-react";
 import { Modal } from "@/components/ui/Modal";
+import { Button } from "@/components/ui/Button";
 import { AcademicYear } from "@/types/api";
 
 export default function TeachingAssignmentsPage() {
@@ -408,36 +409,32 @@ export default function TeachingAssignmentsPage() {
     }
 
     return (
-        <div className="space-y-5 max-w-7xl mx-auto pb-12 font-sans text-gray-900">
-            {/* Breadcrumb Navigation */}
-            <div className="flex items-center space-x-2 text-xs text-gray-500">
-                <Link href="/dashboard" className="hover:text-gray-900 transition-colors">Dashboard</Link>
-                <span>/</span>
-                <span className="text-gray-500">Teachers</span>
-                <span>/</span>
-                <span className="text-gray-900 font-medium">Staffing & Allocation</span>
-            </div>
-
-            {/* Clean Header */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-1">
+        <div className="space-y-4 max-w-7xl mx-auto pb-12 font-sans text-slate-900">
+            {/* Header: Clean, direct on page background */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
                 <div>
-                    <h1 className="text-xl sm:text-2xl font-bold text-gray-900 tracking-tight">
-                        Staffing & Teaching Allocation
-                    </h1>
-                    <p className="text-xs text-gray-500 mt-1">
-                        Manage faculty workloads, subject assignments, and curriculum period coverage across class sections.
-                    </p>
+                    <h1 className="text-xl font-bold text-slate-900 tracking-tight">Teaching Assignments</h1>
                 </div>
 
-                <div className="flex items-center space-x-2.5 flex-wrap sm:flex-nowrap">
+                <div className="flex items-center gap-2.5 flex-wrap sm:flex-nowrap">
+                    <Link href="/dashboard/teachers">
+                        <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="hover:border-[#4085b3] hover:text-[#4085b3] hover:bg-[#4085b3]/5 transition-all duration-200 shadow-2xs"
+                        >
+                            Teaching Faculty
+                        </Button>
+                    </Link>
+
                     {/* Academic Year Selector */}
-                    <div className="flex items-center space-x-2 bg-white border border-gray-300 rounded-lg px-2.5 py-1.5 shadow-2xs">
-                        <Calendar className="w-3.5 h-3.5 text-gray-400" />
-                        <span className="text-xs font-medium text-gray-500">Session:</span>
+                    <div className="flex items-center space-x-2 bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 shadow-2xs text-xs">
+                        <Calendar className="w-3.5 h-3.5 text-slate-400" />
+                        <span className="text-xs font-medium text-slate-500">Session:</span>
                         <select
                             value={selectedYearId}
                             onChange={(e) => handleYearChange(e.target.value)}
-                            className="text-xs font-semibold text-gray-900 bg-transparent focus:outline-none cursor-pointer"
+                            className="text-xs font-semibold text-slate-900 bg-transparent focus:outline-none cursor-pointer"
                         >
                             {years.map(y => (
                                 <option key={y.id} value={y.id}>
@@ -445,37 +442,29 @@ export default function TeachingAssignmentsPage() {
                                 </option>
                             ))}
                         </select>
-                        {selectedYear && (
-                            <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded uppercase tracking-wider ${
-                                selectedYear.status === "ACTIVE" 
-                                    ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                                    : selectedYear.status === "PLANNED"
-                                    ? "bg-sky-50 text-sky-700 border border-sky-200"
-                                    : "bg-gray-100 text-gray-700 border border-gray-200"
-                            }`}>
-                                {selectedYear.status}
-                            </span>
-                        )}
                     </div>
 
-                    <button 
+                    <Button 
+                        variant="outline"
+                        size="sm"
                         onClick={handleRefresh}
                         disabled={isRefreshing}
-                        className="inline-flex items-center space-x-1.5 bg-white border border-gray-300 text-gray-700 px-3 py-1.5 rounded-lg text-xs font-medium hover:bg-gray-50 transition-colors shadow-2xs disabled:opacity-60 cursor-pointer flex-shrink-0"
-                        title="Reload latest data"
+                        className="hover:border-[#4085b3] hover:text-[#4085b3] hover:bg-[#4085b3]/5 transition-all duration-200 shadow-2xs"
+                        leftIcon={<RefreshCw className={`w-3.5 h-3.5 text-slate-400 ${isRefreshing ? "animate-spin text-[#4085b3]" : ""}`} />}
                     >
-                        <RefreshCw className={`w-3.5 h-3.5 text-gray-400 ${isRefreshing ? "animate-spin text-[#4085b3]" : ""}`} />
                         <span>{isRefreshing ? "Refreshing..." : "Refresh"}</span>
-                    </button>
+                    </Button>
 
                     {hasCreatePermission && !isYearLocked && (
-                        <button 
-                            onClick={() => router.push(`/dashboard/teachers/assignments/manage?yearId=${selectedYearId}`)}
-                            className="inline-flex items-center space-x-1.5 bg-[#4085b3] hover:bg-[#2b6a94] text-white px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-colors shadow-xs cursor-pointer flex-shrink-0"
-                        >
-                            <Plus className="w-3.5 h-3.5" />
-                            <span>Assign Faculty</span>
-                        </button>
+                        <Link href={`/dashboard/teachers/assignments/manage?yearId=${selectedYearId}`}>
+                            <Button 
+                                size="sm"
+                                className="bg-[#4085b3] hover:bg-[#2b6a94] text-white font-medium shadow-2xs"
+                                leftIcon={<Plus className="w-4 h-4" />}
+                            >
+                                Assign Faculty
+                            </Button>
+                        </Link>
                     )}
                 </div>
             </div>
@@ -515,13 +504,13 @@ export default function TeachingAssignmentsPage() {
             )}
 
             {/* Tab Navigation */}
-            <div className="flex border-b border-gray-200 space-x-6 text-sm">
+            <div className="flex border-b border-slate-200 space-x-6 text-sm">
                 <button
                     onClick={() => setActiveTab("overview")}
                     className={`pb-3 font-medium transition-colors relative cursor-pointer ${
                         activeTab === "overview"
                             ? "text-[#4085b3] font-semibold"
-                            : "text-gray-500 hover:text-gray-800"
+                            : "text-slate-500 hover:text-slate-800"
                     }`}
                 >
                     <span className="flex items-center space-x-2">
@@ -538,7 +527,7 @@ export default function TeachingAssignmentsPage() {
                     className={`pb-3 font-medium transition-colors relative cursor-pointer ${
                         activeTab === "matrix"
                             ? "text-[#4085b3] font-semibold"
-                            : "text-gray-500 hover:text-gray-800"
+                            : "text-slate-500 hover:text-slate-800"
                     }`}
                 >
                     <span className="flex items-center space-x-2">
@@ -555,7 +544,7 @@ export default function TeachingAssignmentsPage() {
                     className={`pb-3 font-medium transition-colors relative cursor-pointer ${
                         activeTab === "workload"
                             ? "text-[#4085b3] font-semibold"
-                            : "text-gray-500 hover:text-gray-800"
+                            : "text-slate-500 hover:text-slate-800"
                     }`}
                 >
                     <span className="flex items-center space-x-2">
@@ -572,15 +561,15 @@ export default function TeachingAssignmentsPage() {
                     className={`pb-3 font-medium transition-colors relative cursor-pointer ${
                         activeTab === "approvals"
                             ? "text-[#4085b3] font-semibold"
-                            : "text-gray-500 hover:text-gray-800"
+                            : "text-slate-500 hover:text-slate-800"
                     }`}
                 >
                     <span className="flex items-center space-x-2">
                         <ShieldCheck className="w-4 h-4" />
                         <span>Pending Proposals</span>
                         {pendingProposals.length > 0 && (
-                            <span className="text-xs font-semibold text-gray-500">
-                                ({pendingProposals.length})
+                            <span className="ml-1 px-1.5 py-0.5 text-[10px] font-bold rounded-full bg-sky-100 text-[#4085b3]">
+                                {pendingProposals.length}
                             </span>
                         )}
                     </span>
@@ -593,140 +582,178 @@ export default function TeachingAssignmentsPage() {
             {/* TAB 1: OVERVIEW */}
             {activeTab === "overview" && (
                 <div className="space-y-4">
-                    {/* Clickable KPI Cards */}
+                    {/* 5 KPI Metric Cards: Left-to-right clean blue hover fill */}
                     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+                        {/* 1. Required Demand */}
                         <div 
                             onClick={() => {
                                 clearCoverageFilters();
                                 setActiveTab("matrix");
                             }}
-                            className="bg-white border border-gray-200 rounded-lg p-4 shadow-xs hover:border-[#4085b3] hover:shadow-sm transition-all cursor-pointer group"
+                            className="relative overflow-hidden border border-slate-200 bg-white rounded-lg p-4 flex items-center justify-between group cursor-pointer shadow-2xs hover:border-[#4085b3] transition-all duration-300"
                             title="View all section assignments"
                         >
-                            <div className="flex items-center justify-between">
-                                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide group-hover:text-[#4085b3]">Required Demand</p>
-                                <ArrowRight className="w-3.5 h-3.5 text-gray-400 group-hover:text-[#4085b3] transition-transform group-hover:translate-x-0.5" />
+                            <span className="absolute inset-0 bg-[#4085b3] origin-left scale-x-0 group-hover:scale-x-100 transition-transform duration-300 ease-out pointer-events-none" />
+                            <div className="relative z-10">
+                                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 group-hover:text-blue-100 transition-colors duration-300 block mb-1">
+                                    Required Demand
+                                </span>
+                                <div className="flex items-baseline gap-1">
+                                    <span className="text-2xl font-bold text-slate-900 group-hover:text-white transition-colors duration-300 tabular-nums">
+                                        {demandData?.totalDemandPeriods || 0}
+                                    </span>
+                                    <span className="text-xs font-normal text-slate-400 group-hover:text-blue-100 transition-colors duration-300">
+                                        p/wk
+                                    </span>
+                                </div>
                             </div>
-                            <p className="text-xl font-bold text-gray-900 mt-1">
-                                {demandData?.totalDemandPeriods || 0} <span className="text-xs font-normal text-gray-500">p/wk</span>
-                            </p>
+                            <BookOpen className="relative z-10 w-5 h-5 text-slate-400 group-hover:text-white transition-colors duration-300 shrink-0" />
                         </div>
 
+                        {/* 2. Allocated */}
                         <div 
                             onClick={() => {
                                 clearCoverageFilters();
                                 setActiveTab("matrix");
                             }}
-                            className="bg-white border border-gray-200 rounded-lg p-4 shadow-xs hover:border-[#4085b3] hover:shadow-sm transition-all cursor-pointer group"
+                            className="relative overflow-hidden border border-slate-200 bg-white rounded-lg p-4 flex items-center justify-between group cursor-pointer shadow-2xs hover:border-[#4085b3] transition-all duration-300"
                             title="View assigned classes"
                         >
-                            <div className="flex items-center justify-between">
-                                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide group-hover:text-[#4085b3]">Allocated</p>
-                                <ArrowRight className="w-3.5 h-3.5 text-gray-400 group-hover:text-[#4085b3] transition-transform group-hover:translate-x-0.5" />
+                            <span className="absolute inset-0 bg-[#4085b3] origin-left scale-x-0 group-hover:scale-x-100 transition-transform duration-300 ease-out pointer-events-none" />
+                            <div className="relative z-10">
+                                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 group-hover:text-blue-100 transition-colors duration-300 block mb-1">
+                                    Allocated
+                                </span>
+                                <div className="flex items-baseline gap-1">
+                                    <span className="text-2xl font-bold text-slate-900 group-hover:text-white transition-colors duration-300 tabular-nums">
+                                        {demandData?.totalAssignedPeriods || 0}
+                                    </span>
+                                    <span className="text-xs font-normal text-slate-400 group-hover:text-blue-100 transition-colors duration-300">
+                                        p/wk
+                                    </span>
+                                </div>
                             </div>
-                            <p className="text-xl font-bold text-gray-900 mt-1">
-                                {demandData?.totalAssignedPeriods || 0} <span className="text-xs font-normal text-gray-500">p/wk</span>
-                            </p>
+                            <UserCheck className="relative z-10 w-5 h-5 text-slate-400 group-hover:text-white transition-colors duration-300 shrink-0" />
                         </div>
 
+                        {/* 3. Vacancies */}
                         <div 
                             onClick={() => {
                                 clearCoverageFilters();
                                 setActiveTab("matrix");
                             }}
-                            className="bg-white border border-gray-200 rounded-lg p-4 shadow-xs hover:border-rose-300 hover:shadow-sm transition-all cursor-pointer group"
-                            title="View unassigned subject vacancies"
+                            className="relative overflow-hidden border border-slate-200 bg-white rounded-lg p-4 flex items-center justify-between group cursor-pointer shadow-2xs hover:border-[#4085b3] transition-all duration-300"
+                            title="View vacant subjects"
                         >
-                            <div className="flex items-center justify-between">
-                                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide group-hover:text-rose-600">Vacant Periods</p>
-                                <ArrowRight className="w-3.5 h-3.5 text-gray-400 group-hover:text-rose-600 transition-transform group-hover:translate-x-0.5" />
+                            <span className="absolute inset-0 bg-[#4085b3] origin-left scale-x-0 group-hover:scale-x-100 transition-transform duration-300 ease-out pointer-events-none" />
+                            <div className="relative z-10">
+                                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 group-hover:text-blue-100 transition-colors duration-300 block mb-1">
+                                    Vacancies
+                                </span>
+                                <div className="flex items-baseline gap-1">
+                                    <span className="text-2xl font-bold text-slate-900 group-hover:text-white transition-colors duration-300 tabular-nums">
+                                        {demandData?.totalUnassignedPeriods || 0}
+                                    </span>
+                                    <span className="text-xs font-normal text-slate-400 group-hover:text-blue-100 transition-colors duration-300">
+                                        p/wk
+                                    </span>
+                                </div>
                             </div>
-                            <p className={`text-xl font-bold mt-1 ${demandData?.totalUnassignedPeriods > 0 ? "text-rose-600" : "text-gray-900"}`}>
-                                {demandData?.totalUnassignedPeriods || 0} <span className="text-xs font-normal text-gray-500">p/wk</span>
-                            </p>
+                            <AlertCircle className="relative z-10 w-5 h-5 text-slate-400 group-hover:text-white transition-colors duration-300 shrink-0" />
                         </div>
 
+                        {/* 4. Staffing Rate */}
                         <div 
                             onClick={() => {
                                 clearCoverageFilters();
                                 setActiveTab("matrix");
                             }}
-                            className="bg-white border border-gray-200 rounded-lg p-4 shadow-xs hover:border-[#4085b3] hover:shadow-sm transition-all cursor-pointer group"
+                            className="relative overflow-hidden border border-slate-200 bg-white rounded-lg p-4 flex items-center justify-between group cursor-pointer shadow-2xs hover:border-[#4085b3] transition-all duration-300"
                             title="View coverage matrix"
                         >
-                            <div className="flex items-center justify-between">
-                                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide group-hover:text-[#4085b3]">Staffing Rate</p>
-                                <ArrowRight className="w-3.5 h-3.5 text-gray-400 group-hover:text-[#4085b3] transition-transform group-hover:translate-x-0.5" />
+                            <span className="absolute inset-0 bg-[#4085b3] origin-left scale-x-0 group-hover:scale-x-100 transition-transform duration-300 ease-out pointer-events-none" />
+                            <div className="relative z-10">
+                                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 group-hover:text-blue-100 transition-colors duration-300 block mb-1">
+                                    Staffing Rate
+                                </span>
+                                <span className="text-2xl font-bold text-slate-900 group-hover:text-white transition-colors duration-300 tabular-nums">
+                                    {demandData?.coveragePercentage || 0}%
+                                </span>
                             </div>
-                            <p className="text-xl font-bold text-gray-900 mt-1">
-                                {demandData?.coveragePercentage || 0}%
-                            </p>
+                            <BarChart3 className="relative z-10 w-5 h-5 text-slate-400 group-hover:text-white transition-colors duration-300 shrink-0" />
                         </div>
 
+                        {/* 5. Overloaded */}
                         <div 
                             onClick={() => {
                                 clearWorkloadFilters();
                                 setWorkloadFilter("OVERLOADED");
                                 setActiveTab("workload");
                             }}
-                            className="bg-white border border-gray-200 rounded-lg p-4 shadow-xs hover:border-amber-300 hover:shadow-sm transition-all cursor-pointer group"
+                            className="relative overflow-hidden border border-slate-200 bg-white rounded-lg p-4 flex items-center justify-between group cursor-pointer shadow-2xs hover:border-[#4085b3] transition-all duration-300"
                             title="View overloaded faculty members"
                         >
-                            <div className="flex items-center justify-between">
-                                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide group-hover:text-amber-700">Faculty Overload</p>
-                                <ArrowRight className="w-3.5 h-3.5 text-gray-400 group-hover:text-amber-700 transition-transform group-hover:translate-x-0.5" />
+                            <span className="absolute inset-0 bg-[#4085b3] origin-left scale-x-0 group-hover:scale-x-100 transition-transform duration-300 ease-out pointer-events-none" />
+                            <div className="relative z-10">
+                                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 group-hover:text-blue-100 transition-colors duration-300 block mb-1">
+                                    Overloaded
+                                </span>
+                                <span className="text-2xl font-bold text-slate-900 group-hover:text-white transition-colors duration-300 tabular-nums">
+                                    {overloadedTeachersCount}
+                                </span>
                             </div>
-                            <p className={`text-xl font-bold mt-1 ${overloadedTeachersCount > 0 ? "text-rose-600" : "text-emerald-700"}`}>
-                                {overloadedTeachersCount > 0 ? `${overloadedTeachersCount} Overloaded` : "None"}
-                            </p>
+                            <Clock className="relative z-10 w-5 h-5 text-slate-400 group-hover:text-white transition-colors duration-300 shrink-0" />
                         </div>
                     </div>
 
                     {/* Grade-by-Grade Curriculum Demand Breakdown with Filter */}
-                    <div className="bg-white border border-gray-200 rounded-lg shadow-xs overflow-hidden">
+                    <div className="bg-white border border-slate-200 rounded-xl shadow-2xs overflow-hidden">
                         {/* Filters Bar for Overview Grades */}
-                        <div className="px-5 py-3 border-b border-gray-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-gray-50/50">
-                            <h2 className="text-sm font-semibold text-gray-900 whitespace-nowrap">Curriculum Demand by Grade</h2>
+                        <div className="px-5 py-3 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-50/70">
+                            <h2 className="text-xs font-bold uppercase tracking-wider text-slate-700 whitespace-nowrap">
+                                Curriculum Demand by Grade
+                            </h2>
 
                             <div className="flex flex-wrap items-center gap-2">
                                 {/* Clear Filters Option */}
                                 {isOverviewFilterActive && (
                                     <button
                                         onClick={clearOverviewFilters}
-                                        className="inline-flex items-center space-x-1 text-xs text-gray-500 hover:text-gray-800 bg-white border border-gray-200 px-2 py-1 rounded cursor-pointer"
+                                        className="inline-flex items-center space-x-1 text-xs text-slate-600 hover:text-slate-900 bg-white hover:bg-slate-100 border border-slate-200 px-2 py-1 rounded-md cursor-pointer transition-colors"
                                         title="Clear all filters"
                                     >
-                                        <RotateCcw className="w-3 h-3 text-gray-400" />
+                                        <RotateCcw className="w-3 h-3 text-slate-400" />
                                         <span>Clear</span>
                                     </button>
                                 )}
 
                                 <div className="relative w-full sm:w-44">
-                                    <Search className="w-3.5 h-3.5 absolute left-2.5 top-2 text-gray-400" />
+                                    <Search className="w-3.5 h-3.5 absolute left-2.5 top-2 text-slate-400" />
                                     <input
                                         type="text"
                                         placeholder="Search grade/subject..."
                                         value={overviewSearch}
                                         onChange={(e) => setOverviewSearch(e.target.value)}
-                                        className="w-full pl-8 pr-2.5 py-1 text-xs border border-gray-300 rounded bg-white focus:ring-1 focus:ring-[#4085b3] outline-none"
+                                        className="w-full pl-8 pr-2.5 py-1 text-xs border border-slate-200 rounded-md bg-white text-slate-700 focus:border-[#4085b3] focus:ring-1 focus:ring-[#4085b3] outline-none"
                                     />
                                 </div>
 
                                 <select
                                     value={overviewGradeFilter}
                                     onChange={(e) => setOverviewGradeFilter(e.target.value)}
-                                    className="text-xs border border-gray-300 rounded px-2.5 py-1 bg-white text-gray-700 focus:ring-1 focus:ring-[#4085b3] outline-none cursor-pointer"
+                                    className="text-xs border border-slate-200 rounded-md px-2.5 py-1 bg-white text-slate-700 focus:border-[#4085b3] focus:ring-1 focus:ring-[#4085b3] outline-none cursor-pointer"
                                 >
                                     <option value="ALL">All Grades</option>
-                                    {demandData?.grades?.map((g: any) => (
-                                        <option key={g.schoolGradeId} value={g.schoolGradeId}>{g.gradeName}</option>
-                                    ))}
+                                    {demandData?.grades?.map((g: any) => {
+                                        const name = g.gradeName && g.gradeName.trim() !== "Grade" ? g.gradeName : (g.level ? `Grade ${g.level}` : (g.gradeName || "Grade"));
+                                        return <option key={g.schoolGradeId} value={g.schoolGradeId}>{name}</option>;
+                                    })}
                                 </select>
 
                                 <select
                                     value={overviewStatusFilter}
                                     onChange={(e) => setOverviewStatusFilter(e.target.value)}
-                                    className="text-xs border border-gray-300 rounded px-2.5 py-1 bg-white text-gray-700 focus:ring-1 focus:ring-[#4085b3] outline-none cursor-pointer"
+                                    className="text-xs border border-slate-200 rounded-md px-2.5 py-1 bg-white text-slate-700 focus:border-[#4085b3] focus:ring-1 focus:ring-[#4085b3] outline-none cursor-pointer"
                                 >
                                     <option value="ALL">All Status</option>
                                     <option value="STAFFED">100% Staffed</option>
@@ -736,13 +763,17 @@ export default function TeachingAssignmentsPage() {
                         </div>
 
                         {!filteredOverviewGrades || filteredOverviewGrades.length === 0 ? (
-                            <div className="p-12 text-center text-gray-500 text-xs">
+                            <div className="p-12 text-center text-slate-400 text-xs">
                                 No grade levels match the filter criteria.
                             </div>
                         ) : (
-                            <div className="p-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 bg-gray-50/30">
+                            <div className="p-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 bg-slate-50/40">
                                 {filteredOverviewGrades.map((g: any) => {
                                     const isFullyStaffed = g.coveragePercentage >= 100;
+                                    const displayName = g.gradeName && g.gradeName.trim() !== "Grade"
+                                        ? g.gradeName
+                                        : (g.level ? `Grade ${g.level}` : (g.gradeName || "Grade"));
+
                                     return (
                                         <div 
                                             key={g.schoolGradeId} 
@@ -752,48 +783,51 @@ export default function TeachingAssignmentsPage() {
                                                 setSubjectFilter("ALL");
                                                 setActiveTab("matrix");
                                             }}
-                                            className="bg-white rounded-xl border border-gray-200 p-5 hover:border-[#4085b3] hover:shadow-md transition-all flex flex-col justify-between h-full relative cursor-pointer group"
+                                            className="relative overflow-hidden bg-white rounded-xl border border-slate-200 p-5 shadow-2xs hover:border-[#4085b3] transition-all duration-300 flex flex-col justify-between h-full cursor-pointer group"
                                             title="Click to view sections in coverage matrix"
                                         >
-                                            <div>
+                                            {/* Left-to-right signature blue fill hover animation */}
+                                            <span className="absolute inset-0 bg-[#4085b3] origin-left scale-x-0 group-hover:scale-x-100 transition-transform duration-300 ease-out pointer-events-none" />
+
+                                            <div className="relative z-10">
                                                 {/* Top Row: Icon Badge & Staffing Status */}
                                                 <div className="flex items-start justify-between">
-                                                    <div className="w-11 h-11 rounded-lg bg-sky-50 text-[#4085b3] group-hover:bg-[#4085b3] group-hover:text-white flex items-center justify-center transition-colors">
+                                                    <div className="w-10 h-10 rounded-lg bg-sky-50 text-[#4085b3] group-hover:bg-white group-hover:text-[#4085b3] flex items-center justify-center transition-all duration-300 shadow-2xs">
                                                         <GraduationCap className="w-5 h-5 stroke-[1.8]" />
                                                     </div>
 
                                                     <div className="flex items-center space-x-2">
-                                                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold border ${
+                                                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold border transition-all duration-300 ${
                                                             isFullyStaffed 
-                                                                ? "bg-emerald-50 text-emerald-700 border-emerald-200" 
-                                                                : "bg-amber-50 text-amber-700 border-amber-200"
+                                                                ? "bg-emerald-50 text-emerald-700 border-emerald-200 group-hover:bg-white/20 group-hover:text-white group-hover:border-white/30" 
+                                                                : "bg-amber-50 text-amber-700 border-amber-200 group-hover:bg-white/20 group-hover:text-white group-hover:border-white/30"
                                                         }`}>
                                                             {g.coveragePercentage}% Staffed
                                                         </span>
 
-                                                        <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-[#4085b3] group-hover:translate-x-0.5 transition-all" />
+                                                        <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-white group-hover:translate-x-0.5 transition-all duration-300" />
                                                     </div>
                                                 </div>
 
                                                 {/* Title & Summary */}
                                                 <div className="mt-4">
-                                                    <h3 className="text-base font-bold text-gray-900 group-hover:text-[#4085b3] transition-colors">
-                                                        {g.gradeName}
+                                                    <h3 className="text-base font-bold text-slate-900 group-hover:text-white transition-colors duration-300">
+                                                        {displayName}
                                                     </h3>
-                                                    <p className="text-xs text-gray-500 mt-1.5 leading-relaxed">
+                                                    <p className="text-xs text-slate-500 group-hover:text-blue-100 transition-colors duration-300 mt-1 leading-relaxed">
                                                         {g.sectionCount} {g.sectionCount === 1 ? "Section" : "Sections"} &bull; {g.subjects?.length || 0} {g.subjects?.length === 1 ? "Subject" : "Subjects"} &bull; {g.assignedPeriods}/{g.demandPeriods} Periods/wk
                                                     </p>
                                                 </div>
                                             </div>
 
                                             {/* Bottom Details Line */}
-                                            <div className="mt-5 pt-3 border-t border-gray-100 flex items-center justify-between text-xs text-gray-500">
-                                                <span className="font-medium text-gray-600 font-mono text-[11px]">
+                                            <div className="relative z-10 mt-5 pt-3 border-t border-slate-100 group-hover:border-white/20 flex items-center justify-between text-xs transition-colors duration-300">
+                                                <span className="font-semibold text-slate-600 group-hover:text-white font-mono text-[11px] transition-colors duration-300">
                                                     {isFullyStaffed ? "Fully Allocated" : `${g.demandPeriods - g.assignedPeriods} Vacant Periods`}
                                                 </span>
-                                                <span className="text-[#4085b3] font-medium group-hover:underline inline-flex items-center space-x-1">
+                                                <span className="text-[#4085b3] group-hover:text-white font-medium inline-flex items-center space-x-1 transition-colors duration-300">
                                                     <span>View Coverage</span>
-                                                    <ArrowRight className="w-3 h-3" />
+                                                    <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform duration-300" />
                                                 </span>
                                             </div>
                                         </div>
@@ -809,28 +843,28 @@ export default function TeachingAssignmentsPage() {
             {activeTab === "matrix" && (
                 <div className="space-y-4">
                     {/* Filters Bar: Clear Filter + Search + Grade + Section + Subject */}
-                    <div className="bg-white border border-gray-200 rounded-lg p-3 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-3">
+                    <div className="bg-white border border-slate-200 rounded-lg p-3 shadow-2xs flex flex-col sm:flex-row items-center justify-between gap-3">
                         <div className="flex flex-wrap items-center gap-2.5 w-full sm:w-auto">
                             {/* Clear Filter Option */}
                             {isCoverageFilterActive && (
                                 <button
                                     onClick={clearCoverageFilters}
-                                    className="inline-flex items-center space-x-1 text-xs text-gray-600 hover:text-gray-900 bg-gray-50 border border-gray-200 px-2.5 py-1.5 rounded-lg cursor-pointer transition-colors"
+                                    className="inline-flex items-center space-x-1.5 text-xs text-slate-600 hover:text-slate-900 bg-slate-50 hover:bg-slate-100 border border-slate-200 px-2.5 py-1.5 rounded-lg cursor-pointer transition-colors"
                                     title="Reset all filters"
                                 >
-                                    <RotateCcw className="w-3.5 h-3.5 text-gray-400" />
+                                    <RotateCcw className="w-3.5 h-3.5 text-slate-400" />
                                     <span>Clear Filters</span>
                                 </button>
                             )}
 
                             <div className="relative w-full sm:w-48">
-                                <Search className="w-4 h-4 absolute left-3 top-2 text-gray-400" />
+                                <Search className="w-3.5 h-3.5 absolute left-3 top-2.5 text-slate-400" />
                                 <input
                                     type="text"
-                                    placeholder="Search..."
+                                    placeholder="Search subjects or teachers..."
                                     value={searchQuery}
                                     onChange={(e) => setSearchQuery(e.target.value)}
-                                    className="w-full pl-9 pr-3 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4085b3] outline-none"
+                                    className="w-full pl-9 pr-3 py-1.5 text-xs border border-slate-200 rounded-lg bg-white focus:border-[#4085b3] focus:ring-1 focus:ring-[#4085b3] outline-none text-slate-700"
                                 />
                             </div>
 
@@ -842,12 +876,13 @@ export default function TeachingAssignmentsPage() {
                                     setSectionFilter("ALL");
                                     setSubjectFilter("ALL");
                                 }}
-                                className="text-xs border border-gray-300 rounded-lg px-2.5 py-1.5 bg-white text-gray-700 focus:ring-2 focus:ring-[#4085b3] outline-none cursor-pointer"
+                                className="text-xs border border-slate-200 rounded-lg px-2.5 py-1.5 bg-white text-slate-700 focus:border-[#4085b3] focus:ring-1 focus:ring-[#4085b3] outline-none cursor-pointer"
                             >
                                 <option value="ALL">All Grades</option>
-                                {demandData?.grades?.map((g: any) => (
-                                    <option key={g.schoolGradeId} value={g.schoolGradeId}>{g.gradeName}</option>
-                                ))}
+                                {demandData?.grades?.map((g: any) => {
+                                    const name = g.gradeName && g.gradeName.trim() !== "Grade" ? g.gradeName : (g.level ? `Grade ${g.level}` : (g.gradeName || "Grade"));
+                                    return <option key={g.schoolGradeId} value={g.schoolGradeId}>{name}</option>;
+                                })}
                             </select>
 
                             {/* Section Filter */}
@@ -857,7 +892,7 @@ export default function TeachingAssignmentsPage() {
                                     setSectionFilter(e.target.value);
                                     setSubjectFilter("ALL");
                                 }}
-                                className="text-xs border border-gray-300 rounded-lg px-2.5 py-1.5 bg-white text-gray-700 focus:ring-2 focus:ring-[#4085b3] outline-none cursor-pointer"
+                                className="text-xs border border-slate-200 rounded-lg px-2.5 py-1.5 bg-white text-slate-700 focus:border-[#4085b3] focus:ring-1 focus:ring-[#4085b3] outline-none cursor-pointer"
                             >
                                 <option value="ALL">All Sections</option>
                                 {availableSectionsForFilter.map((sec: any) => (
@@ -871,7 +906,7 @@ export default function TeachingAssignmentsPage() {
                             <select
                                 value={subjectFilter}
                                 onChange={(e) => setSubjectFilter(e.target.value)}
-                                className="text-xs border border-gray-300 rounded-lg px-2.5 py-1.5 bg-white text-gray-700 focus:ring-2 focus:ring-[#4085b3] outline-none cursor-pointer"
+                                className="text-xs border border-slate-200 rounded-lg px-2.5 py-1.5 bg-white text-slate-700 focus:border-[#4085b3] focus:ring-1 focus:ring-[#4085b3] outline-none cursor-pointer"
                             >
                                 <option value="ALL">All Subjects</option>
                                 {availableSubjectsForFilter.map((sub) => (
@@ -880,49 +915,38 @@ export default function TeachingAssignmentsPage() {
                             </select>
                         </div>
 
-                        <div className="text-xs text-gray-500 font-medium">
+                        <div className="text-xs text-slate-500 font-semibold bg-slate-50 border border-slate-200 px-2.5 py-1 rounded-md">
                             {filteredSections.length} {filteredSections.length === 1 ? "Section" : "Sections"}
                         </div>
                     </div>
 
                     {/* Section Tables */}
                     {filteredSections.length === 0 ? (
-                        <div className="bg-white border border-gray-200 rounded-lg p-8 text-center text-xs text-gray-500">
+                        <div className="bg-white border border-slate-200 rounded-lg p-10 text-center text-xs text-slate-400 shadow-2xs">
                             No sections match your filter criteria.
                         </div>
                     ) : (
-                        <div className="space-y-4">
+                        <div className="space-y-3">
                             {filteredSections.map((sec: any) => {
-                                const vacantCount = sec.subjectAllocations.filter((sa: any) => sa.status === "VACANT").length;
+                                const gradeDisplayName = sec.gradeName && sec.gradeName.trim() !== "Grade"
+                                    ? sec.gradeName
+                                    : (sec.gradeLevel ? `Grade ${sec.gradeLevel}` : (sec.gradeName || "Grade"));
 
                                 return (
-                                    <div key={sec.sectionId} className="bg-white border border-gray-200 rounded-lg shadow-xs overflow-hidden">
-                                        {/* Section Header */}
-                                        <div className="bg-gray-50 px-5 py-2.5 border-b border-gray-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                                            <div className="flex items-center space-x-2">
-                                                <h3 className="text-sm font-semibold text-gray-900">
-                                                    {sec.gradeName} &mdash; Section {sec.sectionName}
-                                                </h3>
-                                                <span className="text-xs text-gray-400">&bull;</span>
-                                                <span className="text-xs text-gray-500">{sec.subjectAllocations.length} Subjects</span>
-                                                {vacantCount > 0 ? (
-                                                    <span className="text-[11px] font-medium px-2 py-0.5 rounded bg-rose-50 text-rose-700 border border-rose-200">
-                                                        {vacantCount} Vacant
-                                                    </span>
-                                                ) : (
-                                                    <span className="text-[11px] font-medium px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200">
-                                                        Fully Staffed
-                                                    </span>
-                                                )}
-                                            </div>
+                                    <div key={sec.sectionId} className="bg-white border border-slate-200 rounded-lg shadow-2xs overflow-hidden">
+                                        {/* Clean Minimal Section Header */}
+                                        <div className="bg-slate-50/70 px-4 py-2.5 border-b border-slate-200 flex items-center justify-between text-xs">
+                                            <h3 className="font-semibold text-slate-900">
+                                                {gradeDisplayName} &mdash; Section {sec.sectionName}
+                                            </h3>
 
                                             {/* Homeroom Assignment */}
-                                            <div className="flex items-center space-x-2 text-xs">
-                                                <span className="text-gray-500">Homeroom:</span>
+                                            <div className="flex items-center space-x-1.5 text-xs text-slate-500">
+                                                <span>Homeroom:</span>
                                                 {sec.homeroomTeacher ? (
-                                                    <span className="font-semibold text-gray-900">{sec.homeroomTeacher.name}</span>
+                                                    <span className="font-medium text-slate-800">{sec.homeroomTeacher.name}</span>
                                                 ) : (
-                                                    <span className="text-amber-700 font-medium">Unassigned</span>
+                                                    <span className="text-slate-400">Unassigned</span>
                                                 )}
                                                 {hasCreatePermission && !isYearLocked && (
                                                     <button
@@ -930,11 +954,11 @@ export default function TeachingAssignmentsPage() {
                                                             open: true,
                                                             sectionId: sec.sectionId,
                                                             sectionName: sec.sectionName,
-                                                            gradeName: sec.gradeName,
+                                                            gradeName: gradeDisplayName,
                                                             currentTeacherId: sec.homeroomTeacher?.id || null,
                                                             selectedTeacherId: sec.homeroomTeacher?.id || ""
                                                         })}
-                                                        className="text-xs text-[#4085b3] hover:underline font-semibold ml-1 cursor-pointer"
+                                                        className="text-[#4085b3] hover:underline font-medium ml-1 cursor-pointer"
                                                     >
                                                         {sec.homeroomTeacher ? "Edit" : "Assign"}
                                                     </button>
@@ -942,95 +966,83 @@ export default function TeachingAssignmentsPage() {
                                             </div>
                                         </div>
 
-                                        {/* Clean Table */}
-                                        <div className="overflow-x-auto">
-                                            <table className="w-full text-xs text-left">
-                                                <thead className="text-[11px] text-gray-500 uppercase bg-white border-b border-gray-100">
-                                                    <tr>
-                                                        <th className="px-5 py-2 font-medium">Subject</th>
-                                                        <th className="px-5 py-2 font-medium">Periods</th>
-                                                        <th className="px-5 py-2 font-medium">Teacher</th>
-                                                        <th className="px-5 py-2 font-medium">Status</th>
-                                                        <th className="px-5 py-2 font-medium text-right">Action</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody className="divide-y divide-gray-100">
-                                                    {sec.subjectAllocations.map((sa: any) => (
-                                                        <tr key={sa.subjectId} className="hover:bg-gray-50/50">
-                                                            <td className="px-5 py-2.5 font-medium text-gray-900">
-                                                                {sa.subjectName}
-                                                            </td>
-                                                            <td className="px-5 py-2.5 text-gray-600 font-mono">
-                                                                {sa.weeklyPeriodsRequired} p/wk
-                                                            </td>
-                                                            <td className="px-5 py-2.5">
-                                                                {sa.teacher ? (
-                                                                    <div>
-                                                                        <p className="font-semibold text-gray-900">{sa.teacher.name}</p>
-                                                                        <p className="text-[10px] text-gray-500 font-mono">{sa.teacher.employeeId || "Faculty"}</p>
-                                                                    </div>
-                                                                ) : (
-                                                                    <span className="text-gray-400 italic">None assigned</span>
-                                                                )}
-                                                            </td>
-                                                            <td className="px-5 py-2.5">
-                                                                {sa.status === "STAFFED" ? (
-                                                                    <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
-                                                                        Staffed
-                                                                    </span>
-                                                                ) : sa.status === "PROPOSED" ? (
-                                                                    <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium bg-amber-50 text-amber-700 border border-amber-200">
-                                                                        Proposed
-                                                                    </span>
-                                                                ) : (
-                                                                    <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium bg-rose-50 text-rose-700 border border-rose-200">
-                                                                        Vacant
-                                                                    </span>
-                                                                )}
-                                                            </td>
-                                                            <td className="px-5 py-2.5 text-right">
-                                                                {sa.status === "VACANT" && hasCreatePermission && !isYearLocked && (
-                                                                    <button
-                                                                        onClick={() => router.push(`/dashboard/teachers/assignments/manage?yearId=${selectedYearId}&schoolGradeId=${sec.schoolGradeId}&sectionId=${sec.sectionId}&subjectId=${sa.subjectId}`)}
-                                                                        className="text-xs font-medium text-[#4085b3] hover:underline cursor-pointer"
-                                                                    >
-                                                                        Assign
-                                                                    </button>
-                                                                )}
-
-                                                                {sa.status === "PROPOSED" && isPrincipalOrAdmin && !isYearLocked && sa.assignmentId && (
-                                                                    <button
-                                                                        onClick={() => handleApprove(sa.assignmentId)}
-                                                                        disabled={actionLoading}
-                                                                        className="text-xs font-medium text-emerald-700 hover:underline cursor-pointer"
-                                                                    >
-                                                                        Approve
-                                                                    </button>
-                                                                )}
-
-                                                                {sa.status === "STAFFED" && sa.assignmentId && hasCreatePermission && !isYearLocked && (
-                                                                    <div className="flex items-center justify-end space-x-2">
-                                                                        <button
-                                                                            onClick={() => router.push(`/dashboard/teachers/assignments/manage?yearId=${selectedYearId}&schoolGradeId=${sec.schoolGradeId}&sectionId=${sec.sectionId}&subjectId=${sa.subjectId}&oldAssignmentId=${sa.assignmentId}`)}
-                                                                            className="text-xs font-medium text-[#4085b3] hover:underline cursor-pointer"
-                                                                        >
-                                                                            Reassign
-                                                                        </button>
-                                                                        <button
-                                                                            onClick={() => handleEndAssignment(sa.assignmentId)}
-                                                                            disabled={actionLoading}
-                                                                            className="text-xs text-gray-500 hover:text-rose-600 transition-colors cursor-pointer"
-                                                                        >
-                                                                            End
-                                                                        </button>
-                                                                    </div>
-                                                                )}
-                                                            </td>
+                                        {/* Clean Subject Table */}
+                                        {sec.subjectAllocations.length === 0 ? (
+                                            <div className="px-4 py-3 text-xs text-slate-400">
+                                                No curriculum subjects configured for this grade.
+                                            </div>
+                                        ) : (
+                                            <div className="overflow-x-auto">
+                                                <table className="w-full text-xs text-left">
+                                                    <thead className="text-[11px] font-semibold text-slate-500 uppercase bg-white border-b border-slate-200">
+                                                        <tr>
+                                                            <th className="px-4 py-2 font-medium">Subject</th>
+                                                            <th className="px-4 py-2 font-medium w-28">Periods</th>
+                                                            <th className="px-4 py-2 font-medium">Teacher</th>
+                                                            <th className="px-4 py-2 font-medium text-right w-36">Action</th>
                                                         </tr>
-                                                    ))}
-                                                </tbody>
-                                            </table>
-                                        </div>
+                                                    </thead>
+                                                    <tbody className="divide-y divide-slate-100">
+                                                        {sec.subjectAllocations.map((sa: any) => (
+                                                            <tr key={sa.subjectId} className="hover:bg-slate-50/50 transition-colors">
+                                                                <td className="px-4 py-2.5 font-medium text-slate-900">
+                                                                    {sa.subjectName}
+                                                                </td>
+                                                                <td className="px-4 py-2.5 text-slate-600 font-mono">
+                                                                    {sa.weeklyPeriodsRequired} p/wk
+                                                                </td>
+                                                                <td className="px-4 py-2.5">
+                                                                    {sa.teacher ? (
+                                                                        <span className="text-slate-800 font-medium">{sa.teacher.name}</span>
+                                                                    ) : (
+                                                                        <span className="text-slate-300 font-mono">—</span>
+                                                                    )}
+                                                                </td>
+                                                                <td className="px-4 py-2.5 text-right">
+                                                                    {sa.status === "VACANT" && hasCreatePermission && !isYearLocked && (
+                                                                        <button
+                                                                            onClick={() => router.push(`/dashboard/teachers/assignments/manage?yearId=${selectedYearId}&schoolGradeId=${sec.schoolGradeId}&sectionId=${sec.sectionId}&subjectId=${sa.subjectId}`)}
+                                                                            className="text-xs text-[#4085b3] hover:underline font-medium cursor-pointer"
+                                                                        >
+                                                                            + Assign
+                                                                        </button>
+                                                                    )}
+
+                                                                    {sa.status === "PROPOSED" && isPrincipalOrAdmin && !isYearLocked && sa.assignmentId && (
+                                                                        <button
+                                                                            onClick={() => handleApprove(sa.assignmentId)}
+                                                                            disabled={actionLoading}
+                                                                            className="text-xs text-emerald-700 hover:underline font-medium cursor-pointer"
+                                                                        >
+                                                                            Approve
+                                                                        </button>
+                                                                    )}
+
+                                                                    {sa.status === "STAFFED" && sa.assignmentId && hasCreatePermission && !isYearLocked && (
+                                                                        <div className="flex items-center justify-end space-x-2">
+                                                                            <button
+                                                                                onClick={() => router.push(`/dashboard/teachers/assignments/manage?yearId=${selectedYearId}&schoolGradeId=${sec.schoolGradeId}&sectionId=${sec.sectionId}&subjectId=${sa.subjectId}&oldAssignmentId=${sa.assignmentId}`)}
+                                                                                className="text-xs text-slate-600 hover:text-[#4085b3] hover:underline cursor-pointer"
+                                                                            >
+                                                                                Reassign
+                                                                            </button>
+                                                                            <span className="text-slate-300">&bull;</span>
+                                                                            <button
+                                                                                onClick={() => handleEndAssignment(sa.assignmentId)}
+                                                                                disabled={actionLoading}
+                                                                                className="text-xs text-slate-400 hover:text-rose-600 hover:underline cursor-pointer"
+                                                                            >
+                                                                                End
+                                                                            </button>
+                                                                        </div>
+                                                                    )}
+                                                                </td>
+                                                            </tr>
+                                                        ))}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        )}
                                     </div>
                                 );
                             })}
@@ -1043,28 +1055,28 @@ export default function TeachingAssignmentsPage() {
             {activeTab === "workload" && (
                 <div className="space-y-4">
                     {/* Filters Bar: Clear Filter + Search + Workload Filter + Teacher Filter */}
-                    <div className="bg-white border border-gray-200 rounded-lg p-3 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-3">
+                    <div className="bg-white border border-slate-200 rounded-lg p-3 shadow-2xs flex flex-col sm:flex-row items-center justify-between gap-3">
                         <div className="flex flex-wrap items-center gap-2.5 w-full sm:w-auto">
                             {/* Clear Filter Option */}
                             {isWorkloadFilterActive && (
                                 <button
                                     onClick={clearWorkloadFilters}
-                                    className="inline-flex items-center space-x-1 text-xs text-gray-600 hover:text-gray-900 bg-gray-50 border border-gray-200 px-2.5 py-1.5 rounded-lg cursor-pointer transition-colors"
+                                    className="inline-flex items-center space-x-1 text-xs text-slate-600 hover:text-slate-900 bg-slate-50 hover:bg-slate-100 border border-slate-200 px-2.5 py-1.5 rounded-lg cursor-pointer transition-colors"
                                     title="Reset all filters"
                                 >
-                                    <RotateCcw className="w-3.5 h-3.5 text-gray-400" />
+                                    <RotateCcw className="w-3.5 h-3.5 text-slate-400" />
                                     <span>Clear Filters</span>
                                 </button>
                             )}
 
                             <div className="relative w-full sm:w-48">
-                                <Search className="w-4 h-4 absolute left-3 top-2 text-gray-400" />
+                                <Search className="w-3.5 h-3.5 absolute left-3 top-2.5 text-slate-400" />
                                 <input
                                     type="text"
-                                    placeholder="Search..."
+                                    placeholder="Search faculty..."
                                     value={searchQuery}
                                     onChange={(e) => setSearchQuery(e.target.value)}
-                                    className="w-full pl-9 pr-3 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4085b3] outline-none"
+                                    className="w-full pl-9 pr-3 py-1.5 text-xs border border-slate-200 rounded-lg bg-white focus:border-[#4085b3] focus:ring-1 focus:ring-[#4085b3] outline-none text-slate-700"
                                 />
                             </div>
 
@@ -1072,7 +1084,7 @@ export default function TeachingAssignmentsPage() {
                             <select
                                 value={workloadFilter}
                                 onChange={(e) => setWorkloadFilter(e.target.value)}
-                                className="text-xs border border-gray-300 rounded-lg px-2.5 py-1.5 bg-white text-gray-700 cursor-pointer outline-none"
+                                className="text-xs border border-slate-200 rounded-lg px-2.5 py-1.5 bg-white text-slate-700 cursor-pointer outline-none focus:border-[#4085b3] focus:ring-1 focus:ring-[#4085b3]"
                             >
                                 <option value="ALL">All Workloads</option>
                                 <option value="TARGET">On Target (18–24 p/wk)</option>
@@ -1085,39 +1097,39 @@ export default function TeachingAssignmentsPage() {
                             <select
                                 value={teacherFilter}
                                 onChange={(e) => setTeacherFilter(e.target.value)}
-                                className="text-xs border border-gray-300 rounded-lg px-2.5 py-1.5 bg-white text-gray-700 cursor-pointer outline-none"
+                                className="text-xs border border-slate-200 rounded-lg px-2.5 py-1.5 bg-white text-slate-700 cursor-pointer outline-none focus:border-[#4085b3] focus:ring-1 focus:ring-[#4085b3]"
                             >
                                 <option value="ALL">All Faculty</option>
                                 {availableTeachersForFilter.map((t: any) => (
                                     <option key={t.id} value={t.id}>
-                                        {t.firstName} {t.lastName} ({t.employeeId || t.staffIdCode || "Staff"})
+                                        {t.firstName} {t.lastName}
                                     </option>
                                 ))}
                             </select>
                         </div>
 
-                        <div className="text-xs text-gray-500 font-medium">
-                            {filteredWorkload.length} Faculty Members
+                        <div className="text-xs text-slate-500 font-semibold bg-slate-50 border border-slate-200 px-2.5 py-1 rounded-md">
+                            {filteredWorkload.length} {filteredWorkload.length === 1 ? "Faculty Member" : "Faculty Members"}
                         </div>
                     </div>
 
                     {filteredWorkload.length === 0 ? (
-                        <div className="bg-white border border-gray-200 rounded-lg p-8 text-center text-xs text-gray-500">
+                        <div className="bg-white border border-slate-200 rounded-lg p-10 text-center text-xs text-slate-400 shadow-2xs">
                             No teachers match the filter.
                         </div>
                     ) : (
-                        <div className="bg-white border border-gray-200 rounded-lg shadow-xs overflow-hidden">
+                        <div className="bg-white border border-slate-200 rounded-lg shadow-2xs overflow-hidden">
                             <table className="w-full text-xs text-left">
-                                <thead className="text-[11px] text-gray-500 uppercase bg-gray-50 border-b border-gray-200">
+                                <thead className="text-[11px] font-semibold text-slate-500 uppercase bg-white border-b border-slate-200">
                                     <tr>
-                                        <th className="px-5 py-3 font-semibold">Teacher</th>
-                                        <th className="px-5 py-3 font-semibold">Weekly Load</th>
-                                        <th className="px-5 py-3 font-semibold">Status</th>
-                                        <th className="px-5 py-3 font-semibold">Assigned Subjects</th>
-                                        <th className="px-5 py-3 font-semibold text-right">Actions</th>
+                                        <th className="px-4 py-2 font-medium">Teacher</th>
+                                        <th className="px-4 py-2 font-medium w-32">Weekly Load</th>
+                                        <th className="px-4 py-2 font-medium w-28">Status</th>
+                                        <th className="px-4 py-2 font-medium">Assigned Subjects</th>
+                                        <th className="px-4 py-2 font-medium text-right w-36">Action</th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-gray-100">
+                                <tbody className="divide-y divide-slate-100">
                                     {filteredWorkload.map((w: any) => {
                                         const isExpanded = expandedTeacherId === w.teacherId;
 
@@ -1131,88 +1143,87 @@ export default function TeachingAssignmentsPage() {
                                             subjectCounts[a.subjectName].periods += a.periodsPerWeek;
                                         });
 
+                                        const hasAssignments = w.assignments && w.assignments.length > 0;
+
                                         return (
-                                            <tr key={w.teacherId} className="hover:bg-gray-50/50 align-top">
-                                                <td className="px-5 py-3">
-                                                    <p className="font-semibold text-gray-900">{w.name}</p>
-                                                    <p className="text-[10px] text-gray-500 font-mono">
-                                                        {w.employeeId || "Staff"} &bull; {w.employmentType?.replace("_", " ")}
-                                                    </p>
+                                            <tr key={w.teacherId} className="hover:bg-slate-50/50 transition-colors align-top">
+                                                <td className="px-4 py-2.5">
+                                                    <div className="font-medium text-slate-900">{w.name}</div>
                                                     {w.homeroomSection && (
-                                                        <span className="inline-flex items-center px-1.5 py-0.5 mt-1 rounded text-[10px] bg-gray-100 text-gray-700">
+                                                        <div className="text-[11px] text-slate-500 mt-0.5">
                                                             Homeroom: {w.homeroomSection.gradeName} {w.homeroomSection.name}
-                                                        </span>
+                                                        </div>
                                                     )}
                                                 </td>
 
-                                                <td className="px-5 py-3">
-                                                    <p className="font-bold text-gray-900 font-mono">{w.totalPeriods} p/wk</p>
-                                                    <p className="text-[10px] text-gray-500">Target: {w.targetWorkload || 22} p/wk</p>
+                                                <td className="px-4 py-2.5 font-mono text-slate-700">
+                                                    <span className="font-medium">{w.totalPeriods}</span>
+                                                    <span className="text-slate-400"> / {w.targetWorkload || 22} p/wk</span>
                                                 </td>
 
-                                                <td className="px-5 py-3">
-                                                    <span className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium uppercase ${
-                                                        w.status === "TARGET" || w.status === "NEAR_CAPACITY"
-                                                            ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                                                            : w.status === "OVERLOADED"
-                                                            ? "bg-rose-50 text-rose-700 border border-rose-200"
-                                                            : w.status === "UNDERLOADED"
-                                                            ? "bg-amber-50 text-amber-700 border border-amber-200"
-                                                            : "bg-gray-100 text-gray-700 border border-gray-200"
-                                                    }`}>
-                                                        {w.status?.replace("_", " ")}
-                                                    </span>
+                                                <td className="px-4 py-2.5 text-xs">
+                                                    {w.status === "TARGET" || w.status === "NEAR_CAPACITY" ? (
+                                                        <span className="text-emerald-700 font-medium">On Target</span>
+                                                    ) : w.status === "OVERLOADED" ? (
+                                                        <span className="text-rose-600 font-medium">Overloaded</span>
+                                                    ) : w.status === "UNDERLOADED" ? (
+                                                        <span className="text-slate-600 font-medium">Underloaded</span>
+                                                    ) : (
+                                                        <span className="text-slate-400">Unassigned</span>
+                                                    )}
                                                 </td>
 
-                                                <td className="px-5 py-3">
-                                                    {Object.keys(subjectCounts).length > 0 ? (
-                                                        <div className="space-y-1.5">
-                                                            <div className="flex flex-wrap gap-1.5">
-                                                                {Object.entries(subjectCounts).map(([sub, data]) => (
-                                                                    <span key={sub} className="inline-flex items-center px-2 py-0.5 rounded border border-gray-200 bg-gray-50 text-gray-700 text-[11px]">
+                                                <td className="px-4 py-2.5">
+                                                    {hasAssignments ? (
+                                                        <div>
+                                                            <div className="text-slate-800">
+                                                                {Object.entries(subjectCounts).map(([sub, data], idx) => (
+                                                                    <span key={sub}>
+                                                                        {idx > 0 && <span className="text-slate-300 mx-1.5">&bull;</span>}
                                                                         <span className="font-medium">{sub}</span>
-                                                                        <span className="text-gray-500 ml-1 font-mono">({data.count} sec, {data.periods}p)</span>
+                                                                        <span className="text-slate-400 ml-1 font-mono text-[11px]">({data.periods}p)</span>
                                                                     </span>
                                                                 ))}
                                                             </div>
 
                                                             {isExpanded && (
-                                                                <div className="mt-2 pt-2 border-t border-gray-100 space-y-1 bg-gray-50 p-2 rounded">
+                                                                <div className="mt-2 pt-2 border-t border-slate-100 space-y-1 bg-slate-50/60 p-2 rounded text-[11px] text-slate-600">
                                                                     {w.assignments.map((a: any) => (
-                                                                        <div key={a.assignmentId} className="flex justify-between text-[11px] text-gray-600">
-                                                                            <span>{a.subjectName} &mdash; {a.gradeName} ({a.sectionName})</span>
-                                                                            <span className="font-mono">{a.periodsPerWeek} p/wk</span>
+                                                                        <div key={a.assignmentId} className="flex justify-between">
+                                                                            <span>{a.subjectName} &mdash; {a.gradeName} (Sec {a.sectionName})</span>
+                                                                            <span className="font-mono text-slate-500">{a.periodsPerWeek} p/wk</span>
                                                                         </div>
                                                                     ))}
                                                                 </div>
                                                             )}
                                                         </div>
                                                     ) : (
-                                                        <span className="text-gray-400 italic">No allocations</span>
+                                                        <span className="text-slate-300 font-mono">—</span>
                                                     )}
                                                 </td>
 
-                                                <td className="px-5 py-3 text-right space-y-1">
-                                                    <div>
-                                                        {w.assignments && w.assignments.length > 0 && (
+                                                <td className="px-4 py-2.5 text-right">
+                                                    <div className="flex items-center justify-end space-x-2">
+                                                        {hasAssignments && (
+                                                            <>
+                                                                <button
+                                                                    onClick={() => setExpandedTeacherId(isExpanded ? null : w.teacherId)}
+                                                                    className="text-xs text-slate-500 hover:text-slate-800 hover:underline cursor-pointer"
+                                                                >
+                                                                    {isExpanded ? "Hide" : "Details"}
+                                                                </button>
+                                                                <span className="text-slate-300">&bull;</span>
+                                                            </>
+                                                        )}
+                                                        {hasCreatePermission && !isYearLocked && (
                                                             <button
-                                                                onClick={() => setExpandedTeacherId(isExpanded ? null : w.teacherId)}
+                                                                onClick={() => router.push(`/dashboard/teachers/assignments/manage?yearId=${selectedYearId}&teacherId=${w.teacherId}`)}
                                                                 className="text-xs text-[#4085b3] hover:underline font-medium cursor-pointer"
                                                             >
-                                                                {isExpanded ? "Collapse" : `View ${w.assignments.length} classes`}
+                                                                + Assign
                                                             </button>
                                                         )}
                                                     </div>
-                                                    {hasCreatePermission && !isYearLocked && (
-                                                        <div>
-                                                            <button
-                                                                onClick={() => router.push(`/dashboard/teachers/assignments/manage?yearId=${selectedYearId}&teacherId=${w.teacherId}`)}
-                                                                className="text-[11px] text-gray-600 hover:text-[#4085b3] font-medium cursor-pointer"
-                                                            >
-                                                                + Assign Class
-                                                            </button>
-                                                        </div>
-                                                    )}
                                                 </td>
                                             </tr>
                                         );
@@ -1228,86 +1239,81 @@ export default function TeachingAssignmentsPage() {
             {activeTab === "approvals" && (
                 <div className="space-y-4">
                     {pendingProposals.length === 0 ? (
-                        <div className="bg-white border border-gray-200 rounded-lg p-12 text-center">
-                            <p className="text-sm font-semibold text-gray-900">No Pending Proposals</p>
-                            <p className="text-xs text-gray-500 mt-1">All instructional allocations for this academic year are confirmed.</p>
+                        <div className="bg-white border border-slate-200 rounded-lg p-12 text-center text-xs text-slate-400 shadow-2xs">
+                            <p className="text-sm font-semibold text-slate-800">No Pending Proposals</p>
+                            <p className="mt-1 text-slate-400">All instructional allocations for this academic year are confirmed.</p>
                         </div>
                     ) : (
-                        <div className="bg-white border border-gray-200 rounded-lg shadow-xs overflow-hidden">
-                            <div className="px-5 py-3 border-b border-gray-200 flex items-center justify-between">
-                                <span className="text-xs font-semibold text-gray-700">
+                        <div className="bg-white border border-slate-200 rounded-lg shadow-2xs overflow-hidden">
+                            <div className="px-4 py-2.5 border-b border-slate-200 flex items-center justify-between bg-slate-50/70 text-xs">
+                                <span className="font-semibold text-slate-800">
                                     {pendingProposals.length} Pending {pendingProposals.length === 1 ? "Proposal" : "Proposals"}
                                 </span>
                                 {isPrincipalOrAdmin && !isYearLocked && (
                                     <button
                                         onClick={handleBulkApprove}
                                         disabled={actionLoading}
-                                        className="inline-flex items-center space-x-1 bg-[#4085b3] hover:bg-[#2b6a94] text-white text-xs font-medium py-1.5 px-3 rounded-lg shadow-xs transition-colors cursor-pointer"
+                                        className="bg-[#4085b3] hover:bg-[#2b6a94] text-white text-xs font-medium py-1 px-3 rounded shadow-2xs transition-colors cursor-pointer"
                                     >
-                                        <Check className="w-3.5 h-3.5" />
-                                        <span>Approve All</span>
+                                        Approve All
                                     </button>
                                 )}
                             </div>
 
                             <table className="w-full text-xs text-left">
-                                <thead className="text-[11px] text-gray-500 uppercase bg-gray-50 border-b border-gray-200">
+                                <thead className="text-[11px] font-semibold text-slate-500 uppercase bg-white border-b border-slate-200">
                                     <tr>
-                                        <th className="px-5 py-2.5 font-semibold">Teacher</th>
-                                        <th className="px-5 py-2.5 font-semibold">Subject</th>
-                                        <th className="px-5 py-2.5 font-semibold">Grade & Section</th>
-                                        <th className="px-5 py-2.5 font-semibold">Load</th>
-                                        <th className="px-5 py-2.5 font-semibold">Status</th>
-                                        <th className="px-5 py-2.5 font-semibold text-right">Actions</th>
+                                        <th className="px-4 py-2 font-medium">Teacher</th>
+                                        <th className="px-4 py-2 font-medium">Subject</th>
+                                        <th className="px-4 py-2 font-medium">Grade & Section</th>
+                                        <th className="px-4 py-2 font-medium w-28">Periods</th>
+                                        <th className="px-4 py-2 font-medium text-right w-36">Action</th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-gray-100">
-                                    {pendingProposals.map((prop: any) => (
-                                        <tr key={prop.id} className="hover:bg-gray-50/50">
-                                            <td className="px-5 py-3">
-                                                <p className="font-semibold text-gray-900">
+                                <tbody className="divide-y divide-slate-100">
+                                    {pendingProposals.map((prop: any) => {
+                                        const gradeName = prop.schoolGrade?.grade?.name && prop.schoolGrade?.grade?.name.trim() !== "Grade"
+                                            ? prop.schoolGrade?.grade?.name
+                                            : (prop.schoolGrade?.grade?.level ? `Grade ${prop.schoolGrade?.grade?.level}` : (prop.schoolGrade?.grade?.name || "Grade"));
+
+                                        return (
+                                            <tr key={prop.id} className="hover:bg-slate-50/50 transition-colors">
+                                                <td className="px-4 py-2.5 font-medium text-slate-900">
                                                     {prop.teacher?.firstName} {prop.teacher?.lastName}
-                                                </p>
-                                                <p className="text-[10px] text-gray-500 font-mono">
-                                                    {prop.teacher?.employeeId || prop.teacher?.staffIdCode || "Staff"}
-                                                </p>
-                                            </td>
-                                            <td className="px-5 py-3 font-medium text-gray-900">
-                                                {prop.subject?.name}
-                                            </td>
-                                            <td className="px-5 py-3 text-gray-600">
-                                                {prop.schoolGrade?.grade?.name} {prop.section ? `\u2014 Sec ${prop.section.name}` : "(All Sections)"}
-                                            </td>
-                                            <td className="px-5 py-3 font-mono text-gray-700">
-                                                {prop.periodsPerWeek} p/wk
-                                            </td>
-                                            <td className="px-5 py-3">
-                                                <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium bg-amber-50 text-amber-700 border border-amber-200">
-                                                    Pending
-                                                </span>
-                                            </td>
-                                            <td className="px-5 py-3 text-right space-x-3">
-                                                {isPrincipalOrAdmin && !isYearLocked && (
-                                                    <>
-                                                        <button
-                                                            onClick={() => handleApprove(prop.id)}
-                                                            disabled={actionLoading}
-                                                            className="text-xs font-semibold text-[#4085b3] hover:underline cursor-pointer"
-                                                        >
-                                                            Approve
-                                                        </button>
-                                                        <button
-                                                            onClick={() => handleReject(prop.id)}
-                                                            disabled={actionLoading}
-                                                            className="text-xs font-semibold text-rose-600 hover:underline cursor-pointer"
-                                                        >
-                                                            Reject
-                                                        </button>
-                                                    </>
-                                                )}
-                                            </td>
-                                        </tr>
-                                    ))}
+                                                </td>
+                                                <td className="px-4 py-2.5 text-slate-800">
+                                                    {prop.subject?.name}
+                                                </td>
+                                                <td className="px-4 py-2.5 text-slate-600">
+                                                    {gradeName} {prop.section ? `\u2014 Section ${prop.section.name}` : "(All Sections)"}
+                                                </td>
+                                                <td className="px-4 py-2.5 font-mono text-slate-600">
+                                                    {prop.periodsPerWeek} p/wk
+                                                </td>
+                                                <td className="px-4 py-2.5 text-right">
+                                                    {isPrincipalOrAdmin && !isYearLocked && (
+                                                        <div className="flex items-center justify-end space-x-2">
+                                                            <button
+                                                                onClick={() => handleApprove(prop.id)}
+                                                                disabled={actionLoading}
+                                                                className="text-xs text-emerald-700 hover:underline font-medium cursor-pointer"
+                                                            >
+                                                                Approve
+                                                            </button>
+                                                            <span className="text-slate-300">&bull;</span>
+                                                            <button
+                                                                onClick={() => handleReject(prop.id)}
+                                                                disabled={actionLoading}
+                                                                className="text-xs text-slate-400 hover:text-rose-600 hover:underline cursor-pointer"
+                                                            >
+                                                                Reject
+                                                            </button>
+                                                        </div>
+                                                    )}
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
                                 </tbody>
                             </table>
                         </div>
