@@ -33,6 +33,7 @@ export default function GradesAndSectionsPage() {
     const [selectedStatusFilter, setSelectedStatusFilter] = useState<"ALL" | "ACTIVE" | "SUSPENDED" | "ARCHIVED">("ALL");
     const [sortOrder, setSortOrder] = useState<"LEVEL_ASC" | "LEVEL_DESC" | "NAME_ASC" | "SECTIONS_DESC" | "CAPACITY_DESC">("LEVEL_ASC");
     const [viewMode, setViewMode] = useState<"cards" | "table">("cards");
+    const [showFilters, setShowFilters] = useState(false);
 
     // Pagination states
     const [currentPage, setCurrentPage] = useState(1);
@@ -318,74 +319,151 @@ export default function GradesAndSectionsPage() {
                 </div>
             </div>
 
-            {/* Clean Data Stats on Normal Background (No Cards) */}
-            <div className="flex flex-wrap items-center gap-y-2 gap-x-6 px-1 py-1 text-xs">
-                <div className="flex items-baseline space-x-2">
-                    <span className="text-gray-500 font-medium text-xs">Offered Grades:</span>
-                    <span className="font-bold text-gray-900 text-sm font-mono">{schoolGrades.length}</span>
+            {/* 4 KPI Metric Cards: Left-to-right clean blue hover fill */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                {/* Offered Grades */}
+                <div className="relative overflow-hidden border border-slate-200 bg-white rounded p-4 flex items-center justify-between group cursor-pointer shadow-2xs hover:border-[#4085b3] transition-all duration-300">
+                    <span className="absolute inset-0 bg-[#4085b3] origin-left scale-x-0 group-hover:scale-x-100 transition-transform duration-300 ease-out pointer-events-none" />
+                    <div className="relative z-10">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 group-hover:text-blue-100 transition-colors duration-300 block mb-1">
+                            Offered Grades
+                        </span>
+                        <span className="text-2xl font-bold text-slate-900 group-hover:text-white transition-colors duration-300 tabular-nums">
+                            {schoolGrades.length}
+                        </span>
+                    </div>
+                    <GraduationCap className="relative z-10 w-5 h-5 text-slate-400 group-hover:text-white transition-colors duration-300" />
                 </div>
 
-                <span className="text-gray-300 select-none hidden sm:inline">|</span>
-
-                <div className="flex items-baseline space-x-2">
-                    <span className="text-gray-500 font-medium text-xs">Total Sections:</span>
-                    <span className="font-bold text-gray-900 text-sm font-mono">{totalSections}</span>
+                {/* Total Sections */}
+                <div className="relative overflow-hidden border border-slate-200 bg-white rounded p-4 flex items-center justify-between group cursor-pointer shadow-2xs hover:border-[#4085b3] transition-all duration-300">
+                    <span className="absolute inset-0 bg-[#4085b3] origin-left scale-x-0 group-hover:scale-x-100 transition-transform duration-300 ease-out pointer-events-none" />
+                    <div className="relative z-10">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 group-hover:text-blue-100 transition-colors duration-300 block mb-1">
+                            Class Sections
+                        </span>
+                        <span className="text-2xl font-bold text-slate-900 group-hover:text-white transition-colors duration-300 tabular-nums">
+                            {totalSections}
+                        </span>
+                    </div>
+                    <Layers className="relative z-10 w-5 h-5 text-slate-400 group-hover:text-white transition-colors duration-300" />
                 </div>
 
-                <span className="text-gray-300 select-none hidden sm:inline">|</span>
-
-                <div className="flex items-baseline space-x-2">
-                    <span className="text-gray-500 font-medium text-xs">Total Capacity:</span>
-                    <span className="font-bold text-gray-900 text-sm font-mono">
-                        {totalCapacity} <span className="text-xs font-normal text-gray-500">seats</span>
-                    </span>
+                {/* Total Capacity */}
+                <div className="relative overflow-hidden border border-slate-200 bg-white rounded p-4 flex items-center justify-between group cursor-pointer shadow-2xs hover:border-[#4085b3] transition-all duration-300">
+                    <span className="absolute inset-0 bg-[#4085b3] origin-left scale-x-0 group-hover:scale-x-100 transition-transform duration-300 ease-out pointer-events-none" />
+                    <div className="relative z-10">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 group-hover:text-blue-100 transition-colors duration-300 block mb-1">
+                            Total Capacity
+                        </span>
+                        <span className="text-2xl font-bold text-slate-900 group-hover:text-white transition-colors duration-300 tabular-nums">
+                            {totalCapacity}
+                        </span>
+                    </div>
+                    <Users className="relative z-10 w-5 h-5 text-slate-400 group-hover:text-white transition-colors duration-300" />
                 </div>
 
-                <span className="text-gray-300 select-none hidden sm:inline">|</span>
-
-                <div className="flex items-baseline space-x-2">
-                    <span className="text-gray-500 font-medium text-xs">Avg Capacity / Sec:</span>
-                    <span className="font-bold text-gray-900 text-sm font-mono">
-                        {avgCapacityPerSection} <span className="text-xs font-normal text-gray-500">seats</span>
-                    </span>
+                {/* Avg Capacity / Sec */}
+                <div className="relative overflow-hidden border border-slate-200 bg-white rounded p-4 flex items-center justify-between group cursor-pointer shadow-2xs hover:border-[#4085b3] transition-all duration-300">
+                    <span className="absolute inset-0 bg-[#4085b3] origin-left scale-x-0 group-hover:scale-x-100 transition-transform duration-300 ease-out pointer-events-none" />
+                    <div className="relative z-10">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 group-hover:text-blue-100 transition-colors duration-300 block mb-1">
+                            Avg / Section
+                        </span>
+                        <span className="text-2xl font-bold text-slate-900 group-hover:text-white transition-colors duration-300 tabular-nums">
+                            {avgCapacityPerSection}
+                        </span>
+                    </div>
+                    <ShieldCheck className="relative z-10 w-5 h-5 text-slate-400 group-hover:text-white transition-colors duration-300" />
                 </div>
             </div>
 
-            {/* Main Content Area with Integrated Action Bar */}
-            <div className="bg-white border border-gray-200 rounded-xl shadow-xs overflow-hidden">
-                {/* Integrated Action Toolbar */}
-                <div className="p-4 border-b border-gray-200 bg-gray-50/50 flex flex-col md:flex-row md:items-center justify-between gap-3">
-                    {/* Left Side: Search & Clear */}
-                    <div className="flex items-center space-x-2 flex-1 max-w-md">
+            {/* Direct Data Workspace: No outer container card */}
+            <div className="space-y-4 pt-1">
+                {/* Search & Filter & View Controls */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div className="flex items-center gap-2 flex-1 max-w-md">
                         <div className="relative flex-1">
-                            <Search className="w-3.5 h-3.5 absolute left-3 top-2.5 text-gray-400" />
+                            <Search className="w-3.5 h-3.5 absolute left-3 top-2.5 text-slate-400" />
                             <input
                                 type="text"
                                 placeholder="Search grade or section..."
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
-                                className="w-full pl-8 pr-3 py-1.5 text-xs bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4085b3] focus:border-[#4085b3] outline-none transition-all"
+                                className="w-full pl-8 pr-3 py-1.5 text-xs bg-white border border-slate-300 rounded text-slate-900 focus:outline-hidden focus:ring-1 focus:ring-[#4085b3] focus:border-[#4085b3] transition-colors"
                             />
                         </div>
                         {hasActiveFilters && (
                             <button
                                 onClick={handleClearFilters}
-                                className="inline-flex items-center space-x-1 px-2.5 py-1.5 rounded-lg border border-gray-300 bg-white text-gray-700 hover:bg-gray-100 text-xs font-medium transition-colors cursor-pointer flex-shrink-0"
+                                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded border border-slate-300 bg-white hover:bg-slate-50 text-xs text-slate-600 transition-colors cursor-pointer flex-shrink-0"
                                 title="Reset search and filters"
                             >
-                                <RotateCcw className="w-3 h-3" />
+                                <RotateCcw className="w-3 h-3 text-slate-400" />
                                 <span>Clear</span>
                             </button>
                         )}
                     </div>
 
-                    {/* Right Side: Clean Dropdowns & View Switch */}
-                    <div className="flex items-center space-x-2 flex-wrap sm:flex-nowrap">
+                    {/* Right Side: Filters toggle button & View switch */}
+                    <div className="flex items-center gap-2">
+                        {/* Filters Toggle Button */}
+                        <button
+                            onClick={() => setShowFilters(!showFilters)}
+                            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded border text-xs font-medium transition-all cursor-pointer ${
+                                showFilters || hasActiveFilters
+                                    ? "bg-[#4085b3] text-white border-[#4085b3] shadow-2xs"
+                                    : "bg-white border-slate-300 text-slate-700 hover:border-[#4085b3] hover:text-[#4085b3]"
+                            }`}
+                            title="Toggle filters"
+                        >
+                            <SlidersHorizontal className="w-3.5 h-3.5" />
+                            <span>Filters</span>
+                            {hasActiveFilters && (
+                                <span className="w-1.5 h-1.5 rounded-full bg-white ml-0.5 animate-pulse" />
+                            )}
+                        </button>
+
+                        {/* View Switch: Cards / Table */}
+                        <div className="inline-flex items-center p-0.5 bg-white border border-slate-300 rounded">
+                            <button
+                                onClick={() => setViewMode("cards")}
+                                className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-medium transition-all cursor-pointer ${
+                                    viewMode === "cards" 
+                                        ? "bg-[#4085b3] text-white font-semibold shadow-2xs" 
+                                        : "text-slate-500 hover:text-[#4085b3] hover:bg-slate-50"
+                                }`}
+                                title="Cards View"
+                            >
+                                <LayoutGrid className="w-3.5 h-3.5" />
+                                <span>Cards</span>
+                            </button>
+                            <button
+                                onClick={() => setViewMode("table")}
+                                className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-medium transition-all cursor-pointer ${
+                                    viewMode === "table" 
+                                        ? "bg-[#4085b3] text-white font-semibold shadow-2xs" 
+                                        : "text-slate-500 hover:text-[#4085b3] hover:bg-slate-50"
+                                }`}
+                                title="Table View"
+                            >
+                                <List className="w-3.5 h-3.5" />
+                                <span>Table</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Collapsible Filter Bar */}
+                {showFilters && (
+                    <div className="flex flex-wrap items-center gap-2.5 p-3 bg-white border border-slate-200 rounded shadow-2xs animate-in fade-in duration-200">
+                        <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Filter:</span>
+                        
                         {/* Grade Filter */}
                         <select
                             value={selectedGradeFilter}
                             onChange={(e) => setSelectedGradeFilter(e.target.value)}
-                            className="bg-white border border-gray-300 text-gray-800 rounded-lg px-2.5 py-1.5 text-xs font-medium focus:ring-2 focus:ring-[#4085b3] outline-none cursor-pointer"
+                            className="text-xs border border-slate-300 rounded px-2.5 py-1.5 bg-white text-slate-700 hover:border-[#4085b3] focus:outline-hidden focus:ring-1 focus:ring-[#4085b3] cursor-pointer transition-colors"
                         >
                             <option value="ALL">All Grades</option>
                             {gradeFilterOptions.map(g => (
@@ -399,7 +477,7 @@ export default function GradesAndSectionsPage() {
                         <select
                             value={selectedStatusFilter}
                             onChange={(e) => setSelectedStatusFilter(e.target.value as any)}
-                            className="bg-white border border-gray-300 text-gray-800 rounded-lg px-2.5 py-1.5 text-xs font-medium focus:ring-2 focus:ring-[#4085b3] outline-none cursor-pointer"
+                            className="text-xs border border-slate-300 rounded px-2.5 py-1.5 bg-white text-slate-700 hover:border-[#4085b3] focus:outline-hidden focus:ring-1 focus:ring-[#4085b3] cursor-pointer transition-colors"
                         >
                             <option value="ALL">All Statuses</option>
                             <option value="ACTIVE">Active</option>
@@ -411,7 +489,7 @@ export default function GradesAndSectionsPage() {
                         <select
                             value={sortOrder}
                             onChange={(e) => setSortOrder(e.target.value as any)}
-                            className="bg-white border border-gray-300 text-gray-800 rounded-lg px-2.5 py-1.5 text-xs font-medium focus:ring-2 focus:ring-[#4085b3] outline-none cursor-pointer"
+                            className="text-xs border border-slate-300 rounded px-2.5 py-1.5 bg-white text-slate-700 hover:border-[#4085b3] focus:outline-hidden focus:ring-1 focus:ring-[#4085b3] cursor-pointer transition-colors"
                         >
                             <option value="LEVEL_ASC">Level: Low to High</option>
                             <option value="LEVEL_DESC">Level: High to Low</option>
@@ -420,44 +498,24 @@ export default function GradesAndSectionsPage() {
                             <option value="CAPACITY_DESC">Highest Capacity</option>
                         </select>
 
-                        <div className="h-4 w-px bg-gray-200 hidden sm:block" />
-
-                        {/* View Switch: Cards / Table */}
-                        <div className="flex items-center p-0.5 bg-white border border-gray-300 rounded-lg">
+                        {hasActiveFilters && (
                             <button
-                                onClick={() => setViewMode("cards")}
-                                className={`inline-flex items-center space-x-1 px-2.5 py-1 rounded-md text-xs transition-colors cursor-pointer ${
-                                    viewMode === "cards" 
-                                        ? "bg-[#4085b3] text-white font-semibold shadow-2xs" 
-                                        : "text-gray-500 hover:text-gray-900"
-                                }`}
-                                title="Cards View"
+                                onClick={handleClearFilters}
+                                className="inline-flex items-center gap-1 px-2 py-1 rounded text-xs text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer ml-auto"
                             >
-                                <LayoutGrid className="w-3.5 h-3.5" />
-                                <span>Cards</span>
+                                <RotateCcw className="w-3 h-3" />
+                                <span>Reset filters</span>
                             </button>
-                            <button
-                                onClick={() => setViewMode("table")}
-                                className={`inline-flex items-center space-x-1 px-2.5 py-1 rounded-md text-xs transition-colors cursor-pointer ${
-                                    viewMode === "table" 
-                                        ? "bg-[#4085b3] text-white font-semibold shadow-2xs" 
-                                        : "text-gray-500 hover:text-gray-900"
-                                }`}
-                                title="Table View"
-                            >
-                                <List className="w-3.5 h-3.5" />
-                                <span>Table</span>
-                            </button>
-                        </div>
+                        )}
                     </div>
-                </div>
+                )}
 
                 {gradesLoading ? (
-                    <div className="p-12 text-center text-xs text-gray-500">
+                    <div className="p-12 text-center text-xs text-gray-500 bg-white border border-slate-200 rounded">
                         <LoadingState message="Updating grade offerings..." />
                     </div>
                 ) : filteredGrades.length === 0 ? (
-                    <div className="py-16 text-center text-xs text-gray-500 space-y-2">
+                    <div className="py-16 text-center text-xs text-gray-500 space-y-2 bg-white border border-slate-200 rounded">
                         <p>
                             {hasActiveFilters 
                                 ? "No grades match your search or filter criteria." 
@@ -481,240 +539,277 @@ export default function GradesAndSectionsPage() {
                     </div>
                 ) : (
                     <>
-                        {/* VIEW 1: EAES STAFFING / STRUCTURE OVERVIEW CARDS (DEFAULT) */}
+                        {/* VIEW 1: CARDS VIEW (Clean blue fill from left to right on hover) */}
                         {viewMode === "cards" ? (
-                            <div className="p-6">
-                                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                                    {paginatedGrades.map((sg) => {
-                                        const gradeCapacity = (sg.sections || []).reduce((acc: number, s: any) => acc + (s.capacity || 0), 0);
-                                        const sectionCount = sg.sections?.length || 0;
-                                        const subjectCount = sg.gradeSubjects?.length || 0;
-                                        const gradeLevel = sg.grade?.level ?? 0;
+                            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                                {paginatedGrades.map((sg) => {
+                                    const gradeCapacity = (sg.sections || []).reduce((acc: number, s: any) => acc + (s.capacity || 0), 0);
+                                    const sectionCount = sg.sections?.length || 0;
+                                    const subjectCount = sg.gradeSubjects?.length || 0;
+                                    const gradeLevel = sg.grade?.level ?? 0;
 
-                                        return (
-                                            <Link 
-                                                key={sg.id} 
-                                                href={`/dashboard/academics/grades/${sg.id}`}
-                                                className="block group"
-                                            >
-                                                <div className="bg-white border border-gray-200 rounded-xl p-5 hover:border-[#4085b3] hover:shadow-md transition-all flex flex-col justify-between h-full relative cursor-pointer">
-                                                    <div>
-                                                        {/* Top Row: Icon Badge & Status/Chevron */}
-                                                        <div className="flex items-start justify-between">
-                                                            <div className="w-11 h-11 rounded-lg bg-sky-50 text-[#4085b3] group-hover:bg-[#4085b3] group-hover:text-white flex items-center justify-center transition-colors">
-                                                                <GraduationCap className="w-5 h-5 stroke-[1.8]" />
-                                                            </div>
+                                    return (
+                                        <Link 
+                                            key={sg.id} 
+                                            href={`/dashboard/academics/grades/${sg.id}`}
+                                            className="block group"
+                                        >
+                                            <div className="relative overflow-hidden bg-white border border-slate-200 rounded p-5 shadow-2xs hover:border-[#4085b3] hover:shadow-md transition-all duration-300 flex flex-col justify-between h-full cursor-pointer">
+                                                {/* Clean Blue Fill Layer from Left to Right */}
+                                                <span className="absolute inset-0 bg-[#4085b3] origin-left scale-x-0 group-hover:scale-x-100 transition-transform duration-300 ease-out pointer-events-none" />
 
-                                                            <div className="flex items-center space-x-2">
-                                                                {/* Status Pill Button */}
-                                                                <button
-                                                                    onClick={(e) => {
-                                                                        e.preventDefault();
-                                                                        e.stopPropagation();
-                                                                        setStatusModalState({ isOpen: true, schoolGrade: sg });
-                                                                    }}
-                                                                    className={`inline-flex items-center space-x-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold border transition-all cursor-pointer ${
-                                                                        sg.status === "ARCHIVED"
-                                                                            ? "bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100"
-                                                                            : sg.status === "SUSPENDED"
-                                                                            ? "bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100"
-                                                                            : "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100"
-                                                                    }`}
-                                                                    title="Change grade offering status"
-                                                                >
-                                                                    <span>{sg.status === "ARCHIVED" ? "Archived" : sg.status === "SUSPENDED" ? "Suspended" : "Active"}</span>
-                                                                    <ChevronDown className="w-3 h-3 opacity-60" />
-                                                                </button>
-
-                                                                <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-[#4085b3] group-hover:translate-x-0.5 transition-all" />
-                                                            </div>
-                                                        </div>
-
-                                                        {/* Title & Summary */}
-                                                        <div className="mt-4">
-                                                            <h3 className="text-base font-bold text-gray-900 group-hover:text-[#4085b3] transition-colors">
+                                                <div className="relative z-10">
+                                                    {/* Top Row: Grade Title + Level Badge & Status */}
+                                                    <div className="flex items-start justify-between gap-2">
+                                                        <div>
+                                                            <h3 className="text-base font-bold text-slate-900 group-hover:text-white transition-colors duration-300">
                                                                 {sg.grade?.name || "Unknown Grade"}
                                                             </h3>
-                                                            <p className="text-xs text-gray-500 mt-1.5 leading-relaxed">
-                                                                {sectionCount} {sectionCount === 1 ? "Section" : "Sections"} &bull; {subjectCount} {subjectCount === 1 ? "Curriculum Subject" : "Curriculum Subjects"} &bull; {gradeCapacity} Seats Total
-                                                            </p>
+                                                            <span className="inline-block text-[11px] font-semibold text-slate-500 group-hover:text-blue-100 transition-colors duration-300 mt-0.5">
+                                                                Level {gradeLevel}
+                                                            </span>
                                                         </div>
+
+                                                        {/* Status Pill Button */}
+                                                        <button
+                                                            onClick={(e) => {
+                                                                e.preventDefault();
+                                                                e.stopPropagation();
+                                                                setStatusModalState({ isOpen: true, schoolGrade: sg });
+                                                            }}
+                                                            className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-medium border transition-all cursor-pointer ${
+                                                                sg.status === "ARCHIVED"
+                                                                    ? "bg-purple-50 text-purple-700 border-purple-200 group-hover:bg-white/20 group-hover:text-white group-hover:border-white/40"
+                                                                    : sg.status === "SUSPENDED"
+                                                                    ? "bg-amber-50 text-amber-700 border-amber-200 group-hover:bg-white/20 group-hover:text-white group-hover:border-white/40"
+                                                                    : "bg-emerald-50 text-emerald-700 border-emerald-200 group-hover:bg-white/20 group-hover:text-white group-hover:border-white/40"
+                                                            }`}
+                                                            title="Change offering status"
+                                                        >
+                                                            <span className={`w-1.5 h-1.5 rounded-full ${
+                                                                sg.status === "ARCHIVED" ? "bg-purple-500 group-hover:bg-white" :
+                                                                sg.status === "SUSPENDED" ? "bg-amber-500 group-hover:bg-white" :
+                                                                "bg-emerald-500 group-hover:bg-white"
+                                                            }`} />
+                                                            <span>{sg.status === "ARCHIVED" ? "Archived" : sg.status === "SUSPENDED" ? "Suspended" : "Active"}</span>
+                                                            <ChevronDown className="w-3 h-3 opacity-60" />
+                                                        </button>
                                                     </div>
 
-                                                    {/* Bottom Details Line */}
-                                                    <div className="mt-5 pt-3 border-t border-gray-100 flex items-center justify-between text-xs text-gray-500">
-                                                        <span className="font-medium text-gray-600">Level {gradeLevel}</span>
-                                                        <span className="text-[#4085b3] font-medium group-hover:underline inline-flex items-center space-x-1">
-                                                            <span>View Coverage</span>
-                                                            <ArrowRight className="w-3 h-3" />
-                                                        </span>
+                                                    {/* Metric Stat Blocks */}
+                                                    <div className="grid grid-cols-3 gap-2 mt-4 pt-3 border-t border-slate-100 group-hover:border-white/20 transition-colors duration-300">
+                                                        <div className="text-center p-2 rounded bg-slate-50 group-hover:bg-white/10 transition-colors duration-300">
+                                                            <span className="block text-[10px] uppercase font-bold text-slate-400 group-hover:text-blue-100 transition-colors duration-300">
+                                                                Sections
+                                                            </span>
+                                                            <span className="text-sm font-bold text-slate-900 group-hover:text-white transition-colors duration-300 font-mono">
+                                                                {sectionCount}
+                                                            </span>
+                                                        </div>
+                                                        <div className="text-center p-2 rounded bg-slate-50 group-hover:bg-white/10 transition-colors duration-300">
+                                                            <span className="block text-[10px] uppercase font-bold text-slate-400 group-hover:text-blue-100 transition-colors duration-300">
+                                                                Subjects
+                                                            </span>
+                                                            <span className="text-sm font-bold text-slate-900 group-hover:text-white transition-colors duration-300 font-mono">
+                                                                {subjectCount}
+                                                            </span>
+                                                        </div>
+                                                        <div className="text-center p-2 rounded bg-slate-50 group-hover:bg-white/10 transition-colors duration-300">
+                                                            <span className="block text-[10px] uppercase font-bold text-slate-400 group-hover:text-blue-100 transition-colors duration-300">
+                                                                Capacity
+                                                            </span>
+                                                            <span className="text-sm font-bold text-slate-900 group-hover:text-white transition-colors duration-300 font-mono">
+                                                                {gradeCapacity}
+                                                            </span>
+                                                        </div>
                                                     </div>
                                                 </div>
-                                            </Link>
-                                        );
-                                    })}
-                                </div>
+
+                                                {/* Bottom Details Line */}
+                                                <div className="relative z-10 mt-4 pt-3 border-t border-slate-100 group-hover:border-white/20 flex items-center justify-between text-xs transition-colors duration-300">
+                                                    <span className="text-slate-400 group-hover:text-blue-100 text-[11px] transition-colors duration-300">
+                                                        Offering Details
+                                                    </span>
+                                                    <span className="text-[#4085b3] group-hover:text-white font-medium inline-flex items-center gap-1 transition-colors duration-300">
+                                                        <span>Manage</span>
+                                                        <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform duration-300" />
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </Link>
+                                    );
+                                })}
                             </div>
                         ) : (
-                            /* VIEW 2: COMPACT ADMINISTRATIVE TABLE VIEW */
-                            <div className="overflow-x-auto">
-                                <table className="w-full text-left text-xs text-gray-700">
-                                    <thead className="bg-gray-50 border-b border-gray-200 text-gray-600 uppercase font-semibold text-[11px]">
-                                        <tr>
-                                            <th className="px-4 py-3 w-12 text-center">#</th>
-                                            <th className="px-5 py-3 w-44">Grade Level</th>
-                                            <th className="px-4 py-3 w-28 text-center">Status</th>
-                                            <th className="px-5 py-3">Sections & Capacity</th>
-                                            <th className="px-5 py-3 w-44 text-center">Curriculum Subjects</th>
-                                            <th className="px-5 py-3 w-52 text-right">Actions</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-gray-100">
-                                        {paginatedGrades.map((sg, idx) => {
-                                            const globalIndex = (currentPage - 1) * pageSize + idx + 1;
-                                            return (
-                                                <tr key={sg.id} className="hover:bg-gray-50/70 transition-colors">
-                                                    <td className="px-4 py-3.5 text-center text-gray-400 font-mono text-[11px]">
-                                                        {globalIndex}
-                                                    </td>
-                                                    <td className="px-5 py-3.5">
-                                                        <div className="font-bold text-gray-900 text-sm">
-                                                            {sg.grade?.name || "Unknown"}
-                                                        </div>
-                                                        <div className="text-[11px] text-gray-400 font-mono">
-                                                            Level {sg.grade?.level ?? 0}
-                                                        </div>
-                                                    </td>
+                            /* VIEW 2: COMPACT ADMINISTRATIVE TABLE VIEW (Clean border directly on canvas) */
+                            <div className="border border-slate-200 bg-white rounded overflow-hidden shadow-2xs">
+                                <div className="overflow-x-auto">
+                                    <table className="w-full text-left text-xs text-gray-700">
+                                        <thead className="bg-gray-50/75 border-b border-gray-200 text-gray-500 uppercase font-semibold text-[11px] tracking-wider">
+                                            <tr>
+                                                <th className="px-5 py-3.5">Grade Level</th>
+                                                <th className="px-4 py-3.5">Status</th>
+                                                <th className="px-5 py-3.5">Sections & Capacity</th>
+                                                <th className="px-4 py-3.5 text-center">Curriculum Subjects</th>
+                                                <th className="px-5 py-3.5 text-right">Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-gray-100">
+                                            {paginatedGrades.map((sg) => {
+                                                const gradeCapacity = (sg.sections || []).reduce((acc: number, s: any) => acc + (s.capacity || 0), 0);
+                                                const sectionCount = sg.sections?.length || 0;
 
-                                                    <td className="px-4 py-3.5 text-center">
-                                                        {sg.status === "ARCHIVED" ? (
-                                                            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold tracking-wider uppercase bg-purple-50 text-purple-700 border border-purple-200">
-                                                                Archived
-                                                            </span>
-                                                        ) : sg.status === "SUSPENDED" ? (
-                                                            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold tracking-wider uppercase bg-amber-50 text-amber-700 border border-amber-200">
-                                                                Suspended
-                                                            </span>
-                                                        ) : (
-                                                            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold tracking-wider uppercase bg-emerald-50 text-emerald-700 border border-emerald-200">
-                                                                Active
-                                                            </span>
-                                                        )}
-                                                    </td>
-
-                                                    <td className="px-5 py-3.5 text-gray-600">
-                                                        {sg.sections && sg.sections.length > 0 ? (
-                                                            <div className="flex flex-wrap gap-2 items-center">
-                                                                {sg.sections.map((sec: any) => (
-                                                                    <div 
-                                                                        key={sec.id} 
-                                                                        className="inline-flex items-center space-x-2 px-2.5 py-1 rounded border border-gray-200 bg-white text-gray-800 text-xs shadow-2xs hover:border-[#4085b3] transition-colors"
-                                                                    >
-                                                                        <span className="font-semibold text-gray-900">Sec {sec.name}</span>
-                                                                        <span className="px-1.5 py-0.2 rounded bg-gray-100 text-gray-600 font-mono text-[10px]">
-                                                                            {sec.capacity || 50} max
-                                                                        </span>
-                                                                        {hasManagePermission && (
-                                                                            <div className="inline-flex items-center space-x-1 border-l border-gray-200 pl-1.5 ml-0.5">
-                                                                                <button
-                                                                                    onClick={() => setEditSectionModalState({
-                                                                                        isOpen: true,
-                                                                                        section: sec,
-                                                                                        gradeName: sg.grade?.name
-                                                                                    })}
-                                                                                    className="text-gray-400 hover:text-[#4085b3] transition-colors cursor-pointer p-0.5"
-                                                                                    title="Edit Section"
-                                                                                >
-                                                                                    <Edit2 className="w-3 h-3" />
-                                                                                </button>
-                                                                                <button
-                                                                                    onClick={() => handleDeleteSection(sec.id, sec.name)}
-                                                                                    className="text-gray-400 hover:text-rose-600 transition-colors cursor-pointer p-0.5"
-                                                                                    title="Delete Section"
-                                                                                >
-                                                                                    <Trash2 className="w-3 h-3" />
-                                                                                </button>
-                                                                            </div>
-                                                                        )}
-                                                                    </div>
-                                                                ))}
+                                                return (
+                                                    <tr key={sg.id} className="hover:bg-gray-50/60 transition-colors">
+                                                        <td className="px-5 py-4">
+                                                            <div className="font-bold text-gray-900 text-sm">
+                                                                {sg.grade?.name || "Unknown"}
                                                             </div>
-                                                        ) : (
-                                                            <span className="text-[11px] text-gray-400 italic">No sections created</span>
-                                                        )}
-                                                    </td>
+                                                            <div className="text-[11px] text-gray-400 font-mono mt-0.5">
+                                                                Level {sg.grade?.level ?? 0}
+                                                            </div>
+                                                        </td>
 
-                                                    <td className="px-5 py-3.5 text-center">
-                                                        {sg.gradeSubjects && sg.gradeSubjects.length > 0 ? (
-                                                            <Link href={`/dashboard/academics/subjects?gradeId=${sg.id}&yearId=${selectedYearId}`}>
-                                                                <span className="inline-flex items-center space-x-1 px-2.5 py-1 rounded text-xs font-medium bg-sky-50 text-[#4085b3] border border-sky-200 hover:bg-sky-100 transition-colors cursor-pointer">
-                                                                    <BookOpen className="w-3 h-3" />
-                                                                    <span>{sg.gradeSubjects.length} Subjects</span>
+                                                        <td className="px-4 py-4">
+                                                            {sg.status === "ARCHIVED" ? (
+                                                                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-purple-50 text-purple-700 border border-purple-200">
+                                                                    <span className="w-1.5 h-1.5 rounded-full bg-purple-500" />
+                                                                    Archived
                                                                 </span>
-                                                            </Link>
-                                                        ) : (
-                                                            <Link href={`/dashboard/academics/subjects?gradeId=${sg.id}&yearId=${selectedYearId}`}>
-                                                                <span className="inline-flex items-center space-x-1 px-2.5 py-1 rounded text-xs font-medium text-[#4085b3] hover:text-white bg-sky-50/60 hover:bg-[#4085b3] border border-dashed border-[#4085b3]/50 transition-colors cursor-pointer" title="Assign curriculum subjects and weekly periods">
-                                                                    <Plus className="w-3 h-3" />
-                                                                    <span>+ Assign Subjects</span>
+                                                            ) : sg.status === "SUSPENDED" ? (
+                                                                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-amber-50 text-amber-700 border border-amber-200">
+                                                                    <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                                                                    Suspended
                                                                 </span>
-                                                            </Link>
-                                                        )}
-                                                    </td>
+                                                            ) : (
+                                                                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                                                                    Active
+                                                                </span>
+                                                            )}
+                                                        </td>
 
-                                                    <td className="px-5 py-3.5 text-right">
-                                                        <div className="inline-flex items-center space-x-2">
-                                                            {hasManagePermission && (
-                                                                <button
-                                                                    onClick={() => setAddSectionModalState({
-                                                                        isOpen: true,
-                                                                        schoolGradeId: sg.id,
-                                                                        gradeName: sg.grade?.name
-                                                                    })}
-                                                                    className="px-2.5 py-1 text-xs text-gray-700 hover:text-gray-900 hover:bg-gray-100 rounded border border-gray-300 font-medium transition-colors cursor-pointer inline-flex items-center space-x-1"
-                                                                >
-                                                                    <Plus className="w-3 h-3" />
-                                                                    <span>Section</span>
-                                                                </button>
+                                                        <td className="px-5 py-4">
+                                                            {sg.sections && sg.sections.length > 0 ? (
+                                                                <div className="space-y-1.5">
+                                                                    <div className="flex flex-wrap items-center gap-1.5">
+                                                                        {sg.sections.map((sec: any) => (
+                                                                            <div 
+                                                                                key={sec.id} 
+                                                                                className="group/sec inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border border-gray-200 bg-white text-gray-800 text-xs hover:border-[#4085b3] transition-colors"
+                                                                            >
+                                                                                <span className="font-semibold text-gray-900">Sec {sec.name}</span>
+                                                                                <span className="text-[11px] text-gray-400 font-mono">
+                                                                                    {sec.capacity || 50} max
+                                                                                </span>
+                                                                                {hasManagePermission && (
+                                                                                    <div className="hidden group-hover/sec:inline-flex items-center gap-1 pl-1 border-l border-gray-200">
+                                                                                        <button
+                                                                                            onClick={() => setEditSectionModalState({
+                                                                                                isOpen: true,
+                                                                                                section: sec,
+                                                                                                gradeName: sg.grade?.name
+                                                                                            })}
+                                                                                            className="text-gray-400 hover:text-[#4085b3] p-0.5 transition-colors cursor-pointer"
+                                                                                            title="Edit Section Capacity"
+                                                                                        >
+                                                                                            <Edit2 className="w-2.5 h-2.5" />
+                                                                                        </button>
+                                                                                        <button
+                                                                                            onClick={() => handleDeleteSection(sec.id, sec.name)}
+                                                                                            className="text-gray-400 hover:text-rose-600 p-0.5 transition-colors cursor-pointer"
+                                                                                            title="Delete Section"
+                                                                                        >
+                                                                                            <Trash2 className="w-2.5 h-2.5" />
+                                                                                        </button>
+                                                                                    </div>
+                                                                                )}
+                                                                            </div>
+                                                                        ))}
+                                                                    </div>
+                                                                    <div className="text-[11px] text-gray-400">
+                                                                        {sectionCount} {sectionCount === 1 ? "section" : "sections"} &bull; {gradeCapacity} seats total
+                                                                    </div>
+                                                                </div>
+                                                            ) : (
+                                                                <span className="text-xs text-gray-400 italic">No sections created</span>
                                                             )}
-                                                            <Link href={`/dashboard/academics/grades/${sg.id}`}>
-                                                                <button className="px-3 py-1 text-xs text-[#4085b3] hover:text-white hover:bg-[#4085b3] rounded border border-[#4085b3] font-medium transition-colors cursor-pointer">
-                                                                    Details
-                                                                </button>
-                                                            </Link>
-                                                            {hasManagePermission && (
-                                                                <button
-                                                                    onClick={() => setStatusModalState({ isOpen: true, schoolGrade: sg })}
-                                                                    className="text-gray-400 hover:text-[#4085b3] hover:bg-sky-50 p-1.5 rounded transition-colors cursor-pointer"
-                                                                    title="Manage Offering Status (Active / Suspend / Archive)"
-                                                                >
-                                                                    <Archive className="w-3.5 h-3.5" />
-                                                                </button>
+                                                        </td>
+
+                                                        <td className="px-4 py-4 text-center">
+                                                            {sg.gradeSubjects && sg.gradeSubjects.length > 0 ? (
+                                                                <Link href={`/dashboard/academics/subjects?gradeId=${sg.id}&yearId=${selectedYearId}`}>
+                                                                    <span className="inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-md text-xs font-medium text-[#4085b3] bg-sky-50/70 hover:bg-[#4085b3] hover:text-white border border-sky-100 transition-colors cursor-pointer">
+                                                                        <BookOpen className="w-3 h-3" />
+                                                                        <span>{sg.gradeSubjects.length} Subjects</span>
+                                                                    </span>
+                                                                </Link>
+                                                            ) : (
+                                                                <Link href={`/dashboard/academics/subjects?gradeId=${sg.id}&yearId=${selectedYearId}`}>
+                                                                    <span className="inline-flex items-center space-x-1 px-2.5 py-1 rounded-md text-xs font-medium text-[#4085b3] hover:text-white bg-sky-50/60 hover:bg-[#4085b3] border border-dashed border-[#4085b3]/40 transition-colors cursor-pointer" title="Assign curriculum subjects and weekly periods">
+                                                                        <Plus className="w-3 h-3" />
+                                                                        <span>Assign Subjects</span>
+                                                                    </span>
+                                                                </Link>
                                                             )}
-                                                        </div>
-                                                    </td>
-                                                </tr>
-                                            );
-                                        })}
-                                    </tbody>
-                                </table>
+                                                        </td>
+
+                                                        <td className="px-5 py-4 text-right">
+                                                            <div className="inline-flex items-center justify-end space-x-2">
+                                                                {hasManagePermission && (
+                                                                    <button
+                                                                        onClick={() => setAddSectionModalState({
+                                                                            isOpen: true,
+                                                                            schoolGradeId: sg.id,
+                                                                            gradeName: sg.grade?.name
+                                                                        })}
+                                                                        className="inline-flex items-center space-x-1 px-2.5 py-1 text-xs text-gray-700 hover:text-gray-900 bg-white hover:bg-gray-50 rounded-md border border-gray-300 font-medium transition-colors cursor-pointer"
+                                                                        title="Add a new section"
+                                                                    >
+                                                                        <Plus className="w-3 h-3 text-gray-500" />
+                                                                        <span>Section</span>
+                                                                    </button>
+                                                                )}
+                                                                <Link href={`/dashboard/academics/grades/${sg.id}`}>
+                                                                    <button className="inline-flex items-center space-x-1 px-3 py-1 text-xs text-[#4085b3] hover:text-white hover:bg-[#4085b3] rounded-md border border-[#4085b3] font-semibold transition-colors cursor-pointer">
+                                                                        <span>Details</span>
+                                                                        <ChevronRight className="w-3 h-3" />
+                                                                    </button>
+                                                                </Link>
+                                                                {hasManagePermission && (
+                                                                    <button
+                                                                        onClick={() => setStatusModalState({ isOpen: true, schoolGrade: sg })}
+                                                                        className="text-gray-400 hover:text-gray-700 hover:bg-gray-100 p-1.5 rounded-md transition-colors cursor-pointer"
+                                                                        title="Change Status / Archive"
+                                                                    >
+                                                                        <Archive className="w-3.5 h-3.5" />
+                                                                    </button>
+                                                                )}
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            })}
+                                        </tbody>
+                                    </table>
+                                </div>
                             </div>
                         )}
 
                         {/* Pagination */}
                         {totalPages > 1 && (
-                            <div className="px-6 py-3 border-t border-gray-200 bg-gray-50/60 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-gray-600">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-slate-600 pt-2">
                                 <span>
-                                    Showing <span className="font-semibold text-gray-900">{(currentPage - 1) * pageSize + 1}</span> to{" "}
-                                    <span className="font-semibold text-gray-900">{Math.min(currentPage * pageSize, filteredGrades.length)}</span> of{" "}
-                                    <span className="font-semibold text-gray-900">{filteredGrades.length}</span> grades
+                                    Showing <span className="font-semibold text-slate-900">{(currentPage - 1) * pageSize + 1}</span> to{" "}
+                                    <span className="font-semibold text-slate-900">{Math.min(currentPage * pageSize, filteredGrades.length)}</span> of{" "}
+                                    <span className="font-semibold text-slate-900">{filteredGrades.length}</span> grades
                                 </span>
 
                                 <div className="flex items-center space-x-1">
                                     <button
                                         onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                                         disabled={currentPage === 1}
-                                        className="inline-flex items-center space-x-1 px-2.5 py-1 rounded border border-gray-300 bg-white hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors text-xs font-medium cursor-pointer"
+                                        className="inline-flex items-center space-x-1 px-2.5 py-1 rounded border border-slate-300 bg-white hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors text-xs font-medium cursor-pointer"
                                     >
                                         <ChevronLeft className="w-3.5 h-3.5" />
                                         <span>Prev</span>
@@ -727,7 +822,7 @@ export default function GradesAndSectionsPage() {
                                             className={`w-7 h-7 rounded border text-xs font-medium transition-colors cursor-pointer ${
                                                 currentPage === page 
                                                     ? "bg-[#4085b3] text-white border-[#4085b3]" 
-                                                    : "bg-white border-gray-300 text-gray-700 hover:bg-gray-100"
+                                                    : "bg-white border-slate-300 text-slate-700 hover:bg-slate-100"
                                             }`}
                                         >
                                             {page}
@@ -737,7 +832,7 @@ export default function GradesAndSectionsPage() {
                                     <button
                                         onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
                                         disabled={currentPage === totalPages}
-                                        className="inline-flex items-center space-x-1 px-2.5 py-1 rounded border border-gray-300 bg-white hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors text-xs font-medium cursor-pointer"
+                                        className="inline-flex items-center space-x-1 px-2.5 py-1 rounded border border-slate-300 bg-white hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors text-xs font-medium cursor-pointer"
                                     >
                                         <span>Next</span>
                                         <ChevronRight className="w-3.5 h-3.5" />

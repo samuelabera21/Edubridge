@@ -188,7 +188,7 @@ export class StaffingService {
 
             return {
                 schoolGradeId: sg.id,
-                gradeName: sg.grade.name,
+                gradeName: (sg.grade.name && sg.grade.name.trim() !== "Grade") ? sg.grade.name : (sg.grade.level ? `Grade ${sg.grade.level}` : (sg.grade.name || "Grade")),
                 level: sg.grade.level,
                 sectionCount,
                 demandPeriods: gradeDemand,
@@ -296,7 +296,7 @@ export class StaffingService {
                 sectionId: sec.id,
                 sectionName: sec.name,
                 schoolGradeId: sec.schoolGradeId,
-                gradeName: sec.schoolGrade.grade.name,
+                gradeName: (sec.schoolGrade.grade.name && sec.schoolGrade.grade.name.trim() !== "Grade") ? sec.schoolGrade.grade.name : (sec.schoolGrade.grade.level ? `Grade ${sec.schoolGrade.grade.level}` : (sec.schoolGrade.grade.name || "Grade")),
                 gradeLevel: sec.schoolGrade.grade.level,
                 homeroomTeacher: sec.homeroomTeacher
                     ? {

@@ -311,7 +311,7 @@ export class EarlyWarningService {
         let authorId = raisedById;
         if (!authorId) {
             const adminUser = await prisma.user.findFirst({
-                where: { roleAssignments: { some: { organizationUnitId: organizationId } } },
+                where: { roleAssignments: { some: { scopeId: organizationId } } },
                 select: { id: true }
             });
             authorId = adminUser?.id || studentUserId || undefined;
@@ -394,7 +394,7 @@ export class EarlyWarningService {
             }
         });
 
-        if (student && student.enrollments.length > 0) {
+        if (student && student.enrollments.length > 0 && student.enrollments[0]) {
             const enrollment = student.enrollments[0];
             const assessment = await this.compileStudentRisk(enrollment.id, organizationId);
             return assessment ? [assessment] : [];
@@ -513,7 +513,7 @@ export class EarlyWarningService {
             return {
                 type: sf.type,
                 severity: (isRed ? "RED" : "YELLOW") as "RED" | "YELLOW",
-                title: sf.description.split("\n")[0].replace(/^\[(RED|YELLOW)\]\s*/, ""),
+                title: (sf.description ? sf.description.split("\n")[0] || "" : "").replace(/^\[(RED|YELLOW)\]\s*/, ""),
                 message: sf.description,
                 createdAt: sf.createdAt
             };

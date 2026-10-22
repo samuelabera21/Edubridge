@@ -336,7 +336,7 @@ describe("EarlyWarningService", () => {
 
             const results = await EarlyWarningService.getFlagsForCurrentUser("user-parent-1", "school-1");
             expect(results.length).toBe(1);
-            expect(results[0].studentId).toBe("child-1");
+            expect(results[0]?.studentId).toBe("child-1");
         });
     });
 });

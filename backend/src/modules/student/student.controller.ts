@@ -33,10 +33,33 @@ export const createStudent = async (req: Request, res: Response) => {
 
 export const getStudents = async (req: Request, res: Response) => {
     try {
-        const students = await StudentService.getStudents();
-        return res.json(students);
-    } catch (error) {
-        return res.status(500).json({ error: "Internal server error" });
+        const {
+            page = "1",
+            limit = "25",
+            sortBy = "createdAt",
+            sortOrder = "desc",
+            search,
+            gender,
+            status,
+            all
+        } = req.query;
+
+        const isAll = all === "true" || limit === "all";
+
+        const result = await StudentService.getStudents({
+            page: isAll ? 1 : Number(page) || 1,
+            limit: isAll ? 0 : Number(limit) || 25,
+            sortBy: String(sortBy),
+            sortOrder: (sortOrder === "asc" || sortOrder === "desc") ? sortOrder : "desc",
+            search: search ? String(search).trim() : undefined,
+            gender: gender && gender !== "ALL" ? String(gender) : undefined,
+            status: status && status !== "ALL" ? String(status) : undefined,
+        });
+
+        return res.json(result);
+    } catch (error: any) {
+        console.error("Error in getStudents:", error);
+        return res.status(500).json({ error: error.message || "Internal server error" });
     }
 };
 

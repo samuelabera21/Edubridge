@@ -727,7 +727,8 @@ export const getParentAnnouncements = async (req: Request, res: Response) => {
                 ]
             },
             include: {
-                author: { select: { id: true, name: true, email: true } }
+                author: { select: { id: true, name: true, email: true } },
+                acknowledgments: true
             },
             orderBy: { createdAt: "desc" },
             take: 20

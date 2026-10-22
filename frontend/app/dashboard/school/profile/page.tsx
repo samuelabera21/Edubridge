@@ -4,14 +4,12 @@ import { useEffect, useState } from "react";
 import { fetchApi } from "@/lib/api";
 import { useAuth } from "@/hooks/useAuth";
 import Link from "next/link";
-import { Building2, Save, CheckCircle2, Users, GraduationCap, LayoutGrid, Settings, FileText } from "lucide-react";
-import { Card, CardContent } from "@/components/ui/Card";
-import { Button } from "@/components/ui/Button";
+import { Save, CheckCircle2, Users, GraduationCap, LayoutGrid, Settings, FileText } from "lucide-react";
 import { LoadingState } from "@/components/ui/LoadingState";
 import { ErrorState } from "@/components/ui/ErrorState";
 
 export default function SchoolProfilePage() {
-    const { authData } = useAuth(); // Auth verified by layout
+    const { authData } = useAuth();
     
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
@@ -175,100 +173,124 @@ export default function SchoolProfilePage() {
     };
 
     if (loading) {
-        return <LoadingState message="Loading school profile..." />;
+        return (
+            <div className="py-20">
+                <LoadingState message="Loading school profile..." />
+            </div>
+        );
     }
 
     if (error && !formData.schoolName) {
-        return <ErrorState message={error} onRetry={() => window.location.reload()} />;
+        return (
+            <div className="p-6">
+                <ErrorState message={error} onRetry={() => window.location.reload()} />
+            </div>
+        );
     }
 
     return (
-        <div className="max-w-4xl text-black">
-            <div className="mb-6 flex justify-between items-end">
+        <div className="space-y-6 pb-12 font-sans max-w-5xl">
+            {/* Header: Clean & Institutional */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-200">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-900 flex items-center space-x-2">
-                        <Building2 className="h-6 w-6 text-[#006b3f]" />
-                        <span>School Profile & Identity</span>
+                    <h1 className="text-2xl font-bold tracking-tight text-slate-900">
+                        School Profile
                     </h1>
-                    <p className="text-gray-500 mt-1">Manage institutional hierarchy, location, and operational settings for {formData.schoolName}</p>
+                    <p className="text-xs text-slate-500 mt-1">
+                        Institutional records, administrative hierarchy, and operational settings
+                    </p>
                 </div>
             </div>
 
-            {/* KPI Stats */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            {/* Top 3 KPI Cards: Clean hover fill from left to right */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <Link href="/dashboard/teachers" className="block group">
-                    <Card className="bg-blue-50/50 border-blue-100 transition-shadow hover:shadow-md h-full">
-                        <CardContent className="p-4 flex items-center space-x-4">
-                            <div className="p-3 bg-blue-100 text-blue-600 rounded-full group-hover:bg-blue-200 transition-colors">
-                                <Users className="h-6 w-6" />
-                            </div>
-                            <div>
-                                <p className="text-sm font-medium text-gray-500">Total Teachers</p>
-                                <h3 className="text-2xl font-bold text-gray-900 group-hover:text-blue-700 transition-colors">{stats.totalTeachers}</h3>
-                            </div>
-                        </CardContent>
-                    </Card>
+                    <div className="relative overflow-hidden border border-slate-200 bg-white rounded p-4 flex items-center justify-between group-hover:border-[#4085b3] transition-all duration-300 cursor-pointer shadow-xs group-hover:shadow-md">
+                        {/* Blue wipe from left to right */}
+                        <span className="absolute inset-0 bg-[#4085b3] origin-left scale-x-0 group-hover:scale-x-100 transition-transform duration-300 ease-out pointer-events-none" />
+
+                        <div className="relative z-10">
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 group-hover:text-blue-100 transition-colors duration-300 block mb-1">
+                                Total Teachers
+                            </span>
+                            <span className="text-2xl font-bold text-slate-900 group-hover:text-white transition-colors duration-300 tabular-nums">
+                                {stats.totalTeachers}
+                            </span>
+                        </div>
+                        <Users className="relative z-10 w-5 h-5 text-slate-400 group-hover:text-white transition-colors duration-300" />
+                    </div>
                 </Link>
+
                 <Link href="/dashboard/students" className="block group">
-                    <Card className="bg-[#006b3f]/5 border-[#006b3f]/10 transition-shadow hover:shadow-md h-full">
-                        <CardContent className="p-4 flex items-center space-x-4">
-                            <div className="p-3 bg-[#006b3f]/10 text-[#006b3f] rounded-full group-hover:bg-[#006b3f]/20 transition-colors">
-                                <GraduationCap className="h-6 w-6" />
-                            </div>
-                            <div>
-                                <p className="text-sm font-medium text-gray-500">Total Students</p>
-                                <h3 className="text-2xl font-bold text-gray-900 group-hover:text-[#006b3f] transition-colors">{stats.totalStudents}</h3>
-                            </div>
-                        </CardContent>
-                    </Card>
+                    <div className="relative overflow-hidden border border-slate-200 bg-white rounded p-4 flex items-center justify-between group-hover:border-[#4085b3] transition-all duration-300 cursor-pointer shadow-xs group-hover:shadow-md">
+                        {/* Blue wipe from left to right */}
+                        <span className="absolute inset-0 bg-[#4085b3] origin-left scale-x-0 group-hover:scale-x-100 transition-transform duration-300 ease-out pointer-events-none" />
+
+                        <div className="relative z-10">
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 group-hover:text-blue-100 transition-colors duration-300 block mb-1">
+                                Total Students
+                            </span>
+                            <span className="text-2xl font-bold text-slate-900 group-hover:text-white transition-colors duration-300 tabular-nums">
+                                {stats.totalStudents}
+                            </span>
+                        </div>
+                        <GraduationCap className="relative z-10 w-5 h-5 text-slate-400 group-hover:text-white transition-colors duration-300" />
+                    </div>
                 </Link>
+
                 <Link href="/dashboard/academics/grades" className="block group">
-                    <Card className="bg-purple-50 border-purple-100 transition-shadow hover:shadow-md h-full">
-                        <CardContent className="p-4 flex items-center space-x-4">
-                            <div className="p-3 bg-purple-100 text-purple-600 rounded-full group-hover:bg-purple-200 transition-colors">
-                                <LayoutGrid className="h-6 w-6" />
-                            </div>
-                            <div>
-                                <p className="text-sm font-medium text-gray-500">Active Sections</p>
-                                <h3 className="text-2xl font-bold text-gray-900 group-hover:text-purple-700 transition-colors">{stats.activeSections}</h3>
-                            </div>
-                        </CardContent>
-                    </Card>
+                    <div className="relative overflow-hidden border border-slate-200 bg-white rounded p-4 flex items-center justify-between group-hover:border-[#4085b3] transition-all duration-300 cursor-pointer shadow-xs group-hover:shadow-md">
+                        {/* Blue wipe from left to right */}
+                        <span className="absolute inset-0 bg-[#4085b3] origin-left scale-x-0 group-hover:scale-x-100 transition-transform duration-300 ease-out pointer-events-none" />
+
+                        <div className="relative z-10">
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 group-hover:text-blue-100 transition-colors duration-300 block mb-1">
+                                Active Sections
+                            </span>
+                            <span className="text-2xl font-bold text-slate-900 group-hover:text-white transition-colors duration-300 tabular-nums">
+                                {stats.activeSections}
+                            </span>
+                        </div>
+                        <LayoutGrid className="relative z-10 w-5 h-5 text-slate-400 group-hover:text-white transition-colors duration-300" />
+                    </div>
                 </Link>
             </div>
 
             {error && (
-                <div className="mb-6">
-                    <ErrorState title="Error" message={error} />
+                <div className="p-3.5 bg-rose-50 border border-rose-200 rounded text-xs text-rose-800">
+                    {error}
                 </div>
             )}
 
             {success && (
-                <div className="bg-green-50 text-green-700 p-4 rounded-md border border-green-200 mb-6 flex items-start space-x-3 shadow-sm">
-                    <CheckCircle2 className="h-5 w-5 mt-0.5 text-green-500" />
-                    <p className="font-medium">Settings updated successfully.</p>
+                <div className="p-3.5 bg-emerald-50 border border-emerald-200 rounded text-xs text-emerald-800 flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                    <span className="font-semibold">Settings updated successfully.</span>
                 </div>
             )}
 
-            <div className="bg-white border-b border-gray-200 mb-6 rounded-t-lg shadow-sm overflow-hidden">
-                <nav className="flex space-x-1" aria-label="Tabs">
+            {/* Tab Navigation: Clean Institutional Underline Tabs */}
+            <div className="border-b border-slate-200">
+                <nav className="flex space-x-6" aria-label="Tabs">
                     <button
+                        type="button"
                         onClick={() => setActiveTab("general")}
-                        className={`flex-1 py-4 px-1 text-center border-b-2 font-medium text-sm transition-colors flex justify-center items-center space-x-2 ${
+                        className={`pb-3 text-sm font-semibold transition-colors flex items-center gap-2 cursor-pointer border-b-2 ${
                             activeTab === "general"
-                                ? "border-[#006b3f] text-[#006b3f] bg-gray-50/50"
-                                : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                                ? "border-[#4085b3] text-[#4085b3]"
+                                : "border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300"
                         }`}
                     >
                         <FileText className="w-4 h-4" />
-                        <span>General & Classification Info</span>
+                        <span>General & Classification</span>
                     </button>
                     <button
+                        type="button"
                         onClick={() => setActiveTab("config")}
-                        className={`flex-1 py-4 px-1 text-center border-b-2 font-medium text-sm transition-colors flex justify-center items-center space-x-2 ${
+                        className={`pb-3 text-sm font-semibold transition-colors flex items-center gap-2 cursor-pointer border-b-2 ${
                             activeTab === "config"
-                                ? "border-[#006b3f] text-[#006b3f] bg-gray-50/50"
-                                : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                                ? "border-[#4085b3] text-[#4085b3]"
+                                : "border-transparent text-slate-500 hover:text-slate-800 hover:border-slate-300"
                         }`}
                     >
                         <Settings className="w-4 h-4" />
@@ -277,26 +299,24 @@ export default function SchoolProfilePage() {
                 </nav>
             </div>
 
-            <Card className="shadow-sm">
-                <CardContent className="sm:p-8">
-                <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Main Form: Directly on clean canvas (DfE & GOV.UK Standard) */}
+            <form onSubmit={handleSubmit} className="space-y-6 pt-2">
                     {activeTab === "general" ? (
-                        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
-                            {/* Ethiopian Educational Classification */}
-                            <div className="bg-emerald-50/60 border border-emerald-100 p-4 rounded-lg">
-                                <h3 className="font-semibold text-emerald-900 text-sm mb-1">Ethiopian Educational Classification & Identity</h3>
-                                <p className="text-xs text-emerald-700">Official level, ownership type, and head administrator registration.</p>
+                        <div className="space-y-6">
+                            {/* Section 1: Classification */}
+                            <div className="pb-2 border-b border-slate-100">
+                                <h3 className="text-sm font-bold text-slate-900">Institutional Classification</h3>
                             </div>
 
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">School Level / Category</label>
+                                    <label className="block text-xs font-semibold text-slate-700 mb-1.5">School Level</label>
                                     <select
                                         name="schoolLevel"
                                         value={formData.schoolLevel}
                                         onChange={handleChange}
                                         disabled={!isEditing || !hasUpdatePermission || saving}
-                                        className="w-full border border-gray-300 rounded-md p-2.5 focus:ring-2 focus:ring-[#006b3f] focus:border-[#006b3f] disabled:bg-gray-50 disabled:text-gray-500 transition-colors bg-white"
+                                        className="w-full border border-slate-300 rounded p-2.5 text-sm text-slate-900 focus:outline-hidden focus:ring-1 focus:ring-[#4085b3] focus:border-[#4085b3] disabled:bg-slate-50 disabled:text-slate-600 disabled:border-slate-200 transition-colors bg-white cursor-pointer"
                                     >
                                         <option value="PRIMARY">Primary School (Grades 1–8)</option>
                                         <option value="SECONDARY">Secondary School (Grades 9–12)</option>
@@ -304,13 +324,13 @@ export default function SchoolProfilePage() {
                                     </select>
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">School Ownership Type</label>
+                                    <label className="block text-xs font-semibold text-slate-700 mb-1.5">Ownership Type</label>
                                     <select
                                         name="ownership"
                                         value={formData.ownership}
                                         onChange={handleChange}
                                         disabled={!isEditing || !hasUpdatePermission || saving}
-                                        className="w-full border border-gray-300 rounded-md p-2.5 focus:ring-2 focus:ring-[#006b3f] focus:border-[#006b3f] disabled:bg-gray-50 disabled:text-gray-500 transition-colors bg-white"
+                                        className="w-full border border-slate-300 rounded p-2.5 text-sm text-slate-900 focus:outline-hidden focus:ring-1 focus:ring-[#4085b3] focus:border-[#4085b3] disabled:bg-slate-50 disabled:text-slate-600 disabled:border-slate-200 transition-colors bg-white cursor-pointer"
                                     >
                                         <option value="GOVERNMENT">Government / Public School</option>
                                         <option value="PRIVATE">Private School</option>
@@ -322,57 +342,57 @@ export default function SchoolProfilePage() {
 
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Organization Name</label>
+                                    <label className="block text-xs font-semibold text-slate-700 mb-1.5">Organization Name</label>
                                     <input
                                         type="text"
                                         name="schoolName"
                                         value={formData.schoolName}
                                         onChange={handleChange}
                                         disabled={!isEditing || !hasUpdatePermission || saving}
-                                        className="w-full border border-gray-300 rounded-md p-2.5 focus:ring-2 focus:ring-[#006b3f] focus:border-[#006b3f] disabled:bg-gray-50 disabled:text-gray-500 transition-colors"
+                                        className="w-full border border-slate-300 rounded p-2.5 text-sm text-slate-900 focus:outline-hidden focus:ring-1 focus:ring-[#4085b3] focus:border-[#4085b3] disabled:bg-slate-50 disabled:text-slate-600 disabled:border-slate-200 transition-colors"
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Head Principal / Director</label>
+                                    <label className="block text-xs font-semibold text-slate-700 mb-1.5">Head Principal / Director</label>
                                     <input
                                         type="text"
                                         name="principalName"
                                         value={formData.principalName}
                                         onChange={handleChange}
                                         disabled={!isEditing || !hasUpdatePermission || saving}
-                                        className="w-full border border-gray-300 rounded-md p-2.5 focus:ring-2 focus:ring-[#006b3f] focus:border-[#006b3f] disabled:bg-gray-50 disabled:text-gray-500 transition-colors"
-                                        placeholder="e.g. Dr. Abebe Bikila"
+                                        className="w-full border border-slate-300 rounded p-2.5 text-sm text-slate-900 focus:outline-hidden focus:ring-1 focus:ring-[#4085b3] focus:border-[#4085b3] disabled:bg-slate-50 disabled:text-slate-600 disabled:border-slate-200 transition-colors"
+                                        placeholder="Principal Name"
                                     />
                                 </div>
                             </div>
 
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Active Academic Year</label>
+                                    <label className="block text-xs font-semibold text-slate-700 mb-1.5">Active Academic Year</label>
                                     <select
                                         name="activeAcademicYearId"
                                         value={formData.activeAcademicYearId}
                                         onChange={handleChange}
                                         disabled={!isEditing || !hasUpdatePermission || saving || academicYears.length === 0}
-                                        className="w-full border border-gray-300 rounded-md p-2.5 focus:ring-2 focus:ring-[#006b3f] focus:border-[#006b3f] disabled:bg-gray-50 disabled:text-gray-500 transition-colors bg-white"
+                                        className="w-full border border-slate-300 rounded p-2.5 text-sm text-slate-900 focus:outline-hidden focus:ring-1 focus:ring-[#4085b3] focus:border-[#4085b3] disabled:bg-slate-50 disabled:text-slate-600 disabled:border-slate-200 transition-colors bg-white cursor-pointer"
                                     >
                                         {academicYears.length === 0 && <option value="">No academic years found</option>}
                                         {academicYears.map(year => (
                                             <option key={year.id} value={year.id}>
-                                                {year.name} ({new Date(year.startDate).getFullYear()} - {new Date(year.endDate).getFullYear()}) {year.status === "ACTIVE" ? " (Currently Active)" : ""}
+                                                {year.name} ({new Date(year.startDate).getFullYear()} - {new Date(year.endDate).getFullYear()}) {year.status === "ACTIVE" ? " (Active)" : ""}
                                             </option>
                                         ))}
                                     </select>
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Established Year</label>
+                                    <label className="block text-xs font-semibold text-slate-700 mb-1.5">Established Year</label>
                                     <input
                                         type="number"
                                         name="establishedYear"
                                         value={formData.establishedYear}
                                         onChange={handleChange}
                                         disabled={!isEditing || !hasUpdatePermission || saving}
-                                        className="w-full border border-gray-300 rounded-md p-2.5 focus:ring-2 focus:ring-[#006b3f] focus:border-[#006b3f] disabled:bg-gray-50 disabled:text-gray-500 transition-colors"
+                                        className="w-full border border-slate-300 rounded p-2.5 text-sm text-slate-900 focus:outline-hidden focus:ring-1 focus:ring-[#4085b3] focus:border-[#4085b3] disabled:bg-slate-50 disabled:text-slate-600 disabled:border-slate-200 transition-colors"
                                         placeholder="e.g. 1995"
                                         min="1800"
                                         max={new Date().getFullYear()}
@@ -380,117 +400,116 @@ export default function SchoolProfilePage() {
                                 </div>
                             </div>
 
-                            {/* Administrative Location Hierarchy */}
-                            <div className="border-t border-gray-100 pt-4">
-                                <h4 className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-3">Administrative Hierarchy & Location</h4>
+                            {/* Section 2: Administrative Hierarchy */}
+                            <div className="border-t border-slate-100 pt-5">
+                                <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">
+                                    Administrative Hierarchy & Location
+                                </h4>
                                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                                     <div>
-                                        <label className="block text-xs font-medium text-gray-700 mb-1">Region</label>
+                                        <label className="block text-xs font-medium text-slate-600 mb-1">Region</label>
                                         <input
                                             type="text"
                                             name="region"
                                             value={formData.region}
                                             onChange={handleChange}
                                             disabled={!isEditing || !hasUpdatePermission || saving}
-                                            className="w-full border border-gray-300 rounded-md p-2 text-sm focus:ring-2 focus:ring-[#006b3f]"
-                                            placeholder="Addis Ababa"
+                                            className="w-full border border-slate-300 rounded p-2 text-sm text-slate-900 focus:outline-hidden focus:ring-1 focus:ring-[#4085b3] disabled:bg-slate-50 disabled:text-slate-600 disabled:border-slate-200"
                                         />
                                     </div>
                                     <div>
-                                        <label className="block text-xs font-medium text-gray-700 mb-1">Zone / Sub-city</label>
+                                        <label className="block text-xs font-medium text-slate-600 mb-1">Zone / Sub-city</label>
                                         <input
                                             type="text"
                                             name="zone"
                                             value={formData.zone}
                                             onChange={handleChange}
                                             disabled={!isEditing || !hasUpdatePermission || saving}
-                                            className="w-full border border-gray-300 rounded-md p-2 text-sm focus:ring-2 focus:ring-[#006b3f]"
-                                            placeholder="Bole"
+                                            className="w-full border border-slate-300 rounded p-2 text-sm text-slate-900 focus:outline-hidden focus:ring-1 focus:ring-[#4085b3] disabled:bg-slate-50 disabled:text-slate-600 disabled:border-slate-200"
                                         />
                                     </div>
                                     <div>
-                                        <label className="block text-xs font-medium text-gray-700 mb-1">Woreda</label>
+                                        <label className="block text-xs font-medium text-slate-600 mb-1">Woreda</label>
                                         <input
                                             type="text"
                                             name="woreda"
                                             value={formData.woreda}
                                             onChange={handleChange}
                                             disabled={!isEditing || !hasUpdatePermission || saving}
-                                            className="w-full border border-gray-300 rounded-md p-2 text-sm focus:ring-2 focus:ring-[#006b3f]"
-                                            placeholder="Woreda 03"
+                                            className="w-full border border-slate-300 rounded p-2 text-sm text-slate-900 focus:outline-hidden focus:ring-1 focus:ring-[#4085b3] disabled:bg-slate-50 disabled:text-slate-600 disabled:border-slate-200"
                                         />
                                     </div>
                                     <div>
-                                        <label className="block text-xs font-medium text-gray-700 mb-1">Kebele</label>
+                                        <label className="block text-xs font-medium text-slate-600 mb-1">Kebele</label>
                                         <input
                                             type="text"
                                             name="kebele"
                                             value={formData.kebele}
                                             onChange={handleChange}
                                             disabled={!isEditing || !hasUpdatePermission || saving}
-                                            className="w-full border border-gray-300 rounded-md p-2 text-sm focus:ring-2 focus:ring-[#006b3f]"
-                                            placeholder="05"
+                                            className="w-full border border-slate-300 rounded p-2 text-sm text-slate-900 focus:outline-hidden focus:ring-1 focus:ring-[#4085b3] disabled:bg-slate-50 disabled:text-slate-600 disabled:border-slate-200"
                                         />
                                     </div>
                                 </div>
                             </div>
 
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                            {/* Section 3: Contact Details */}
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 border-t border-slate-100 pt-5">
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Contact Email</label>
+                                    <label className="block text-xs font-semibold text-slate-700 mb-1.5">Contact Email</label>
                                     <input
                                         type="email"
                                         name="contactEmail"
                                         value={formData.contactEmail}
                                         onChange={handleChange}
                                         disabled={!isEditing || !hasUpdatePermission || saving}
-                                        className="w-full border border-gray-300 rounded-md p-2.5 focus:ring-2 focus:ring-[#006b3f] focus:border-[#006b3f] disabled:bg-gray-50 disabled:text-gray-500 transition-colors"
-                                        placeholder="info@school.edu.et"
+                                        className="w-full border border-slate-300 rounded p-2.5 text-sm text-slate-900 focus:outline-hidden focus:ring-1 focus:ring-[#4085b3] focus:border-[#4085b3] disabled:bg-slate-50 disabled:text-slate-600 disabled:border-slate-200 transition-colors"
+                                        placeholder="email@school.edu.et"
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Official Phone Number</label>
+                                    <label className="block text-xs font-semibold text-slate-700 mb-1.5">Official Phone Number</label>
                                     <input
                                         type="tel"
                                         name="phoneNumber"
                                         value={formData.phoneNumber}
                                         onChange={handleChange}
                                         disabled={!isEditing || !hasUpdatePermission || saving}
-                                        className="w-full border border-gray-300 rounded-md p-2.5 focus:ring-2 focus:ring-[#006b3f] focus:border-[#006b3f] disabled:bg-gray-50 disabled:text-gray-500 transition-colors"
-                                        placeholder="+251 911 000 000"
+                                        className="w-full border border-slate-300 rounded p-2.5 text-sm text-slate-900 focus:outline-hidden focus:ring-1 focus:ring-[#4085b3] focus:border-[#4085b3] disabled:bg-slate-50 disabled:text-slate-600 disabled:border-slate-200 transition-colors"
+                                        placeholder="+251..."
                                     />
                                 </div>
                             </div>
 
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Physical Address / Description</label>
+                                <label className="block text-xs font-semibold text-slate-700 mb-1.5">Physical Address / Description</label>
                                 <textarea
                                     name="address"
                                     value={formData.address}
                                     onChange={handleChange}
                                     disabled={!isEditing || !hasUpdatePermission || saving}
                                     rows={2}
-                                    className="w-full border border-gray-300 rounded-md p-2.5 focus:ring-2 focus:ring-[#006b3f] focus:border-[#006b3f] disabled:bg-gray-50 disabled:text-gray-500 transition-colors"
-                                    placeholder="Street, landmarks, and specific location details"
-                                ></textarea>
+                                    className="w-full border border-slate-300 rounded p-2.5 text-sm text-slate-900 focus:outline-hidden focus:ring-1 focus:ring-[#4085b3] focus:border-[#4085b3] disabled:bg-slate-50 disabled:text-slate-600 disabled:border-slate-200 transition-colors"
+                                    placeholder="Street, landmarks, and location details"
+                                />
                             </div>
                         </div>
                     ) : (
-                        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
-                            <div className="bg-blue-50 border border-blue-100 p-4 rounded-lg">
-                                <h3 className="font-semibold text-blue-800 mb-1">Academic Configuration</h3>
-                                <p className="text-sm text-blue-600">These settings dictate how academic progress and attendance are tracked across the school.</p>
+                        <div className="space-y-6">
+                            {/* Academic Policy Settings */}
+                            <div className="pb-2 border-b border-slate-100">
+                                <h3 className="text-sm font-bold text-slate-900">Academic Policy & Tracking</h3>
                             </div>
                             
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Grading Format</label>
+                                    <label className="block text-xs font-semibold text-slate-700 mb-1.5">Grading Format</label>
                                     <select
                                         name="gradingFormat"
                                         value={configData.gradingFormat}
                                         onChange={handleChange}
                                         disabled={!isEditing || !hasUpdatePermission || saving}
-                                        className="w-full border border-gray-300 rounded-md p-2.5 focus:ring-2 focus:ring-[#006b3f] focus:border-[#006b3f] disabled:bg-gray-50 disabled:text-gray-500 transition-colors bg-white"
+                                        className="w-full border border-slate-300 rounded p-2.5 text-sm text-slate-900 focus:outline-hidden focus:ring-1 focus:ring-[#4085b3] focus:border-[#4085b3] disabled:bg-slate-50 disabled:text-slate-600 disabled:border-slate-200 transition-colors bg-white cursor-pointer"
                                     >
                                         <option value="letter">Letter Grades (A, B, C, D, F)</option>
                                         <option value="percentage">Percentage (0-100%)</option>
@@ -498,13 +517,13 @@ export default function SchoolProfilePage() {
                                     </select>
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Attendance Policy</label>
+                                    <label className="block text-xs font-semibold text-slate-700 mb-1.5">Attendance Policy</label>
                                     <select
                                         name="attendancePolicy"
                                         value={configData.attendancePolicy}
                                         onChange={handleChange}
                                         disabled={!isEditing || !hasUpdatePermission || saving}
-                                        className="w-full border border-gray-300 rounded-md p-2.5 focus:ring-2 focus:ring-[#006b3f] focus:border-[#006b3f] disabled:bg-gray-50 disabled:text-gray-500 transition-colors bg-white"
+                                        className="w-full border border-slate-300 rounded p-2.5 text-sm text-slate-900 focus:outline-hidden focus:ring-1 focus:ring-[#4085b3] focus:border-[#4085b3] disabled:bg-slate-50 disabled:text-slate-600 disabled:border-slate-200 transition-colors bg-white cursor-pointer"
                                     >
                                         <option value="daily">Daily Attendance</option>
                                         <option value="subject">Subject-wise (Per Period)</option>
@@ -513,59 +532,58 @@ export default function SchoolProfilePage() {
                             </div>
 
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Default Passing Mark (%)</label>
+                                <label className="block text-xs font-semibold text-slate-700 mb-1.5">Default Passing Mark (%)</label>
                                 <input
                                     type="number"
                                     name="passingMark"
                                     value={configData.passingMark}
                                     onChange={handleChange}
                                     disabled={!isEditing || !hasUpdatePermission || saving}
-                                    className="w-full border border-gray-300 rounded-md p-2.5 focus:ring-2 focus:ring-[#006b3f] focus:border-[#006b3f] disabled:bg-gray-50 disabled:text-gray-500 transition-colors"
+                                    className="w-full max-w-xs border border-slate-300 rounded p-2.5 text-sm text-slate-900 focus:outline-hidden focus:ring-1 focus:ring-[#4085b3] focus:border-[#4085b3] disabled:bg-slate-50 disabled:text-slate-600 disabled:border-slate-200 transition-colors"
                                     min="0"
                                     max="100"
                                 />
-                                <p className="text-xs text-gray-500 mt-1">Students scoring below this percentage will be flagged as failing.</p>
                             </div>
                         </div>
                     )}
 
                     {hasUpdatePermission ? (
-                        <div className="pt-6 border-t border-gray-100 flex justify-end space-x-3">
+                        <div className="pt-6 border-t border-slate-100 flex justify-end gap-3">
                             {isEditing ? (
                                 <>
-                                    <Button
+                                    <button
                                         type="button"
-                                        variant="outline"
                                         onClick={() => setIsEditing(false)}
                                         disabled={saving}
+                                        className="px-4 py-2 border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 text-sm font-semibold rounded transition-colors cursor-pointer"
                                     >
                                         Cancel
-                                    </Button>
-                                    <Button
+                                    </button>
+                                    <button
                                         type="submit"
-                                        isLoading={saving}
-                                        leftIcon={<Save className="h-5 w-5" />}
+                                        disabled={saving}
+                                        className="px-4 py-2 bg-[#4085b3] hover:bg-[#32698e] text-white text-sm font-semibold rounded transition-colors flex items-center gap-1.5 cursor-pointer disabled:opacity-60"
                                     >
-                                        Save Settings
-                                    </Button>
+                                        <Save className="w-4 h-4" />
+                                        <span>{saving ? "Saving..." : "Save Settings"}</span>
+                                    </button>
                                 </>
                             ) : (
-                                <Button
+                                <button
                                     type="button"
                                     onClick={() => setIsEditing(true)}
+                                    className="px-4 py-2 bg-[#4085b3] hover:bg-[#32698e] text-white text-sm font-semibold rounded transition-colors cursor-pointer"
                                 >
                                     Edit Profile
-                                </Button>
+                                </button>
                             )}
                         </div>
                     ) : (
-                        <div className="pt-4 border-t border-gray-100 text-sm text-gray-500 italic">
-                            You do not have permission to update the school profile or configurations.
+                        <div className="pt-4 border-t border-slate-100 text-xs text-slate-500 italic">
+                            You do not have permission to update school profile settings.
                         </div>
                     )}
                 </form>
-                </CardContent>
-            </Card>
         </div>
     );
 }

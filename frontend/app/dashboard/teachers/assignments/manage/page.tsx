@@ -10,6 +10,7 @@ import {
     Trash2, CheckCircle2, AlertTriangle, Calendar, AlertCircle, Search,
     ArrowRightLeft, ChevronLeft, ChevronRight
 } from "lucide-react";
+import { Button } from "@/components/ui/Button";
 import { AcademicYear } from "@/types/api";
 
 export default function ManageTeacherAssignmentsPage() {
@@ -448,46 +449,32 @@ export default function ManageTeacherAssignmentsPage() {
     }
 
     return (
-        <div className="space-y-5 max-w-7xl mx-auto pb-12 font-sans text-gray-900">
-            {/* Breadcrumb Navigation */}
-            <div className="flex items-center space-x-2 text-xs text-gray-500">
-                <Link href="/dashboard" className="hover:text-gray-900">Dashboard</Link>
-                <span>/</span>
-                <Link href="/dashboard/teachers" className="hover:text-gray-900">Teachers</Link>
-                <span>/</span>
-                <Link href="/dashboard/teachers/assignments" className="hover:text-gray-900">Assignments</Link>
-                <span>/</span>
-                <span className="text-gray-900 font-medium">Allocate</span>
-            </div>
-
-            {/* Clean Header */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-1">
+        <div className="space-y-4 max-w-7xl mx-auto pb-12 font-sans text-slate-900">
+            {/* Header: Clean, direct on page background */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
                 <div className="flex items-center space-x-3">
-                    <button
+                    <Button
+                        variant="outline"
+                        size="sm"
                         onClick={() => router.push("/dashboard/teachers/assignments")}
-                        className="inline-flex items-center space-x-1.5 text-xs text-gray-700 hover:text-gray-900 bg-white border border-gray-300 hover:bg-gray-50 px-3 py-1.5 rounded-lg transition-colors cursor-pointer shadow-2xs"
+                        leftIcon={<ArrowLeft className="w-3.5 h-3.5" />}
+                        className="hover:border-[#4085b3] hover:text-[#4085b3] hover:bg-[#4085b3]/5 transition-all duration-200 shadow-2xs"
                     >
-                        <ArrowLeft className="w-3.5 h-3.5" />
-                        <span>Back to Overview</span>
-                    </button>
-                    <div>
-                        <h1 className="text-xl font-bold text-gray-900 tracking-tight">
-                            Teacher Section Allocation
-                        </h1>
-                        <p className="text-xs text-gray-500 mt-0.5">
-                            Assign teachers to specific subjects and class sections.
-                        </p>
-                    </div>
+                        Back to Overview
+                    </Button>
+                    <h1 className="text-xl font-bold text-slate-900 tracking-tight">
+                        Teacher Section Allocation
+                    </h1>
                 </div>
 
                 {/* Academic Year Selector */}
-                <div className="flex items-center space-x-2 bg-white border border-gray-300 rounded-lg px-2.5 py-1.5 text-xs shadow-2xs">
-                    <Calendar className="w-3.5 h-3.5 text-gray-400" />
-                    <span className="font-medium text-gray-500">Session:</span>
+                <div className="flex items-center space-x-2 bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs shadow-2xs">
+                    <Calendar className="w-3.5 h-3.5 text-slate-400" />
+                    <span className="font-medium text-slate-500">Session:</span>
                     <select
                         value={selectedYearId}
                         onChange={(e) => handleYearChange(e.target.value)}
-                        className="font-semibold text-gray-900 bg-transparent focus:outline-none cursor-pointer"
+                        className="font-semibold text-slate-900 bg-transparent focus:outline-none cursor-pointer"
                     >
                         {years.map(y => (
                             <option key={y.id} value={y.id}>
@@ -500,30 +487,31 @@ export default function ManageTeacherAssignmentsPage() {
 
             {/* Reassign Active Banner */}
             {reassignNotice && (
-                <div className="bg-amber-50 border border-amber-300 rounded-md p-3.5 text-xs text-amber-950 flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-xs">
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs text-amber-950 flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-2xs">
                     <div className="flex items-center space-x-2.5">
                         <ArrowRightLeft className="w-4 h-4 text-amber-700 flex-shrink-0" />
                         <div>
                             <span className="font-bold">Reassigning Section:</span>{" "}
                             <span className="font-medium">{reassignNotice.gradeName} &bull; Section {reassignNotice.sectionName} &bull; {reassignNotice.subjectName}</span>
                             <span className="text-amber-800 block text-[11px] mt-0.5">
-                                Currently assigned to <strong>{reassignNotice.oldTeacherName}</strong>. Choose a replacement teacher in the form below to complete reassignment.
+                                Currently assigned to <strong>{reassignNotice.oldTeacherName}</strong>. Select replacement teacher below.
                             </span>
                         </div>
                     </div>
-                    <button
-                        type="button"
+                    <Button
+                        variant="outline"
+                        size="sm"
                         onClick={() => setReassignNotice(null)}
-                        className="self-start sm:self-center text-amber-900 hover:text-amber-950 font-semibold px-2.5 py-1 bg-white border border-amber-300 hover:bg-amber-100 rounded text-xs transition-colors cursor-pointer"
+                        className="self-start sm:self-center text-xs"
                     >
                         Cancel Reassignment
-                    </button>
+                    </Button>
                 </div>
             )}
 
             {/* Notifications */}
             {error && (
-                <div className="bg-rose-50 border border-rose-200 text-rose-800 text-xs px-4 py-2.5 rounded-md flex items-center justify-between">
+                <div className="bg-rose-50 border border-rose-200 text-rose-800 text-xs px-4 py-2.5 rounded-lg flex items-center justify-between">
                     <div className="flex items-center space-x-2">
                         <AlertCircle className="w-4 h-4 text-rose-600 flex-shrink-0" />
                         <span>{error}</span>
@@ -532,7 +520,7 @@ export default function ManageTeacherAssignmentsPage() {
                 </div>
             )}
             {successMessage && (
-                <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs px-4 py-2.5 rounded-md flex items-center justify-between">
+                <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs px-4 py-2.5 rounded-lg flex items-center justify-between">
                     <div className="flex items-center space-x-2">
                         <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
                         <span>{successMessage}</span>
@@ -542,29 +530,22 @@ export default function ManageTeacherAssignmentsPage() {
             )}
 
             {/* Main Form & Profile Grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
                 {/* Left Card: Teacher Profile & Workload Status */}
                 <div className="lg:col-span-4 space-y-4">
-                    <div className="bg-white border border-gray-200 rounded-lg p-5 shadow-xs space-y-4">
-                        <h2 className="text-sm font-bold text-gray-900 border-b border-gray-100 pb-2.5">
+                    <div className="bg-white border border-slate-200 rounded-lg p-5 shadow-2xs space-y-4">
+                        <h2 className="text-sm font-bold text-slate-900 border-b border-slate-100 pb-2.5">
                             Teacher Selection
                         </h2>
 
                         <div>
-                            <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center justify-between">
+                            <label className="block text-xs font-medium text-slate-700 mb-1.5">
                                 <span>{reassignNotice ? "Select Replacement Teacher" : "Teacher"} <span className="text-rose-500">*</span></span>
-                                {!selectedTeacherId && (
-                                    <span className="text-[10px] text-amber-600 font-medium">Required</span>
-                                )}
                             </label>
                             <select
                                 value={selectedTeacherId}
                                 onChange={(e) => setSelectedTeacherId(e.target.value)}
-                                className={`w-full px-3 py-2 bg-white border text-gray-900 rounded-md text-xs font-medium outline-none cursor-pointer ${
-                                    !selectedTeacherId 
-                                        ? "border-amber-400 ring-2 ring-amber-100" 
-                                        : "border-gray-300 focus:ring-2 focus:ring-[#4085b3] focus:border-[#4085b3]"
-                                }`}
+                                className="w-full px-3 py-2 bg-white border border-slate-300 text-slate-900 rounded-lg text-xs font-medium outline-none cursor-pointer focus:ring-1 focus:ring-[#4085b3] focus:border-[#4085b3]"
                             >
                                 <option value="">Select Teacher...</option>
                                 {teachers.map(t => {
@@ -581,13 +562,13 @@ export default function ManageTeacherAssignmentsPage() {
                         </div>
 
                         {selectedTeacher ? (
-                            <div className="bg-gray-50 rounded-md p-4 space-y-3 border border-gray-200 text-xs">
+                            <div className="bg-slate-50 rounded-lg p-4 space-y-3 border border-slate-200 text-xs">
                                 <div className="flex items-start justify-between">
                                     <div>
-                                        <p className="font-bold text-gray-900 text-sm">
+                                        <p className="font-bold text-slate-900 text-sm">
                                             {selectedTeacher.firstName} {selectedTeacher.lastName}
                                         </p>
-                                        <p className="text-xs text-gray-500 font-mono mt-0.5">
+                                        <p className="text-xs text-slate-500 font-mono mt-0.5">
                                             Staff ID: {selectedTeacher.staffIdCode || selectedTeacher.employeeId || "—"}
                                         </p>
                                     </div>
@@ -600,27 +581,27 @@ export default function ManageTeacherAssignmentsPage() {
                                     </span>
                                 </div>
 
-                                <div className="grid grid-cols-2 gap-2 pt-2 border-t border-gray-200 text-xs">
-                                    <div className="bg-white p-2.5 rounded border border-gray-200">
-                                        <p className="text-gray-500 text-[10px] uppercase font-semibold">Assigned Sections</p>
-                                        <p className="text-base font-bold text-gray-900">{teacherAssignments.length}</p>
+                                <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-200 text-xs">
+                                    <div className="bg-white p-2.5 rounded-lg border border-slate-200">
+                                        <p className="text-slate-400 text-[10px] uppercase font-bold tracking-wider">Assigned</p>
+                                        <p className="text-base font-bold text-slate-900 mt-0.5">{teacherAssignments.length} <span className="text-xs font-normal text-slate-400">sections</span></p>
                                     </div>
-                                    <div className="bg-white p-2.5 rounded border border-gray-200">
-                                        <p className="text-gray-500 text-[10px] uppercase font-semibold">Weekly Load</p>
-                                        <p className="text-base font-bold font-mono text-gray-900">{currentTeacherPeriods} <span className="text-xs font-normal text-gray-500">p/wk</span></p>
+                                    <div className="bg-white p-2.5 rounded-lg border border-slate-200">
+                                        <p className="text-slate-400 text-[10px] uppercase font-bold tracking-wider">Weekly Load</p>
+                                        <p className="text-base font-bold font-mono text-slate-900 mt-0.5">{currentTeacherPeriods} <span className="text-xs font-normal text-slate-400">p/wk</span></p>
                                     </div>
                                 </div>
 
                                 {teacherSpecializations.length > 0 && (
-                                    <div className="pt-2 border-t border-gray-200">
-                                        <p className="text-[11px] font-medium text-gray-600 mb-1.5">
+                                    <div className="pt-2 border-t border-slate-200">
+                                        <p className="text-[11px] font-medium text-slate-500 mb-1.5">
                                             Specialization:
                                         </p>
                                         <div className="flex flex-wrap gap-1.5">
                                             {teacherSpecializations.map((spec: any) => (
                                                 <span 
                                                     key={spec.subjectId}
-                                                    className="text-xs px-2.5 py-0.5 rounded bg-white text-gray-800 border border-gray-200 font-medium"
+                                                    className="text-xs px-2.5 py-0.5 rounded bg-white text-slate-800 border border-slate-200 font-medium"
                                                 >
                                                     {spec.subject?.name}
                                                 </span>
@@ -630,14 +611,8 @@ export default function ManageTeacherAssignmentsPage() {
                                 )}
                             </div>
                         ) : (
-                            <div className="p-3 bg-amber-50/70 border border-amber-200 rounded-md text-xs text-amber-800 space-y-1">
-                                <p className="font-semibold flex items-center gap-1.5 text-amber-900">
-                                    <AlertCircle className="w-3.5 h-3.5 text-amber-600 flex-shrink-0" />
-                                    No Teacher Selected
-                                </p>
-                                <p className="text-[11px] text-amber-700">
-                                    Please select an instructor above to assign them to the selected subject and section.
-                                </p>
+                            <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg text-center text-xs text-slate-500">
+                                Select a teacher to view workload and assign classes.
                             </div>
                         )}
                     </div>
@@ -645,8 +620,8 @@ export default function ManageTeacherAssignmentsPage() {
 
                 {/* Right Card: New Allocation Form */}
                 <div className="lg:col-span-8">
-                    <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-xs">
-                        <h2 className="text-sm font-bold text-gray-900 mb-4 pb-2.5 border-b border-gray-100 flex items-center justify-between">
+                    <div className="bg-white border border-slate-200 rounded-lg p-5 shadow-2xs">
+                        <h2 className="text-sm font-bold text-slate-900 mb-4 pb-2.5 border-b border-slate-100 flex items-center justify-between">
                             <span>{reassignNotice ? "Reassign to Teacher" : "New Teaching Assignment"}</span>
                             {reassignNotice && (
                                 <span className="text-xs text-amber-700 font-semibold bg-amber-50 border border-amber-200 px-2 py-0.5 rounded">
@@ -656,16 +631,16 @@ export default function ManageTeacherAssignmentsPage() {
                         </h2>
 
                         <form onSubmit={handleAssign} className="space-y-4">
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                 {/* Grade Dropdown */}
                                 <div>
-                                    <label className="block text-xs font-medium text-gray-700 mb-1">
+                                    <label className="block text-xs font-medium text-slate-700 mb-1">
                                         Grade Level <span className="text-rose-500">*</span>
                                     </label>
                                     <select
                                         value={formData.schoolGradeId}
                                         onChange={(e) => setFormData(prev => ({ ...prev, schoolGradeId: e.target.value, subjectId: "" }))}
-                                        className="w-full px-3 py-2 bg-white border border-gray-300 text-gray-900 rounded-md text-xs font-medium focus:ring-2 focus:ring-[#4085b3] focus:border-[#4085b3] outline-none cursor-pointer"
+                                        className="w-full px-3 py-2 bg-white border border-slate-300 text-slate-900 rounded-lg text-xs font-medium focus:ring-1 focus:ring-[#4085b3] focus:border-[#4085b3] outline-none cursor-pointer"
                                         required
                                     >
                                         <option value="">Select Grade...</option>
@@ -677,22 +652,13 @@ export default function ManageTeacherAssignmentsPage() {
 
                                 {/* Subject Dropdown */}
                                 <div>
-                                    <label className="block text-xs font-medium text-gray-700 mb-1 flex items-center justify-between">
-                                        <span>Subject <span className="text-rose-500">*</span></span>
-                                        {gradeSubjects.length > 0 && (
-                                            <span className="text-[10px] text-gray-500 font-mono">
-                                                {gradeSubjects.length} subject{gradeSubjects.length > 1 ? "s" : ""}
-                                            </span>
-                                        )}
+                                    <label className="block text-xs font-medium text-slate-700 mb-1">
+                                        Subject <span className="text-rose-500">*</span>
                                     </label>
                                     <select
                                         value={formData.subjectId}
                                         onChange={(e) => setFormData(prev => ({ ...prev, subjectId: e.target.value }))}
-                                        className={`w-full px-3 py-2 bg-white border text-gray-900 rounded-md text-xs font-medium focus:ring-2 focus:ring-[#4085b3] focus:border-[#4085b3] outline-none cursor-pointer disabled:bg-gray-50 ${
-                                            !formData.subjectId && formData.schoolGradeId
-                                                ? "border-amber-400 ring-2 ring-amber-100"
-                                                : "border-gray-300"
-                                        }`}
+                                        className="w-full px-3 py-2 bg-white border border-slate-300 text-slate-900 rounded-lg text-xs font-medium focus:ring-1 focus:ring-[#4085b3] focus:border-[#4085b3] outline-none cursor-pointer disabled:bg-slate-50"
                                         required
                                         disabled={!formData.schoolGradeId}
                                     >
@@ -700,7 +666,7 @@ export default function ManageTeacherAssignmentsPage() {
                                             {!formData.schoolGradeId 
                                                 ? "Select Grade first..." 
                                                 : gradeSubjects.length === 0 
-                                                    ? "Loading subjects or none assigned to grade..." 
+                                                    ? "Loading subjects..." 
                                                     : "Select Subject..."}
                                         </option>
                                         {gradeSubjects.map(gs => {
@@ -719,15 +685,15 @@ export default function ManageTeacherAssignmentsPage() {
 
                             {/* Qualification Match Notice */}
                             {specializationMatch && (
-                                <div className={`px-3 py-2 rounded-md border flex items-center space-x-2 text-xs ${
+                                <div className={`px-3 py-2 rounded-lg border flex items-center space-x-2 text-xs ${
                                     specializationMatch.isMatch
                                         ? "bg-emerald-50 border-emerald-200 text-emerald-800"
                                         : "bg-amber-50 border-amber-200 text-amber-800"
                                 }`}>
                                     {specializationMatch.isMatch ? (
-                                        <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+                                        <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
                                     ) : (
-                                        <AlertTriangle className="w-4 h-4 text-amber-600 flex-shrink-0" />
+                                        <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
                                     )}
                                     <span>
                                         <strong>{specializationMatch.isMatch ? "Eligible:" : "Notice:"}</strong> {specializationMatch.details}
@@ -738,7 +704,7 @@ export default function ManageTeacherAssignmentsPage() {
                             {/* Section Multi-selection */}
                             <div>
                                 <div className="flex items-center justify-between mb-1.5">
-                                    <label className="block text-xs font-medium text-gray-700">
+                                    <label className="block text-xs font-medium text-slate-700">
                                         Sections <span className="text-rose-500">*</span>
                                     </label>
                                     {sections.length > 0 && !reassignNotice && (
@@ -753,32 +719,32 @@ export default function ManageTeacherAssignmentsPage() {
                                 </div>
 
                                 {!formData.schoolGradeId ? (
-                                    <div className="p-3 bg-gray-50 border border-gray-200 rounded-md text-center text-xs text-gray-500">
+                                    <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg text-center text-xs text-slate-400">
                                         Select a Grade Level above to view sections.
                                     </div>
                                 ) : sections.length === 0 ? (
-                                    <div className="p-3 bg-amber-50 border border-amber-200 rounded-md text-xs text-amber-800">
+                                    <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-800">
                                         No sections configured for this grade.
                                     </div>
                                 ) : (
-                                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 p-3 bg-gray-50 border border-gray-200 rounded-md">
+                                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 p-3 bg-slate-50 border border-slate-200 rounded-lg">
                                         {sections.map(sec => {
                                             const isSelected = formData.selectedSectionIds.includes(sec.id);
                                             return (
                                                 <div
                                                     key={sec.id}
                                                     onClick={() => handleSectionToggle(sec.id)}
-                                                    className={`px-3 py-2 rounded-md border cursor-pointer flex items-center justify-between text-xs transition-colors ${
+                                                    className={`px-3 py-2 rounded-lg border cursor-pointer flex items-center justify-between text-xs transition-colors ${
                                                         isSelected 
-                                                            ? "bg-white border-[#4085b3] text-[#4085b3] font-semibold shadow-xs" 
-                                                            : "bg-white border-gray-200 text-gray-700 hover:border-gray-300"
+                                                            ? "bg-[#4085b3]/5 border-[#4085b3] text-[#4085b3] font-semibold shadow-2xs" 
+                                                            : "bg-white border-slate-200 text-slate-700 hover:border-slate-300"
                                                     }`}
                                                 >
                                                     <span>Section {sec.name}</span>
                                                     {isSelected ? (
                                                         <CheckSquare className="w-3.5 h-3.5 text-[#4085b3]" />
                                                     ) : (
-                                                        <Square className="w-3.5 h-3.5 text-gray-400" />
+                                                        <Square className="w-3.5 h-3.5 text-slate-400" />
                                                     )}
                                                 </div>
                                             );
@@ -788,9 +754,9 @@ export default function ManageTeacherAssignmentsPage() {
                             </div>
 
                             {/* Weekly Periods & Lifecycle Status */}
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
                                 <div>
-                                    <label className="block text-xs font-medium text-gray-700 mb-1">
+                                    <label className="block text-xs font-medium text-slate-700 mb-1">
                                         Weekly Periods per Section
                                     </label>
                                     <input
@@ -799,17 +765,17 @@ export default function ManageTeacherAssignmentsPage() {
                                         max="25"
                                         value={formData.periodsPerWeek}
                                         onChange={(e) => setFormData(prev => ({ ...prev, periodsPerWeek: Number(e.target.value) }))}
-                                        className="w-full px-3 py-2 bg-white border border-gray-300 text-gray-900 rounded-md text-xs font-mono focus:ring-2 focus:ring-[#4085b3] focus:border-[#4085b3] outline-none"
+                                        className="w-full px-3 py-2 bg-white border border-slate-300 text-slate-900 rounded-lg text-xs font-mono focus:ring-1 focus:ring-[#4085b3] focus:border-[#4085b3] outline-none"
                                         required
                                     />
                                 </div>
 
                                 <div>
-                                    <label className="block text-xs font-medium text-gray-700 mb-1">
+                                    <label className="block text-xs font-medium text-slate-700 mb-1">
                                         Status
                                     </label>
                                     <div className="flex items-center space-x-5 pt-2">
-                                        <label className="flex items-center space-x-2 text-xs text-gray-800 cursor-pointer">
+                                        <label className="flex items-center space-x-2 text-xs text-slate-800 cursor-pointer">
                                             <input
                                                 type="radio"
                                                 name="lifecycle"
@@ -820,7 +786,7 @@ export default function ManageTeacherAssignmentsPage() {
                                             <span>Direct Activation</span>
                                         </label>
 
-                                        <label className="flex items-center space-x-2 text-xs text-gray-800 cursor-pointer">
+                                        <label className="flex items-center space-x-2 text-xs text-slate-800 cursor-pointer">
                                             <input
                                                 type="radio"
                                                 name="lifecycle"
@@ -835,62 +801,43 @@ export default function ManageTeacherAssignmentsPage() {
                             </div>
 
                             {/* Action Buttons & Guidance */}
-                            <div className="pt-3 border-t border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                            <div className="pt-3 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                                 <div>
-                                    {!selectedTeacherId ? (
-                                        <p className="text-[11px] text-amber-700 font-medium flex items-center gap-1.5 bg-amber-50 px-2.5 py-1 rounded border border-amber-200">
-                                            <AlertCircle className="w-3.5 h-3.5 text-amber-600 flex-shrink-0" />
-                                            Please choose a teacher from the left panel.
-                                        </p>
-                                    ) : !formData.schoolGradeId ? (
-                                        <p className="text-[11px] text-amber-700 font-medium flex items-center gap-1.5 bg-amber-50 px-2.5 py-1 rounded border border-amber-200">
-                                            <AlertCircle className="w-3.5 h-3.5 text-amber-600 flex-shrink-0" />
-                                            Please select a grade level.
-                                        </p>
-                                    ) : !formData.subjectId ? (
-                                        <p className="text-[11px] text-amber-700 font-medium flex items-center gap-1.5 bg-amber-50 px-2.5 py-1 rounded border border-amber-200">
-                                            <AlertCircle className="w-3.5 h-3.5 text-amber-600 flex-shrink-0" />
-                                            Please select a subject.
-                                        </p>
-                                    ) : formData.selectedSectionIds.length === 0 ? (
-                                        <p className="text-[11px] text-amber-700 font-medium flex items-center gap-1.5 bg-amber-50 px-2.5 py-1 rounded border border-amber-200">
-                                            <AlertCircle className="w-3.5 h-3.5 text-amber-600 flex-shrink-0" />
-                                            Please select at least one section.
-                                        </p>
-                                    ) : (
-                                        <p className="text-[11px] text-emerald-700 font-medium flex items-center gap-1.5">
+                                    {formData.selectedSectionIds.length > 0 && selectedTeacherId && formData.subjectId ? (
+                                        <p className="text-xs text-emerald-700 font-medium flex items-center gap-1.5">
                                             <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                                            Ready to assign ({formData.selectedSectionIds.length} section{formData.selectedSectionIds.length > 1 ? "s" : ""}, {formData.periodsPerWeek} p/wk each)
+                                            Ready to allocate ({formData.selectedSectionIds.length} {formData.selectedSectionIds.length === 1 ? "section" : "sections"}, {formData.periodsPerWeek} p/wk)
                                         </p>
-                                    )}
+                                    ) : null}
                                 </div>
 
                                 <div className="flex items-center space-x-2.5 justify-end">
-                                    <button
+                                    <Button
                                         type="button"
+                                        variant="outline"
+                                        size="sm"
                                         onClick={() => {
                                             setReassignNotice(null);
                                             router.push("/dashboard/teachers/assignments");
                                         }}
-                                        className="px-4 py-2 text-xs font-medium text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors cursor-pointer"
+                                        className="hover:border-[#4085b3] hover:text-[#4085b3] hover:bg-[#4085b3]/5 transition-all duration-200 shadow-2xs"
                                     >
                                         Cancel
-                                    </button>
-                                    <button
+                                    </Button>
+                                    <Button
                                         type="submit"
+                                        size="sm"
                                         disabled={submitting || !selectedTeacherId || !formData.subjectId || !formData.schoolGradeId || formData.selectedSectionIds.length === 0}
-                                        className="px-5 py-2 text-xs font-medium text-white bg-[#4085b3] hover:bg-[#2b6a94] rounded-md transition-colors shadow-xs disabled:opacity-50 cursor-pointer flex items-center space-x-1.5"
+                                        className="bg-[#4085b3] hover:bg-[#2b6a94] text-white font-medium shadow-2xs"
                                     >
-                                        <span>
-                                            {submitting 
-                                                ? "Saving..." 
-                                                : reassignNotice 
-                                                    ? "Confirm Reassignment" 
-                                                    : formData.asProposal 
-                                                        ? "Submit Proposal" 
-                                                        : "Save Assignment"}
-                                        </span>
-                                    </button>
+                                        {submitting 
+                                            ? "Saving..." 
+                                            : reassignNotice 
+                                                ? "Confirm Reassignment" 
+                                                : formData.asProposal 
+                                                    ? "Submit Proposal" 
+                                                    : "Save Assignment"}
+                                    </Button>
                                 </div>
                             </div>
                         </form>
@@ -898,35 +845,30 @@ export default function ManageTeacherAssignmentsPage() {
                 </div>
             </div>
 
-            {/* Current Allocations Table (Clean Government Style with Pagination & Reassign Action) */}
-            <div className="bg-white border border-gray-200 rounded-lg shadow-xs overflow-hidden">
-                <div className="px-6 py-4 border-b border-gray-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-gray-50/50">
-                    <div>
-                        <h2 className="text-sm font-bold text-gray-900">
-                            Current Allocations {selectedTeacher ? `(${selectedTeacher.firstName} ${selectedTeacher.lastName})` : ""}
-                        </h2>
-                        <p className="text-xs text-gray-500 mt-0.5">
-                            Total: {teacherAssignments.length} sections &bull; {currentTeacherPeriods} weekly periods
-                        </p>
-                    </div>
+            {/* Current Allocations Table */}
+            <div className="bg-white border border-slate-200 rounded-lg shadow-2xs overflow-hidden">
+                <div className="px-5 py-3 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-50/50">
+                    <h2 className="text-sm font-bold text-slate-900">
+                        Current Allocations {selectedTeacher ? `(${selectedTeacher.firstName} ${selectedTeacher.lastName})` : ""}
+                    </h2>
 
                     {/* Quick Search */}
                     {teacherAssignments.length > 0 && (
                         <div className="relative w-full sm:w-64">
-                            <Search className="w-3.5 h-3.5 absolute left-3 top-2.5 text-gray-400" />
+                            <Search className="w-3.5 h-3.5 absolute left-3 top-2.5 text-slate-400" />
                             <input
                                 type="text"
-                                placeholder="Filter by subject, grade, section..."
+                                placeholder="Filter allocations..."
                                 value={allocationSearch}
                                 onChange={(e) => setAllocationSearch(e.target.value)}
-                                className="w-full pl-8 pr-3 py-1.5 text-xs bg-white border border-gray-300 rounded-md focus:ring-2 focus:ring-[#4085b3] focus:border-[#4085b3] outline-none"
+                                className="w-full pl-8 pr-3 py-1.5 text-xs bg-white border border-slate-300 rounded-lg focus:ring-1 focus:ring-[#4085b3] focus:border-[#4085b3] outline-none"
                             />
                         </div>
                     )}
                 </div>
 
                 {filteredTeacherAssignments.length === 0 ? (
-                    <div className="py-12 text-center text-xs text-gray-500">
+                    <div className="py-10 text-center text-xs text-slate-400">
                         {teacherAssignments.length === 0 
                             ? "No teaching assignments recorded for this teacher in the selected academic year."
                             : "No assignments match your search filter."}
@@ -934,36 +876,36 @@ export default function ManageTeacherAssignmentsPage() {
                 ) : (
                     <>
                         <div className="overflow-x-auto">
-                            <table className="w-full text-left text-xs text-gray-700">
-                                <thead className="bg-gray-50 border-b border-gray-200 text-gray-600 uppercase font-semibold text-[11px]">
+                            <table className="w-full text-left text-xs text-slate-700">
+                                <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 uppercase font-semibold text-[10px] tracking-wider">
                                     <tr>
-                                        <th className="px-4 py-3 w-12 text-center">#</th>
-                                        <th className="px-4 py-3">Subject</th>
-                                        <th className="px-4 py-3">Grade Level</th>
-                                        <th className="px-4 py-3">Section</th>
-                                        <th className="px-4 py-3 text-center">Weekly Periods</th>
-                                        <th className="px-4 py-3 text-center">Status</th>
-                                        <th className="px-4 py-3 text-right">Actions</th>
+                                        <th className="px-4 py-2.5 w-12 text-center">#</th>
+                                        <th className="px-4 py-2.5 font-bold">Subject</th>
+                                        <th className="px-4 py-2.5 font-bold">Grade Level</th>
+                                        <th className="px-4 py-2.5 font-bold">Section</th>
+                                        <th className="px-4 py-2.5 text-center font-bold">Weekly Periods</th>
+                                        <th className="px-4 py-2.5 text-center font-bold">Status</th>
+                                        <th className="px-4 py-2.5 text-right font-bold">Actions</th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-gray-100">
+                                <tbody className="divide-y divide-slate-100">
                                     {paginatedAssignments.map((a, idx) => {
                                         const globalIndex = (currentPage - 1) * pageSize + idx + 1;
                                         return (
-                                            <tr key={a.id} className="hover:bg-gray-50/70 transition-colors">
-                                                <td className="px-4 py-3 text-center text-gray-400 font-mono text-[11px]">
+                                            <tr key={a.id} className="hover:bg-slate-50/70 transition-colors">
+                                                <td className="px-4 py-3 text-center text-slate-400 font-mono text-[11px]">
                                                     {globalIndex}
                                                 </td>
-                                                <td className="px-4 py-3 font-semibold text-gray-900">
+                                                <td className="px-4 py-3 font-semibold text-slate-900">
                                                     {a.subject?.name}
                                                 </td>
-                                                <td className="px-4 py-3 text-gray-700">
+                                                <td className="px-4 py-3 text-slate-700">
                                                     {a.schoolGrade?.grade?.name}
                                                 </td>
-                                                <td className="px-4 py-3 text-gray-700">
+                                                <td className="px-4 py-3 text-slate-700">
                                                     Section {a.section?.name || "All"}
                                                 </td>
-                                                <td className="px-4 py-3 text-center font-mono font-medium text-gray-900">
+                                                <td className="px-4 py-3 text-center font-mono font-medium text-slate-900">
                                                     {a.periodsPerWeek} p/wk
                                                 </td>
                                                 <td className="px-4 py-3 text-center">
@@ -979,19 +921,19 @@ export default function ManageTeacherAssignmentsPage() {
                                                     <div className="flex items-center justify-end space-x-1">
                                                         <button
                                                             onClick={() => handleReassign(a)}
-                                                            className="inline-flex items-center space-x-1 text-[#4085b3] hover:text-[#2b6a94] hover:bg-sky-50 px-2 py-1 rounded transition-colors cursor-pointer"
+                                                            className="inline-flex items-center space-x-1 text-[#4085b3] hover:text-[#2b6a94] hover:bg-[#4085b3]/10 px-2 py-1 rounded transition-colors cursor-pointer text-xs font-medium"
                                                             title="Reassign to another teacher"
                                                         >
                                                             <ArrowRightLeft className="w-3.5 h-3.5" />
-                                                            <span className="text-[11px] font-medium">Reassign</span>
+                                                            <span>Reassign</span>
                                                         </button>
                                                         <button
                                                             onClick={() => handleDeleteAssignment(a.id)}
-                                                            className="inline-flex items-center space-x-1 text-gray-400 hover:text-rose-600 hover:bg-rose-50 px-2 py-1 rounded transition-colors cursor-pointer"
+                                                            className="inline-flex items-center space-x-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 px-2 py-1 rounded transition-colors cursor-pointer text-xs"
                                                             title="End assignment"
                                                         >
                                                             <Trash2 className="w-3.5 h-3.5" />
-                                                            <span className="text-[11px]">Remove</span>
+                                                            <span>Remove</span>
                                                         </button>
                                                     </div>
                                                 </td>
@@ -999,12 +941,12 @@ export default function ManageTeacherAssignmentsPage() {
                                         );
                                     })}
                                 </tbody>
-                                <tfoot className="bg-gray-50/80 border-t border-gray-200 font-semibold text-gray-900 text-xs">
+                                <tfoot className="bg-slate-50/80 border-t border-slate-200 font-semibold text-slate-900 text-xs">
                                     <tr>
-                                        <td colSpan={4} className="px-4 py-3 text-right">
+                                        <td colSpan={4} className="px-4 py-2.5 text-right text-slate-500 font-medium">
                                             Total Active Load:
                                         </td>
-                                        <td className="px-4 py-3 text-center font-mono">
+                                        <td className="px-4 py-2.5 text-center font-mono font-bold">
                                             {currentTeacherPeriods} p/wk
                                         </td>
                                         <td colSpan={2}></td>
@@ -1013,20 +955,20 @@ export default function ManageTeacherAssignmentsPage() {
                             </table>
                         </div>
 
-                        {/* Government Pagination Bar */}
-                        <div className="px-6 py-3 border-t border-gray-200 bg-gray-50/60 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-gray-600">
+                        {/* Pagination Bar */}
+                        <div className="px-5 py-3 border-t border-slate-100 bg-slate-50/60 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-slate-600">
                             <div className="flex items-center space-x-3">
                                 <span>
-                                    Showing <span className="font-semibold text-gray-900">{(currentPage - 1) * pageSize + 1}</span> to{" "}
-                                    <span className="font-semibold text-gray-900">{Math.min(currentPage * pageSize, filteredTeacherAssignments.length)}</span> of{" "}
-                                    <span className="font-semibold text-gray-900">{filteredTeacherAssignments.length}</span> allocations
+                                    Showing <span className="font-semibold text-slate-900">{(currentPage - 1) * pageSize + 1}</span> to{" "}
+                                    <span className="font-semibold text-slate-900">{Math.min(currentPage * pageSize, filteredTeacherAssignments.length)}</span> of{" "}
+                                    <span className="font-semibold text-slate-900">{filteredTeacherAssignments.length}</span> allocations
                                 </span>
-                                <div className="flex items-center space-x-1.5 pl-3 border-l border-gray-300">
-                                    <span className="text-gray-500">Per page:</span>
+                                <div className="flex items-center space-x-1.5 pl-3 border-l border-slate-300">
+                                    <span className="text-slate-500">Per page:</span>
                                     <select
                                         value={pageSize}
                                         onChange={(e) => setPageSize(Number(e.target.value))}
-                                        className="bg-white border border-gray-300 rounded px-2 py-0.5 text-xs font-medium text-gray-800 focus:outline-none cursor-pointer"
+                                        className="bg-white border border-slate-300 rounded px-2 py-0.5 text-xs font-medium text-slate-800 focus:outline-none cursor-pointer"
                                     >
                                         <option value={5}>5</option>
                                         <option value={8}>8</option>
@@ -1041,7 +983,7 @@ export default function ManageTeacherAssignmentsPage() {
                                     <button
                                         onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                                         disabled={currentPage === 1}
-                                        className="inline-flex items-center space-x-1 px-2.5 py-1 rounded border border-gray-300 bg-white hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors text-xs font-medium cursor-pointer"
+                                        className="inline-flex items-center space-x-1 px-2.5 py-1 rounded border border-slate-300 bg-white hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors text-xs font-medium cursor-pointer"
                                     >
                                         <ChevronLeft className="w-3.5 h-3.5" />
                                         <span>Prev</span>
@@ -1054,7 +996,7 @@ export default function ManageTeacherAssignmentsPage() {
                                             className={`w-7 h-7 rounded border text-xs font-medium transition-colors cursor-pointer ${
                                                 currentPage === page 
                                                     ? "bg-[#4085b3] text-white border-[#4085b3]" 
-                                                    : "bg-white border-gray-300 text-gray-700 hover:bg-gray-100"
+                                                    : "bg-white border-slate-300 text-slate-700 hover:bg-slate-100"
                                             }`}
                                         >
                                             {page}
@@ -1064,7 +1006,7 @@ export default function ManageTeacherAssignmentsPage() {
                                     <button
                                         onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
                                         disabled={currentPage === totalPages}
-                                        className="inline-flex items-center space-x-1 px-2.5 py-1 rounded border border-gray-300 bg-white hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors text-xs font-medium cursor-pointer"
+                                        className="inline-flex items-center space-x-1 px-2.5 py-1 rounded border border-slate-300 bg-white hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors text-xs font-medium cursor-pointer"
                                     >
                                         <span>Next</span>
                                         <ChevronRight className="w-3.5 h-3.5" />

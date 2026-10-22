@@ -667,8 +667,144 @@ export class StudentService {
         return student;
     }
 
-    static async getStudents() {
-        return prisma.student.findMany();
+    static async getStudents(options: {
+        organizationId?: string;
+        page?: number;
+        limit?: number;
+        sortBy?: string;
+        sortOrder?: "asc" | "desc";
+        search?: string;
+        gender?: string;
+        status?: string;
+    } = {}) {
+        const {
+            page = 1,
+            limit = 25,
+            sortBy = "createdAt",
+            sortOrder = "desc",
+            search,
+            gender,
+            status
+        } = options;
+
+        const where: any = {};
+
+        if (gender && gender !== "ALL") {
+            where.gender = { equals: gender, mode: "insensitive" };
+        }
+
+        if (status && status !== "ALL") {
+            where.enrollments = {
+                some: {
+                    status: status as any
+                }
+            };
+        }
+
+        if (search && search.trim()) {
+            const terms = search.trim().split(/\s+/).filter(Boolean);
+            const buildTermCondition = (term: string) => ({
+                OR: [
+                    { studentId: { contains: term, mode: "insensitive" } },
+                    { firstName: { contains: term, mode: "insensitive" } },
+                    { fatherName: { contains: term, mode: "insensitive" } },
+                    { grandfatherName: { contains: term, mode: "insensitive" } },
+                    { lastName: { contains: term, mode: "insensitive" } },
+                    { city: { contains: term, mode: "insensitive" } },
+                    { region: { contains: term, mode: "insensitive" } },
+                    { emergencyContactName: { contains: term, mode: "insensitive" } },
+                    {
+                        parents: {
+                            some: {
+                                parent: {
+                                    OR: [
+                                        { firstName: { contains: term, mode: "insensitive" } },
+                                        { lastName: { contains: term, mode: "insensitive" } }
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                ]
+            });
+
+            const firstTerm = terms[0];
+            if (terms.length === 1 && firstTerm) {
+                where.OR = buildTermCondition(firstTerm).OR;
+            } else if (terms.length > 1) {
+                where.AND = terms.map(buildTermCondition);
+            }
+        }
+
+        let orderBy: any = { createdAt: sortOrder || "desc" };
+        if (sortBy === "firstName") {
+            orderBy = { firstName: sortOrder || "asc" };
+        } else if (sortBy === "studentId") {
+            orderBy = { studentId: sortOrder || "asc" };
+        } else if (sortBy === "createdAt") {
+            orderBy = { createdAt: sortOrder || "desc" };
+        }
+
+        const isExport = limit <= 0;
+        const pageNum = Math.max(1, page);
+        const take = isExport ? undefined : limit;
+        const skip = isExport ? undefined : (pageNum - 1) * limit;
+
+        const [total, students] = await Promise.all([
+            prisma.student.count({ where }),
+            prisma.student.findMany({
+                where,
+                orderBy,
+                skip,
+                take,
+                include: {
+                    enrollments: {
+                        include: {
+                            academicYear: true,
+                            schoolGrade: {
+                                include: { grade: true }
+                            },
+                            section: true
+                        },
+                        orderBy: { createdAt: "desc" }
+                    },
+                    parents: {
+                        include: {
+                            parent: {
+                                include: {
+                                    user: true
+                                }
+                            }
+                        }
+                    }
+                }
+            })
+        ]);
+
+        const formatted = students.map((s: any) => ({
+            ...s,
+            guardians: (s.parents || []).map((p: any) => ({
+                id: p.id,
+                relationship: p.relationship,
+                isPrimary: p.isPrimary,
+                canPickup: p.canPickup,
+                parent: p.parent,
+                fullName: p.parent ? `${p.parent.firstName || ""} ${p.parent.lastName || ""}`.trim() : undefined,
+                phoneNumber: p.parent?.phoneNumber
+            }))
+        }));
+
+        const totalPages = isExport ? 1 : Math.max(1, Math.ceil(total / (limit || 1)));
+
+        return {
+            data: formatted,
+            meta: {
+                total,
+                page: pageNum,
+                limit: isExport ? total : limit,
+                totalPages
+            }
+        };
     }
 
     static async getStudentById(id: string) {
@@ -1331,7 +1467,10 @@ export class StudentService {
                 ],
                 AND: [{ OR: [{ expiresAt: null }, { expiresAt: { gte: new Date() } }] }]
             },
-            include: { author: { select: { name: true } } },
+            include: {
+                author: { select: { name: true } },
+                acknowledgments: true
+            },
             orderBy: [{ createdAt: "desc" }]
         });
     }

@@ -27,8 +27,11 @@ import {
     ChevronRight,
     ChevronLeft,
     LayoutGrid,
+    LayoutList,
+    ArrowUpRight,
     List,
-    X
+    X,
+    FileText
 } from "lucide-react";
 import DataRequestCreateView from "./DataRequestCreateView";
 import DataRequestDetailView from "./DataRequestDetailView";
@@ -66,6 +69,7 @@ export default function DataRequestsListView({
 
     const [directionFilter, setDirectionFilter] = useState<"all" | "created" | "received">("all");
     const [statusFilter, setStatusFilter] = useState<"ALL" | "PUBLISHED" | "COMPLETED" | "DRAFT">("ALL");
+    const [hasFormFilter, setHasFormFilter] = useState<boolean>(false);
     const [searchQuery, setSearchQuery] = useState("");
 
     const [syncingId, setSyncingId] = useState<string | null>(null);
@@ -201,6 +205,9 @@ export default function DataRequestsListView({
             if (directionFilter === "created" && !r.isCreatedByMe) return false;
             if (directionFilter === "received" && r.isCreatedByMe) return false;
 
+            // Connected Form Filter
+            if (hasFormFilter && !r.googleResponderUri) return false;
+
             // Status filter
             if (statusFilter === "PUBLISHED" && r.status !== "PUBLISHED") return false;
             if (statusFilter === "DRAFT" && r.status !== "DRAFT") return false;
@@ -304,15 +311,73 @@ export default function DataRequestsListView({
     const pendingCount = requests.filter(r => (r.completionRate || 0) < 100).length;
     const completedCount = requests.filter(r => (r.completionRate || 0) === 100 || r.status === "COMPLETED").length;
 
-    // View Mode & Pagination
-    const [viewMode, setViewMode] = useState<"grid" | "table">("grid");
+    // View Mode & Pagination (Table = default, Cards = clean summary cards)
+    const [viewMode, setViewMode] = useState<"table" | "cards">("table");
+    const [showFilters, setShowFilters] = useState(false);
     const [page, setPage] = useState(1);
-    const [pageSize, setPageSize] = useState(9); // 9 for 3-column grid
+    const [pageSize, setPageSize] = useState(10); // 10 items per page
+
+    const activeFilterCount = useMemo(() => {
+        let count = 0;
+        if (directionFilter !== "all") count++;
+        if (filterIssuerLevel !== "ALL") count++;
+        if (levelFilter !== "ALL") count++;
+        if (statusFilter !== "ALL") count++;
+        if (filterRegionId || filterZoneId || filterWoredaId || filterSchoolId) count++;
+        return count;
+    }, [directionFilter, filterIssuerLevel, levelFilter, statusFilter, filterRegionId, filterZoneId, filterWoredaId, filterSchoolId]);
+
+    const hasActiveFilters = searchQuery !== "" || activeFilterCount > 0;
+
+    const clearAllFilters = () => {
+        setSearchQuery("");
+        setDirectionFilter("all");
+        setFilterIssuerLevel("ALL");
+        setFilterIssuerOrgId("");
+        setLevelFilter("ALL");
+        setStatusFilter("ALL");
+        setHasFormFilter(false);
+        setFilterRegionId("");
+        setFilterZoneId("");
+        setFilterWoredaId("");
+        setFilterSchoolId("");
+    };
+
+    // Clean, authentic government card description without dev filler or repetitive letters
+    const getCleanRequestCardMessage = (item: any) => {
+        const rawObj = item.objective?.trim() || "";
+        const rawDesc = item.description?.trim() || "";
+        const titleLower = (item.title || "").trim().toLowerCase();
+
+        // Helper to test if text is repetitive dev filler, gibberish, or repeats title
+        const isGibberishOrRepetitive = (text: string) => {
+            if (!text || text.length < 5) return true;
+            const lower = text.toLowerCase();
+            if (titleLower && (lower === titleLower || lower.includes(titleLower))) return true;
+            if (/(.)\1{3,}/.test(text)) return true;
+            const words = lower.split(/\s+/).filter(Boolean);
+            if (words.length > 2 && words.every(w => w === words[0])) return true;
+            return false;
+        };
+
+        if (rawObj && !isGibberishOrRepetitive(rawObj)) {
+            const firstSentence = rawObj.split(/[.!?]\s+/)[0];
+            return firstSentence.length > 110 ? `${firstSentence.substring(0, 107)}...` : firstSentence;
+        }
+        if (rawDesc && !isGibberishOrRepetitive(rawDesc)) {
+            const firstSentence = rawDesc.split(/[.!?]\s+/)[0];
+            return firstSentence.length > 110 ? `${firstSentence.substring(0, 107)}...` : firstSentence;
+        }
+
+        const authority = item.createdOrganization?.name || "EduBridge Platform";
+        return `Official administrative data collection issued by ${authority} for statutory tracking.`;
+    };
 
     useEffect(() => {
         setPage(1);
     }, [
         directionFilter,
+        hasFormFilter,
         levelFilter,
         filterIssuerLevel,
         filterIssuerOrgId,
@@ -322,7 +387,8 @@ export default function DataRequestsListView({
         filterSchoolId,
         statusFilter,
         searchQuery,
-        pageSize
+        pageSize,
+        viewMode
     ]);
 
     const totalPages = Math.max(1, Math.ceil(filteredRequests.length / pageSize));
@@ -371,363 +437,357 @@ export default function DataRequestsListView({
     }
 
     return (
-        <div className="space-y-6 max-w-7xl mx-auto pb-12 w-full font-sans">
+        <div className="space-y-6 font-sans text-slate-900 max-w-7xl">
             {/* Error Banner if any */}
             {error && (
-                <div className="p-3.5 bg-rose-50 border border-rose-200 rounded-xl flex items-center justify-between text-xs font-medium text-rose-800 shadow-sm animate-in fade-in">
-                    <div className="flex items-center gap-2">
-                        <AlertTriangle className="w-4 h-4 shrink-0 text-rose-600" />
-                        <span>{error}</span>
+                <div role="alert" className="p-4 border-l-4 border-rose-600 bg-rose-50 text-slate-900 text-sm flex items-center justify-between">
+                    <div>
+                        <strong className="font-semibold">There is a problem loading the registry:</strong> {error}
                     </div>
-                    <button onClick={() => setError(null)} className="text-slate-400 hover:text-slate-600 cursor-pointer">
-                        <X className="w-3.5 h-3.5" />
+                    <button
+                        type="button"
+                        onClick={() => loadRequests()}
+                        className="text-sm font-semibold text-[#4085b3] hover:underline cursor-pointer ml-4"
+                    >
+                        Try again
                     </button>
                 </div>
             )}
 
-            {/* Interactive Metric Overview Cards (Matching Policies & Initiatives Style) */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                <div
-                    onClick={() => {
-                        setDirectionFilter("all");
-                        setStatusFilter("ALL");
-                    }}
-                    className={`bg-white rounded-2xl border p-5 shadow-xs transition-all cursor-pointer ${
-                        directionFilter === "all" && statusFilter === "ALL"
-                            ? "border-blue-400 ring-2 ring-blue-500/10 shadow-xs"
-                            : "border-slate-200 hover:border-slate-300"
-                    }`}
-                >
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
-                        Total Requests
-                    </span>
-                    <p className="text-2xl font-bold text-slate-900 mt-1">{totalRequestsCount}</p>
-                    <span className="text-[11px] text-slate-400 mt-0.5 block">Official data collections</span>
-                </div>
+            {/* 1. PAGE HEADER (Clean single-line header matching Policies and Directives UI) */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-200">
+                <h1 className="text-2xl font-bold tracking-tight text-slate-900">
+                    Data requests
+                </h1>
 
-                <div
-                    onClick={() => {
-                        setStatusFilter("PUBLISHED");
-                    }}
-                    className={`bg-white rounded-2xl border p-5 shadow-xs transition-all cursor-pointer ${
-                        statusFilter === "PUBLISHED"
-                            ? "border-blue-400 ring-2 ring-blue-500/10 shadow-xs bg-blue-50/20"
-                            : "border-slate-200 hover:border-slate-300"
-                    }`}
+                <button
+                    type="button"
+                    onClick={() => setActiveView("create")}
+                    className="px-3.5 py-1.5 bg-[#4085b3] hover:bg-[#32698e] text-white text-sm font-medium rounded transition-colors inline-flex items-center gap-1.5 self-start sm:self-auto cursor-pointer"
                 >
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
-                        Active Forms
-                    </span>
-                    <p className="text-2xl font-bold text-blue-700 mt-1">{activeFormsCount}</p>
-                    <span className="text-[11px] text-slate-400 mt-0.5 block">Google survey forms online</span>
-                </div>
-
-                <div
-                    onClick={() => {
-                        setStatusFilter("PUBLISHED");
-                    }}
-                    className="bg-white rounded-2xl border border-slate-200 hover:border-slate-300 p-5 shadow-xs transition-all cursor-pointer"
-                >
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
-                        Responses Progress
-                    </span>
-                    <p className="text-2xl font-bold text-amber-700 mt-1">
-                        {totalSubmissionsCount}/{totalTargetsCount}
-                    </p>
-                    <span className="text-[11px] text-amber-700/80 font-medium mt-0.5 block">
-                        {overallRate}% nationwide coverage
-                    </span>
-                </div>
-
-                <div
-                    onClick={() => {
-                        setStatusFilter("COMPLETED");
-                    }}
-                    className={`bg-white rounded-2xl border p-5 shadow-xs transition-all cursor-pointer ${
-                        statusFilter === "COMPLETED"
-                            ? "border-emerald-400 ring-2 ring-emerald-500/10 shadow-xs bg-emerald-50/20"
-                            : "border-slate-200 hover:border-slate-300"
-                    }`}
-                >
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
-                        Completed
-                    </span>
-                    <p className="text-2xl font-bold text-emerald-700 mt-1">{completedCount}</p>
-                    <span className="text-[11px] text-slate-400 mt-0.5 block">100% fulfilled registries</span>
-                </div>
+                    <Plus className="w-4 h-4" />
+                    <span>Issue data request</span>
+                </button>
             </div>
 
-            {/* Main Data Requests Registry Card */}
-            <div className="bg-white rounded-2xl border border-slate-200 p-6 space-y-5 shadow-xs">
-                {/* Header Row */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-3 border-b border-slate-100">
-                    <div>
-                        <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
-                            <FileSpreadsheet className="w-5 h-5 text-blue-600" />
-                            <span>Data Requests Registry</span>
-                        </h3>
-                        <p className="text-xs text-slate-500 mt-0.5">
-                            Action-oriented data collection and Google Forms tracking across the hierarchy.
-                        </p>
-                    </div>
-
-                    <div className="flex items-center gap-2 self-start sm:self-auto shrink-0">
-                        {/* View Switcher: Card Grid vs Table */}
-                        <div className="flex items-center bg-slate-100 p-0.5 rounded-xl border border-slate-200">
-                            <button
-                                type="button"
-                                onClick={() => setViewMode("grid")}
-                                className={`p-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-                                    viewMode === "grid" ? "bg-white text-slate-900 shadow-xs" : "text-slate-500 hover:text-slate-900"
-                                }`}
-                                title="Card Grid View"
-                            >
-                                <LayoutGrid className="w-4 h-4" />
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => setViewMode("table")}
-                                className={`p-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-                                    viewMode === "table" ? "bg-white text-slate-900 shadow-xs" : "text-slate-500 hover:text-slate-900"
-                                }`}
-                                title="Table View"
-                            >
-                                <List className="w-4 h-4" />
-                            </button>
-                        </div>
-
-                        <button
-                            type="button"
-                            onClick={loadRequests}
-                            disabled={loading}
-                            className="p-2 border border-slate-200 hover:bg-slate-50 text-slate-600 rounded-xl transition-colors cursor-pointer"
-                            title="Refresh Data Requests"
-                        >
-                            <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin text-blue-600" : ""}`} />
-                        </button>
-
-                        <button
-                            type="button"
-                            onClick={() => setActiveView("create")}
-                            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-xs transition-colors cursor-pointer"
-                        >
-                            <Plus className="w-4 h-4" />
-                            <span>New Data Request</span>
-                        </button>
-                    </div>
-                </div>
-
-                {/* Filter and Tab Toolbar (Matching Policies & Initiatives Clean Dropdown Style) */}
-                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 pt-0.5">
-                    <div className="flex flex-wrap items-center gap-2 flex-1">
-                        {/* Search Input */}
-                        <div className="relative w-full sm:w-64">
-                            <Search className="w-3.5 h-3.5 absolute left-3 top-2.5 text-slate-400" />
+            {/* 2. TOOLBAR: SEARCH, FILTERS & VIEW SWITCHER (Unified in one clean row) */}
+            <div className="space-y-3 pt-1">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                    {/* Left: Search input + Filters toggle button + Refresh */}
+                    <div className="flex items-center gap-2.5 flex-1 max-w-lg">
+                        <div className="relative flex-1">
+                            <Search className="w-4 h-4 absolute left-3 top-2.5 text-slate-400 pointer-events-none" />
                             <input
+                                id="data-request-search"
                                 type="text"
                                 value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                                placeholder="Search title, objective, issuer..."
-                                className="w-full pl-8 pr-7 py-1.5 text-xs border border-slate-200 rounded-lg focus:outline-none focus:border-slate-400 text-slate-800 placeholder-slate-400 bg-white"
+                                onChange={e => setSearchQuery(e.target.value)}
+                                placeholder="Search data requests by title, target, or keywords..."
+                                className="w-full pl-9 pr-8 py-2 text-sm bg-white border border-slate-300 rounded text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-[#4085b3] focus:border-[#4085b3]"
                             />
                             {searchQuery && (
                                 <button
+                                    type="button"
                                     onClick={() => setSearchQuery("")}
-                                    className="absolute right-2.5 top-2 text-slate-400 hover:text-slate-600"
+                                    className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600 cursor-pointer"
+                                    aria-label="Clear search"
                                 >
-                                    <X className="w-3 h-3" />
+                                    <X className="w-4 h-4" />
                                 </button>
                             )}
                         </div>
 
-                        {/* Source / Issuer Level Dropdown (Upper Levels Matching Policies & Directives) */}
-                        <div className="w-full sm:w-48">
-                            <select
-                                value={filterIssuerLevel}
-                                onChange={(e) => {
-                                    setFilterIssuerLevel(e.target.value as any);
-                                    setFilterIssuerOrgId("");
-                                }}
-                                className="w-full px-2.5 py-1.5 border border-slate-200 rounded-lg text-xs font-medium text-slate-700 bg-white focus:outline-none focus:border-slate-400 cursor-pointer"
-                            >
-                                <option value="ALL">All Sources ({requests.length})</option>
-                                <option value="FEDERAL">Federal Ministry ({federalIssuerCount})</option>
-                                {(currentTier === "REGION" || currentTier === "ZONE" || currentTier === "WOREDA" || currentTier === "SCHOOL" || regionIssuerCount > 0) && (
-                                    <option value="REGION">Regional Bureau ({regionIssuerCount})</option>
-                                )}
-                                {(currentTier === "ZONE" || currentTier === "WOREDA" || currentTier === "SCHOOL" || zoneIssuerCount > 0) && (
-                                    <option value="ZONE">Zonal Dept ({zoneIssuerCount})</option>
-                                )}
-                                {(currentTier === "WOREDA" || currentTier === "SCHOOL" || woredaIssuerCount > 0) && (
-                                    <option value="WOREDA">Woreda Office ({woredaIssuerCount})</option>
-                                )}
-                            </select>
-                        </div>
+                        {/* Filters Toggle Button */}
+                        <button
+                            type="button"
+                            onClick={() => setShowFilters(prev => !prev)}
+                            className={`px-3 py-2 text-sm font-medium rounded border transition-all duration-200 flex items-center gap-1.5 cursor-pointer shrink-0 group/filter ${
+                                showFilters || activeFilterCount > 0
+                                    ? "bg-[#4085b3] text-white border-[#4085b3]"
+                                    : "bg-white text-slate-700 border-slate-300 hover:bg-[#4085b3] hover:text-white hover:border-[#4085b3]"
+                            }`}
+                            title="Filter data requests"
+                        >
+                            <Filter className={`w-4 h-4 transition-colors ${showFilters || activeFilterCount > 0 ? "text-white" : "text-slate-500 group-hover/filter:text-white"}`} />
+                            <span>Filters</span>
+                            {activeFilterCount > 0 && (
+                                <span className={`text-xs px-1.5 py-0.2 rounded-full font-bold ${
+                                    showFilters || activeFilterCount > 0 ? "bg-white text-[#4085b3]" : "bg-[#4085b3] text-white"
+                                }`}>
+                                    {activeFilterCount}
+                                </span>
+                            )}
+                        </button>
 
-                        {/* Target Level Filter Dropdown */}
-                        <div className="w-full sm:w-40">
-                            <select
-                                value={levelFilter}
-                                onChange={(e) => handleLevelChange(e.target.value as any)}
-                                className="w-full px-2.5 py-1.5 border border-slate-200 rounded-lg text-xs font-medium text-slate-700 bg-white focus:outline-none focus:border-slate-400 cursor-pointer"
-                            >
-                                <option value="ALL">All Target Levels</option>
-                                <option value="REGION">Target Regions</option>
-                                <option value="ZONE">Target Zones</option>
-                                <option value="WOREDA">Target Woredas</option>
-                                <option value="SCHOOL">Target Schools</option>
-                            </select>
-                        </div>
-
-                        {/* Status Filter Dropdown */}
-                        <div className="w-full sm:w-36">
-                            <select
-                                value={statusFilter}
-                                onChange={(e) => setStatusFilter(e.target.value as any)}
-                                className="w-full px-2.5 py-1.5 border border-slate-200 rounded-lg text-xs font-medium text-slate-700 bg-white focus:outline-none focus:border-slate-400 cursor-pointer"
-                            >
-                                <option value="ALL">All Statuses</option>
-                                <option value="PUBLISHED">Published / Active</option>
-                                <option value="COMPLETED">100% Completed</option>
-                                <option value="DRAFT">Draft</option>
-                            </select>
-                        </div>
-
-                        {/* Reset Filter Button */}
-                        {(searchQuery || filterIssuerLevel !== "ALL" || filterIssuerOrgId || levelFilter !== "ALL" || statusFilter !== "ALL" || directionFilter !== "all" || filterRegionId || filterZoneId || filterWoredaId || filterSchoolId) && (
-                            <button
-                                onClick={() => {
-                                    setSearchQuery("");
-                                    setFilterIssuerLevel("ALL");
-                                    setFilterIssuerOrgId("");
-                                    setLevelFilter("ALL");
-                                    setStatusFilter("ALL");
-                                    setDirectionFilter("all");
-                                    setFilterRegionId("");
-                                    setFilterZoneId("");
-                                    setFilterWoredaId("");
-                                    setFilterSchoolId("");
-                                }}
-                                className="px-2.5 py-1.5 text-xs text-blue-600 hover:text-blue-800 font-semibold flex items-center gap-1 hover:underline cursor-pointer"
-                                title="Reset all filters"
-                            >
-                                <X className="w-3.5 h-3.5" />
-                                <span>Reset</span>
-                            </button>
-                        )}
+                        {/* Refresh */}
+                        <button
+                            type="button"
+                            onClick={() => loadRequests()}
+                            className="p-2 border border-slate-300 bg-white hover:bg-[#4085b3] text-slate-700 hover:text-white hover:border-[#4085b3] rounded transition-all duration-200 cursor-pointer shrink-0 group/refresh"
+                            title="Reload registry data"
+                            aria-label="Reload registry data"
+                        >
+                            <RefreshCw className={`w-4 h-4 transition-colors ${loading ? "animate-spin text-[#4085b3]" : "text-slate-500 group-hover/refresh:text-white"}`} />
+                        </button>
                     </div>
 
-                    {/* Direction Tab Pills */}
-                    <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl shrink-0 text-xs font-medium text-slate-600 self-start lg:self-auto">
+                    {/* Right: Table / Cards View Switcher */}
+                    <div className="flex items-center gap-1">
                         <button
-                            onClick={() => setDirectionFilter("all")}
-                            className={`px-3 py-1 rounded-lg transition-colors cursor-pointer ${
-                                directionFilter === "all" ? "bg-white text-slate-900 font-bold shadow-xs" : "hover:text-slate-900"
+                            type="button"
+                            onClick={() => setViewMode("table")}
+                            className={`px-2.5 py-1.5 text-xs font-medium rounded transition-all duration-200 flex items-center gap-1.5 cursor-pointer group/tbl ${
+                                viewMode === "table"
+                                    ? "bg-[#4085b3] text-white"
+                                    : "text-slate-700 border border-slate-300 bg-white hover:bg-[#4085b3] hover:text-white hover:border-[#4085b3]"
                             }`}
+                            title="Display as administrative table"
                         >
-                            All ({requests.length})
+                            <LayoutList className={`w-3.5 h-3.5 transition-colors ${viewMode === "table" ? "text-white" : "text-slate-500 group-hover/tbl:text-white"}`} />
+                            <span>Table</span>
                         </button>
                         <button
-                            onClick={() => setDirectionFilter("received")}
-                            className={`px-3 py-1 rounded-lg transition-colors cursor-pointer ${
-                                directionFilter === "received" ? "bg-white text-slate-900 font-bold shadow-xs" : "hover:text-slate-900"
+                            type="button"
+                            onClick={() => setViewMode("cards")}
+                            className={`px-2.5 py-1.5 text-xs font-medium rounded transition-all duration-200 flex items-center gap-1.5 cursor-pointer group/crd ${
+                                viewMode === "cards"
+                                    ? "bg-[#4085b3] text-white"
+                                    : "text-slate-700 border border-slate-300 bg-white hover:bg-[#4085b3] hover:text-white hover:border-[#4085b3]"
                             }`}
+                            title="Display as DfE summary cards"
                         >
-                            Targeted to Us ({requests.filter(r => !r.isCreatedByMe).length})
-                        </button>
-                        <button
-                            onClick={() => setDirectionFilter("created")}
-                            className={`px-3 py-1 rounded-lg transition-colors cursor-pointer ${
-                                directionFilter === "created" ? "bg-white text-slate-900 font-bold shadow-xs" : "hover:text-slate-900"
-                            }`}
-                        >
-                            Issued by Us ({requests.filter(r => r.isCreatedByMe).length})
+                            <LayoutGrid className={`w-3.5 h-3.5 transition-colors ${viewMode === "cards" ? "text-white" : "text-slate-500 group-hover/crd:text-white"}`} />
+                            <span>Cards</span>
                         </button>
                     </div>
                 </div>
 
-                {/* Cascading Target Drill-Down if Specific Target Level is selected */}
-                {(levelFilter === "ZONE" || levelFilter === "WOREDA" || levelFilter === "SCHOOL" || levelFilter === "REGION") && (
-                    <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-100 bg-slate-50/70 p-2.5 rounded-xl text-xs">
-                        <span className="text-[11px] font-bold text-slate-600 uppercase flex items-center gap-1">
-                            <Filter className="w-3 h-3 text-blue-600" />
-                            Target Drill Down:
-                        </span>
-
-                        {/* Region Selector */}
-                        {availableRegions.length > 0 && (
-                            <select
-                                value={filterRegionId}
-                                onChange={(e) => {
-                                    setFilterRegionId(e.target.value);
-                                    setFilterZoneId("");
-                                    setFilterWoredaId("");
-                                    setFilterSchoolId("");
-                                }}
-                                className="px-2 py-1 bg-white border border-slate-200 rounded-lg text-xs text-slate-800 focus:outline-blue-500 font-medium shadow-2xs"
+                {/* Active Filter Chips / Tags (MoJ / DfE Pattern) */}
+                {activeFilterCount > 0 && (
+                    <div className="flex flex-wrap items-center gap-2 text-xs">
+                        <span className="text-slate-500 font-medium">Applied:</span>
+                        {directionFilter !== "all" && (
+                            <button
+                                type="button"
+                                onClick={() => setDirectionFilter("all")}
+                                className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-slate-100 hover:bg-slate-200 text-slate-800 transition-colors cursor-pointer"
                             >
-                                <option value="">All Target Regions</option>
-                                {availableRegions.map((r: any) => (
-                                    <option key={r.id} value={r.id}>{r.name}</option>
-                                ))}
-                            </select>
+                                <span>Ownership: {directionFilter === "created" ? "Issued by us" : "Received"}</span>
+                                <X className="w-3.5 h-3.5 text-slate-500 hover:text-slate-900" />
+                            </button>
                         )}
+                        {filterIssuerLevel !== "ALL" && (
+                            <button
+                                type="button"
+                                onClick={() => setFilterIssuerLevel("ALL")}
+                                className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-slate-100 hover:bg-slate-200 text-slate-800 transition-colors cursor-pointer"
+                            >
+                                <span>
+                                    From: {
+                                        filterIssuerLevel === "FEDERAL" ? "Federal Ministry" :
+                                        filterIssuerLevel === "REGION" ? "Regional Bureau" :
+                                        filterIssuerLevel === "ZONE" ? "Zone Department" :
+                                        filterIssuerLevel === "WOREDA" ? "Woreda Office" : filterIssuerLevel
+                                    }
+                                </span>
+                                <X className="w-3.5 h-3.5 text-slate-500 hover:text-slate-900" />
+                            </button>
+                        )}
+                        {levelFilter !== "ALL" && (
+                            <button
+                                type="button"
+                                onClick={() => handleLevelChange("ALL")}
+                                className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-slate-100 hover:bg-slate-200 text-slate-800 transition-colors cursor-pointer"
+                            >
+                                <span>
+                                    Target: {
+                                        levelFilter === "REGION" ? "Regions" :
+                                        levelFilter === "ZONE" ? "Zones" :
+                                        levelFilter === "WOREDA" ? "Woredas" :
+                                        levelFilter === "SCHOOL" ? "Schools" : levelFilter
+                                    }
+                                </span>
+                                <X className="w-3.5 h-3.5 text-slate-500 hover:text-slate-900" />
+                            </button>
+                        )}
+                        {statusFilter !== "ALL" && (
+                            <button
+                                type="button"
+                                onClick={() => setStatusFilter("ALL")}
+                                className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-slate-100 hover:bg-slate-200 text-slate-800 transition-colors cursor-pointer"
+                            >
+                                <span>Status: {statusFilter.charAt(0) + statusFilter.slice(1).toLowerCase()}</span>
+                                <X className="w-3.5 h-3.5 text-slate-500 hover:text-slate-900" />
+                            </button>
+                        )}
+                        <button
+                            type="button"
+                            onClick={clearAllFilters}
+                            className="text-xs text-[#4085b3] hover:underline font-semibold ml-1 cursor-pointer"
+                        >
+                            Clear all
+                        </button>
+                    </div>
+                )}
 
-                        {/* Zone Selector */}
-                        {availableZones.length > 0 && (levelFilter === "ZONE" || levelFilter === "WOREDA" || levelFilter === "SCHOOL") && (
-                            <div className="flex items-center gap-1">
-                                <ChevronRight className="w-3 h-3 text-slate-400" />
+                {/* Collapsible Secondary Filters Panel */}
+                {showFilters && (
+                    <div className="p-4 bg-slate-50 border border-slate-200 rounded space-y-3">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                            {/* Ownership */}
+                            <div>
+                                <label htmlFor="data-req-origin-filter" className="block text-xs font-semibold text-slate-700 mb-1">
+                                    Ownership
+                                </label>
                                 <select
-                                    value={filterZoneId}
-                                    onChange={(e) => {
-                                        setFilterZoneId(e.target.value);
-                                        setFilterWoredaId("");
-                                        setFilterSchoolId("");
-                                    }}
-                                    className="px-2 py-1 bg-white border border-slate-200 rounded-lg text-xs text-slate-800 focus:outline-blue-500 font-medium shadow-2xs"
+                                    id="data-req-origin-filter"
+                                    value={directionFilter}
+                                    onChange={e => setDirectionFilter(e.target.value as any)}
+                                    className="w-full py-1.5 px-2.5 text-sm bg-white border border-slate-300 rounded text-slate-800 focus:outline-none focus:ring-1 focus:ring-[#4085b3] focus:border-[#4085b3] cursor-pointer"
                                 >
-                                    <option value="">All Target Zones</option>
-                                    {availableZones.map((z: any) => (
-                                        <option key={z.id} value={z.id}>{z.name}</option>
-                                    ))}
+                                    <option value="all">All data requests ({requests.length})</option>
+                                    <option value="created">Issued by our desk ({requests.filter(r => r.isCreatedByMe).length})</option>
+                                    <option value="received">Targeted to us ({requests.filter(r => !r.isCreatedByMe).length})</option>
                                 </select>
                             </div>
-                        )}
 
-                        {/* Woreda Selector */}
-                        {availableWoredas.length > 0 && (levelFilter === "WOREDA" || levelFilter === "SCHOOL") && (
-                            <div className="flex items-center gap-1">
-                                <ChevronRight className="w-3 h-3 text-slate-400" />
+                            {/* Target scope */}
+                            <div>
+                                <label htmlFor="data-req-target-scope-filter" className="block text-xs font-semibold text-slate-700 mb-1">
+                                    Target scope
+                                </label>
                                 <select
-                                    value={filterWoredaId}
-                                    onChange={(e) => {
-                                        setFilterWoredaId(e.target.value);
-                                        setFilterSchoolId("");
-                                    }}
-                                    className="px-2 py-1 bg-white border border-slate-200 rounded-lg text-xs text-slate-800 focus:outline-blue-500 font-medium shadow-2xs"
+                                    id="data-req-target-scope-filter"
+                                    value={levelFilter}
+                                    onChange={e => handleLevelChange(e.target.value as any)}
+                                    className="w-full py-1.5 px-2.5 text-sm bg-white border border-slate-300 rounded text-slate-800 focus:outline-none focus:ring-1 focus:ring-[#4085b3] focus:border-[#4085b3] cursor-pointer"
                                 >
-                                    <option value="">All Target Woredas</option>
-                                    {availableWoredas.map((w: any) => (
-                                        <option key={w.id} value={w.id}>{w.name}</option>
-                                    ))}
+                                    <option value="ALL">All target scopes</option>
+                                    <option value="REGION">Regional Bureaus</option>
+                                    <option value="ZONE">Zone Departments</option>
+                                    <option value="WOREDA">Woreda Offices</option>
+                                    <option value="SCHOOL">Schools</option>
                                 </select>
                             </div>
-                        )}
 
-                        {/* School Selector */}
-                        {availableSchools.length > 0 && levelFilter === "SCHOOL" && (
-                            <div className="flex items-center gap-1">
-                                <ChevronRight className="w-3 h-3 text-slate-400" />
+                            {/* Source authority */}
+                            <div>
+                                <label htmlFor="data-req-source-filter" className="block text-xs font-semibold text-slate-700 mb-1">
+                                    Source authority
+                                </label>
                                 <select
-                                    value={filterSchoolId}
-                                    onChange={(e) => setFilterSchoolId(e.target.value)}
-                                    className="px-2 py-1 bg-white border border-slate-200 rounded-lg text-xs text-slate-800 focus:outline-blue-500 font-medium max-w-[200px] shadow-2xs truncate"
+                                    id="data-req-source-filter"
+                                    value={filterIssuerLevel}
+                                    onChange={e => setFilterIssuerLevel(e.target.value as any)}
+                                    className="w-full py-1.5 px-2.5 text-sm bg-white border border-slate-300 rounded text-slate-800 focus:outline-none focus:ring-1 focus:ring-[#4085b3] focus:border-[#4085b3] cursor-pointer"
                                 >
-                                    <option value="">All Target Schools</option>
-                                    {availableSchools.map((s: any) => (
-                                        <option key={s.id} value={s.id}>{s.name}</option>
-                                    ))}
+                                    <option value="ALL">All issuing authorities</option>
+                                    <option value="FEDERAL">Federal Ministry</option>
+                                    <option value="REGION">Regional Bureau</option>
+                                    <option value="ZONE">Zone Department</option>
+                                    <option value="WOREDA">Woreda Office</option>
                                 </select>
+                            </div>
+
+                            {/* Current status */}
+                            <div>
+                                <label htmlFor="data-req-status-filter" className="block text-xs font-semibold text-slate-700 mb-1">
+                                    Current status
+                                </label>
+                                <select
+                                    id="data-req-status-filter"
+                                    value={statusFilter}
+                                    onChange={e => setStatusFilter(e.target.value as any)}
+                                    className="w-full py-1.5 px-2.5 text-sm bg-white border border-slate-300 rounded text-slate-800 focus:outline-none focus:ring-1 focus:ring-[#4085b3] focus:border-[#4085b3] cursor-pointer"
+                                >
+                                    <option value="ALL">All statuses</option>
+                                    <option value="PUBLISHED">Published</option>
+                                    <option value="COMPLETED">Completed</option>
+                                    <option value="DRAFT">Draft</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        {/* Cascading Target Drill-Down if Specific Target Level is selected */}
+                        {(levelFilter === "ZONE" || levelFilter === "WOREDA" || levelFilter === "SCHOOL" || levelFilter === "REGION") && (
+                            <div className="flex flex-wrap items-center gap-2 pt-3 border-t border-slate-200 text-xs">
+                                <span className="text-[11px] font-bold text-slate-600 uppercase flex items-center gap-1">
+                                    <Filter className="w-3 h-3 text-[#4085b3]" />
+                                    Target Drill Down:
+                                </span>
+
+                                {availableRegions.length > 0 && (
+                                    <select
+                                        value={filterRegionId}
+                                        onChange={(e) => {
+                                            setFilterRegionId(e.target.value);
+                                            setFilterZoneId("");
+                                            setFilterWoredaId("");
+                                            setFilterSchoolId("");
+                                        }}
+                                        className="px-2 py-1 bg-white border border-slate-300 rounded text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-[#4085b3] font-medium"
+                                    >
+                                        <option value="">All Target Regions</option>
+                                        {availableRegions.map((r: any) => (
+                                            <option key={r.id} value={r.id}>{r.name}</option>
+                                        ))}
+                                    </select>
+                                )}
+
+                                {availableZones.length > 0 && (levelFilter === "ZONE" || levelFilter === "WOREDA" || levelFilter === "SCHOOL") && (
+                                    <div className="flex items-center gap-1">
+                                        <ChevronRight className="w-3 h-3 text-slate-400" />
+                                        <select
+                                            value={filterZoneId}
+                                            onChange={(e) => {
+                                                setFilterZoneId(e.target.value);
+                                                setFilterWoredaId("");
+                                                setFilterSchoolId("");
+                                            }}
+                                            className="px-2 py-1 bg-white border border-slate-300 rounded text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-[#4085b3] font-medium"
+                                        >
+                                            <option value="">All Target Zones</option>
+                                            {availableZones.map((z: any) => (
+                                                <option key={z.id} value={z.id}>{z.name}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                )}
+
+                                {availableWoredas.length > 0 && (levelFilter === "WOREDA" || levelFilter === "SCHOOL") && (
+                                    <div className="flex items-center gap-1">
+                                        <ChevronRight className="w-3 h-3 text-slate-400" />
+                                        <select
+                                            value={filterWoredaId}
+                                            onChange={(e) => {
+                                                setFilterWoredaId(e.target.value);
+                                                setFilterSchoolId("");
+                                            }}
+                                            className="px-2 py-1 bg-white border border-slate-300 rounded text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-[#4085b3] font-medium"
+                                        >
+                                            <option value="">All Target Woredas</option>
+                                            {availableWoredas.map((w: any) => (
+                                                <option key={w.id} value={w.id}>{w.name}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                )}
+
+                                {availableSchools.length > 0 && levelFilter === "SCHOOL" && (
+                                    <div className="flex items-center gap-1">
+                                        <ChevronRight className="w-3 h-3 text-slate-400" />
+                                        <select
+                                            value={filterSchoolId}
+                                            onChange={(e) => setFilterSchoolId(e.target.value)}
+                                            className="px-2 py-1 bg-white border border-slate-300 rounded text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-[#4085b3] font-medium max-w-[200px] truncate"
+                                        >
+                                            <option value="">All Target Schools</option>
+                                            {availableSchools.map((s: any) => (
+                                                <option key={s.id} value={s.id}>{s.name}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                )}
                             </div>
                         )}
                     </div>
@@ -736,292 +796,132 @@ export default function DataRequestsListView({
                 {/* Loading State */}
                 {loading && (
                     <div className="py-20 text-center text-slate-400">
-                        <RefreshCw className="w-6 h-6 animate-spin mx-auto text-blue-600 mb-2" />
+                        <RefreshCw className="w-6 h-6 animate-spin mx-auto text-[#4085b3] mb-2" />
                         <span className="text-xs font-medium">Loading data requests registry...</span>
                     </div>
                 )}
 
                 {/* Empty State */}
                 {!loading && filteredRequests.length === 0 && (
-                    <div className="py-16 text-center border border-dashed border-slate-200 rounded-2xl bg-slate-50/50 p-6 space-y-3">
-                        <FileSpreadsheet className="w-10 h-10 mx-auto text-slate-300" />
-                        <div>
-                            <h4 className="text-sm font-bold text-slate-800">No data requests found</h4>
-                            <p className="text-xs text-slate-500 max-w-sm mx-auto mt-0.5">
-                                No requests match the selected hierarchy level or search criteria.
-                            </p>
-                        </div>
-                        <button
-                            onClick={() => setActiveView("create")}
-                            className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold transition-colors inline-flex items-center gap-1.5 shadow-2xs cursor-pointer"
-                        >
-                            <Plus className="w-3.5 h-3.5" />
-                            <span>Create New Data Request</span>
-                        </button>
+                    <div className="py-16 text-center border-t border-slate-200">
+                        <FileText className="w-10 h-10 mx-auto text-slate-300 stroke-1 mb-2" />
+                        <h2 className="text-base font-semibold text-slate-900">No data requests found</h2>
+                        <p className="text-sm text-slate-500 max-w-sm mx-auto mt-1">
+                            {hasActiveFilters
+                                ? "No records match your selected filters. Try clearing filters to see all requests."
+                                : "No administrative data requests have been registered yet."}
+                        </p>
+                        {hasActiveFilters ? (
+                            <button
+                                type="button"
+                                onClick={clearAllFilters}
+                                className="mt-4 px-3 py-1.5 border border-slate-300 text-slate-700 hover:bg-slate-50 rounded text-sm font-medium cursor-pointer"
+                            >
+                                Clear all filters
+                            </button>
+                        ) : (
+                            <button
+                                type="button"
+                                onClick={() => setActiveView("create")}
+                                className="mt-4 px-4 py-2 bg-[#4085b3] hover:bg-[#32698e] text-white rounded text-sm font-medium cursor-pointer"
+                            >
+                                Issue data request
+                            </button>
+                        )}
                     </div>
                 )}
 
-                {/* Clean Card Grid View (Simple Text Rectangle Card with Hover - Matching Policies & Initiatives) */}
-                {!loading && filteredRequests.length > 0 && viewMode === "grid" && (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {paginatedRequests.map((req) => {
-                            const targets: any[] = req.targets || [];
-                            const targetType = targets[0]?.organization?.type || req.targetLevels?.[0] || "TARGETS";
-                            const targetNames = targets.slice(0, 2).map((t: any) => t.organization?.name).join(", ");
-                            const moreCount = targets.length > 2 ? ` +${targets.length - 2} more` : "";
-                            const isFederalCreator = req.createdOrganization?.type === "FEDERAL";
-                            const isCompleted = (req.completionRate || 0) === 100 || req.status === "COMPLETED";
-
-                            return (
-                                <div
-                                    key={req.id}
-                                    onClick={() => {
-                                        setSelectedRequestId(req.id);
-                                        setActiveView("detail");
-                                    }}
-                                    className="group relative rounded-xl border border-slate-200 p-4 bg-white flex flex-col justify-between transition-all duration-200 cursor-pointer hover:shadow-md hover:-translate-y-0.5 hover:border-blue-400"
-                                >
-                                    <div>
-                                        {/* Top Row Badges: Scope / Authority, Status & Form Indicator */}
-                                        <div className="flex items-center justify-between gap-1.5 mb-2.5">
-                                            <div className="flex items-center gap-1.5 flex-wrap">
-                                                {/* Scope / Authority Badge */}
-                                                {isFederalCreator ? (
-                                                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-900 text-white flex items-center gap-1 shrink-0">
-                                                        <Building2 className="w-2.5 h-2.5 text-blue-400" />
-                                                        <span>Federal</span>
-                                                    </span>
-                                                ) : (
-                                                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-200 shrink-0">
-                                                        {req.createdOrganization?.type || "Request"}
-                                                    </span>
-                                                )}
-
-                                                {/* Status Badge */}
-                                                <span
-                                                    className={`px-1.5 py-0.5 rounded text-[9px] font-bold tracking-wide uppercase border ${
-                                                        isCompleted
-                                                            ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                                                            : req.status === "PUBLISHED"
-                                                            ? "bg-blue-50 text-blue-700 border-blue-200"
-                                                            : "bg-slate-100 text-slate-700 border border-slate-200"
-                                                    }`}
-                                                >
-                                                    {isCompleted ? "COMPLETED" : req.status}
-                                                </span>
-                                            </div>
-
-                                            {/* Google Form Link Badge */}
-                                            {req.googleResponderUri && (
-                                                <span
-                                                    className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold bg-blue-50 text-blue-700 border border-blue-200 shrink-0"
-                                                    title="Active Google Form Connected"
-                                                >
-                                                    <FileSpreadsheet className="w-2.5 h-2.5 text-blue-600" />
-                                                    <span>Form</span>
-                                                </span>
-                                            )}
-                                        </div>
-
-                                        {/* Request Title - 2 lines clamp */}
-                                        <h4 className="text-sm font-bold text-slate-900 group-hover:text-blue-600 transition-colors line-clamp-2 leading-snug mb-1">
-                                            {req.title}
-                                        </h4>
-
-                                        {/* Objective Snippet - 2 lines clamp */}
-                                        <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed mb-2.5" title={req.objective || req.description}>
-                                            {req.objective || req.description || "Official administrative data request registry."}
-                                        </p>
-
-                                        {/* Target Scope Badge */}
-                                        <div className="text-[11px] text-slate-600 font-semibold flex items-center gap-1.5 mb-2 truncate">
-                                            <Target className="w-3 h-3 text-slate-400 shrink-0" />
-                                            <span className="px-1.5 py-0.2 rounded text-[10px] font-bold bg-slate-100 text-slate-700 shrink-0">
-                                                {targetType}
-                                            </span>
-                                            <span className="truncate">
-                                                {req.totalTargets} unit(s) • {targetNames}{moreCount}
-                                            </span>
-                                        </div>
-
-                                        {/* Issuing Desk Metadata */}
-                                        <div className="flex items-center gap-1.5 text-[11px] text-slate-400 mb-3 truncate">
-                                            <span>Issued by</span>
-                                            <span className="font-semibold text-slate-700 truncate">
-                                                {req.createdOrganization?.name || "Official Ministry"}
-                                            </span>
-                                            <span>•</span>
-                                            <span>{req.isCreatedByMe ? "Issued by Us" : "Incoming"}</span>
-                                        </div>
-                                    </div>
-
-                                    {/* Card Footer: Deadline & Response Progress */}
-                                    <div className="pt-3 border-t border-slate-100 space-y-2 mt-auto">
-                                        <div className="flex items-center justify-between text-[11px]">
-                                            <div className="flex items-center gap-1 text-slate-600 font-semibold shrink-0">
-                                                <Clock className="w-3 h-3 text-slate-400" />
-                                                <span>
-                                                    Due {new Date(req.deadline).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}
-                                                </span>
-                                            </div>
-                                            <div className="font-bold text-slate-900 flex items-center gap-1">
-                                                <span className="text-slate-500 font-normal">
-                                                    {req.submittedCount}/{req.totalTargets}
-                                                </span>
-                                                <span className="text-blue-700">
-                                                    ({req.completionRate || 0}%)
-                                                </span>
-                                            </div>
-                                        </div>
-
-                                        {/* Brand Blue Progress Bar */}
-                                        <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
-                                            <div
-                                                className="bg-blue-600 h-full rounded-full transition-all duration-300"
-                                                style={{ width: `${Math.min(100, req.completionRate || 0)}%` }}
-                                            />
-                                        </div>
-
-                                        {/* Quick Link Row */}
-                                        <div className="flex items-center justify-between pt-1">
-                                            <span className="text-[10px] text-slate-400 font-medium group-hover:text-blue-600 transition-colors">
-                                                Click to view analytics & units →
-                                            </span>
-                                            {req.googleResponderUri && (
-                                                <a
-                                                    href={req.googleResponderUri}
-                                                    target="_blank"
-                                                    rel="noopener noreferrer"
-                                                    onClick={(e) => e.stopPropagation()}
-                                                    className="p-1 text-slate-400 hover:text-blue-600 transition-colors"
-                                                    title="Open Google Form Responder URL"
-                                                >
-                                                    <ExternalLink className="w-3.5 h-3.5" />
-                                                </a>
-                                            )}
-                                        </div>
-                                    </div>
-                                </div>
-                            );
-                        })}
-                    </div>
-                )}
-
-                {/* Table View (Alternative High-Density Display) */}
+                {/* OPTION A: THE ADMINISTRATIVE TABLE (GOV.UK Standard matching Policies & Directives 1:1) */}
                 {!loading && filteredRequests.length > 0 && viewMode === "table" && (
-                    <div className="border border-slate-200 rounded-xl overflow-hidden w-full">
-                        <table className="w-full text-xs text-left table-auto">
-                            <thead className="bg-slate-50 text-slate-600 border-b border-slate-200 font-semibold">
-                                <tr>
-                                    <th className="py-3 px-3.5 w-[34%]">Request Title & Objective</th>
-                                    <th className="py-3 px-3 w-[18%]">Target Scope</th>
-                                    <th className="py-3 px-3 w-[13%]">Issued By</th>
-                                    <th className="py-3 px-2.5 w-[9%]">Status</th>
-                                    <th className="py-3 px-2.5 w-[9%]">Deadline</th>
-                                    <th className="py-3 px-3 w-[10%]">Responses</th>
-                                    <th className="py-3 px-3 text-right w-[7%]">Action</th>
+                    <div className="overflow-x-auto border-t border-slate-200">
+                        <table className="w-full table-fixed text-left text-sm border-collapse">
+                            <caption className="sr-only">Data requests registry</caption>
+                            <thead>
+                                <tr className="border-b-2 border-slate-300 text-xs font-semibold text-slate-700">
+                                    <th scope="col" className="py-3 pr-3 font-semibold w-[30%]">Request</th>
+                                    <th scope="col" className="py-3 px-3 font-semibold w-[18%] whitespace-nowrap">Issuing authority</th>
+                                    <th scope="col" className="py-3 px-3 font-semibold w-[16%] whitespace-nowrap">Target scope</th>
+                                    <th scope="col" className="py-3 px-3 font-semibold w-[13%] whitespace-nowrap">Deadline</th>
+                                    <th scope="col" className="py-3 px-2 font-semibold w-[10%] whitespace-nowrap">Responses</th>
+                                    <th scope="col" className="py-3 px-2 font-semibold w-[11%] whitespace-nowrap">Status</th>
+                                    <th scope="col" className="py-3 pl-2 pr-1 font-semibold w-[8%] text-right whitespace-nowrap">Action</th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-slate-100">
-                                {paginatedRequests.map((req) => {
-                                    const targets: any[] = req.targets || [];
-                                    const targetNames = targets.slice(0, 2).map((t: any) => t.organization?.name).join(", ");
-                                    const moreCount = targets.length > 2 ? ` +${targets.length - 2} more` : "";
+                            <tbody className="divide-y divide-slate-200">
+                                {paginatedRequests.map((item) => {
+                                    const targets: any[] = item.targets || [];
+                                    const targetUnitsCount = targets.length || item.totalTargets || 0;
+                                    const isTargeted = targetUnitsCount > 0;
+                                    const scopeLabel = isTargeted
+                                        ? `Targeted (${targetUnitsCount} units)`
+                                        : item.targetLevels && item.targetLevels.length > 0
+                                        ? item.targetLevels.map((l: string) => l.toUpperCase()).join(", ")
+                                        : "All subordinate units";
+
+                                    const isCompleted = (item.completionRate || 0) === 100 || item.status === "COMPLETED";
+                                    const statusLabel = isCompleted ? "Completed" : item.status === "PUBLISHED" ? "Published" : "Draft";
+                                    const responsesLabel = `${item.submittedCount || 0}/${item.totalTargets || 0} (${item.completionRate || 0}%)`;
 
                                     return (
                                         <tr
-                                            key={req.id}
+                                            key={item.id}
                                             onClick={() => {
-                                                setSelectedRequestId(req.id);
+                                                setSelectedRequestId(item.id);
                                                 setActiveView("detail");
                                             }}
-                                            className="hover:bg-slate-50/80 transition-colors cursor-pointer group"
+                                            className="hover:bg-slate-50/90 transition-colors cursor-pointer group"
                                         >
-                                            <td className="py-3 px-3.5 align-top">
-                                                <div className="font-bold text-slate-900 group-hover:text-blue-600 transition-colors line-clamp-1">
-                                                    {req.title}
-                                                </div>
-                                                <div className="text-[11px] text-slate-500 line-clamp-1 mt-0.5" title={req.objective}>
-                                                    {req.objective || req.description}
-                                                </div>
-                                            </td>
-
-                                            <td className="py-3 px-3 align-top">
-                                                <div className="font-semibold text-slate-800 flex items-center gap-1.5">
-                                                    <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-700">
-                                                        {targets[0]?.organization?.type || req.targetLevels?.[0] || "TARGETS"}
-                                                    </span>
-                                                    <span className="text-[11px]">{req.totalTargets} unit(s)</span>
-                                                </div>
-                                                <div className="text-[11px] text-slate-400 truncate mt-0.5" title={targetNames}>
-                                                    {targetNames}{moreCount}
-                                                </div>
-                                            </td>
-
-                                            <td className="py-3 px-3 align-top">
-                                                <span className="font-medium text-slate-800 block truncate" title={req.createdOrganization?.name}>
-                                                    {req.createdOrganization?.name || "Official Desk"}
-                                                </span>
-                                                <span className="text-[10px] text-slate-400">
-                                                    {req.isCreatedByMe ? "Issued by Us" : "Incoming"}
-                                                </span>
-                                            </td>
-
-                                            <td className="py-3 px-2.5 align-top">
-                                                <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold whitespace-nowrap ${
-                                                    req.status === "COMPLETED" || req.completionRate === 100
-                                                        ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                                                        : req.status === "PUBLISHED"
-                                                        ? "bg-blue-50 text-blue-700 border border-blue-200"
-                                                        : "bg-slate-100 text-slate-700 border border-slate-200"
-                                                }`}>
-                                                    {req.status}
-                                                </span>
-                                            </td>
-
-                                            <td className="py-3 px-2.5 align-top text-slate-600 whitespace-nowrap">
-                                                <span className="font-medium block text-[11px]">
-                                                    {new Date(req.deadline).toLocaleDateString()}
-                                                </span>
-                                            </td>
-
-                                            <td className="py-3 px-3 align-top">
-                                                <div className="flex items-center justify-between text-[11px] font-medium text-slate-700 mb-1">
-                                                    <span>{req.submittedCount}/{req.totalTargets}</span>
-                                                    <span className="text-blue-700 font-semibold">{req.completionRate || 0}%</span>
-                                                </div>
-                                                <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
-                                                    <div
-                                                        className="bg-blue-600 h-full rounded-full transition-all"
-                                                        style={{ width: `${Math.min(100, req.completionRate || 0)}%` }}
-                                                    />
-                                                </div>
-                                            </td>
-
-                                            <td className="py-3 px-3 text-right align-middle" onClick={(e) => e.stopPropagation()}>
-                                                <div className="flex items-center justify-end gap-1.5">
-                                                    {req.googleResponderUri && (
-                                                        <a
-                                                            href={req.googleResponderUri}
-                                                            target="_blank"
-                                                            rel="noopener noreferrer"
-                                                            className="p-1.5 bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-700 rounded-lg transition-colors cursor-pointer"
-                                                            title="Open Google Form"
-                                                        >
-                                                            <ExternalLink className="w-3.5 h-3.5" />
-                                                        </a>
-                                                    )}
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => {
-                                                            setSelectedRequestId(req.id);
-                                                            setActiveView("detail");
-                                                        }}
-                                                        className="px-2.5 py-1 bg-slate-900 hover:bg-slate-800 text-white text-[11px] font-medium rounded-lg transition-colors cursor-pointer shadow-2xs"
+                                            {/* Request Title */}
+                                            <td className="py-3.5 pr-3 overflow-hidden">
+                                                <div className="flex items-center gap-1.5 min-w-0">
+                                                    <span
+                                                        className="text-[#4085b3] group-hover:underline font-semibold text-sm truncate block"
+                                                        title={item.title}
                                                     >
-                                                        Open
-                                                    </button>
+                                                        {item.title}
+                                                    </span>
+                                                    {item.googleResponderUri && (
+                                                        <span title="Contains connected Google Form" className="text-slate-400 shrink-0">
+                                                            <FileSpreadsheet className="w-3.5 h-3.5" />
+                                                        </span>
+                                                    )}
                                                 </div>
+                                            </td>
+
+                                            {/* Issuing Authority */}
+                                            <td className="py-3.5 px-3 text-xs text-slate-700 truncate" title={item.createdOrganization?.name || "EduBridge Platform"}>
+                                                {item.createdOrganization?.name || "EduBridge Platform"}
+                                            </td>
+
+                                            {/* Target Scope */}
+                                            <td className="py-3.5 px-3 text-xs text-slate-700 truncate" title={scopeLabel}>
+                                                {scopeLabel}
+                                            </td>
+
+                                            {/* Deadline */}
+                                            <td className="py-3.5 px-3 text-xs text-slate-700 tabular-nums whitespace-nowrap">
+                                                {item.deadline
+                                                    ? new Date(item.deadline).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })
+                                                    : "—"
+                                                }
+                                            </td>
+
+                                            {/* Responses Progress (Plain text) */}
+                                            <td className="py-3.5 px-2 text-xs text-slate-700 tabular-nums whitespace-nowrap">
+                                                {responsesLabel}
+                                            </td>
+
+                                            {/* Status (Plain text, no colored pill badges) */}
+                                            <td className="py-3.5 px-2 text-xs text-slate-700 whitespace-nowrap">
+                                                {statusLabel}
+                                            </td>
+
+                                            {/* Action Link */}
+                                            <td className="py-3.5 pl-2 pr-1 text-right whitespace-nowrap">
+                                                <span className="text-xs font-semibold text-[#4085b3] group-hover:underline inline-flex items-center gap-0.5">
+                                                    <span>View</span>
+                                                    <ArrowUpRight className="w-3.5 h-3.5" />
+                                                </span>
                                             </td>
                                         </tr>
                                     );
@@ -1031,67 +931,88 @@ export default function DataRequestsListView({
                     </div>
                 )}
 
-                {/* Pagination Controls */}
-                {!loading && filteredRequests.length > 0 && (
-                    <div className="pt-4 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500">
-                        <div className="flex items-center gap-2">
-                            <span>
-                                Showing <strong className="text-slate-900 font-bold">{(page - 1) * pageSize + 1}</strong> to{" "}
-                                <strong className="text-slate-900 font-bold">
-                                    {Math.min(page * pageSize, filteredRequests.length)}
-                                </strong> of <strong className="text-slate-900 font-bold">{filteredRequests.length}</strong> requests
-                            </span>
-                            <span className="text-slate-300">•</span>
-                            <div className="flex items-center gap-1">
-                                <span>Cards per page:</span>
-                                <select
-                                    value={pageSize}
-                                    onChange={(e) => setPageSize(Number(e.target.value))}
-                                    className="p-1 border border-slate-200 rounded-md bg-white text-slate-800 font-semibold cursor-pointer"
+                {/* OPTION B: DfE CLEAN CARDS (Signature Department for Education pattern with deep navy hover matching Policies 1:1) */}
+                {!loading && filteredRequests.length > 0 && viewMode === "cards" && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 pt-1">
+                        {paginatedRequests.map((item) => {
+                            const isCompleted = (item.completionRate || 0) === 100 || item.status === "COMPLETED";
+                            const statusLabel = isCompleted ? "Completed" : item.status === "PUBLISHED" ? "Published" : "Draft";
+
+                            return (
+                                <div
+                                    key={item.id}
+                                    onClick={() => {
+                                        setSelectedRequestId(item.id);
+                                        setActiveView("detail");
+                                    }}
+                                    className="group relative bg-white border border-slate-300 p-6 flex flex-col justify-between min-h-[175px] hover:bg-[#002d54] hover:border-[#002d54] transition-all duration-150 cursor-pointer"
                                 >
-                                    <option value={6}>6</option>
-                                    <option value={9}>9</option>
-                                    <option value={15}>15</option>
-                                    <option value={30}>30</option>
-                                </select>
-                            </div>
+                                    <div>
+                                        {/* Header: Title */}
+                                        <h2 className="text-xl font-bold text-[#4085b3] group-hover:text-white transition-colors leading-snug break-words [overflow-wrap:anywhere] [word-break:break-word] line-clamp-2">
+                                            {item.title}
+                                        </h2>
+
+                                        {/* Single Clean Message */}
+                                        <p className="text-sm text-slate-800 group-hover:text-white transition-colors mt-2.5 leading-relaxed line-clamp-2 break-words">
+                                            {getCleanRequestCardMessage(item)}
+                                        </p>
+                                    </div>
+
+                                    {/* Minimal Footer: Due Date & Status (No colored badges, just clean text) */}
+                                    <div className="mt-5 pt-3 border-t border-slate-200 group-hover:border-white/20 flex items-center justify-between text-xs text-slate-500 group-hover:text-white/80 transition-colors">
+                                        <span className="tabular-nums">
+                                            Due: {item.deadline
+                                                ? new Date(item.deadline).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })
+                                                : "—"
+                                            }
+                                        </span>
+                                        <span className="text-xs font-medium text-slate-600 group-hover:text-white/90">
+                                            {statusLabel}
+                                        </span>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                )}
+
+                {/* 5. PAGINATION (GOV.UK style simple row matching Policies 1:1) */}
+                {!loading && filteredRequests.length > 0 && (
+                    <div className="py-4 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-600 mt-4">
+                        <div>
+                            Showing <strong className="text-slate-900 font-semibold">{(page - 1) * pageSize + 1}</strong> to{" "}
+                            <strong className="text-slate-900 font-semibold">{Math.min(page * pageSize, filteredRequests.length)}</strong> of{" "}
+                            <strong className="text-slate-900 font-semibold">{filteredRequests.length}</strong> data requests
                         </div>
 
-                        {totalPages > 1 && (
-                            <div className="flex items-center gap-1 self-center sm:self-auto">
-                                <button
-                                    onClick={() => setPage(p => Math.max(1, p - 1))}
-                                    disabled={page === 1}
-                                    className="p-1.5 border border-slate-200 rounded-lg hover:bg-slate-50 disabled:opacity-40 disabled:pointer-events-none transition-colors cursor-pointer"
-                                    title="Previous Page"
-                                >
-                                    <ChevronLeft className="w-3.5 h-3.5 text-slate-700" />
-                                </button>
+                        <div className="flex items-center gap-2">
+                            <button
+                                type="button"
+                                onClick={() => setPage(prev => Math.max(1, prev - 1))}
+                                disabled={page === 1}
+                                className={`px-2.5 py-1 rounded border border-slate-300 text-xs font-medium transition-colors ${
+                                    page === 1 ? "text-slate-300 border-slate-200 cursor-not-allowed" : "text-slate-700 hover:bg-slate-50 cursor-pointer"
+                                }`}
+                            >
+                                Previous
+                            </button>
 
-                                {Array.from({ length: totalPages }, (_, i) => i + 1).map(p => (
-                                    <button
-                                        key={p}
-                                        onClick={() => setPage(p)}
-                                        className={`min-w-7 h-7 px-2 rounded-lg font-bold text-xs transition-colors cursor-pointer ${
-                                            p === page
-                                                ? "bg-blue-600 text-white shadow-2xs"
-                                                : "border border-slate-200 hover:bg-slate-50 text-slate-700"
-                                        }`}
-                                    >
-                                        {p}
-                                    </button>
-                                ))}
+                            <span className="px-1 text-slate-600">
+                                Page {page} of {totalPages}
+                            </span>
 
-                                <button
-                                    onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-                                    disabled={page === totalPages}
-                                    className="p-1.5 border border-slate-200 rounded-lg hover:bg-slate-50 disabled:opacity-40 disabled:pointer-events-none transition-colors cursor-pointer"
-                                    title="Next Page"
-                                >
-                                    <ChevronRight className="w-3.5 h-3.5 text-slate-700" />
-                                </button>
-                            </div>
-                        )}
+                            <button
+                                type="button"
+                                onClick={() => setPage(prev => Math.min(totalPages, prev + 1))}
+                                disabled={page === totalPages}
+                                className={`px-2.5 py-1 rounded border border-slate-300 text-xs font-medium transition-colors ${
+                                    page === totalPages ? "text-slate-300 border-slate-200 cursor-not-allowed" : "text-slate-700 hover:bg-slate-50 cursor-pointer"
+                                }`}
+                            >
+                                Next
+                            </button>
+                        </div>
                     </div>
                 )}
             </div>
