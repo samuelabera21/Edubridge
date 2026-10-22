@@ -21,6 +21,7 @@ import {
     Sparkles,
     ChevronDown
 } from "lucide-react";
+import ParentAnnouncementsRegistryView from "./ParentAnnouncementsRegistryView";
 
 function CommunicationContent() {
     const searchParams = useSearchParams();
@@ -268,6 +269,14 @@ function CommunicationContent() {
     const currentConversation = messages.filter(
         m => (selectedTeacher && (m.senderId === selectedTeacher.userId || m.receiverId === selectedTeacher.userId))
     );
+
+    if (currentTab === "announcements") {
+        return (
+            <div className="space-y-6 font-sans text-slate-900 max-w-7xl">
+                <ParentAnnouncementsRegistryView />
+            </div>
+        );
+    }
 
     return (
         <div className="w-full max-w-6xl mx-auto space-y-6">
@@ -556,67 +565,8 @@ function CommunicationContent() {
 
             {/* TAB 2: SCHOOL ANNOUNCEMENTS */}
             {currentTab === "announcements" && (
-                <div className="space-y-4">
-                    <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm space-y-4">
-                        <div className="flex items-center justify-between border-b border-gray-100 pb-3">
-                            <h3 className="font-bold text-sm text-gray-900 flex items-center gap-2">
-                                <Megaphone className="w-4 h-4 text-[#184973]" />
-                                <span>Official School Announcements</span>
-                            </h3>
-                            <span className="text-xs text-gray-500 font-medium">{announcements.length} announcement(s)</span>
-                        </div>
-
-                        {annLoading ? (
-                            <div className="py-12 text-center text-xs text-gray-400 animate-pulse">
-                                Loading announcements...
-                            </div>
-                        ) : announcements.length === 0 ? (
-                            <div className="py-12 text-center space-y-2">
-                                <Megaphone className="w-10 h-10 text-gray-300 mx-auto" />
-                                <h4 className="font-bold text-sm text-gray-900">No Active Announcements</h4>
-                                <p className="text-xs text-gray-500">School-wide notices and event schedules will appear here.</p>
-                            </div>
-                        ) : (
-                            <div className="space-y-3">
-                                {announcements.map((item: any) => {
-                                    const isCritical = item.priority === "CRITICAL" || item.priority === "HIGH";
-                                    return (
-                                        <div
-                                            key={item.id}
-                                            className={`p-5 rounded-2xl border transition-all ${
-                                                isCritical
-                                                    ? "bg-rose-50/70 border-rose-200 text-rose-950"
-                                                    : "bg-white border-gray-200 text-gray-900 shadow-xs"
-                                            }`}
-                                        >
-                                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-gray-100 pb-2.5">
-                                                <div className="flex items-center gap-2">
-                                                    <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
-                                                        isCritical ? "bg-rose-600 text-white" : "bg-blue-100 text-blue-800"
-                                                    }`}>
-                                                        {item.priority || "NORMAL"}
-                                                    </span>
-                                                    <h4 className="font-bold text-sm text-gray-900">{item.title}</h4>
-                                                </div>
-                                                <span className="text-[11px] text-gray-400 font-mono">
-                                                    {new Date(item.createdAt).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" })}
-                                                </span>
-                                            </div>
-
-                                            <p className="mt-3 text-xs text-gray-700 leading-relaxed whitespace-pre-line">
-                                                {item.content}
-                                            </p>
-
-                                            <div className="mt-3 pt-2.5 border-t border-gray-100 flex items-center justify-between text-[11px] text-gray-500">
-                                                <span>Issued by: {item.author ? `${item.author.firstName} ${item.author.lastName}` : "School Administration"}</span>
-                                                {item.category && <span className="bg-slate-100 px-2 py-0.5 rounded text-[10px] font-semibold">{item.category}</span>}
-                                            </div>
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        )}
-                    </div>
+                <div className="pt-2">
+                    <ParentAnnouncementsRegistryView />
                 </div>
             )}
 

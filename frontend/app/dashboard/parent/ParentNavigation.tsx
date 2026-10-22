@@ -15,7 +15,7 @@ import {
     Sparkles,
     ChevronDown,
     ChevronRight,
-    Users
+    ChevronLeft,
 } from "lucide-react";
 
 export type ParentNavLink = {
@@ -30,7 +30,7 @@ export type ParentNavGroup = {
     links: ParentNavLink[];
 };
 
-const parentNavGroups: ParentNavGroup[] = [
+const childOverviewGroups: ParentNavGroup[] = [
     {
         key: "profile",
         label: "Child Profile",
@@ -50,6 +50,9 @@ const parentNavGroups: ParentNavGroup[] = [
             { label: "Attendance Alerts", href: "/dashboard/parent/attendance?tab=alerts" },
         ],
     },
+];
+
+const academicGrowthGroups: ParentNavGroup[] = [
     {
         key: "academics",
         label: "Academic Results",
@@ -78,13 +81,16 @@ const parentNavGroups: ParentNavGroup[] = [
             { label: "Remedial & Interventions", href: "/dashboard/parent/support?tab=remedial" },
         ],
     },
+];
+
+const collaborationGroups: ParentNavGroup[] = [
     {
         key: "communication",
         label: "Communication",
         icon: MessageSquare,
         links: [
             { label: "Teacher Messages", href: "/dashboard/parent/communication" },
-            { label: "School Announcements", href: "/dashboard/parent/communication?tab=announcements" },
+            { label: "School Announcements", href: "/dashboard/parent/announcements" },
             { label: "Meeting Requests", href: "/dashboard/parent/communication?tab=meetings" },
         ],
     },
@@ -110,7 +116,7 @@ const parentNavGroups: ParentNavGroup[] = [
 
 function ParentNavigationContent({
     collapsed,
-    onToggleCollapse
+    onToggleCollapse,
 }: {
     collapsed: boolean;
     onToggleCollapse: () => void;
@@ -125,7 +131,7 @@ function ParentNavigationContent({
         academics: pathname.startsWith("/dashboard/parent/academics"),
         activities: pathname.startsWith("/dashboard/parent/activities"),
         support: pathname.startsWith("/dashboard/parent/support"),
-        communication: pathname.startsWith("/dashboard/parent/communication"),
+        communication: pathname.startsWith("/dashboard/parent/communication") || pathname.startsWith("/dashboard/parent/announcements"),
         consent: pathname.startsWith("/dashboard/parent/consent"),
         assistant: pathname.startsWith("/dashboard/parent/assistant"),
     });
@@ -143,10 +149,8 @@ function ParentNavigationContent({
             return false;
         }
 
-        // When link has NO query string (e.g. /dashboard/parent/profile), it represents default tab
         if (!linkQuery) {
             if (!currentTab) return true;
-            // Also match if currentTab equals the default tab name for the page
             if (linkPath.endsWith("/profile") && currentTab === "general") return true;
             if (linkPath.endsWith("/attendance") && currentTab === "overview") return true;
             if (linkPath.endsWith("/academics") && currentTab === "subjects") return true;
@@ -158,27 +162,109 @@ function ParentNavigationContent({
             return false;
         }
 
-        // When link specifies ?tab=..., compare it with currentTab
         const linkParams = new URLSearchParams(linkQuery);
         const expectedTab = linkParams.get("tab");
         return currentTab === expectedTab;
     };
 
+    const renderNavGroup = (group: ParentNavGroup) => {
+        const Icon = group.icon;
+        const isOpen = openGroups[group.key];
+        const isGroupActive = group.links.some((l) => isActive(l.href));
+
+        if (collapsed) {
+            return (
+                <Link
+                    key={group.key}
+                    href={group.links[0]?.href || "#"}
+                    title={group.label}
+                    className={`group flex items-center justify-center px-2 py-2 text-xs transition-all duration-150 cursor-pointer rounded-md ${
+                        isGroupActive
+                            ? "bg-[#4085b3] text-white font-semibold shadow-xs"
+                            : "text-slate-700 hover:bg-[#4085b3] hover:text-white"
+                    }`}
+                >
+                    <Icon
+                        className={`w-4 h-4 shrink-0 transition-colors duration-150 ${
+                            isGroupActive ? "text-white" : "text-slate-400 group-hover:text-white"
+                        }`}
+                    />
+                </Link>
+            );
+        }
+
+        return (
+            <div key={group.key} className="space-y-0.5">
+                <button
+                    type="button"
+                    onClick={() => toggleGroup(group.key)}
+                    title={group.label}
+                    className={`group w-full flex items-center justify-between px-2.5 py-2 text-xs transition-all duration-150 cursor-pointer rounded-md ${
+                        isGroupActive && !isOpen
+                            ? "bg-[#4085b3]/10 text-[#245f8b] font-semibold"
+                            : "text-slate-700 hover:bg-[#4085b3] hover:text-white"
+                    }`}
+                >
+                    <div className="flex items-center space-x-2.5 min-w-0">
+                        <Icon
+                            className={`w-4 h-4 shrink-0 transition-colors duration-150 ${
+                                isGroupActive && !isOpen
+                                    ? "text-[#4085b3]"
+                                    : "text-slate-400 group-hover:text-white"
+                            }`}
+                        />
+                        <span className="truncate">{group.label}</span>
+                    </div>
+                    <div className="shrink-0 ml-1">
+                        {isOpen ? (
+                            <ChevronDown className="w-3.5 h-3.5 text-slate-400 group-hover:text-white transition-colors" />
+                        ) : (
+                            <ChevronRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-white transition-colors" />
+                        )}
+                    </div>
+                </button>
+
+                {isOpen && (
+                    <div className="pl-6 pr-1 py-1 space-y-0.5 border-l-2 border-slate-200 ml-3.5 my-0.5">
+                        {group.links.map((link) => {
+                            const active = isActive(link.href);
+                            return (
+                                <Link
+                                    key={`${group.key}-${link.label}`}
+                                    href={link.href}
+                                    title={link.label}
+                                    className={`block px-2.5 py-1.5 rounded-md text-xs transition-all duration-150 truncate cursor-pointer ${
+                                        active
+                                            ? "bg-[#4085b3] text-white font-semibold shadow-xs"
+                                            : "text-slate-600 hover:bg-[#4085b3] hover:text-white"
+                                    }`}
+                                >
+                                    {link.label}
+                                </Link>
+                            );
+                        })}
+                    </div>
+                )}
+            </div>
+        );
+    };
+
     return (
         <aside
-            className={`bg-[#184973] border-r border-[#265e8e] flex flex-col hidden md:flex overflow-y-auto text-blue-100 font-sans shadow-lg shrink-0 transition-all duration-300 ease-in-out ${
+            className={`h-full bg-[#f8fafc] border-r border-slate-200 flex flex-col hidden md:flex overflow-y-auto scrollbar-hide text-slate-700 font-sans shrink-0 transition-all duration-200 ease-in-out ${
                 collapsed ? "w-16" : "w-64"
             }`}
-            style={{ scrollbarWidth: "none", msOverflowStyle: "none" } as React.CSSProperties}
         >
-            {/* Sidebar Header */}
-            <div className="flex items-center justify-between px-3 pt-4 pb-2 border-b border-[#265e8e]/50">
+            {/* Masthead Header */}
+            <div className="flex items-center justify-between px-3.5 py-3 border-b border-slate-200 bg-white shrink-0">
                 {!collapsed && (
-                    <div className="flex items-center space-x-1.5 px-1">
-                        <Users className="w-3.5 h-3.5 text-amber-300/90" />
-                        <p className="text-[10px] text-blue-200/90 font-bold uppercase tracking-widest">
+                    <div className="min-w-0 pr-2">
+                        <span className="text-xs font-bold text-slate-900 truncate block">
                             Parent Portal
-                        </p>
+                        </span>
+                        <span className="text-[10px] font-medium text-slate-500 block truncate">
+                            Guardian Oversight & Progress
+                        </span>
                     </div>
                 )}
                 <button
@@ -186,111 +272,96 @@ function ParentNavigationContent({
                     onClick={onToggleCollapse}
                     title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
                     aria-label={collapsed ? "Expand parent sidebar" : "Collapse parent sidebar"}
-                    className={`flex items-center justify-center w-7 h-7 rounded-lg bg-[#225785] hover:bg-[#2c6da7] text-blue-100 hover:text-amber-300 transition-all cursor-pointer shadow-xs ${
-                        collapsed ? "mx-auto" : "ml-auto"
-                    }`}
+                    className="w-7 h-7 rounded border border-slate-200 bg-white hover:bg-slate-100 text-slate-600 hover:text-slate-900 transition-colors cursor-pointer ml-auto flex items-center justify-center shrink-0"
                 >
-                    <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        className="w-4 h-4"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                    >
-                        {collapsed ? (
-                            <>
-                                <polyline points="13 17 18 12 13 7" />
-                                <polyline points="6 17 11 12 6 7" />
-                            </>
-                        ) : (
-                            <>
-                                <polyline points="11 17 6 12 11 7" />
-                                <polyline points="18 17 13 12 18 7" />
-                            </>
-                        )}
-                    </svg>
+                    {collapsed ? (
+                        <ChevronRight className="w-4 h-4" />
+                    ) : (
+                        <ChevronLeft className="w-4 h-4" />
+                    )}
                 </button>
             </div>
 
-            {/* Nav Items */}
-            <div className="p-3 pt-3 flex-1">
-                <nav className="space-y-1">
-                    {/* Dashboard Home */}
-                    <Link
-                        href="/dashboard/parent"
-                        title="Parent Dashboard"
-                        className={`flex items-center ${
-                            collapsed ? "justify-center px-2" : "justify-between px-3.5"
-                        } py-2 rounded-xl text-xs font-medium transition-all duration-150 cursor-pointer ${
-                            pathname === "/dashboard/parent"
-                                ? "bg-[#0f2f4c] text-amber-300 font-semibold border-l-2 border-amber-400 shadow-xs"
-                                : "text-blue-50/90 hover:bg-[#225785] hover:text-white hover:translate-x-0.5"
-                        }`}
-                    >
-                        <div className={`flex items-center ${collapsed ? "" : "space-x-3"}`}>
-                            <LayoutDashboard className="w-4 h-4 shrink-0 text-amber-300/90" />
-                            {!collapsed && <span>Parent Dashboard</span>}
+            {/* Navigation Body */}
+            <div className="flex-1 px-2.5 py-3 space-y-4 overflow-y-auto">
+                {/* Child Overview Group */}
+                <div className="space-y-0.5">
+                    {!collapsed && (
+                        <div className="px-2.5 pb-1 pt-1 text-[10px] font-bold uppercase tracking-wider text-slate-400 select-none">
+                            Child Overview
                         </div>
-                    </Link>
-
-                    {/* Nav Groups from PARENT.md */}
-                    {parentNavGroups.map((group) => {
-                        const Icon = group.icon;
-                        const isOpen = openGroups[group.key];
-                        const isGroupActive = group.links.some((l) => isActive(l.href));
-
-                        return (
-                            <div key={group.key} className="pt-1.5">
-                                <button
-                                    type="button"
-                                    onClick={() => toggleGroup(group.key)}
-                                    title={group.label}
-                                    className={`w-full flex items-center ${
-                                        collapsed ? "justify-center px-2" : "justify-between px-3.5"
-                                    } py-2 rounded-xl text-xs font-medium transition-all duration-150 group cursor-pointer ${
-                                        isGroupActive
-                                            ? "text-amber-200 bg-[#163f64]"
-                                            : "text-blue-50/90 hover:bg-[#225785] hover:text-white hover:translate-x-0.5"
+                    )}
+                    <nav className="space-y-0.5">
+                        <Link
+                            href="/dashboard/parent"
+                            title="Parent Dashboard"
+                            className={`group flex items-center ${
+                                collapsed ? "justify-center px-2 py-2" : "justify-between px-2.5 py-2"
+                            } text-xs transition-all duration-150 cursor-pointer rounded-md ${
+                                pathname === "/dashboard/parent"
+                                    ? "bg-[#4085b3] text-white font-semibold shadow-xs"
+                                    : "text-slate-700 hover:bg-[#4085b3] hover:text-white"
+                            }`}
+                        >
+                            <div className={`flex items-center ${collapsed ? "" : "space-x-2.5 min-w-0"}`}>
+                                <LayoutDashboard
+                                    className={`w-4 h-4 shrink-0 transition-colors duration-150 ${
+                                        pathname === "/dashboard/parent" ? "text-white" : "text-slate-400 group-hover:text-white"
                                     }`}
-                                >
-                                    <div className={`flex items-center ${collapsed ? "" : "space-x-3"}`}>
-                                        <Icon className="w-4 h-4 shrink-0 text-amber-300/90 group-hover:scale-105 transition-transform" />
-                                        {!collapsed && <span>{group.label}</span>}
-                                    </div>
-                                    {!collapsed && (
-                                        isOpen ? (
-                                            <ChevronDown className="w-3.5 h-3.5 text-blue-200 group-hover:text-white transition-colors" />
-                                        ) : (
-                                            <ChevronRight className="w-3.5 h-3.5 text-blue-300/80 group-hover:text-blue-100 transition-colors" />
-                                        )
-                                    )}
-                                </button>
-
-                                {isOpen && !collapsed && (
-                                    <div className="pl-8 pr-2 py-1.5 space-y-1 bg-[#103454]/80 rounded-xl my-1 border-l-2 border-[#2c6da7]/50 shadow-inner">
-                                        {group.links.map((link) => (
-                                            <Link
-                                                key={`${group.key}-${link.label}`}
-                                                href={link.href}
-                                                className={`block py-1.5 px-2 rounded-lg text-xs transition-all duration-150 hover:translate-x-0.5 ${
-                                                    isActive(link.href)
-                                                        ? "text-amber-300 font-semibold bg-[#0f2f4c] shadow-xs"
-                                                        : "text-blue-200/90 hover:text-amber-200 hover:bg-[#225785]/60"
-                                                }`}
-                                            >
-                                                {link.label}
-                                            </Link>
-                                        ))}
-                                    </div>
-                                )}
+                                />
+                                {!collapsed && <span className="truncate">Parent Dashboard</span>}
                             </div>
-                        );
-                    })}
-                </nav>
+                        </Link>
+
+                        {childOverviewGroups.map(renderNavGroup)}
+                    </nav>
+                </div>
+
+                {/* Academic Growth Group */}
+                <div className="space-y-0.5">
+                    {!collapsed && (
+                        <div className="px-2.5 pb-1 pt-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400 select-none">
+                            Academic Progress
+                        </div>
+                    )}
+                    <nav className="space-y-0.5">
+                        {academicGrowthGroups.map(renderNavGroup)}
+                    </nav>
+                </div>
+
+                {/* Collaboration & Approvals Group */}
+                <div className="space-y-0.5">
+                    {!collapsed && (
+                        <div className="px-2.5 pb-1 pt-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400 select-none">
+                            Collaboration & Approvals
+                        </div>
+                    )}
+                    <nav className="space-y-0.5">
+                        {collaborationGroups.map(renderNavGroup)}
+                    </nav>
+                </div>
             </div>
+
+            {/* Sidebar Utility Footer - System Status */}
+            {!collapsed ? (
+                <div className="p-3 border-t border-slate-200 bg-white text-[11px] shrink-0">
+                    <div className="flex items-center justify-between">
+                        <span className="font-semibold text-slate-700">EMIS System</span>
+                        <span className="inline-flex items-center gap-1.5 text-[10px] text-emerald-700 font-semibold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                            Operational
+                        </span>
+                    </div>
+                    <p className="text-[10px] text-slate-400 mt-0.5 truncate">FDRE Ministry of Education</p>
+                </div>
+            ) : (
+                <div
+                    className="p-2 border-t border-slate-200 bg-white flex justify-center shrink-0"
+                    title="EMIS System Operational"
+                >
+                    <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                </div>
+            )}
         </aside>
     );
 }
@@ -300,11 +371,16 @@ export default function ParentNavigation(props: {
     onToggleCollapse: () => void;
 }) {
     return (
-        <Suspense fallback={
-            <aside className={`bg-[#184973] border-r border-[#265e8e] flex flex-col hidden md:flex shrink-0 ${props.collapsed ? "w-16" : "w-64"}`} />
-        }>
+        <Suspense
+            fallback={
+                <aside
+                    className={`h-full bg-[#f8fafc] border-r border-slate-200 flex flex-col hidden md:flex shrink-0 ${
+                        props.collapsed ? "w-16" : "w-64"
+                    }`}
+                />
+            }
+        >
             <ParentNavigationContent {...props} />
         </Suspense>
     );
 }
-

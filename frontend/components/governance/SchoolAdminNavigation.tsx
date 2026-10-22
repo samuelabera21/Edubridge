@@ -34,6 +34,7 @@ import { getPrimaryAccess } from "../../lib/auth-access";
 interface NavSubLink {
     label: string;
     href: string;
+    hidden?: boolean; // set true to hide without deleting
 }
 
 interface NavItem {
@@ -42,11 +43,13 @@ interface NavItem {
     href?: string;
     basePath?: string;
     subLinks?: NavSubLink[];
+    hidden?: boolean; // set true to hide without deleting
 }
 
 interface NavGroup {
     title: string;
     items: NavItem[];
+    hidden?: boolean; // set true to hide without deleting
 }
 
 export default function SchoolAdminNavigation({
@@ -228,9 +231,9 @@ export default function SchoolAdminNavigation({
                     subLinks: [
                         { label: "Executive Overview", href: "/dashboard/attendance/overview" },
                         { label: "Student Attendance", href: "/dashboard/attendance/student" },
-                        { label: "Teacher Attendance", href: "/dashboard/attendance/teacher" },
-                        { label: "Absence Risk Alerts", href: "/dashboard/attendance/alerts" },
-                        { label: "Official Corrections", href: "/dashboard/attendance/corrections" },
+                        { label: "Teacher Attendance", href: "/dashboard/attendance/teacher", hidden: true },
+                        { label: "Absence Risk Alerts", href: "/dashboard/attendance/alerts", hidden: true },
+                        { label: "Official Corrections", href: "/dashboard/attendance/corrections", hidden: true },
                     ],
                 },
             ],
@@ -248,8 +251,10 @@ export default function SchoolAdminNavigation({
                     ],
                 },
                 {
+                    // hidden: Phase 2 — not core to data-bridge mission
                     label: "Student Support & Advisory",
                     icon: BookOpen,
+                    hidden: true,
                     basePath: "/dashboard/support",
                     subLinks: [
                         { label: "At-Risk Flags", href: "/dashboard/support/at-risk" },
@@ -287,18 +292,20 @@ export default function SchoolAdminNavigation({
                     basePath: "/dashboard/communication",
                     subLinks: [
                         { label: "Announcements", href: "/dashboard/communication/announcements" },
-                        { label: "Important Notices", href: "/dashboard/communication/notices" },
+                        { label: "Important Notices", href: "/dashboard/communication/notices", hidden: true },
                         { label: "Direct Messages", href: "/dashboard/communication/messages" },
                         { label: "Notifications", href: "/dashboard/communication/notifications" },
                         { label: "Faculty Circulars", href: "/dashboard/communication/teacher" },
                         { label: "Student Broadcasts", href: "/dashboard/communication/student" },
                         { label: "Parent Broadcasts", href: "/dashboard/communication/parent" },
-                        { label: "Staff Circulars", href: "/dashboard/communication/staff" },
+                        { label: "Staff Circulars", href: "/dashboard/communication/staff", hidden: true },
                     ],
                 },
                 {
+                    // hidden: internal planning tool, not actor-facing
                     label: "School Improvement (SIP)",
                     icon: TrendingUp,
+                    hidden: true,
                     basePath: "/dashboard/improvement",
                     subLinks: [
                         { label: "Identify Problems", href: "/dashboard/improvement/problems" },
@@ -313,11 +320,13 @@ export default function SchoolAdminNavigation({
             ],
         },
         {
-            title: "Intelligence & Operations",
+            title: "System",
             items: [
                 {
+                    // hidden: data flows via Data Requests; no separate reports module needed at school level
                     label: "Reports & Analytics",
                     icon: BarChart3,
+                    hidden: true,
                     basePath: "/dashboard/reports",
                     subLinks: [
                         { label: "Enrollment Reports", href: "/dashboard/reports/enrollment" },
@@ -331,13 +340,16 @@ export default function SchoolAdminNavigation({
                     ],
                 },
                 {
+                    // hidden: premature / not functional yet
                     label: "AI Leadership Insights",
                     icon: Brain,
+                    hidden: true,
                     basePath: "/dashboard/ai-leadership",
                     subLinks: [
                         { label: "Performance Analysis", href: "/dashboard/ai-leadership/school-performance" },
                         { label: "Attendance Modeling", href: "/dashboard/ai-leadership/attendance" },
                         { label: "Student-Risk Insights", href: "/dashboard/ai-leadership/student-risk" },
+                        { label: "Trend Detection", href: "/dashboard/ai-leadership/performance-trends" },
                         { label: "Trend Detection", href: "/dashboard/ai-leadership/performance-trends" },
                         { label: "Intervention Analysis", href: "/dashboard/ai-leadership/intervention" },
                         { label: "SIP Recommendations", href: "/dashboard/ai-leadership/improvement-recommendations" },
@@ -351,17 +363,19 @@ export default function SchoolAdminNavigation({
                     basePath: "/dashboard/users-permissions",
                     subLinks: [
                         { label: "All Accounts", href: "/dashboard/users-permissions" },
-                        { label: "Administrators & Leadership", href: "/dashboard/users-permissions/administrators" },
+                        { label: "Administrators & Leadership", href: "/dashboard/users-permissions/administrators", hidden: true },
                         { label: "Teachers", href: "/dashboard/users-permissions/teachers" },
                         { label: "Students", href: "/dashboard/users-permissions/students" },
                         { label: "Parents & Guardians", href: "/dashboard/users-permissions/parents" },
-                        { label: "Support Staff", href: "/dashboard/users-permissions/staff" },
+                        { label: "Support Staff", href: "/dashboard/users-permissions/staff", hidden: true },
                         { label: "Roles & Permissions", href: "/dashboard/users-permissions/roles" },
                     ],
                 },
                 {
+                    // hidden: internal admin, not actor-facing
                     label: "School Operations",
                     icon: FolderKanban,
+                    hidden: true,
                     basePath: "/dashboard/operations",
                     subLinks: [
                         { label: "Resources Inventory", href: "/dashboard/operations/resources" },
@@ -378,7 +392,20 @@ export default function SchoolAdminNavigation({
         },
     ];
 
-    const activeGroups = isVicePrincipal ? vicePrincipalGroups : schoolAdminGroups;
+    // Filter out hidden groups and items at render time (recoverable — just remove `hidden: true` to restore)
+    const rawGroups = isVicePrincipal ? vicePrincipalGroups : schoolAdminGroups;
+    const activeGroups = rawGroups
+        .filter((g) => !g.hidden)
+        .map((g) => ({
+            ...g,
+            items: g.items
+                .filter((item) => !item.hidden)
+                .map((item) => ({
+                    ...item,
+                    subLinks: item.subLinks?.filter((sl) => !sl.hidden),
+                })),
+        }))
+        .filter((g) => g.items.length > 0);
 
     return (
         <aside

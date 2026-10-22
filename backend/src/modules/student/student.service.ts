@@ -1467,7 +1467,10 @@ export class StudentService {
                 ],
                 AND: [{ OR: [{ expiresAt: null }, { expiresAt: { gte: new Date() } }] }]
             },
-            include: { author: { select: { name: true } } },
+            include: {
+                author: { select: { name: true } },
+                acknowledgments: true
+            },
             orderBy: [{ createdAt: "desc" }]
         });
     }

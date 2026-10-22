@@ -5,22 +5,56 @@ import { useSearchParams } from "next/navigation";
 import { fetchApi } from "@/lib/api";
 import { useAuth } from "@/hooks/useAuth";
 import {
-    Megaphone,
-    Building2,
-    CheckCircle2,
-    CheckCheck,
-    Clock,
     Search,
-    Paperclip,
-    ExternalLink,
-    Filter,
-    RefreshCw,
     X,
-    School,
+    Paperclip,
+    RefreshCw,
+    ChevronLeft,
+    ChevronRight,
+    Loader2,
+    ArrowUpRight,
+    CheckCircle2,
+    Clock,
     FileText,
-    Eye
+    LayoutList,
+    LayoutGrid,
+    Filter,
+    CheckCheck,
+    ExternalLink
 } from "lucide-react";
-import { LoadingState } from "@/components/ui/LoadingState";
+
+export interface AnnouncementItem {
+    id: string;
+    title: string;
+    content: string;
+    target: string;
+    targetId?: string | null;
+    targetDetails?: any;
+    priority?: string;
+    status?: string;
+    createdAt: string;
+    updatedAt?: string;
+    expiresAt?: string | null;
+    attachmentUrl?: string | null;
+    attachmentName?: string | null;
+    author?: {
+        id: string;
+        name: string;
+        email?: string;
+    } | null;
+    acknowledgments?: Array<{
+        id: string;
+        userId: string;
+        recipientName?: string;
+        recipientIdentifier?: string;
+        recipientType?: string;
+        isRead: boolean;
+        readAt?: string | null;
+        isAcknowledged: boolean;
+        acknowledgedAt?: string | null;
+        acknowledgmentNotes?: string | null;
+    }>;
+}
 
 function isImageUrl(url?: string | null, name?: string | null): boolean {
     if (!url && !name) return false;
@@ -34,33 +68,43 @@ function isPdfUrl(url?: string | null, name?: string | null): boolean {
     return /\.pdf($|\?)/i.test(testStr) || testStr.includes("application/pdf");
 }
 
-type AnnouncementTab = "school" | "department";
-
 export default function TeacherAnnouncementsPage() {
     const { authData } = useAuth();
     const currentUserId = authData?.user?.id;
     const searchParams = useSearchParams();
-    const initialTab = searchParams?.get("tab");
 
-    const [activeTab, setActiveTab] = useState<AnnouncementTab>(
-        initialTab === "department" ? "department" : "school"
-    );
-
+    // Data State
+    const [announcements, setAnnouncements] = useState<AnnouncementItem[]>([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
-    const [announcements, setAnnouncements] = useState<any[]>([]);
+    const [error, setError] = useState<string | null>(null);
+
+    // Selected Announcement & Drawer
+    const [selectedAnnouncement, setSelectedAnnouncement] = useState<AnnouncementItem | null>(null);
+    const [acknowledgingId, setAcknowledgingId] = useState<string | null>(null);
+
+    // View State (Table / Cards)
+    const [viewMode, setViewMode] = useState<"table" | "cards">("table");
+
+    // Filter Toolbar State
     const [searchQuery, setSearchQuery] = useState("");
-    const [priorityFilter, setPriorityFilter] = useState<"ALL" | "URGENT" | "HIGH" | "NORMAL">("ALL");
+    const [showFilters, setShowFilters] = useState(false);
+    const [scopeFilter, setScopeFilter] = useState<"ALL" | "SCHOOL" | "DEPARTMENT">("ALL");
+    const [priorityFilter, setPriorityFilter] = useState<string>("ALL");
     const [statusFilter, setStatusFilter] = useState<"ALL" | "PENDING" | "ACKNOWLEDGED">("ALL");
 
-    // Full screen Lightbox
+    // Pagination
+    const [page, setPage] = useState(1);
+    const pageSize = 12;
+
+    // Media Preview
     const [previewMedia, setPreviewMedia] = useState<{ url: string; isPdf?: boolean; name?: string } | null>(null);
-    const [acknowledgingId, setAcknowledgingId] = useState<string | null>(null);
 
     const loadAnnouncements = useCallback(async (isRefresh = false) => {
         try {
             if (isRefresh) setRefreshing(true);
             else setLoading(true);
+            setError(null);
 
             const res = await fetchApi("/communication/announcements");
             if (res.ok) {
@@ -68,9 +112,12 @@ export default function TeacherAnnouncementsPage() {
                 setAnnouncements(Array.isArray(data) ? data : []);
             } else {
                 setAnnouncements([]);
+                setError("Failed to load official announcements.");
             }
-        } catch (err) {
+        } catch (err: any) {
             console.error("Failed to load teacher announcements:", err);
+            setAnnouncements([]);
+            setError(err.message || "Network error occurred.");
         } finally {
             setLoading(false);
             setRefreshing(false);
@@ -80,14 +127,6 @@ export default function TeacherAnnouncementsPage() {
     useEffect(() => {
         loadAnnouncements();
     }, [loadAnnouncements]);
-
-    useEffect(() => {
-        if (initialTab === "department") {
-            setActiveTab("department");
-        } else if (initialTab === "school") {
-            setActiveTab("school");
-        }
-    }, [initialTab]);
 
     // Handle Confirm Receipt
     const handleConfirmReceipt = async (announcementId: string) => {
@@ -100,6 +139,22 @@ export default function TeacherAnnouncementsPage() {
 
             if (res.ok) {
                 await loadAnnouncements(true);
+                if (selectedAnnouncement?.id === announcementId) {
+                    // Update current selected item state locally
+                    setSelectedAnnouncement(prev => prev ? {
+                        ...prev,
+                        acknowledgments: [
+                            ...(prev.acknowledgments?.filter(a => a.userId !== currentUserId) || []),
+                            {
+                                id: "ack_" + Date.now(),
+                                userId: currentUserId || "",
+                                isRead: true,
+                                isAcknowledged: true,
+                                acknowledgedAt: new Date().toISOString()
+                            }
+                        ]
+                    } : null);
+                }
             } else {
                 const err = await res.json().catch(() => ({}));
                 alert(err.error || "Failed to confirm announcement receipt.");
@@ -112,375 +167,750 @@ export default function TeacherAnnouncementsPage() {
         }
     };
 
-    // Filter announcements based on tab, priority, status, and search
+    // Format Target Scope
+    const getAudienceLabel = (item: AnnouncementItem) => {
+        if (item.targetDetails?.targetLabels && Array.isArray(item.targetDetails.targetLabels) && item.targetDetails.targetLabels.length > 0) {
+            return item.targetDetails.targetLabels[0];
+        }
+        const t = (item.target || "").toUpperCase();
+        if (t === "TEACHERS") return "Faculty & Teachers";
+        if (t === "STUDENTS") return "All Students";
+        if (t === "PARENTS") return "Parents & Guardians";
+        return "Entire School";
+    };
+
+    // Desk status for teacher
+    const getTeacherItemStatus = (item: AnnouncementItem) => {
+        const myAck = item.acknowledgments?.find(a => a.userId === currentUserId);
+        if (myAck?.isAcknowledged) {
+            return {
+                label: "Acknowledged",
+                isAck: true,
+                acknowledgedAt: myAck.acknowledgedAt
+            };
+        }
+        return {
+            label: "Pending receipt",
+            isAck: false,
+            acknowledgedAt: null
+        };
+    };
+
+    // Filter Logic
     const filteredAnnouncements = useMemo(() => {
-        return announcements.filter(a => {
-            const aud = (a.targetAudience || a.target || "").toUpperCase();
-            const title = (a.title || "").toLowerCase();
-            const content = (a.content || "").toLowerCase();
+        return announcements.filter(item => {
+            const aud = (item.target || "").toUpperCase();
+            const title = (item.title || "").toLowerCase();
+            const content = (item.content || "").toLowerCase();
             const isDept = aud.includes("DEPT") || aud.includes("DEPARTMENT") || title.includes("dept") || title.includes("department");
 
-            // Tab match
-            if (activeTab === "department" && !isDept) return false;
-            if (activeTab === "school" && isDept) return false;
+            // Scope filter (School vs Department)
+            if (scopeFilter === "DEPARTMENT" && !isDept) return false;
+            if (scopeFilter === "SCHOOL" && isDept) return false;
 
-            // Search match
+            // Search query
             const q = searchQuery.toLowerCase().trim();
-            if (q && !title.includes(q) && !content.includes(q) && !a.author?.name?.toLowerCase().includes(q)) {
+            if (q && !title.includes(q) && !content.includes(q) && !item.author?.name?.toLowerCase().includes(q)) {
                 return false;
             }
 
-            // Priority match
-            if (priorityFilter !== "ALL" && (a.priority || "NORMAL").toUpperCase() !== priorityFilter) {
+            // Priority filter
+            if (priorityFilter !== "ALL" && (item.priority || "NORMAL").toUpperCase() !== priorityFilter) {
                 return false;
             }
 
-            // Status match
-            const isAck = a.acknowledgments?.some((ack: any) => ack.userId === currentUserId && ack.isAcknowledged);
+            // Status filter
+            const isAck = item.acknowledgments?.some(a => a.userId === currentUserId && a.isAcknowledged);
             if (statusFilter === "ACKNOWLEDGED" && !isAck) return false;
             if (statusFilter === "PENDING" && isAck) return false;
 
             return true;
         });
-    }, [announcements, activeTab, searchQuery, priorityFilter, statusFilter, currentUserId]);
+    }, [announcements, scopeFilter, searchQuery, priorityFilter, statusFilter, currentUserId]);
 
-    const pendingCount = useMemo(() => {
-        return announcements.filter(a => 
-            !a.acknowledgments?.some((ack: any) => ack.userId === currentUserId && ack.isAcknowledged)
-        ).length;
-    }, [announcements, currentUserId]);
+    useEffect(() => {
+        setPage(1);
+    }, [scopeFilter, searchQuery, priorityFilter, statusFilter, viewMode]);
 
-    if (loading) {
-        return <LoadingState message="Loading announcements..." />;
-    }
+    const totalPages = Math.max(1, Math.ceil(filteredAnnouncements.length / pageSize));
+    const paginatedAnnouncements = useMemo(() => {
+        const start = (page - 1) * pageSize;
+        return filteredAnnouncements.slice(start, start + pageSize);
+    }, [filteredAnnouncements, page, pageSize]);
+
+    // Active Filter Count
+    const activeFilterCount = useMemo(() => {
+        let count = 0;
+        if (scopeFilter !== "ALL") count++;
+        if (priorityFilter !== "ALL") count++;
+        if (statusFilter !== "ALL") count++;
+        return count;
+    }, [scopeFilter, priorityFilter, statusFilter]);
+
+    const hasActiveFilters = searchQuery !== "" || activeFilterCount > 0;
+
+    const clearAllFilters = () => {
+        setSearchQuery("");
+        setScopeFilter("ALL");
+        setPriorityFilter("ALL");
+        setStatusFilter("ALL");
+    };
+
+    const getCleanCardMessage = (item: AnnouncementItem) => {
+        const text = item.content?.trim() || "";
+        if (!text || text.length < 5) {
+            return `Official circular notice broadcast to ${getAudienceLabel(item)}.`;
+        }
+        const firstSentence = text.split(/[.!?]\s+/)[0];
+        return firstSentence.length > 115 ? `${firstSentence.substring(0, 112)}...` : firstSentence;
+    };
 
     return (
-        <div className="w-full max-w-7xl mx-auto space-y-5 pb-12 font-sans text-slate-800">
-            {/* Main Tabs (School vs Department) & Search */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 bg-white px-3 py-2 rounded-xl shadow-2xs">
-                <div className="flex items-center space-x-2">
-                    <button
-                        onClick={() => {
-                            setActiveTab("school");
-                            setSearchQuery("");
-                        }}
-                        className={`flex items-center space-x-2 px-4 py-2.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                            activeTab === "school"
-                                ? "bg-[#1F5380] text-white shadow-xs"
-                                : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
-                        }`}
-                    >
-                        <School className="w-4 h-4" />
-                        <span>School Announcements</span>
-                    </button>
-
-                    <button
-                        onClick={() => {
-                            setActiveTab("department");
-                            setSearchQuery("");
-                        }}
-                        className={`flex items-center space-x-2 px-4 py-2.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                            activeTab === "department"
-                                ? "bg-[#1F5380] text-white shadow-xs"
-                                : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
-                        }`}
-                    >
-                        <Building2 className="w-4 h-4" />
-                        <span>Department Announcements</span>
-                    </button>
-                </div>
-
-                {/* Search Bar & Compact Refresh */}
-                <div className="flex items-center space-x-2 w-full sm:w-auto">
-                    <div className="relative w-full sm:w-64">
-                        <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                        <input
-                            type="text"
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            placeholder={`Search ${activeTab === 'school' ? 'school' : 'department'} notices...`}
-                            className="w-full pl-8 pr-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:outline-hidden focus:ring-2 focus:ring-[#1F5380]/20 focus:border-[#1F5380]"
-                        />
+        <div className="space-y-6 font-sans text-slate-900 max-w-7xl">
+            {/* Error Banner */}
+            {error && (
+                <div role="alert" className="p-4 border-l-4 border-rose-600 bg-rose-50 text-slate-900 text-sm flex items-center justify-between">
+                    <div>
+                        <strong className="font-semibold">There is a problem loading announcements:</strong> {error}
                     </div>
                     <button
-                        onClick={() => loadAnnouncements(true)}
-                        disabled={refreshing}
-                        title="Refresh announcements"
-                        className="p-2 text-slate-600 hover:text-[#1F5380] hover:bg-slate-100 rounded-lg border border-slate-200 transition-colors shrink-0 disabled:opacity-50 cursor-pointer"
+                        type="button"
+                        onClick={() => loadAnnouncements()}
+                        className="text-sm font-semibold text-[#4085b3] hover:underline cursor-pointer ml-4"
                     >
-                        <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? "animate-spin" : ""}`} />
+                        Try again
                     </button>
-                </div>
-            </div>
-
-            {/* Filter Pills */}
-            <div className="flex flex-wrap items-center justify-between gap-2 bg-white p-3 rounded-xl border border-slate-200 text-xs shadow-2xs">
-                <div className="flex flex-wrap items-center gap-2">
-                    <div className="flex items-center space-x-1.5 text-slate-500 font-bold mr-1">
-                        <Filter className="w-3.5 h-3.5" />
-                        <span>Status:</span>
-                    </div>
-                    {[
-                        { id: "ALL", label: "All" },
-                        { id: "PENDING", label: `Pending (${pendingCount})` },
-                        { id: "ACKNOWLEDGED", label: "Acknowledged" }
-                    ].map(st => (
-                        <button
-                            key={st.id}
-                            onClick={() => setStatusFilter(st.id as any)}
-                            className={`px-2.5 py-1 rounded-lg font-semibold transition-all ${
-                                statusFilter === st.id
-                                    ? "bg-[#1F5380] text-white shadow-2xs"
-                                    : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-                            }`}
-                        >
-                            {st.label}
-                        </button>
-                    ))}
-
-                    <div className="h-4 w-px bg-slate-200 mx-1 hidden sm:block" />
-
-                    <div className="flex items-center space-x-1 text-slate-500 font-bold">
-                        <span>Priority:</span>
-                    </div>
-                    {["ALL", "URGENT", "HIGH", "NORMAL"].map(p => (
-                        <button
-                            key={p}
-                            onClick={() => setPriorityFilter(p as any)}
-                            className={`px-2.5 py-1 rounded-lg font-semibold transition-all ${
-                                priorityFilter === p
-                                    ? "bg-slate-800 text-white shadow-2xs"
-                                    : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-                            }`}
-                        >
-                            {p}
-                        </button>
-                    ))}
-                </div>
-
-                <span className="text-xs text-slate-400 font-medium">
-                    Showing {filteredAnnouncements.length} records
-                </span>
-            </div>
-
-            {/* Feed of Notices */}
-            {filteredAnnouncements.length === 0 ? (
-                <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center text-slate-400 space-y-2">
-                    <Megaphone className="w-10 h-10 mx-auto stroke-1" />
-                    <h3 className="text-sm font-bold text-slate-700">No Announcements Found</h3>
-                    <p className="text-xs text-slate-400">
-                        {searchQuery ? "No notices matching your search criteria." : `There are no active ${activeTab} announcements right now.`}
-                    </p>
-                </div>
-            ) : (
-                <div className="space-y-4">
-                    {filteredAnnouncements.map((item) => {
-                        const isAck = item.acknowledgments?.some((ack: any) => ack.userId === currentUserId && ack.isAcknowledged);
-                        const priority = (item.priority || "NORMAL").toUpperCase();
-
-                        return (
-                            <div
-                                key={item.id}
-                                className={`bg-white rounded-2xl border p-5 transition-all duration-200 shadow-2xs hover:shadow-xs space-y-3 ${
-                                    isAck ? "border-slate-200" : "border-[#1F5380]/30 bg-[#1F5380]/5"
-                                }`}
-                            >
-                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-slate-100">
-                                    <div className="flex items-center space-x-2">
-                                        <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold tracking-wider uppercase ${
-                                            priority === "URGENT"
-                                                ? "bg-rose-100 text-rose-800 border border-rose-200"
-                                                : priority === "HIGH"
-                                                ? "bg-amber-100 text-amber-800 border border-amber-200"
-                                                : "bg-emerald-100 text-emerald-800 border border-emerald-200"
-                                        }`}>
-                                            {priority} Priority
-                                        </span>
-
-                                        <span className="px-2 py-0.5 bg-slate-100 text-slate-600 rounded-md text-[10px] font-bold uppercase">
-                                            {item.targetAudience || item.target || "All Staff"}
-                                        </span>
-                                    </div>
-
-                                    <div className="flex items-center space-x-3 text-xs text-slate-400">
-                                        <span className="flex items-center space-x-1">
-                                            <Clock className="w-3.5 h-3.5" />
-                                            <span>{new Date(item.createdAt || item.date).toLocaleDateString(undefined, { dateStyle: 'medium' })}</span>
-                                        </span>
-                                        {item.author?.name && (
-                                            <span className="font-medium text-slate-600">
-                                                From: {item.author.name}
-                                            </span>
-                                        )}
-                                    </div>
-                                </div>
-
-                                <div className="space-y-1.5">
-                                    <h3 className="text-base font-extrabold text-slate-900">{item.title}</h3>
-                                    <p className="text-xs text-slate-600 leading-relaxed whitespace-pre-wrap">
-                                        {item.content}
-                                    </p>
-                                </div>
-
-                                {/* Attachments */}
-                                {(() => {
-                                    const itemAttachments: Array<{ url: string; name?: string | null }> = [];
-                                    if (item.attachmentUrl) {
-                                        itemAttachments.push({
-                                            url: item.attachmentUrl,
-                                            name: item.attachmentName || "Attached Document"
-                                        });
-                                    }
-                                    if (Array.isArray(item.attachments)) {
-                                        for (const att of item.attachments) {
-                                            if (att && att.url && att.url !== item.attachmentUrl) {
-                                                itemAttachments.push(att);
-                                            }
-                                        }
-                                    }
-
-                                    if (itemAttachments.length === 0) return null;
-
-                                    return (
-                                        <div className="pt-2 flex flex-wrap gap-2.5">
-                                            {itemAttachments.map((att, attIdx) => {
-                                                const isImg = isImageUrl(att.url, att.name);
-                                                const isPdf = isPdfUrl(att.url, att.name);
-
-                                                if (isPdf) {
-                                                    return (
-                                                        <div key={attIdx} className="rounded-xl border border-slate-200 bg-slate-50/90 p-2.5 max-w-md w-full flex items-center justify-between gap-3 shadow-2xs">
-                                                            <div className="flex items-center space-x-2.5 min-w-0">
-                                                                <div className="w-8 h-8 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center shrink-0 border border-rose-100">
-                                                                    <FileText className="w-4 h-4" />
-                                                                </div>
-                                                                <div className="min-w-0">
-                                                                    <p className="text-xs font-bold text-slate-800 truncate">{att.name || "Document.pdf"}</p>
-                                                                    <p className="text-[10px] text-slate-400 font-medium uppercase">PDF Document</p>
-                                                                </div>
-                                                            </div>
-                                                            <div className="flex items-center space-x-1.5 shrink-0">
-                                                                <button
-                                                                    type="button"
-                                                                    onClick={() => setPreviewMedia({ url: att.url, isPdf: true, name: att.name || "PDF Document" })}
-                                                                    className="px-2.5 py-1 text-xs font-bold text-[#1F5380] hover:bg-[#1F5380]/10 rounded-lg transition-colors flex items-center gap-1 cursor-pointer"
-                                                                >
-                                                                    <Eye className="w-3.5 h-3.5" />
-                                                                    <span>Preview</span>
-                                                                </button>
-                                                                <a
-                                                                    href={att.url}
-                                                                    target="_blank"
-                                                                    rel="noopener noreferrer"
-                                                                    className="px-2.5 py-1 text-xs font-bold text-white bg-[#1F5380] hover:bg-[#18446b] rounded-lg transition-colors flex items-center gap-1 shadow-2xs"
-                                                                >
-                                                                    <span>Open PDF</span>
-                                                                    <ExternalLink className="w-3 h-3" />
-                                                                </a>
-                                                            </div>
-                                                        </div>
-                                                    );
-                                                }
-
-                                                if (isImg) {
-                                                    return (
-                                                        <div key={attIdx} className="relative group rounded-xl overflow-hidden border border-slate-200 bg-slate-50 inline-block max-w-xs shadow-2xs">
-                                                            <img
-                                                                src={att.url}
-                                                                alt={att.name || "Attached Image"}
-                                                                className="max-h-48 w-auto rounded-xl object-contain cursor-pointer transition-transform duration-200 group-hover:scale-[1.01]"
-                                                                onClick={() => setPreviewMedia({ url: att.url, isPdf: false, name: att.name || "Image" })}
-                                                            />
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => setPreviewMedia({ url: att.url, isPdf: false, name: att.name || "Image" })}
-                                                                className="absolute bottom-2 right-2 px-2 py-0.5 rounded-md bg-black/75 text-white text-[10px] font-bold backdrop-blur-xs flex items-center gap-1 cursor-pointer hover:bg-black"
-                                                            >
-                                                                <Eye className="w-3 h-3" />
-                                                                <span>Full View</span>
-                                                            </button>
-                                                        </div>
-                                                    );
-                                                }
-
-                                                return (
-                                                    <a
-                                                        key={attIdx}
-                                                        href={att.url}
-                                                        target="_blank"
-                                                        rel="noopener noreferrer"
-                                                        className="inline-flex items-center space-x-2 px-3 py-2 bg-slate-50 hover:bg-[#1F5380]/10 border border-slate-200 hover:border-[#1F5380]/40 rounded-xl text-xs font-bold text-slate-700 hover:text-[#1F5380] transition-colors"
-                                                    >
-                                                        <Paperclip className="w-3.5 h-3.5 text-slate-400" />
-                                                        <span className="truncate max-w-[200px]">{att.name || "Download Attachment"}</span>
-                                                        <ExternalLink className="w-3 h-3 text-slate-400" />
-                                                    </a>
-                                                );
-                                            })}
-                                        </div>
-                                    );
-                                })()}
-
-                                {/* Footer Action */}
-                                <div className="pt-2 flex items-center justify-between border-t border-slate-100">
-                                    {isAck ? (
-                                        <div className="flex items-center space-x-1.5 text-xs font-bold text-emerald-700 bg-emerald-50 px-3 py-1.5 rounded-lg border border-emerald-200">
-                                            <CheckCheck className="w-4 h-4 text-emerald-600" />
-                                            <span>Receipt Acknowledged</span>
-                                        </div>
-                                    ) : (
-                                        <button
-                                            type="button"
-                                            onClick={() => handleConfirmReceipt(item.id)}
-                                            disabled={acknowledgingId === item.id}
-                                            className="flex items-center space-x-2 px-4 py-2 bg-[#1F5380] hover:bg-[#18446b] text-white font-bold rounded-xl text-xs transition-all shadow-2xs active:scale-95 disabled:opacity-50 cursor-pointer"
-                                        >
-                                            <CheckCircle2 className="w-4 h-4" />
-                                            <span>{acknowledgingId === item.id ? "Confirming..." : "Confirm Receipt (Acknowledge)"}</span>
-                                        </button>
-                                    )}
-
-                                    <span className="text-[11px] text-slate-400">
-                                        {activeTab === "school" ? "School Administration" : "Department Directorate"}
-                                    </span>
-                                </div>
-                            </div>
-                        );
-                    })}
                 </div>
             )}
 
-            {/* Lightbox / Media Preview Modal */}
-            {previewMedia && (
-                <div className="fixed inset-0 z-50 bg-slate-900/80 backdrop-blur-xs flex items-center justify-center p-4">
-                    <div className="bg-white rounded-2xl max-w-4xl w-full p-4 space-y-3 shadow-2xl relative">
-                        <div className="flex items-center justify-between border-b pb-2">
-                            <h3 className="text-sm font-bold text-slate-800 truncate pr-4">{previewMedia.name || "Attachment Preview"}</h3>
-                            <div className="flex items-center space-x-2 shrink-0">
-                                <a 
-                                    href={previewMedia.url} 
-                                    target="_blank" 
-                                    rel="noreferrer"
-                                    className="px-2.5 py-1 hover:bg-slate-100 rounded-lg text-slate-600 flex items-center gap-1 text-xs font-bold"
-                                >
-                                    <ExternalLink className="w-3.5 h-3.5" />
-                                    <span>Open In New Tab</span>
-                                </a>
+            {/* 1. PAGE HEADER (Clean single-line header matching Directives / Programs UI) */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-200">
+                <h1 className="text-2xl font-bold tracking-tight text-slate-900">
+                    Announcements and circulars
+                </h1>
+
+                <div className="flex items-center gap-2 self-start sm:self-auto text-xs text-slate-500">
+                    <span>Active notices: <strong className="text-slate-800 font-semibold">{announcements.length}</strong></span>
+                </div>
+            </div>
+
+            {/* 2. TOOLBAR: SEARCH, FILTERS & VIEW SWITCHER (Exact 1:1 match) */}
+            <div className="space-y-3 pt-1">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                    {/* Left: Search input + Filters toggle button + Refresh */}
+                    <div className="flex items-center gap-2.5 flex-1 max-w-lg">
+                        <div className="relative flex-1">
+                            <Search className="w-4 h-4 absolute left-3 top-2.5 text-slate-400 pointer-events-none" />
+                            <input
+                                id="teacher-announcement-search"
+                                type="text"
+                                value={searchQuery}
+                                onChange={e => setSearchQuery(e.target.value)}
+                                placeholder="Search announcements by title, department, or keywords..."
+                                className="w-full pl-9 pr-8 py-2 text-sm bg-white border border-slate-300 rounded text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-[#4085b3] focus:border-[#4085b3]"
+                            />
+                            {searchQuery && (
                                 <button
-                                    onClick={() => setPreviewMedia(null)}
-                                    className="p-1 hover:bg-slate-100 rounded-lg text-slate-500 cursor-pointer"
+                                    type="button"
+                                    onClick={() => setSearchQuery("")}
+                                    className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600 cursor-pointer"
+                                    aria-label="Clear search"
                                 >
-                                    <X className="w-5 h-5" />
+                                    <X className="w-4 h-4" />
                                 </button>
-                            </div>
-                        </div>
-                        <div className="h-[75vh] overflow-hidden flex items-center justify-center bg-slate-50 rounded-xl">
-                            {previewMedia.isPdf ? (
-                                <iframe src={previewMedia.url} className="w-full h-full rounded-lg border-0 bg-white" />
-                            ) : (
-                                <img src={previewMedia.url} alt="Attachment" className="max-h-full max-w-full object-contain" />
                             )}
                         </div>
+
+                        {/* Filters Toggle Button */}
+                        <button
+                            type="button"
+                            onClick={() => setShowFilters(prev => !prev)}
+                            className={`px-3 py-2 text-sm font-medium rounded border transition-all duration-200 flex items-center gap-1.5 cursor-pointer shrink-0 group/filter ${
+                                showFilters || activeFilterCount > 0
+                                    ? "bg-[#4085b3] text-white border-[#4085b3]"
+                                    : "bg-white text-slate-700 border-slate-300 hover:bg-[#4085b3] hover:text-white hover:border-[#4085b3]"
+                            }`}
+                            title="Filter announcements"
+                        >
+                            <Filter className={`w-4 h-4 transition-colors ${showFilters || activeFilterCount > 0 ? "text-white" : "text-slate-500 group-hover/filter:text-white"}`} />
+                            <span>Filters</span>
+                            {activeFilterCount > 0 && (
+                                <span className={`text-xs px-1.5 py-0.2 rounded-full font-bold ${
+                                    showFilters || activeFilterCount > 0 ? "bg-white text-[#4085b3]" : "bg-[#4085b3] text-white"
+                                }`}>
+                                    {activeFilterCount}
+                                </span>
+                            )}
+                        </button>
+
+                        {/* Refresh */}
+                        <button
+                            type="button"
+                            onClick={() => loadAnnouncements(true)}
+                            className="p-2 border border-slate-300 bg-white hover:bg-[#4085b3] text-slate-700 hover:text-white hover:border-[#4085b3] rounded transition-all duration-200 cursor-pointer shrink-0 group/refresh"
+                            title="Reload registry data"
+                            aria-label="Reload registry data"
+                        >
+                            <RefreshCw className={`w-4 h-4 transition-colors ${refreshing ? "animate-spin text-[#4085b3]" : "text-slate-500 group-hover/refresh:text-white"}`} />
+                        </button>
+                    </div>
+
+                    {/* Right: Table / Cards View Switcher */}
+                    <div className="flex items-center gap-1">
+                        <button
+                            type="button"
+                            onClick={() => setViewMode("table")}
+                            className={`px-2.5 py-1.5 text-xs font-medium rounded transition-all duration-200 flex items-center gap-1.5 cursor-pointer group/tbl ${
+                                viewMode === "table"
+                                    ? "bg-[#4085b3] text-white"
+                                    : "text-slate-700 border border-slate-300 bg-white hover:bg-[#4085b3] hover:text-white hover:border-[#4085b3]"
+                            }`}
+                            title="Display as administrative table"
+                        >
+                            <LayoutList className={`w-3.5 h-3.5 transition-colors ${viewMode === "table" ? "text-white" : "text-slate-500 group-hover/tbl:text-white"}`} />
+                            <span>Table</span>
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setViewMode("cards")}
+                            className={`px-2.5 py-1.5 text-xs font-medium rounded transition-all duration-200 flex items-center gap-1.5 cursor-pointer group/crd ${
+                                viewMode === "cards"
+                                    ? "bg-[#4085b3] text-white"
+                                    : "text-slate-700 border border-slate-300 bg-white hover:bg-[#4085b3] hover:text-white hover:border-[#4085b3]"
+                            }`}
+                            title="Display as DfE summary cards"
+                        >
+                            <LayoutGrid className={`w-3.5 h-3.5 transition-colors ${viewMode === "cards" ? "text-white" : "text-slate-500 group-hover/crd:text-white"}`} />
+                            <span>Cards</span>
+                        </button>
+                    </div>
+                </div>
+
+                {/* Active Filter Chips / Tags */}
+                {activeFilterCount > 0 && (
+                    <div className="flex flex-wrap items-center gap-2 text-xs">
+                        <span className="text-slate-500 font-medium">Applied:</span>
+                        {scopeFilter !== "ALL" && (
+                            <button
+                                type="button"
+                                onClick={() => setScopeFilter("ALL")}
+                                className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-slate-100 hover:bg-slate-200 text-slate-800 transition-colors cursor-pointer"
+                            >
+                                <span>Scope: {scopeFilter === "SCHOOL" ? "School-wide" : "Department"}</span>
+                                <X className="w-3.5 h-3.5 text-slate-500 hover:text-slate-900" />
+                            </button>
+                        )}
+                        {priorityFilter !== "ALL" && (
+                            <button
+                                type="button"
+                                onClick={() => setPriorityFilter("ALL")}
+                                className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-slate-100 hover:bg-slate-200 text-slate-800 transition-colors cursor-pointer"
+                            >
+                                <span>Priority: {priorityFilter.charAt(0) + priorityFilter.slice(1).toLowerCase()}</span>
+                                <X className="w-3.5 h-3.5 text-slate-500 hover:text-slate-900" />
+                            </button>
+                        )}
+                        {statusFilter !== "ALL" && (
+                            <button
+                                type="button"
+                                onClick={() => setStatusFilter("ALL")}
+                                className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-slate-100 hover:bg-slate-200 text-slate-800 transition-colors cursor-pointer"
+                            >
+                                <span>Status: {statusFilter === "ACKNOWLEDGED" ? "Acknowledged" : "Pending receipt"}</span>
+                                <X className="w-3.5 h-3.5 text-slate-500 hover:text-slate-900" />
+                            </button>
+                        )}
+                        <button
+                            type="button"
+                            onClick={clearAllFilters}
+                            className="text-xs text-[#4085b3] hover:underline font-semibold ml-1 cursor-pointer"
+                        >
+                            Clear all
+                        </button>
+                    </div>
+                )}
+
+                {/* Collapsible Secondary Filters Panel */}
+                {showFilters && (
+                    <div className="p-4 bg-slate-50 border border-slate-200 rounded grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        {/* Scope */}
+                        <div>
+                            <label htmlFor="teacher-scope-filter" className="block text-xs font-semibold text-slate-700 mb-1">
+                                Scope of notice
+                            </label>
+                            <select
+                                id="teacher-scope-filter"
+                                value={scopeFilter}
+                                onChange={e => setScopeFilter(e.target.value as any)}
+                                className="w-full py-1.5 px-2.5 text-sm bg-white border border-slate-300 rounded text-slate-800 focus:outline-none focus:ring-1 focus:ring-[#4085b3] focus:border-[#4085b3] cursor-pointer"
+                            >
+                                <option value="ALL">All notices ({announcements.length})</option>
+                                <option value="SCHOOL">School-wide notices</option>
+                                <option value="DEPARTMENT">Department notices</option>
+                            </select>
+                        </div>
+
+                        {/* Priority */}
+                        <div>
+                            <label htmlFor="teacher-priority-filter" className="block text-xs font-semibold text-slate-700 mb-1">
+                                Priority level
+                            </label>
+                            <select
+                                id="teacher-priority-filter"
+                                value={priorityFilter}
+                                onChange={e => setPriorityFilter(e.target.value)}
+                                className="w-full py-1.5 px-2.5 text-sm bg-white border border-slate-300 rounded text-slate-800 focus:outline-none focus:ring-1 focus:ring-[#4085b3] focus:border-[#4085b3] cursor-pointer"
+                            >
+                                <option value="ALL">All priorities</option>
+                                <option value="URGENT">Urgent</option>
+                                <option value="HIGH">High</option>
+                                <option value="NORMAL">Normal</option>
+                                <option value="LOW">Low</option>
+                            </select>
+                        </div>
+
+                        {/* Your Receipt Status */}
+                        <div>
+                            <label htmlFor="teacher-status-filter" className="block text-xs font-semibold text-slate-700 mb-1">
+                                Your acknowledgment
+                            </label>
+                            <select
+                                id="teacher-status-filter"
+                                value={statusFilter}
+                                onChange={e => setStatusFilter(e.target.value as any)}
+                                className="w-full py-1.5 px-2.5 text-sm bg-white border border-slate-300 rounded text-slate-800 focus:outline-none focus:ring-1 focus:ring-[#4085b3] focus:border-[#4085b3] cursor-pointer"
+                            >
+                                <option value="ALL">All receipt statuses</option>
+                                <option value="PENDING">Pending receipt</option>
+                                <option value="ACKNOWLEDGED">Acknowledged by you</option>
+                            </select>
+                        </div>
+                    </div>
+                )}
+            </div>
+
+            {/* 3. REGISTRY CONTENT: TABLE VIEW OR CARDS VIEW */}
+            <div>
+                {/* Loading state */}
+                {loading && (
+                    <div className="py-20 text-center text-slate-500">
+                        <RefreshCw className="w-6 h-6 animate-spin mx-auto text-[#4085b3] mb-2" />
+                        <span className="text-sm font-medium">Loading announcements...</span>
+                    </div>
+                )}
+
+                {/* Empty State */}
+                {!loading && filteredAnnouncements.length === 0 && (
+                    <div className="py-16 text-center border-t border-b border-slate-200">
+                        <FileText className="w-10 h-10 mx-auto text-slate-300 stroke-1 mb-2" />
+                        <h2 className="text-base font-semibold text-slate-900">No announcements found</h2>
+                        <p className="text-sm text-slate-500 max-w-sm mx-auto mt-1">
+                            {hasActiveFilters
+                                ? "No records match your selected filters. Try clearing filters to see all announcements."
+                                : "There are no circular notices active for your faculty desk right now."}
+                        </p>
+                        {hasActiveFilters && (
+                            <button
+                                type="button"
+                                onClick={clearAllFilters}
+                                className="mt-4 px-3 py-1.5 border border-slate-300 text-slate-700 hover:bg-slate-50 rounded text-sm font-medium cursor-pointer"
+                            >
+                                Clear all filters
+                            </button>
+                        )}
+                    </div>
+                )}
+
+                {/* OPTION A: THE ADMINISTRATIVE TABLE (Exact 1:1 match) */}
+                {!loading && filteredAnnouncements.length > 0 && viewMode === "table" && (
+                    <div className="overflow-x-auto border-t border-slate-200">
+                        <table className="w-full table-fixed text-left text-sm border-collapse">
+                            <caption className="sr-only">Faculty announcements registry</caption>
+                            <thead>
+                                <tr className="border-b-2 border-slate-300 text-xs font-semibold text-slate-700">
+                                    <th scope="col" className="py-3 pr-3 font-semibold w-[30%]">Announcement</th>
+                                    <th scope="col" className="py-3 px-3 font-semibold w-[18%] whitespace-nowrap">Issuing authority</th>
+                                    <th scope="col" className="py-3 px-3 font-semibold w-[16%] whitespace-nowrap">Target scope</th>
+                                    <th scope="col" className="py-3 px-3 font-semibold w-[13%] whitespace-nowrap">Published date</th>
+                                    <th scope="col" className="py-3 px-2 font-semibold w-[10%] whitespace-nowrap">Priority</th>
+                                    <th scope="col" className="py-3 px-2 font-semibold w-[11%] whitespace-nowrap">Your status</th>
+                                    <th scope="col" className="py-3 pl-2 pr-1 font-semibold w-[8%] text-right whitespace-nowrap">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-200">
+                                {paginatedAnnouncements.map(item => {
+                                    const priorityLabel = (item.priority || "NORMAL").charAt(0) + (item.priority || "NORMAL").slice(1).toLowerCase();
+                                    const statusObj = getTeacherItemStatus(item);
+
+                                    return (
+                                        <tr
+                                            key={item.id}
+                                            onClick={() => setSelectedAnnouncement(item)}
+                                            className="hover:bg-slate-50/90 transition-colors cursor-pointer group"
+                                        >
+                                            {/* Announcement Title */}
+                                            <td className="py-3.5 pr-3 overflow-hidden">
+                                                <div className="flex items-center gap-1.5 min-w-0">
+                                                    <span
+                                                        className="text-[#4085b3] group-hover:underline font-semibold text-sm truncate block"
+                                                        title={item.title}
+                                                    >
+                                                        {item.title}
+                                                    </span>
+                                                    {item.attachmentUrl && (
+                                                        <span title="Contains attachment" className="text-slate-400 shrink-0">
+                                                            <Paperclip className="w-3.5 h-3.5" />
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </td>
+
+                                            {/* Issuing Authority */}
+                                            <td className="py-3.5 px-3 text-xs text-slate-700 truncate" title={item.author?.name || "School Administration"}>
+                                                {item.author?.name || "School Administration"}
+                                            </td>
+
+                                            {/* Target Scope */}
+                                            <td className="py-3.5 px-3 text-xs text-slate-700 truncate" title={getAudienceLabel(item)}>
+                                                {getAudienceLabel(item)}
+                                            </td>
+
+                                            {/* Published Date */}
+                                            <td className="py-3.5 px-3 text-xs text-slate-700 tabular-nums whitespace-nowrap">
+                                                {new Date(item.createdAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
+                                            </td>
+
+                                            {/* Priority */}
+                                            <td className="py-3.5 px-2 text-xs text-slate-700 whitespace-nowrap">
+                                                {priorityLabel}
+                                            </td>
+
+                                            {/* Status */}
+                                            <td className="py-3.5 px-2 text-xs text-slate-700 whitespace-nowrap">
+                                                {statusObj.label}
+                                            </td>
+
+                                            {/* Action Link */}
+                                            <td className="py-3.5 pl-2 pr-1 text-right whitespace-nowrap">
+                                                <span className="text-xs font-semibold text-[#4085b3] group-hover:underline inline-flex items-center gap-0.5">
+                                                    <span>View</span>
+                                                    <ArrowUpRight className="w-3.5 h-3.5" />
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
+                            </tbody>
+                        </table>
+                    </div>
+                )}
+
+                {/* OPTION B: DfE CLEAN CARDS (Exact 1:1 match) */}
+                {!loading && filteredAnnouncements.length > 0 && viewMode === "cards" && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 pt-1">
+                        {paginatedAnnouncements.map(item => (
+                            <div
+                                key={item.id}
+                                onClick={() => setSelectedAnnouncement(item)}
+                                className="group relative bg-white border border-slate-300 p-6 flex flex-col justify-between min-h-[175px] hover:bg-[#002d54] hover:border-[#002d54] transition-all duration-150 cursor-pointer"
+                            >
+                                <div>
+                                    {/* Header: Title */}
+                                    <h2 className="text-xl font-bold text-[#4085b3] group-hover:text-white transition-colors leading-snug break-words [overflow-wrap:anywhere] [word-break:break-word] line-clamp-2">
+                                        {item.title}
+                                    </h2>
+
+                                    {/* Single Clean Message */}
+                                    <p className="text-sm text-slate-800 group-hover:text-white transition-colors mt-2.5 leading-relaxed line-clamp-2 break-words">
+                                        {getCleanCardMessage(item)}
+                                    </p>
+                                </div>
+
+                                {/* Minimal Footer */}
+                                <div className="mt-5 pt-3 border-t border-slate-200 group-hover:border-white/20 flex items-center justify-between text-xs text-slate-500 group-hover:text-white/80 transition-colors">
+                                    <span className="tabular-nums">
+                                        Due: {new Date(item.expiresAt || item.createdAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
+                                    </span>
+                                    <span className="text-xs font-medium text-slate-600 group-hover:text-white/90">
+                                        {getTeacherItemStatus(item).label}
+                                    </span>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
+
+                {/* 4. PAGINATION */}
+                {!loading && filteredAnnouncements.length > 0 && (
+                    <div className="py-4 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-600 mt-4">
+                        <div>
+                            Showing <strong className="text-slate-900 font-semibold">{(page - 1) * pageSize + 1}</strong> to{" "}
+                            <strong className="text-slate-900 font-semibold">{Math.min(page * pageSize, filteredAnnouncements.length)}</strong> of{" "}
+                            <strong className="text-slate-900 font-semibold">{filteredAnnouncements.length}</strong> circulars
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                            <button
+                                type="button"
+                                onClick={() => setPage(prev => Math.max(1, prev - 1))}
+                                disabled={page === 1}
+                                className={`px-2.5 py-1 rounded border border-slate-300 text-xs font-medium transition-colors ${
+                                    page === 1 ? "text-slate-300 border-slate-200 cursor-not-allowed" : "text-slate-700 hover:bg-slate-50 cursor-pointer"
+                                }`}
+                            >
+                                Previous
+                            </button>
+
+                            <span className="px-1 text-slate-600">
+                                Page {page} of {totalPages}
+                            </span>
+
+                            <button
+                                type="button"
+                                onClick={() => setPage(prev => Math.min(totalPages, prev + 1))}
+                                disabled={page === totalPages}
+                                className={`px-2.5 py-1 rounded border border-slate-300 text-xs font-medium transition-colors ${
+                                    page === totalPages ? "text-slate-300 border-slate-200 cursor-not-allowed" : "text-slate-700 hover:bg-slate-50 cursor-pointer"
+                                }`}
+                            >
+                                Next
+                            </button>
+                        </div>
+                    </div>
+                )}
+            </div>
+
+            {/* 5. SLIDE-OVER DETAIL DRAWER (Exact 1:1 match with Screenshot 3) */}
+            {selectedAnnouncement && (
+                <div className="fixed inset-0 z-50 overflow-hidden" role="dialog" aria-modal="true" aria-labelledby="tch-ann-title">
+                    {/* Backdrop */}
+                    <div
+                        className="absolute inset-0 bg-slate-900/40 transition-opacity"
+                        onClick={() => setSelectedAnnouncement(null)}
+                    />
+
+                    {/* Drawer Panel */}
+                    <div className="fixed inset-y-0 right-0 max-w-2xl w-full bg-white shadow-xl flex flex-col z-50 border-l border-slate-300 overflow-hidden">
+                        {/* Header */}
+                        <div className="p-5 sm:p-6 border-b border-slate-200 bg-slate-50/90 flex items-start justify-between gap-4 shrink-0">
+                            <div className="min-w-0 flex-1 pr-2">
+                                <div className="flex items-center gap-2 mb-2 flex-wrap text-xs text-slate-500">
+                                    <span className="font-mono tracking-wide uppercase">
+                                        REF: ANN-{selectedAnnouncement.id.substring(0, 8).toUpperCase()}
+                                    </span>
+                                    <span>·</span>
+                                    <span className="font-medium text-slate-700">
+                                        {getTeacherItemStatus(selectedAnnouncement).label}
+                                    </span>
+                                </div>
+                                <h2
+                                    id="tch-ann-title"
+                                    className="text-xl sm:text-2xl font-bold text-slate-900 leading-snug break-words [overflow-wrap:anywhere] [word-break:break-word]"
+                                >
+                                    {selectedAnnouncement.title}
+                                </h2>
+                            </div>
+
+                            <button
+                                type="button"
+                                onClick={() => setSelectedAnnouncement(null)}
+                                className="p-1.5 text-slate-500 hover:text-slate-800 hover:bg-slate-200 rounded transition-colors cursor-pointer shrink-0 -mr-1 -mt-1"
+                                aria-label="Close"
+                            >
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+
+                        {/* Scrollable Content */}
+                        <div className="p-6 overflow-y-auto space-y-6 flex-1 text-slate-900">
+                            {/* Summary List */}
+                            <dl className="divide-y divide-slate-200 border-t border-b border-slate-200 text-sm">
+                                <div className="py-3 grid grid-cols-3 gap-2">
+                                    <dt className="text-slate-600 font-medium">Issuing authority</dt>
+                                    <dd className="col-span-2 text-slate-900">
+                                        {selectedAnnouncement.author?.name || "School Administration"} (SCHOOL)
+                                    </dd>
+                                </div>
+                                <div className="py-3 grid grid-cols-3 gap-2">
+                                    <dt className="text-slate-600 font-medium">Target scope</dt>
+                                    <dd className="col-span-2 text-slate-900">
+                                        {getAudienceLabel(selectedAnnouncement)}
+                                    </dd>
+                                </div>
+                                <div className="py-3 grid grid-cols-3 gap-2">
+                                    <dt className="text-slate-600 font-medium">Published date</dt>
+                                    <dd className="col-span-2 text-slate-900 tabular-nums">
+                                        Effective from {new Date(selectedAnnouncement.createdAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
+                                    </dd>
+                                </div>
+                                <div className="py-3 grid grid-cols-3 gap-2">
+                                    <dt className="text-slate-600 font-medium">Priority</dt>
+                                    <dd className="col-span-2 text-slate-900">
+                                        {(selectedAnnouncement.priority || "NORMAL").charAt(0) + (selectedAnnouncement.priority || "NORMAL").slice(1).toLowerCase()}
+                                    </dd>
+                                </div>
+                                <div className="py-3 grid grid-cols-3 gap-2">
+                                    <dt className="text-slate-600 font-medium">Current status</dt>
+                                    <dd className="col-span-2 text-slate-900">
+                                        {getTeacherItemStatus(selectedAnnouncement).label}
+                                    </dd>
+                                </div>
+                            </dl>
+
+                            {/* Official Announcement Text */}
+                            <div>
+                                <h3 className="text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">
+                                    OFFICIAL ANNOUNCEMENT TEXT
+                                </h3>
+                                <div className="text-sm text-slate-900 leading-relaxed whitespace-pre-wrap break-words [overflow-wrap:anywhere] [word-break:break-word] bg-slate-50 p-3.5 border-l-3 border-[#4085b3]">
+                                    {selectedAnnouncement.content}
+                                </div>
+                            </div>
+
+                            {/* Supporting Documentation */}
+                            {selectedAnnouncement.attachmentUrl && (
+                                <div>
+                                    <h3 className="text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">
+                                        Supporting documentation
+                                    </h3>
+                                    {isImageUrl(selectedAnnouncement.attachmentUrl, selectedAnnouncement.attachmentName) ? (
+                                        <div className="space-y-2">
+                                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                                            <img
+                                                src={selectedAnnouncement.attachmentUrl}
+                                                alt={selectedAnnouncement.attachmentName || "Attached Image"}
+                                                className="max-h-56 rounded border border-slate-200 object-contain mx-auto cursor-pointer"
+                                                onClick={() => setPreviewMedia({ url: selectedAnnouncement.attachmentUrl!, isPdf: false, name: selectedAnnouncement.attachmentName || undefined })}
+                                            />
+                                            <div className="text-center">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setPreviewMedia({ url: selectedAnnouncement.attachmentUrl!, isPdf: false, name: selectedAnnouncement.attachmentName || undefined })}
+                                                    className="text-xs text-[#4085b3] hover:underline font-medium inline-flex items-center gap-1 cursor-pointer"
+                                                >
+                                                    <span>View full image</span>
+                                                    <ExternalLink className="w-3 h-3" />
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div className="flex items-center justify-between p-3 border border-slate-200 text-sm">
+                                            <div className="flex items-center gap-2 truncate">
+                                                <Paperclip className="w-4 h-4 text-slate-500 shrink-0" />
+                                                <span className="truncate">{selectedAnnouncement.attachmentName || "Guideline Document"}</span>
+                                            </div>
+                                            <a
+                                                href={selectedAnnouncement.attachmentUrl}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="text-sm text-[#4085b3] hover:underline font-semibold inline-flex items-center gap-1 shrink-0 ml-3"
+                                            >
+                                                <ArrowUpRight className="w-3.5 h-3.5" />
+                                                <span>Download</span>
+                                            </a>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                            {/* Compliance & Acknowledgment Action Box */}
+                            <div className="border border-slate-200 p-4 bg-slate-50 space-y-3">
+                                <div className="flex items-center justify-between">
+                                    <h3 className="text-sm font-semibold text-slate-900">
+                                        Compliance & acknowledgment
+                                    </h3>
+                                    {getTeacherItemStatus(selectedAnnouncement).isAck ? (
+                                        <span className="text-xs text-emerald-700 font-semibold flex items-center gap-1">
+                                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                                            <span>Confirmed by your desk</span>
+                                        </span>
+                                    ) : (
+                                        <span className="text-xs text-amber-700 font-semibold flex items-center gap-1">
+                                            <Clock className="w-3.5 h-3.5 text-amber-600" />
+                                            <span>Pending your confirmation</span>
+                                        </span>
+                                    )}
+                                </div>
+
+                                {getTeacherItemStatus(selectedAnnouncement).isAck ? (
+                                    <p className="text-xs text-slate-500">
+                                        Your confirmation of receipt was recorded on{" "}
+                                        <strong className="text-slate-700 font-medium">
+                                            {new Date(getTeacherItemStatus(selectedAnnouncement).acknowledgedAt || "").toLocaleString()}
+                                        </strong>.
+                                    </p>
+                                ) : (
+                                    <div className="space-y-2 pt-1">
+                                        <p className="text-xs text-slate-600">
+                                            Please confirm that you have received, read, and acknowledged this official administrative notice.
+                                        </p>
+                                        <button
+                                            type="button"
+                                            disabled={acknowledgingId === selectedAnnouncement.id}
+                                            onClick={() => handleConfirmReceipt(selectedAnnouncement.id)}
+                                            className="px-4 py-2 bg-[#4085b3] hover:bg-[#32698e] text-white rounded text-xs font-semibold inline-flex items-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50"
+                                        >
+                                            {acknowledgingId === selectedAnnouncement.id ? (
+                                                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                            ) : (
+                                                <CheckCheck className="w-3.5 h-3.5" />
+                                            )}
+                                            <span>Confirm receipt</span>
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Drawer Footer */}
+                        <div className="p-4 border-t border-slate-200 bg-slate-50 flex items-center justify-end shrink-0">
+                            <button
+                                type="button"
+                                onClick={() => setSelectedAnnouncement(null)}
+                                className="px-4 py-2 border border-slate-300 text-slate-700 hover:bg-slate-100 rounded text-sm font-medium transition-colors cursor-pointer bg-white"
+                            >
+                                Close
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Media Lightbox */}
+            {previewMedia && (
+                <div
+                    className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 animate-in fade-in"
+                    onClick={() => setPreviewMedia(null)}
+                >
+                    <div
+                        className="relative max-w-3xl max-h-[85vh] bg-white rounded-md overflow-hidden p-3 shadow-2xl"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <div className="flex items-center justify-between pb-2 mb-2 border-b border-slate-200">
+                            <span className="text-xs font-bold text-slate-800 truncate">
+                                {previewMedia.name || "Attachment Preview"}
+                            </span>
+                            <button
+                                onClick={() => setPreviewMedia(null)}
+                                className="p-1 rounded text-slate-400 hover:text-slate-700 cursor-pointer"
+                            >
+                                <X className="w-4 h-4" />
+                            </button>
+                        </div>
+                        {previewMedia.isPdf ? (
+                            <iframe
+                                src={previewMedia.url}
+                                title="PDF Preview"
+                                className="w-full h-[70vh] rounded border border-slate-200"
+                            />
+                        ) : (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                                src={previewMedia.url}
+                                alt="Preview"
+                                className="max-h-[70vh] w-auto object-contain rounded mx-auto"
+                            />
+                        )}
                     </div>
                 </div>
             )}

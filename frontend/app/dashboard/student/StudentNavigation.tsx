@@ -15,19 +15,21 @@ import {
     MessageSquare,
     Sparkles,
     User,
+    ChevronLeft,
+    ChevronRight,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { fetchApi } from "../../../lib/api";
 import StudentSubNavigation, { type StudentNavGroup } from "./components/StudentSubNavigation";
 
-const studentNavGroups: StudentNavGroup[] = [
+const coreLearningGroups: StudentNavGroup[] = [
     {
         key: "profile",
         label: "My Profile",
         icon: User,
         links: [
             { label: "Student Information", href: "/dashboard/student/profile/information" },
-            { label: "School and Enrollment", href: "/dashboard/student/profile/enrollment" },
+            { label: "School & Enrollment", href: "/dashboard/student/profile/enrollment" },
         ],
     },
     {
@@ -35,11 +37,14 @@ const studentNavGroups: StudentNavGroup[] = [
         label: "My Classes",
         icon: BookOpen,
         links: [
-            { label: "Subjects and Teachers", href: "/dashboard/student/classes/subjects" },
+            { label: "Subjects & Teachers", href: "/dashboard/student/classes/subjects" },
             { label: "Class Schedule", href: "/dashboard/student/classes/schedule" },
             { label: "Learning Resources", href: "/dashboard/student/classes/resources" },
         ],
     },
+];
+
+const progressRecordsGroups: StudentNavGroup[] = [
     {
         key: "attendance",
         label: "My Attendance",
@@ -55,18 +60,18 @@ const studentNavGroups: StudentNavGroup[] = [
         label: "My Assessments",
         icon: BarChart3,
         links: [
-            { label: "Tests and Quizzes", href: "/dashboard/student/assessments" },
-            { label: "Results and Feedback", href: "/dashboard/student/assessments/results" },
+            { label: "Tests & Quizzes", href: "/dashboard/student/assessments" },
+            { label: "Results & Feedback", href: "/dashboard/student/assessments/results" },
             { label: "Performance Trends", href: "/dashboard/student/assessments/performance" },
         ],
     },
     {
         key: "learning",
-        label: "My Learning Activities",
+        label: "Learning Activities",
         icon: Activity,
         links: [
             { label: "Assignments", href: "/dashboard/student/learning/assignments" },
-            { label: "Practice and Quizzes", href: "/dashboard/student/learning/practice" },
+            { label: "Practice & Quizzes", href: "/dashboard/student/learning/practice" },
             { label: "Submitted Work", href: "/dashboard/student/learning/submissions" },
         ],
     },
@@ -81,6 +86,9 @@ const studentNavGroups: StudentNavGroup[] = [
             { label: "Intervention & Progress", href: "/dashboard/student/support/progress" },
         ],
     },
+];
+
+const communityToolsGroups: StudentNavGroup[] = [
     {
         key: "communication",
         label: "Communication",
@@ -128,10 +136,10 @@ export default function StudentNavigation({ collapsed, onToggleCollapse }: { col
     });
 
     const toggleGroup = (key: string) => {
-        setOpenGroups((current) => {
-            const willOpen = !current[key];
-            return Object.fromEntries(Object.keys(current).map((groupKey) => [groupKey, groupKey === key && willOpen])) as Record<string, boolean>;
-        });
+        setOpenGroups((current) => ({
+            ...current,
+            [key]: !current[key],
+        }));
     };
 
     const [unreadCount, setUnreadCount] = useState<number>(0);
@@ -150,94 +158,197 @@ export default function StudentNavigation({ collapsed, onToggleCollapse }: { col
     const isActive = (href: string) => pathname === href || pathname.startsWith(`${href}/`);
 
     return (
-        <aside className={`h-full bg-[#184973] border-r border-[#265e8e] flex flex-col hidden md:flex overflow-y-auto text-blue-100 font-sans shadow-lg shrink-0 transition-all duration-300 ease-in-out ${collapsed ? "w-16" : "w-64"}`} style={{ scrollbarWidth: "none", msOverflowStyle: "none" } as React.CSSProperties}>
-            <div className="flex items-center justify-between px-3 pt-4 pb-2 border-b border-[#265e8e]/50">
-                {!collapsed && <p className="text-[10px] text-blue-200/90 font-bold uppercase tracking-widest px-1">Student Workspace</p>}
+        <aside
+            className={`h-full bg-[#f8fafc] border-r border-slate-200 flex flex-col hidden md:flex overflow-y-auto scrollbar-hide text-slate-700 font-sans shrink-0 transition-all duration-200 ease-in-out ${
+                collapsed ? "w-16" : "w-64"
+            }`}
+        >
+            {/* Masthead Header */}
+            <div className="flex items-center justify-between px-3.5 py-3 border-b border-slate-200 bg-white shrink-0">
+                {!collapsed && (
+                    <div className="min-w-0 pr-2">
+                        <span className="text-xs font-bold text-slate-900 truncate block">
+                            Student Portal
+                        </span>
+                        <span className="text-[10px] font-medium text-slate-500 block truncate">
+                            Academic & Learning Records
+                        </span>
+                    </div>
+                )}
                 <button
                     type="button"
                     onClick={onToggleCollapse}
                     title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
                     aria-label={collapsed ? "Expand student sidebar" : "Collapse student sidebar"}
-                    className={`flex items-center justify-center w-7 h-7 rounded-lg bg-[#225785] hover:bg-[#2c6da7] text-blue-100 hover:text-amber-300 transition-all cursor-pointer shadow-xs ${collapsed ? "mx-auto" : "ml-auto"}`}
+                    className="w-7 h-7 rounded border border-slate-200 bg-white hover:bg-slate-100 text-slate-600 hover:text-slate-900 transition-colors cursor-pointer ml-auto flex items-center justify-center shrink-0"
                 >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        {collapsed
-                            ? <><polyline points="13 17 18 12 13 7"/><polyline points="6 17 11 12 6 7"/></>
-                            : <><polyline points="11 17 6 12 11 7"/><polyline points="18 17 13 12 18 7"/></>
-                        }
-                    </svg>
+                    {collapsed ? (
+                        <ChevronRight className="w-4 h-4" />
+                    ) : (
+                        <ChevronLeft className="w-4 h-4" />
+                    )}
                 </button>
             </div>
 
-            <div className="p-3 pt-3 flex-1">
-                <nav className="space-y-1">
-                    <Link
-                        href="/dashboard/student"
-                        title="My Dashboard"
-                        className={`flex items-center ${collapsed ? "justify-center px-2" : "justify-between px-3.5"} py-2 rounded-xl text-xs font-medium transition-all duration-150 cursor-pointer ${
-                            pathname === "/dashboard/student"
-                                ? "bg-[#0f2f4c] text-amber-300 font-semibold border-l-2 border-amber-400 shadow-xs"
-                                : "text-blue-50/90 hover:bg-[#225785] hover:text-white hover:translate-x-0.5"
-                        }`}
-                    >
-                        <div className={`flex items-center ${collapsed ? "" : "space-x-3"}`}>
-                            <LayoutDashboard className="w-4 h-4 shrink-0 text-amber-300/90" />
-                            {!collapsed && <span>My Dashboard</span>}
+            {/* Navigation Body */}
+            <div className="flex-1 px-2.5 py-3 space-y-4 overflow-y-auto">
+                {/* Core Learning Group */}
+                <div className="space-y-0.5">
+                    {!collapsed && (
+                        <div className="px-2.5 pb-1 pt-1 text-[10px] font-bold uppercase tracking-wider text-slate-400 select-none">
+                            Academics & Schedule
                         </div>
-                    </Link>
-
-                    <Link
-                        href="/dashboard/student/timetable"
-                        title="Timetable"
-                        className={`flex items-center ${collapsed ? "justify-center px-2" : "justify-between px-3.5"} py-2 rounded-xl text-xs font-medium transition-all duration-150 cursor-pointer ${
-                            isActive("/dashboard/student/timetable")
-                                ? "bg-[#0f2f4c] text-amber-300 font-semibold border-l-2 border-amber-400 shadow-xs"
-                                : "text-blue-50/90 hover:bg-[#225785] hover:text-white hover:translate-x-0.5"
-                        }`}
-                    >
-                        <div className={`flex items-center ${collapsed ? "" : "space-x-3"}`}>
-                            <CalendarDays className="w-4 h-4 shrink-0 text-amber-300/90" />
-                            {!collapsed && <span>Timetable</span>}
-                        </div>
-                    </Link>
-
-                    {studentNavGroups.map((group) => (
-                        <StudentSubNavigation
-                            key={group.key}
-                            group={group}
-                            isOpen={openGroups[group.key]}
-                            pathname={pathname}
-                            collapsed={collapsed}
-                            onToggle={toggleGroup}
-                        />
-                    ))}
-
-                    <Link
-                        href="/dashboard/student/notifications"
-                        title="Notifications"
-                        className={`flex items-center ${collapsed ? "justify-center px-2" : "justify-between px-3.5"} py-2 rounded-xl text-xs font-medium transition-all duration-150 cursor-pointer mt-2 ${
-                            isActive("/dashboard/student/notifications")
-                                ? "bg-[#0f2f4c] text-amber-300 font-semibold border-l-2 border-amber-400 shadow-xs"
-                                : "text-blue-50/90 hover:bg-[#225785] hover:text-white hover:translate-x-0.5"
-                        }`}
-                    >
-                        <div className={`flex items-center ${collapsed ? "" : "space-x-3"}`}>
-                            <div className="relative">
-                                <Bell className="w-4 h-4 shrink-0 text-amber-300/90" />
-                                {unreadCount > 0 && (
-                                    <span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-amber-400 animate-pulse" />
-                                )}
+                    )}
+                    <nav className="space-y-0.5">
+                        <Link
+                            href="/dashboard/student"
+                            title="My Dashboard"
+                            className={`group flex items-center ${
+                                collapsed ? "justify-center px-2 py-2" : "justify-between px-2.5 py-2"
+                            } text-xs transition-all duration-150 cursor-pointer rounded-md ${
+                                pathname === "/dashboard/student"
+                                    ? "bg-[#4085b3] text-white font-semibold shadow-xs"
+                                    : "text-slate-700 hover:bg-[#4085b3] hover:text-white"
+                            }`}
+                        >
+                            <div className={`flex items-center ${collapsed ? "" : "space-x-2.5 min-w-0"}`}>
+                                <LayoutDashboard
+                                    className={`w-4 h-4 shrink-0 transition-colors duration-150 ${
+                                        pathname === "/dashboard/student" ? "text-white" : "text-slate-400 group-hover:text-white"
+                                    }`}
+                                />
+                                {!collapsed && <span className="truncate">My Dashboard</span>}
                             </div>
-                            {!collapsed && <span>Notifications</span>}
+                        </Link>
+
+                        <Link
+                            href="/dashboard/student/timetable"
+                            title="Timetable"
+                            className={`group flex items-center ${
+                                collapsed ? "justify-center px-2 py-2" : "justify-between px-2.5 py-2"
+                            } text-xs transition-all duration-150 cursor-pointer rounded-md ${
+                                isActive("/dashboard/student/timetable")
+                                    ? "bg-[#4085b3] text-white font-semibold shadow-xs"
+                                    : "text-slate-700 hover:bg-[#4085b3] hover:text-white"
+                            }`}
+                        >
+                            <div className={`flex items-center ${collapsed ? "" : "space-x-2.5 min-w-0"}`}>
+                                <CalendarDays
+                                    className={`w-4 h-4 shrink-0 transition-colors duration-150 ${
+                                        isActive("/dashboard/student/timetable") ? "text-white" : "text-slate-400 group-hover:text-white"
+                                    }`}
+                                />
+                                {!collapsed && <span className="truncate">Timetable</span>}
+                            </div>
+                        </Link>
+
+                        {coreLearningGroups.map((group) => (
+                            <StudentSubNavigation
+                                key={group.key}
+                                group={group}
+                                isOpen={openGroups[group.key]}
+                                pathname={pathname}
+                                collapsed={collapsed}
+                                onToggle={toggleGroup}
+                            />
+                        ))}
+                    </nav>
+                </div>
+
+                {/* Progress & Records Group */}
+                <div className="space-y-0.5">
+                    {!collapsed && (
+                        <div className="px-2.5 pb-1 pt-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400 select-none">
+                            Progress & Records
                         </div>
-                        {!collapsed && unreadCount > 0 && (
-                            <span className="rounded-full bg-amber-400 text-slate-900 px-1.5 py-0.2 text-[10px] font-black">
-                                {unreadCount}
-                            </span>
-                        )}
-                    </Link>
-                </nav>
+                    )}
+                    <nav className="space-y-0.5">
+                        {progressRecordsGroups.map((group) => (
+                            <StudentSubNavigation
+                                key={group.key}
+                                group={group}
+                                isOpen={openGroups[group.key]}
+                                pathname={pathname}
+                                collapsed={collapsed}
+                                onToggle={toggleGroup}
+                            />
+                        ))}
+                    </nav>
+                </div>
+
+                {/* Community & Tools Group */}
+                <div className="space-y-0.5">
+                    {!collapsed && (
+                        <div className="px-2.5 pb-1 pt-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400 select-none">
+                            Engagement & Tools
+                        </div>
+                    )}
+                    <nav className="space-y-0.5">
+                        {communityToolsGroups.map((group) => (
+                            <StudentSubNavigation
+                                key={group.key}
+                                group={group}
+                                isOpen={openGroups[group.key]}
+                                pathname={pathname}
+                                collapsed={collapsed}
+                                onToggle={toggleGroup}
+                            />
+                        ))}
+
+                        <Link
+                            href="/dashboard/student/notifications"
+                            title="Notifications"
+                            className={`group flex items-center ${
+                                collapsed ? "justify-center px-2 py-2" : "justify-between px-2.5 py-2"
+                            } text-xs transition-all duration-150 cursor-pointer rounded-md ${
+                                isActive("/dashboard/student/notifications")
+                                    ? "bg-[#4085b3] text-white font-semibold shadow-xs"
+                                    : "text-slate-700 hover:bg-[#4085b3] hover:text-white"
+                            }`}
+                        >
+                            <div className={`flex items-center ${collapsed ? "" : "space-x-2.5 min-w-0"}`}>
+                                <div className="relative shrink-0">
+                                    <Bell
+                                        className={`w-4 h-4 shrink-0 transition-colors duration-150 ${
+                                            isActive("/dashboard/student/notifications") ? "text-white" : "text-slate-400 group-hover:text-white"
+                                        }`}
+                                    />
+                                    {unreadCount > 0 && (
+                                        <span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-[#4085b3] animate-pulse" />
+                                    )}
+                                </div>
+                                {!collapsed && <span className="truncate">Notifications</span>}
+                            </div>
+                            {!collapsed && unreadCount > 0 && (
+                                <span className="rounded-full bg-[#4085b3] text-white px-1.5 py-0.5 text-[10px] font-bold">
+                                    {unreadCount}
+                                </span>
+                            )}
+                        </Link>
+                    </nav>
+                </div>
             </div>
+
+            {/* Sidebar Utility Footer - System Status */}
+            {!collapsed ? (
+                <div className="p-3 border-t border-slate-200 bg-white text-[11px] shrink-0">
+                    <div className="flex items-center justify-between">
+                        <span className="font-semibold text-slate-700">EMIS System</span>
+                        <span className="inline-flex items-center gap-1.5 text-[10px] text-emerald-700 font-semibold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                            Operational
+                        </span>
+                    </div>
+                    <p className="text-[10px] text-slate-400 mt-0.5 truncate">FDRE Ministry of Education</p>
+                </div>
+            ) : (
+                <div
+                    className="p-2 border-t border-slate-200 bg-white flex justify-center shrink-0"
+                    title="EMIS System Operational"
+                >
+                    <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                </div>
+            )}
         </aside>
     );
 }
