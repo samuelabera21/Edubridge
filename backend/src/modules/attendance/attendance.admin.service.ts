@@ -23,6 +23,8 @@ export interface StudentAttendanceFilterParams {
     endDate?: string;
     page?: number;
     limit?: number;
+    viewMode?: "roster" | "sessions";
+    timeframe?: "today" | "week" | "month" | "term";
 }
 
 export interface TeacherAttendanceFilterParams {
@@ -95,7 +97,7 @@ export class AttendanceAdminService {
         const totalEnrolledStudents = await prisma.studentEnrollment.count({
             where: {
                 organizationId,
-                status: "ENROLLED",
+                status: { in: ["ACTIVE", "ENROLLED"] as any },
                 ...(academicYearId ? { academicYearId } : {})
             }
         });
@@ -304,7 +306,7 @@ export class AttendanceAdminService {
                     include: {
                         studentEnrollments: {
                             where: {
-                                status: "ENROLLED",
+                                status: { in: ["ACTIVE", "ENROLLED"] as any },
                                 ...(academicYearId ? { academicYearId } : {})
                             },
                             select: {
@@ -483,6 +485,141 @@ export class AttendanceAdminService {
         const limit = Math.max(1, Math.min(100, Number(filters.limit) || 20));
         const skip = (page - 1) * limit;
 
+        // ============================================================
+        // ROSTER VIEW (1 row per student with Today / Weekly / Monthly stats)
+        // ============================================================
+        if (filters.viewMode === "roster") {
+            const timeframe = filters.timeframe || "today";
+            const now = new Date();
+            let rangeStart: Date;
+            let rangeEnd: Date;
+            let timeframeLabel: string;
+
+            if (timeframe === "today") {
+                rangeStart = new Date(now);
+                rangeStart.setUTCHours(0, 0, 0, 0);
+                rangeEnd = new Date(now);
+                rangeEnd.setUTCHours(23, 59, 59, 999);
+                timeframeLabel = `Today (${toIsoDate(now)})`;
+            } else if (timeframe === "week") {
+                const dayOfWeek = now.getUTCDay();
+                const diffToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+                rangeStart = new Date(now);
+                rangeStart.setUTCDate(now.getUTCDate() + diffToMonday);
+                rangeStart.setUTCHours(0, 0, 0, 0);
+                rangeEnd = new Date(rangeStart);
+                rangeEnd.setUTCDate(rangeStart.getUTCDate() + 6);
+                rangeEnd.setUTCHours(23, 59, 59, 999);
+                timeframeLabel = `Current Week (${toIsoDate(rangeStart)} to ${toIsoDate(now)})`;
+            } else if (timeframe === "month") {
+                rangeStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+                rangeEnd = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 0, 23, 59, 59, 999));
+                timeframeLabel = now.toLocaleString("en-US", { month: "long", year: "numeric", timeZone: "UTC" });
+            } else {
+                rangeStart = new Date(Date.UTC(2020, 0, 1));
+                rangeEnd = new Date(Date.UTC(2035, 11, 31));
+                timeframeLabel = "Term Cumulative";
+            }
+
+            const enrollmentWhere: any = {
+                organizationId,
+                status: { in: ["ACTIVE", "ENROLLED"] },
+                ...(academicYearId ? { academicYearId } : {})
+            };
+
+            if (filters.gradeId && filters.gradeId !== "ALL") {
+                enrollmentWhere.schoolGrade = { gradeId: filters.gradeId };
+            }
+            if (filters.sectionId && filters.sectionId !== "ALL") {
+                enrollmentWhere.sectionId = filters.sectionId;
+            }
+            if (filters.search) {
+                enrollmentWhere.student = {
+                    OR: [
+                        { firstName: { contains: filters.search, mode: "insensitive" } },
+                        { lastName: { contains: filters.search, mode: "insensitive" } },
+                        { studentId: { contains: filters.search, mode: "insensitive" } }
+                    ]
+                };
+            }
+
+            const [enrollments, total] = await Promise.all([
+                prisma.studentEnrollment.findMany({
+                    where: enrollmentWhere,
+                    include: {
+                        student: true,
+                        schoolGrade: { include: { grade: true } },
+                        section: true,
+                        attendances: {
+                            where: {
+                                date: { gte: rangeStart, lte: rangeEnd },
+                                ...(academicYearId ? { academicYearId } : {})
+                            },
+                            orderBy: { date: "desc" }
+                        }
+                    },
+                    orderBy: [
+                        { student: { firstName: "asc" } },
+                        { student: { lastName: "asc" } }
+                    ],
+                    skip,
+                    take: limit
+                }),
+                prisma.studentEnrollment.count({ where: enrollmentWhere })
+            ]);
+
+            const data = enrollments.map(enr => {
+                const records = enr.attendances || [];
+                const presentCount = records.filter(r => r.status === "PRESENT").length;
+                const lateCount = records.filter(r => r.status === "LATE").length;
+                const absentCount = records.filter(r => r.status === "ABSENT").length;
+                const excusedCount = records.filter(r => r.status === "EXCUSED").length;
+                const totalSessions = records.length;
+                const effectivePresent = presentCount + lateCount;
+                const attendanceRate = totalSessions > 0
+                    ? Number(((effectivePresent / totalSessions) * 100).toFixed(1))
+                    : 100;
+
+                const todayIso = toIsoDate(now);
+                const todayRec = records.find(r => toIsoDate(r.date) === todayIso);
+
+                return {
+                    id: enr.id,
+                    enrollmentId: enr.id,
+                    studentId: enr.studentId,
+                    studentName: `${enr.student.firstName} ${enr.student.lastName}`,
+                    admissionNumber: enr.student.studentId,
+                    gender: enr.student.gender,
+                    gradeName: enr.schoolGrade.grade.name,
+                    sectionName: enr.section?.name || "Unassigned",
+                    timeframe,
+                    timeframeLabel,
+                    todayStatus: todayRec ? todayRec.status : "PENDING",
+                    todayRemarks: todayRec?.remarks || null,
+                    presentDays: presentCount,
+                    lateDays: lateCount,
+                    absentDays: absentCount,
+                    excusedDays: excusedCount,
+                    totalSessions,
+                    attendanceRate,
+                    healthStatus: attendanceRate >= 90 ? "Healthy" : attendanceRate >= 80 ? "Attention" : "Critical"
+                };
+            });
+
+            return {
+                viewMode: "roster",
+                timeframe,
+                timeframeLabel,
+                data,
+                pagination: {
+                    page,
+                    limit,
+                    total,
+                    totalPages: Math.ceil(total / limit)
+                }
+            };
+        }
+
         const where: any = {
             organizationId,
             ...(academicYearId ? { academicYearId } : {})
@@ -608,7 +745,20 @@ export class AttendanceAdminService {
                 organizationId
             },
             include: {
-                student: true,
+                student: {
+                    include: {
+                        user: { select: { id: true, name: true, email: true } },
+                        parents: {
+                            include: {
+                                parent: {
+                                    include: {
+                                        user: { select: { id: true, name: true, email: true } }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
                 schoolGrade: { include: { grade: true } },
                 section: true,
                 academicYear: true
@@ -671,6 +821,7 @@ export class AttendanceAdminService {
             student: {
                 id: enrollment.student.id,
                 enrollmentId: enrollment.id,
+                userId: enrollment.student.user?.id || enrollment.student.userId || null,
                 name: `${enrollment.student.firstName} ${enrollment.student.lastName}`,
                 admissionNumber: enrollment.student.studentId,
                 gender: enrollment.student.gender,
@@ -678,7 +829,19 @@ export class AttendanceAdminService {
                 gradeName: enrollment.schoolGrade.grade.name,
                 sectionName: enrollment.section?.name || "Unassigned",
                 academicYearName: enrollment.academicYear.name,
-                status: enrollment.status
+                status: enrollment.status,
+                emergencyContactPhone: enrollment.student.emergencyContactPhone || null,
+                emergencyContactName: enrollment.student.emergencyContactName || null,
+                emergencyContactRelation: enrollment.student.emergencyContactRelation || null,
+                parents: (enrollment.student.parents || []).map(p => ({
+                    id: p.parent.id,
+                    userId: p.parent.user?.id || p.parent.userId || null,
+                    name: `${p.parent.firstName} ${p.parent.lastName}`,
+                    relationship: p.relationship,
+                    isPrimary: p.isPrimary,
+                    phoneNumber: p.parent.phoneNumber || null,
+                    email: p.parent.email || null
+                }))
             },
             stats: {
                 totalSessions,
