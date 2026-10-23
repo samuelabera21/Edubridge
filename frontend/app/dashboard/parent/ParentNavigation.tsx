@@ -89,7 +89,7 @@ const collaborationGroups: ParentNavGroup[] = [
         label: "Communication",
         icon: MessageSquare,
         links: [
-            { label: "Teacher Messages", href: "/dashboard/parent/communication" },
+            { label: "Direct Messages", href: "/dashboard/parent/communication/messages" },
             { label: "School Announcements", href: "/dashboard/parent/announcements" },
             { label: "Meeting Requests", href: "/dashboard/parent/communication?tab=meetings" },
         ],

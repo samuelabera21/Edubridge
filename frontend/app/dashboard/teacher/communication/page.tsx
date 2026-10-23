@@ -146,13 +146,11 @@ export default function TeacherCommunicationPage() {
         return () => document.removeEventListener("mousedown", handleClickOutside);
     }, []);
 
-    // Helper to format clean message content (removing [Subject tag], reply quotes, and raw attachment dumps)
+    // Helper to format clean message content (removing [Subject tag] and raw attachment dumps)
     const formatCleanMessageContent = (content: string) => {
         if (!content) return "";
         return content
             .replace(/^\[[^\]]+\]\s*/, "")
-            .replace(/^>\s*In reply to\s*[^:\n]+:\s*"[^"]*"\s*\n*/i, "")
-            .replace(/^>\s*In reply to\s*[^\n]+\n*/i, "")
             .replace(/\n*📎 Attached File:\s*[^\n]+(\([^)]+\))?/g, "")
             .trim();
     };
@@ -962,7 +960,9 @@ export default function TeacherCommunicationPage() {
             }
 
             const baseText = messageText.trim() || (uploadedAttachmentName ? `Sent an attachment: ${uploadedAttachmentName}` : "");
-            const outgoingText = baseText;
+            const outgoingText = replyingTo
+                ? `> In reply to ${replyingTo.senderName}: "${replyingTo.content.slice(0, 80)}${replyingTo.content.length > 80 ? '...' : ''}"\n\n${baseText}`
+                : baseText;
 
             if (activeCategory === "STUDENT") {
                 const targetType = studentTargetMode === "SECTION"

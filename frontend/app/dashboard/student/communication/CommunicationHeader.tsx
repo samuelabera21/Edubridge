@@ -23,7 +23,7 @@ export default function CommunicationHeader({
 
   const navTabs = [
     {
-      label: "Teacher Messages",
+      label: "Direct Messages",
       href: "/dashboard/student/communication/messages",
       icon: MessageSquare,
       active: pathname === "/dashboard/student/communication/messages",

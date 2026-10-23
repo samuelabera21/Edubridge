@@ -294,6 +294,7 @@ export default function SchoolAdminNavigation({
                         { label: "Announcements", href: "/dashboard/communication/announcements" },
                         { label: "Important Notices", href: "/dashboard/communication/notices", hidden: true },
                         { label: "Direct Messages", href: "/dashboard/communication/messages" },
+                        { label: "Messaging Settings", href: "/dashboard/communication/settings" },
                         { label: "Notifications", href: "/dashboard/communication/notifications" },
                         { label: "Faculty Circulars", href: "/dashboard/communication/teacher" },
                         { label: "Student Broadcasts", href: "/dashboard/communication/student" },

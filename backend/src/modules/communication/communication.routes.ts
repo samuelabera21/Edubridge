@@ -17,6 +17,8 @@ import {
     getMessagingUsers,
     deleteMessage,
     updateMessage,
+    getMessagingSettings,
+    updateMessagingSettings,
     getImportantNotices,
     createImportantNotice,
     updateImportantNotice,
@@ -41,9 +43,26 @@ router.patch("/notifications/:id/read", requireAuth(), markNotificationRead);
 router.post("/announcements/:id/acknowledge", requireAuth(), acknowledgeAnnouncement);
 router.post("/announcements/:id/read", requireAuth(), markAnnouncementRead);
 
-// Legacy path aliases (kept for backwards compat, deprecated)
+// ── Messaging Settings (School Toggles) ───────────────
+router.get("/messaging-settings", requireAuth(), getMessagingSettings);
+router.put("/messaging-settings", requireAuth(), updateMessagingSettings);
+
+// ── Direct Messages (School org-scoped, accessible to Admin, Teacher, Student, Parent) ──
+router.get("/messages", requireAuth(), getMyMessages);
+router.post("/messages", requireAuth(), sendMessage);
+router.get("/users", requireAuth(), getMessagingUsers);
+router.patch("/messages/:id", requireAuth(), updateMessage);
+router.put("/messages/:id", requireAuth(), updateMessage);
+router.delete("/messages/:id", requireAuth(), deleteMessage);
+router.delete("/message/:id", requireAuth(), deleteMessage);
+router.patch("/message/:id", requireAuth(), updateMessage);
+router.put("/message/:id", requireAuth(), updateMessage);
+
+// Legacy path aliases
 router.get("/notification", requireAuth(), getMyNotifications);
 router.patch("/notification/:id/read", requireAuth(), markNotificationRead);
+router.get("/message", requireAuth(), getMyMessages);
+router.post("/message", requireAuth(), sendMessage);
 
 // All other school communication features require SCHOOL scope
 router.use(requireScope("SCHOOL"));
@@ -63,21 +82,6 @@ router.post("/notices", requirePermission("COMMUNICATION:CREATE"), createImporta
 router.put("/notices/:id", requirePermission("COMMUNICATION:CREATE"), updateImportantNotice);
 router.delete("/notices/:id", requirePermission("COMMUNICATION:MANAGE"), deleteImportantNotice);
 router.delete("/notice/:id", requirePermission("COMMUNICATION:MANAGE"), deleteImportantNotice);
-
-// ── Direct Messages (org-scoped) ──────────────────────
-router.get("/messages", requirePermission("COMMUNICATION:VIEW"), getMyMessages);
-router.post("/messages", requirePermission("COMMUNICATION:CREATE"), sendMessage);
-router.get("/users", requirePermission("COMMUNICATION:VIEW"), getMessagingUsers);
-router.patch("/messages/:id", requirePermission("COMMUNICATION:VIEW"), updateMessage);
-router.put("/messages/:id", requirePermission("COMMUNICATION:VIEW"), updateMessage);
-router.delete("/messages/:id", requirePermission("COMMUNICATION:VIEW"), deleteMessage);
-router.delete("/message/:id", requirePermission("COMMUNICATION:VIEW"), deleteMessage);
-router.patch("/message/:id", requirePermission("COMMUNICATION:VIEW"), updateMessage);
-router.put("/message/:id", requirePermission("COMMUNICATION:VIEW"), updateMessage);
-
-// Legacy path aliases
-router.get("/message", requirePermission("COMMUNICATION:VIEW"), getMyMessages);
-router.post("/message", requirePermission("COMMUNICATION:CREATE"), sendMessage);
 
 // ── Teacher → Parent Messaging ─────────────────────────
 // These endpoints are intentionally on the communication router so teacher

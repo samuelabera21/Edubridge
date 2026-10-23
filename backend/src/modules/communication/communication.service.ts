@@ -1233,6 +1233,63 @@ export class CommunicationService {
     // =========================================================
     // DIRECT MESSAGES — org-scoped, secure
     // =========================================================
+    // MESSAGING SETTINGS (School Toggles)
+    // =========================================================
+
+    static async getMessagingSettings(organizationId: string) {
+        const profile = prisma.schoolProfile?.findUnique
+            ? await prisma.schoolProfile.findUnique({
+                  where: { organizationId },
+                  select: { configuration: true }
+              })
+            : null;
+        const rawConfig = (profile?.configuration as Record<string, any>) || {};
+        const messaging = rawConfig.messaging || {};
+        return {
+            allowTeacherDM: messaging.allowTeacherDM !== undefined ? Boolean(messaging.allowTeacherDM) : true,
+            allowStudentDM: messaging.allowStudentDM !== undefined ? Boolean(messaging.allowStudentDM) : false,
+            allowParentDM: messaging.allowParentDM !== undefined ? Boolean(messaging.allowParentDM) : false,
+        };
+    }
+
+    static async updateMessagingSettings(organizationId: string, settings: {
+        allowTeacherDM?: boolean;
+        allowStudentDM?: boolean;
+        allowParentDM?: boolean;
+    }) {
+        const profile = prisma.schoolProfile?.findUnique
+            ? await prisma.schoolProfile.findUnique({
+                  where: { organizationId }
+              })
+            : null;
+        const rawConfig = (profile?.configuration as Record<string, any>) || {};
+        const currentMessaging = rawConfig.messaging || {};
+        const updatedMessaging = {
+            allowTeacherDM: settings.allowTeacherDM !== undefined ? Boolean(settings.allowTeacherDM) : (currentMessaging.allowTeacherDM ?? true),
+            allowStudentDM: settings.allowStudentDM !== undefined ? Boolean(settings.allowStudentDM) : (currentMessaging.allowStudentDM ?? false),
+            allowParentDM: settings.allowParentDM !== undefined ? Boolean(settings.allowParentDM) : (currentMessaging.allowParentDM ?? false),
+        };
+        rawConfig.messaging = updatedMessaging;
+
+        if (prisma.schoolProfile?.upsert) {
+            await prisma.schoolProfile.upsert({
+                where: { organizationId },
+                create: {
+                    organizationId,
+                    configuration: rawConfig
+                },
+                update: {
+                    configuration: rawConfig
+                }
+            });
+        }
+
+        return updatedMessaging;
+    }
+
+    // =========================================================
+    // DIRECT MESSAGES
+    // =========================================================
 
     static async sendMessage(data: {
         organizationId: string;
@@ -1248,10 +1305,108 @@ export class CommunicationService {
         }
 
         // Verify receiver belongs to this organization
-        const receiverMembership = await prisma.roleAssignment.findFirst({
-            where: { userId: data.receiverId, scope: { id: data.organizationId } }
+        const receiverRoleAssignment = await prisma.roleAssignment.findFirst({
+            where: { userId: data.receiverId, scope: { id: data.organizationId } },
+            include: { role: true }
         });
-        if (!receiverMembership) throw new Error("Recipient is not a member of this school");
+
+        let isReceiverMember = Boolean(receiverRoleAssignment);
+
+        if (!isReceiverMember && prisma.teacher?.findFirst) {
+            const teacher = await prisma.teacher.findFirst({
+                where: { userId: data.receiverId, organizationId: data.organizationId }
+            });
+            if (teacher) isReceiverMember = true;
+        }
+
+        if (!isReceiverMember && prisma.studentEnrollment?.findFirst) {
+            const studentEnrollment = await prisma.studentEnrollment.findFirst({
+                where: { student: { userId: data.receiverId }, organizationId: data.organizationId }
+            });
+            if (studentEnrollment) isReceiverMember = true;
+        }
+
+        if (!isReceiverMember && prisma.parent?.findFirst) {
+            const parent = await prisma.parent.findFirst({
+                where: {
+                    userId: data.receiverId,
+                    children: {
+                        some: {
+                            student: {
+                                enrollments: {
+                                    some: { organizationId: data.organizationId }
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+            if (parent) isReceiverMember = true;
+        }
+
+        if (!isReceiverMember) throw new Error("Recipient is not a member of this school");
+
+        // Check sender's roles in this school
+        const senderAssignments = (await prisma.roleAssignment.findMany?.({
+            where: { userId: data.senderId, scope: { id: data.organizationId } },
+            include: { role: true }
+        })) || [];
+        const senderRoleNames = senderAssignments.map(a => a?.role?.name).filter(Boolean);
+
+        // Also check if sender is registered as Teacher, Student, or Parent in this school
+        if (senderRoleNames.length === 0) {
+            if (prisma.teacher?.findFirst) {
+                const t = await prisma.teacher.findFirst({
+                    where: { userId: data.senderId, organizationId: data.organizationId }
+                });
+                if (t) senderRoleNames.push("TEACHER");
+            }
+            if (prisma.studentEnrollment?.findFirst) {
+                const s = await prisma.studentEnrollment.findFirst({
+                    where: { student: { userId: data.senderId }, organizationId: data.organizationId }
+                });
+                if (s) senderRoleNames.push("STUDENT");
+            }
+            if (prisma.parent?.findFirst) {
+                const p = await prisma.parent.findFirst({
+                    where: {
+                        userId: data.senderId,
+                        children: {
+                            some: {
+                                student: {
+                                    enrollments: {
+                                        some: { organizationId: data.organizationId }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+                if (p) senderRoleNames.push("PARENT");
+            }
+        }
+
+        const isSchoolAdmin = senderRoleNames.some(r => ["ADMIN", "SCHOOL_ADMIN", "VICE_PRINCIPAL"].includes(r));
+
+        if (!isSchoolAdmin && senderRoleNames.length > 0) {
+            // Check messaging settings toggle
+            const settings = await this.getMessagingSettings(data.organizationId);
+
+            const isTeacher = senderRoleNames.includes("TEACHER");
+            const isStudent = senderRoleNames.includes("STUDENT");
+            const isParent = senderRoleNames.includes("PARENT");
+
+            if (isTeacher && !settings.allowTeacherDM) {
+                throw new Error("Direct messaging from teachers is currently disabled by school administration.");
+            }
+            if (isStudent && !settings.allowStudentDM) {
+                throw new Error("Direct messaging from students is currently disabled by school administration.");
+            }
+            if (isParent && !settings.allowParentDM) {
+                throw new Error("Direct messaging from parents is currently disabled by school administration.");
+            }
+            // Verified school membership and active toggles above. Messaging is enabled between eligible school members.
+        }
 
         const message = await prisma.message.create({
             data: {
@@ -1321,12 +1476,21 @@ export class CommunicationService {
             where: {
                 id: messageId,
                 organizationId,
-                OR: [{ senderId: userId }, { receiverId: userId }]
+                senderId: userId
             }
         });
-        if (!message) throw new Error("Message not found or unauthorized");
+        if (!message) throw new Error("Message not found or unauthorized to delete");
 
-        return prisma.message.delete({ where: { id: messageId } });
+        // Soft delete message content so thread history stays intact
+        return prisma.message.update({
+            where: { id: messageId },
+            data: {
+                content: "[This message was deleted]",
+                attachmentUrl: null,
+                attachmentName: null,
+                attachmentType: null
+            }
+        });
     }
 
     static async updateMessage(organizationId: string, userId: string, messageId: string, content: string) {
@@ -1341,36 +1505,349 @@ export class CommunicationService {
             }
         });
         if (!message) throw new Error("Message not found or you are not authorized to edit it");
+        if (message.content === "[This message was deleted]") {
+            throw new Error("Cannot edit a deleted message");
+        }
+
+        const currentType = message.attachmentType || "";
+        const updatedType = currentType.includes("edited")
+            ? currentType
+            : (currentType ? `${currentType};edited` : "edited");
 
         return prisma.message.update({
             where: { id: messageId },
-            data: { content: content.trim() }
+            data: {
+                content: content.trim(),
+                attachmentType: updatedType
+            }
         });
     }
 
     /**
      * Returns users eligible for direct messaging within this school only.
+     * Categorized by role: TEACHER, STUDENT, PARENT, ADMIN.
+     * If caller is a non-admin (Teacher, Student, Parent), only School Admins are returned.
      */
     static async getUsersForMessaging(userId: string, organizationId: string) {
-        const assignments = await prisma.roleAssignment.findMany({
-            where: { scopeId: organizationId, userId: { not: userId } },
-            select: {
-                role: { select: { id: true, name: true, description: true } },
-                user: { select: { id: true, name: true, email: true } }
-            },
-            take: 100
-        });
+        // Check caller's role
+        const callerAssignments = (await prisma.roleAssignment.findMany?.({
+            where: { userId, scope: { id: organizationId } },
+            include: { role: true }
+        })) || [];
+        const callerRoleNames = callerAssignments.map(a => a?.role?.name).filter(Boolean);
+        const isSchoolAdmin = callerRoleNames.some(r => ["ADMIN", "SCHOOL_ADMIN", "VICE_PRINCIPAL"].includes(r));
 
+        const users: Array<any> = [];
         const seen = new Set<string>();
-        const users = [];
-        for (const a of assignments) {
-            if (seen.has(a.user.id)) continue;
+
+        // 1. School Administration (Always available to everyone in the school)
+        const adminAssignments = (await prisma.roleAssignment.findMany?.({
+            where: {
+                scopeId: organizationId,
+                userId: { not: userId },
+                role: { name: { in: ["ADMIN", "SCHOOL_ADMIN", "VICE_PRINCIPAL"] } }
+            },
+            include: {
+                user: { select: { id: true, name: true, email: true } },
+                role: { select: { id: true, name: true, description: true } }
+            }
+        })) || [];
+        for (const a of adminAssignments) {
+            if (!a.user || seen.has(a.user.id)) continue;
             seen.add(a.user.id);
             users.push({
-                ...a.user,
-                role: a.role
+                id: a.user.id,
+                name: a.user.name,
+                email: a.user.email,
+                role: a.role,
+                category: "ADMIN",
+                detail: a.role.description || "School Administrator / Principal"
             });
         }
+
+        // Check if caller is Parent
+        let isParent = callerRoleNames.includes("PARENT");
+        let parentRecord: any = null;
+        if (!isParent && prisma.parent?.findFirst) {
+            parentRecord = await prisma.parent.findFirst({
+                where: {
+                    userId,
+                    children: {
+                        some: {
+                            student: {
+                                enrollments: {
+                                    some: { organizationId }
+                                }
+                            }
+                        }
+                    }
+                },
+                include: {
+                    children: {
+                        include: {
+                            student: {
+                                include: {
+                                    user: { select: { id: true, name: true, email: true } },
+                                    enrollments: {
+                                        where: { organizationId },
+                                        include: {
+                                            schoolGrade: { select: { grade: { select: { name: true } } } },
+                                            section: { select: { name: true } }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+            if (parentRecord) isParent = true;
+        } else if (isParent && prisma.parent?.findFirst) {
+            parentRecord = await prisma.parent.findFirst({
+                where: { userId },
+                include: {
+                    children: {
+                        include: {
+                            student: {
+                                include: {
+                                    user: { select: { id: true, name: true, email: true } },
+                                    enrollments: {
+                                        where: { organizationId },
+                                        include: {
+                                            schoolGrade: { select: { grade: { select: { name: true } } } },
+                                            section: { select: { name: true } }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // If caller is Parent:
+        if (isParent) {
+            // 2. Teachers for the school
+            const teachers = (await prisma.teacher.findMany?.({
+                where: { organizationId, status: "ACTIVE" },
+                include: {
+                    user: { select: { id: true, name: true, email: true } }
+                }
+            })) || [];
+            for (const t of teachers) {
+                if (!t.user || seen.has(t.user.id)) continue;
+                seen.add(t.user.id);
+                users.push({
+                    id: t.user.id,
+                    name: t.user.name || `${t.firstName} ${t.lastName}`,
+                    email: t.user.email || t.email,
+                    role: { name: "TEACHER" },
+                    category: "TEACHER",
+                    detail: t.fieldOfStudy ? `${t.fieldOfStudy} Teacher` : "Faculty Teacher"
+                });
+            }
+
+            // 3. Their Children (Students)
+            if (parentRecord?.children) {
+                for (const c of parentRecord.children) {
+                    const st = c.student;
+                    if (!st || !st.user || seen.has(st.user.id)) continue;
+                    seen.add(st.user.id);
+                    const enroll = st.enrollments?.[0];
+                    const gradeName = enroll?.schoolGrade?.grade?.name || "";
+                    const secName = enroll?.section?.name ? `-${enroll.section.name}` : "";
+                    users.push({
+                        id: st.user.id,
+                        name: st.user.name || `${st.firstName} ${st.lastName}`,
+                        email: st.user.email,
+                        role: { name: "STUDENT" },
+                        category: "STUDENT",
+                        detail: gradeName ? `Your Child (Grade ${gradeName}${secName})` : "Your Child (Student)"
+                    });
+                }
+            }
+            return users;
+        }
+
+        // Check if caller is Student
+        let isStudent = callerRoleNames.includes("STUDENT");
+        let studentRecord: any = null;
+        if (!isStudent && prisma.studentEnrollment?.findFirst) {
+            const enroll = await prisma.studentEnrollment.findFirst({
+                where: { student: { userId }, organizationId },
+                include: {
+                    student: {
+                        include: {
+                            parents: {
+                                include: {
+                                    parent: {
+                                        include: {
+                                            user: { select: { id: true, name: true, email: true } }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+            if (enroll) {
+                isStudent = true;
+                studentRecord = enroll.student;
+            }
+        } else if (isStudent && prisma.student?.findFirst) {
+            studentRecord = await prisma.student.findFirst({
+                where: { userId },
+                include: {
+                    parents: {
+                        include: {
+                            parent: {
+                                include: {
+                                    user: { select: { id: true, name: true, email: true } }
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // If caller is Student:
+        if (isStudent) {
+            // 2. Teachers for the school
+            const teachers = (await prisma.teacher.findMany?.({
+                where: { organizationId, status: "ACTIVE" },
+                include: {
+                    user: { select: { id: true, name: true, email: true } }
+                }
+            })) || [];
+            for (const t of teachers) {
+                if (!t.user || seen.has(t.user.id)) continue;
+                seen.add(t.user.id);
+                users.push({
+                    id: t.user.id,
+                    name: t.user.name || `${t.firstName} ${t.lastName}`,
+                    email: t.user.email || t.email,
+                    role: { name: "TEACHER" },
+                    category: "TEACHER",
+                    detail: t.fieldOfStudy ? `${t.fieldOfStudy} Teacher` : "Subject Teacher"
+                });
+            }
+
+            // 3. Linked Parents
+            if (studentRecord?.parents) {
+                for (const p of studentRecord.parents) {
+                    const pr = p.parent;
+                    if (!pr || !pr.user || seen.has(pr.user.id)) continue;
+                    seen.add(pr.user.id);
+                    users.push({
+                        id: pr.user.id,
+                        name: pr.user.name || `${pr.firstName} ${pr.lastName}`,
+                        email: pr.user.email || pr.email,
+                        role: { name: "PARENT" },
+                        category: "PARENT",
+                        detail: p.relationship ? `Your Parent (${p.relationship})` : "Your Parent / Guardian"
+                    });
+                }
+            }
+            return users;
+        }
+
+        // Caller is Teacher or School Admin: Return Teachers, Students, Parents, and Admins
+        // 2. Active Teachers
+        const teachers = (await prisma.teacher.findMany?.({
+            where: { organizationId, status: "ACTIVE" },
+            include: {
+                user: { select: { id: true, name: true, email: true } }
+            }
+        })) || [];
+        for (const t of teachers) {
+            if (!t.user || seen.has(t.user.id)) continue;
+            seen.add(t.user.id);
+            users.push({
+                id: t.user.id,
+                name: t.user.name || `${t.firstName} ${t.lastName}`,
+                email: t.user.email || t.email,
+                role: { name: "TEACHER" },
+                category: "TEACHER",
+                detail: t.fieldOfStudy ? `${t.fieldOfStudy} Teacher` : "Faculty Teacher"
+            });
+        }
+
+        // 3. Enrolled Students
+        const enrollments = (await prisma.studentEnrollment.findMany?.({
+            where: { organizationId, status: { in: ["ENROLLED", "ACTIVE"] } },
+            include: {
+                student: {
+                    include: {
+                        user: { select: { id: true, name: true, email: true } }
+                    }
+                },
+                schoolGrade: {
+                    select: {
+                        grade: {
+                            select: { name: true }
+                        }
+                    }
+                },
+                section: { select: { name: true } }
+            },
+            take: 300
+        })) || [];
+        for (const e of enrollments) {
+            const u = e.student?.user;
+            if (!u || seen.has(u.id)) continue;
+            seen.add(u.id);
+            const gradeName = e.schoolGrade?.grade?.name || "";
+            const sectionName = e.section?.name ? `-${e.section.name}` : "";
+            users.push({
+                id: u.id,
+                name: u.name || `${e.student.firstName} ${e.student.lastName}`,
+                email: u.email,
+                role: { name: "STUDENT" },
+                category: "STUDENT",
+                detail: gradeName ? `Student (${gradeName}${sectionName})` : "Student"
+            });
+        }
+
+        // 4. Parents linked to students in this school
+        const parents = (await prisma.parent.findMany?.({
+            where: {
+                children: {
+                    some: {
+                        student: {
+                            enrollments: {
+                                some: { organizationId }
+                            }
+                        }
+                    }
+                }
+            },
+            include: {
+                user: { select: { id: true, name: true, email: true } },
+                children: {
+                    include: {
+                        student: { select: { firstName: true, lastName: true } }
+                    }
+                }
+            },
+            take: 300
+        })) || [];
+        for (const p of parents) {
+            if (!p.user || seen.has(p.user.id)) continue;
+            seen.add(p.user.id);
+            const childNames = p.children?.map((c: any) => `${c.student?.firstName || ""} ${c.student?.lastName || ""}`).join(", ");
+            users.push({
+                id: p.user.id,
+                name: p.user.name || `${p.firstName} ${p.lastName}`,
+                email: p.user.email || p.email,
+                role: { name: "PARENT" },
+                category: "PARENT",
+                detail: childNames ? `Parent of ${childNames}` : "Parent / Guardian"
+            });
+        }
+
         return users;
     }
 

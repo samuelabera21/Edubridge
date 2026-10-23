@@ -94,7 +94,7 @@ const communityToolsGroups: StudentNavGroup[] = [
         label: "Communication",
         icon: MessageSquare,
         links: [
-            { label: "Teacher Messages", href: "/dashboard/student/communication/messages" },
+            { label: "Direct Messages", href: "/dashboard/student/communication/messages" },
             { label: "School Announcements", href: "/dashboard/student/communication/announcements" },
             { label: "Communication Overview", href: "/dashboard/student/communication" },
         ],
