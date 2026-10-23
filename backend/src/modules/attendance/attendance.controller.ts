@@ -197,7 +197,7 @@ export const getSchoolStudentAttendance = async (req: Request, res: Response) =>
         const organizationId = (req as any).accessScope?.id;
         if (!organizationId) return res.status(403).json({ error: "Missing school scope" });
 
-        const { academicYearId, gradeId, sectionId, search, status, date, startDate, endDate, page, limit } = req.query;
+        const { academicYearId, gradeId, sectionId, search, status, date, startDate, endDate, page, limit, viewMode, timeframe } = req.query;
         const data = await AttendanceAdminService.getSchoolStudentAttendance(organizationId, {
             academicYearId: academicYearId as string,
             gradeId: gradeId as string,
@@ -207,6 +207,8 @@ export const getSchoolStudentAttendance = async (req: Request, res: Response) =>
             date: date as string,
             startDate: startDate as string,
             endDate: endDate as string,
+            viewMode: viewMode as ("roster" | "sessions"),
+            timeframe: timeframe as ("today" | "week" | "month" | "term"),
             page: page ? Number(page) : 1,
             limit: limit ? Number(limit) : 20
         });
