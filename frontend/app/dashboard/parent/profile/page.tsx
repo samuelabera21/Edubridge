@@ -149,7 +149,7 @@ function ChildProfileContent() {
                         <div className="text-xs text-gray-500 font-semibold mb-1.5 flex items-center justify-between">
                             <span>Active Student</span>
                             {children.length > 1 && (
-                                <span className="text-[11px] text-[#184973] font-medium">
+                                <span className="text-[11px] text-[#4085b3] font-medium">
                                     {selectedChildIndex + 1} of {children.length}
                                 </span>
                             )}
@@ -157,10 +157,10 @@ function ChildProfileContent() {
                         <button
                             type="button"
                             onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                            className="w-full sm:w-auto min-w-[240px] flex items-center justify-between gap-3 px-4 py-2.5 bg-white border border-gray-300 hover:border-[#184973] rounded-xl shadow-sm hover:shadow transition-all text-left focus:outline-none focus:ring-2 focus:ring-[#184973]/20"
+                            className="w-full sm:w-auto min-w-[240px] flex items-center justify-between gap-3 px-4 py-2.5 bg-white border border-gray-300 hover:border-[#4085b3] rounded-xl shadow-sm hover:shadow transition-all text-left focus:outline-none focus:ring-2 focus:ring-[#4085b3]/20"
                         >
                             <div className="flex items-center gap-3">
-                                <div className="w-9 h-9 rounded-full bg-[#184973] text-white flex items-center justify-center text-sm font-bold shadow-sm">
+                                <div className="w-9 h-9 rounded-full bg-[#4085b3] text-white flex items-center justify-center text-sm font-bold shadow-sm">
                                     {student.firstName?.charAt(0) || "S"}
                                 </div>
                                 <div className="leading-tight">
@@ -198,12 +198,12 @@ function ChildProfileContent() {
                                                     setIsDropdownOpen(false);
                                                 }}
                                                 className={`w-full flex items-center justify-between px-3.5 py-2.5 text-left transition-colors ${
-                                                    isSelected ? "bg-blue-50/70 text-[#184973]" : "hover:bg-gray-50 text-gray-800"
+                                                    isSelected ? "bg-blue-50/70 text-[#4085b3]" : "hover:bg-gray-50 text-gray-800"
                                                 }`}
                                             >
                                                 <div className="flex items-center gap-3">
                                                     <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${
-                                                        isSelected ? "bg-[#184973] text-white" : "bg-gray-100 text-gray-700"
+                                                        isSelected ? "bg-[#4085b3] text-white" : "bg-gray-100 text-gray-700"
                                                     }`}>
                                                         {ch?.firstName?.charAt(0) || "S"}
                                                     </div>
@@ -217,7 +217,7 @@ function ChildProfileContent() {
                                                     </div>
                                                 </div>
                                                 {isSelected && (
-                                                    <Check className="w-4 h-4 text-[#184973] flex-shrink-0" />
+                                                    <Check className="w-4 h-4 text-[#4085b3] flex-shrink-0" />
                                                 )}
                                             </button>
                                         );
@@ -236,7 +236,7 @@ function ChildProfileContent() {
                     onClick={() => setTab("general")}
                     className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                         currentTab === "general"
-                            ? "bg-[#184973] text-white shadow-sm"
+                            ? "bg-[#4085b3] text-white shadow-sm"
                             : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
                     }`}
                 >
@@ -248,7 +248,7 @@ function ChildProfileContent() {
                     onClick={() => setTab("enrollment")}
                     className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                         currentTab === "enrollment"
-                            ? "bg-[#184973] text-white shadow-sm"
+                            ? "bg-[#4085b3] text-white shadow-sm"
                             : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
                     }`}
                 >
@@ -262,7 +262,7 @@ function ChildProfileContent() {
                 <div className="space-y-6">
                     {/* Official Notice */}
                     <div className="bg-blue-50/70 border border-blue-200/80 rounded-2xl p-4 text-xs text-blue-900 flex items-start gap-3">
-                        <Lock className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
+                        <Lock className="w-4 h-4 text-[#4085b3] shrink-0 mt-0.5" />
                         <div>
                             <span className="font-bold">Official Ministry & Institutional Record</span>
                             <p className="text-blue-700 mt-0.5 leading-relaxed">
@@ -276,7 +276,7 @@ function ChildProfileContent() {
                         <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm space-y-4">
                             <div className="flex items-center justify-between border-b border-gray-100 pb-3">
                                 <h3 className="font-bold text-sm text-gray-900 flex items-center gap-2">
-                                    <IdCard className="w-4 h-4 text-[#184973]" />
+                                    <IdCard className="w-4 h-4 text-[#4085b3]" />
                                     <span>Personal Information</span>
                                 </h3>
                                 <span className="text-[10px] bg-slate-100 text-slate-700 px-2 py-0.5 rounded-md font-semibold">
@@ -378,7 +378,7 @@ function ChildProfileContent() {
                         <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm space-y-4">
                             <div className="flex items-center justify-between border-b border-gray-100 pb-3">
                                 <h3 className="font-bold text-sm text-gray-900 flex items-center gap-2">
-                                    <MapPin className="w-4 h-4 text-[#184973]" />
+                                    <MapPin className="w-4 h-4 text-[#4085b3]" />
                                     <span>Residential Address</span>
                                 </h3>
                             </div>
@@ -413,7 +413,7 @@ function ChildProfileContent() {
                         <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm space-y-4">
                             <div className="flex items-center justify-between border-b border-gray-100 pb-3">
                                 <h3 className="font-bold text-sm text-gray-900 flex items-center gap-2">
-                                    <Clock className="w-4 h-4 text-[#184973]" />
+                                    <Clock className="w-4 h-4 text-[#4085b3]" />
                                     <span>Prior Academic Records</span>
                                 </h3>
                             </div>
@@ -473,7 +473,7 @@ function ChildProfileContent() {
                             <div className="p-4 rounded-xl bg-blue-50/50 border border-blue-100 space-y-1">
                                 <span className="text-gray-500 text-[11px] font-medium block">Grade Level</span>
                                 <p className="text-base font-bold text-gray-900 flex items-center gap-1.5">
-                                    <BookOpen className="w-4 h-4 text-[#184973]" />
+                                    <BookOpen className="w-4 h-4 text-[#4085b3]" />
                                     <span>{schoolGrade?.grade?.name || "Grade 10"}</span>
                                 </p>
                             </div>
@@ -508,7 +508,7 @@ function ChildProfileContent() {
                         {/* School Contact & Campus Details */}
                         <div className="border border-gray-100 rounded-2xl p-5 bg-slate-50/80 space-y-3">
                             <h4 className="text-xs font-bold text-gray-900 uppercase tracking-wider flex items-center gap-2">
-                                <School className="w-4 h-4 text-[#184973]" />
+                                <School className="w-4 h-4 text-[#4085b3]" />
                                 <span>School & Campus Contact Information</span>
                             </h4>
                             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs text-gray-700">
@@ -532,7 +532,7 @@ function ChildProfileContent() {
                     <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm space-y-4">
                         <div className="flex items-center justify-between border-b border-gray-100 pb-3">
                             <h3 className="font-bold text-sm text-gray-900 flex items-center gap-2">
-                                <Clock className="w-4 h-4 text-[#184973]" />
+                                <Clock className="w-4 h-4 text-[#4085b3]" />
                                 <span>Enrollment History</span>
                             </h3>
                             <span className="text-xs text-gray-500 font-medium">{enrollments.length} record(s)</span>

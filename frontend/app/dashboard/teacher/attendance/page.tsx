@@ -461,7 +461,7 @@ function AttendanceContent() {
     if (loading) {
         return (
             <div className="w-full max-w-7xl mx-auto p-12 text-center text-gray-500 min-h-[400px] flex flex-col justify-center items-center">
-                <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#247297] mb-4"></div>
+                <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#4085b3] mb-4"></div>
                 <p className="text-sm font-semibold text-gray-600">Loading dynamic database records...</p>
             </div>
         );
@@ -507,7 +507,7 @@ function AttendanceContent() {
                                     <select
                                         value={selectedClassId}
                                         onChange={(e) => handleClassChange(e.target.value)}
-                                        className="bg-gray-50 border border-gray-200 text-gray-900 font-bold rounded-xl px-3 py-2 outline-none focus:ring-2 focus:ring-[#247297]"
+                                        className="bg-gray-50 border border-gray-200 text-gray-900 font-bold rounded-xl px-3 py-2 outline-none focus:ring-2 focus:ring-[#4085b3]"
                                     >
                                         {classes.length === 0 ? (
                                             <option value="">No classes assigned in database</option>
@@ -533,7 +533,7 @@ function AttendanceContent() {
                                         type="date"
                                         value={attendanceDate}
                                         onChange={(e) => setAttendanceDate(e.target.value)}
-                                        className="bg-gray-50 border border-gray-200 text-gray-900 font-bold rounded-xl px-3 py-2 outline-none focus:ring-2 focus:ring-[#247297]"
+                                        className="bg-gray-50 border border-gray-200 text-gray-900 font-bold rounded-xl px-3 py-2 outline-none focus:ring-2 focus:ring-[#4085b3]"
                                     />
                                 </div>
 
@@ -542,7 +542,7 @@ function AttendanceContent() {
                                     <select
                                         value={selectedPeriod}
                                         onChange={(e) => setSelectedPeriod(e.target.value)}
-                                        className="bg-gray-50 border border-gray-200 text-gray-900 font-bold rounded-xl px-3 py-2 outline-none focus:ring-2 focus:ring-[#247297]"
+                                        className="bg-gray-50 border border-gray-200 text-gray-900 font-bold rounded-xl px-3 py-2 outline-none focus:ring-2 focus:ring-[#4085b3]"
                                     >
                                         <option value="">Daily Attendance (Full Day)</option>
                                         <option value="Period 1">Period 1 (8:00 AM - 8:45 AM)</option>
@@ -565,7 +565,7 @@ function AttendanceContent() {
                                 <button
                                     onClick={handleSubmitAttendance}
                                     disabled={submitting}
-                                    className="px-4 py-2 bg-[#247297] text-white rounded-xl text-xs font-bold hover:bg-[#1b5875] transition-colors shadow-2xs flex items-center space-x-1.5 disabled:opacity-50"
+                                    className="px-4 py-2 bg-[#4085b3] text-white rounded-xl text-xs font-bold hover:bg-[#32698e] transition-colors shadow-2xs flex items-center space-x-1.5 disabled:opacity-50"
                                 >
                                     {submitting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
                                     <span>Save Attendance Logs</span>
@@ -578,7 +578,7 @@ function AttendanceContent() {
                     <Card className="border border-gray-200 overflow-hidden">
                         <CardHeader className="pb-3 border-b border-gray-100 flex flex-row items-center justify-between">
                             <div className="flex items-center space-x-2">
-                                <Users className="w-4 h-4 text-[#247297]" />
+                                <Users className="w-4 h-4 text-[#4085b3]" />
                                 <CardTitle className="text-sm font-bold text-gray-900">
                                     Student Section Roster ({filteredRoster.length} Enrolled)
                                 </CardTitle>
@@ -590,7 +590,7 @@ function AttendanceContent() {
                                     placeholder="Filter by name or ID..."
                                     value={searchQuery}
                                     onChange={(e) => setSearchQuery(e.target.value)}
-                                    className="w-full bg-gray-50 border border-gray-200 text-xs rounded-xl pl-8 pr-3 py-1.5 outline-none focus:ring-2 focus:ring-[#247297]"
+                                    className="w-full bg-gray-50 border border-gray-200 text-xs rounded-xl pl-8 pr-3 py-1.5 outline-none focus:ring-2 focus:ring-[#4085b3]"
                                 />
                             </div>
                         </CardHeader>
@@ -620,12 +620,12 @@ function AttendanceContent() {
                                                 const currentStatus = attendanceMap[enrollmentId] || "PRESENT";
 
                                                 return (
-                                                    <tr key={enrollmentId} className="hover:bg-[#247297]/5 transition-colors">
+                                                    <tr key={enrollmentId} className="hover:bg-[#4085b3]/5 transition-colors">
                                                         <td className="py-3 px-4 font-mono text-gray-400 font-bold">{idx + 1}</td>
                                                         <td className="py-3 px-4 font-bold text-gray-900">
                                                             {studentObj.firstName} {studentObj.lastName} {studentObj.fatherName || ''}
                                                         </td>
-                                                        <td className="py-3 px-4 font-mono font-bold text-[#247297]">
+                                                        <td className="py-3 px-4 font-mono font-bold text-[#4085b3]">
                                                             {studentObj.studentId || 'N/A'}
                                                         </td>
                                                         <td className="py-3 px-4">
@@ -664,7 +664,7 @@ function AttendanceContent() {
                                                                     onClick={() => handleStatusToggle(enrollmentId, "EXCUSED")}
                                                                     className={`px-2.5 py-1 rounded-lg font-bold text-[11px] transition-colors border ${
                                                                         currentStatus === "EXCUSED"
-                                                                            ? "bg-blue-600 text-white border-blue-700 shadow-2xs"
+                                                                            ? "bg-[#4085b3] text-white border-[#32698e] shadow-2xs"
                                                                             : "bg-gray-100 text-gray-600 border-gray-200 hover:bg-blue-50"
                                                                     }`}
                                                                 >
@@ -678,7 +678,7 @@ function AttendanceContent() {
                                                                 placeholder="Add remark or reason..."
                                                                 value={notesMap[enrollmentId] || ""}
                                                                 onChange={(e) => handleNoteChange(enrollmentId, e.target.value)}
-                                                                className="w-full bg-gray-50 border border-gray-200 rounded-lg px-2.5 py-1 text-xs outline-none focus:ring-1 focus:ring-[#247297]"
+                                                                className="w-full bg-gray-50 border border-gray-200 rounded-lg px-2.5 py-1 text-xs outline-none focus:ring-1 focus:ring-[#4085b3]"
                                                             />
                                                         </td>
                                                     </tr>
@@ -708,7 +708,7 @@ function AttendanceContent() {
                                 }}
                                 className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center space-x-1.5 transition-colors ${
                                     historyViewMode === "hierarchy" 
-                                        ? "bg-[#247297] text-white shadow-2xs" 
+                                        ? "bg-[#4085b3] text-white shadow-2xs" 
                                         : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                                 }`}
                             >
@@ -719,7 +719,7 @@ function AttendanceContent() {
                                 onClick={() => setHistoryViewMode("table")}
                                 className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center space-x-1.5 transition-colors ${
                                     historyViewMode === "table" 
-                                        ? "bg-[#247297] text-white shadow-2xs" 
+                                        ? "bg-[#4085b3] text-white shadow-2xs" 
                                         : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                                 }`}
                             >
@@ -755,15 +755,15 @@ function AttendanceContent() {
                                                     setHistorySelectedGrade(gGroup.gradeLevel);
                                                     setHistoryStep("sections");
                                                 }}
-                                                className="border border-gray-200 hover:border-[#247297] hover:shadow-md transition-all cursor-pointer group bg-white"
+                                                className="border border-gray-200 hover:border-[#4085b3] hover:shadow-md transition-all cursor-pointer group bg-white"
                                             >
                                                 <CardHeader className="pb-3 border-b border-gray-100 flex flex-row items-center justify-between">
                                                     <div className="flex items-center space-x-3">
-                                                        <div className="w-10 h-10 rounded-2xl bg-[#247297]/10 flex items-center justify-center text-[#247297] font-black text-base group-hover:bg-[#247297] group-hover:text-white transition-colors">
+                                                        <div className="w-10 h-10 rounded-2xl bg-[#4085b3]/10 flex items-center justify-center text-[#4085b3] font-black text-base group-hover:bg-[#4085b3] group-hover:text-white transition-colors">
                                                             G{gGroup.gradeLevel}
                                                         </div>
                                                         <div>
-                                                            <CardTitle className="text-base font-extrabold text-gray-900 group-hover:text-[#247297] transition-colors">
+                                                            <CardTitle className="text-base font-extrabold text-gray-900 group-hover:text-[#4085b3] transition-colors">
                                                                 Grade {gGroup.gradeLevel}
                                                             </CardTitle>
                                                             <span className="text-xs font-semibold text-gray-500">{gGroup.sections.length} Sections Assigned</span>
@@ -786,7 +786,7 @@ function AttendanceContent() {
                                                             setHistorySelectedGrade(gGroup.gradeLevel);
                                                             setHistoryStep("sections");
                                                         }}
-                                                        className="w-full py-2 bg-[#247297] text-white font-bold text-xs rounded-xl hover:bg-[#1b5875] transition-colors flex items-center justify-center space-x-1.5 shadow-2xs mt-2"
+                                                        className="w-full py-2 bg-[#4085b3] text-white font-bold text-xs rounded-xl hover:bg-[#32698e] transition-colors flex items-center justify-center space-x-1.5 shadow-2xs mt-2"
                                                     >
                                                         <span>Explore Grade {gGroup.gradeLevel} Sections</span>
                                                         <ChevronRight className="w-4 h-4" />
@@ -805,7 +805,7 @@ function AttendanceContent() {
                                     <div className="flex items-center space-x-2 text-xs font-bold text-gray-500 bg-gray-50 p-3 rounded-xl border border-gray-200">
                                         <button 
                                             onClick={() => setHistoryStep("grades")}
-                                            className="text-[#247297] hover:underline"
+                                            className="text-[#4085b3] hover:underline"
                                         >
                                             All Assigned Grades
                                         </button>
@@ -832,15 +832,15 @@ function AttendanceContent() {
                                                         setHistorySelectedSection(clsItem);
                                                         setHistoryStep("students");
                                                     }}
-                                                    className="border border-gray-200 hover:border-[#247297] hover:shadow-md transition-all cursor-pointer group bg-white"
+                                                    className="border border-gray-200 hover:border-[#4085b3] hover:shadow-md transition-all cursor-pointer group bg-white"
                                                 >
                                                     <CardHeader className="pb-3 border-b border-gray-100 flex flex-row items-center justify-between">
                                                         <div className="flex items-center space-x-3">
-                                                            <div className="w-9 h-9 rounded-xl bg-[#247297]/10 flex items-center justify-center text-[#247297] font-black text-sm group-hover:bg-[#247297] group-hover:text-white transition-colors">
+                                                            <div className="w-9 h-9 rounded-xl bg-[#4085b3]/10 flex items-center justify-center text-[#4085b3] font-black text-sm group-hover:bg-[#4085b3] group-hover:text-white transition-colors">
                                                                 {secName}
                                                             </div>
                                                             <div>
-                                                                <CardTitle className="text-sm font-bold text-gray-900 group-hover:text-[#247297] transition-colors">
+                                                                <CardTitle className="text-sm font-bold text-gray-900 group-hover:text-[#4085b3] transition-colors">
                                                                     Section {secName}
                                                                 </CardTitle>
                                                                 <span className="text-[11px] font-semibold text-gray-500">{subj}</span>
@@ -857,7 +857,7 @@ function AttendanceContent() {
                                                                 setHistorySelectedSection(clsItem);
                                                                 setHistoryStep("students");
                                                             }}
-                                                            className="w-full py-2 bg-[#247297] text-white font-bold text-xs rounded-xl hover:bg-[#1b5875] transition-colors flex items-center justify-center space-x-1.5 shadow-2xs mt-2"
+                                                            className="w-full py-2 bg-[#4085b3] text-white font-bold text-xs rounded-xl hover:bg-[#32698e] transition-colors flex items-center justify-center space-x-1.5 shadow-2xs mt-2"
                                                         >
                                                             <span>View Section Students Roster</span>
                                                             <ChevronRight className="w-4 h-4" />
@@ -877,14 +877,14 @@ function AttendanceContent() {
                                     <div className="flex items-center space-x-2 text-xs font-bold text-gray-500 bg-gray-50 p-3 rounded-xl border border-gray-200">
                                         <button 
                                             onClick={() => setHistoryStep("grades")}
-                                            className="text-[#247297] hover:underline"
+                                            className="text-[#4085b3] hover:underline"
                                         >
                                             All Assigned Grades
                                         </button>
                                         <ChevronRight className="w-3.5 h-3.5 text-gray-400" />
                                         <button 
                                             onClick={() => setHistoryStep("sections")}
-                                            className="text-[#247297] hover:underline"
+                                            className="text-[#4085b3] hover:underline"
                                         >
                                             Grade {historySelectedGrade}
                                         </button>
@@ -907,7 +907,7 @@ function AttendanceContent() {
                                                     placeholder="Search student by name or ID..."
                                                     value={historyStudentSearch}
                                                     onChange={(e) => setHistoryStudentSearch(e.target.value)}
-                                                    className="w-full bg-gray-50 border border-gray-200 text-xs rounded-xl pl-8 pr-3 py-1.5 outline-none focus:ring-2 focus:ring-[#247297]"
+                                                    className="w-full bg-gray-50 border border-gray-200 text-xs rounded-xl pl-8 pr-3 py-1.5 outline-none focus:ring-2 focus:ring-[#4085b3]"
                                                 />
                                             </div>
                                         </CardHeader>
@@ -937,7 +937,7 @@ function AttendanceContent() {
                                                                     <td className="py-3 px-4 font-bold text-gray-900">
                                                                         {stObj.firstName} {stObj.lastName} {stObj.fatherName || ''}
                                                                     </td>
-                                                                    <td className="py-3 px-4 font-mono font-bold text-[#247297]">
+                                                                    <td className="py-3 px-4 font-mono font-bold text-[#4085b3]">
                                                                         {stObj.studentId || 'N/A'}
                                                                     </td>
                                                                     <td className="py-3 px-4 text-center">
@@ -946,7 +946,7 @@ function AttendanceContent() {
                                                                                 setHistorySelectedStudent(stItem);
                                                                                 setHistoryStep("detail");
                                                                             }}
-                                                                            className="px-3 py-1 bg-[#247297] text-white text-[11px] font-bold rounded-lg hover:bg-[#1b5875] transition-colors"
+                                                                            className="px-3 py-1 bg-[#4085b3] text-white text-[11px] font-bold rounded-lg hover:bg-[#32698e] transition-colors"
                                                                         >
                                                                             View Student Attendance Logs ➔
                                                                         </button>
@@ -969,21 +969,21 @@ function AttendanceContent() {
                                     <div className="flex items-center space-x-2 text-xs font-bold text-gray-500 bg-gray-50 p-3 rounded-xl border border-gray-200">
                                         <button 
                                             onClick={() => setHistoryStep("grades")}
-                                            className="text-[#247297] hover:underline"
+                                            className="text-[#4085b3] hover:underline"
                                         >
                                             All Assigned Grades
                                         </button>
                                         <ChevronRight className="w-3.5 h-3.5 text-gray-400" />
                                         <button 
                                             onClick={() => setHistoryStep("sections")}
-                                            className="text-[#247297] hover:underline"
+                                            className="text-[#4085b3] hover:underline"
                                         >
                                             Grade {historySelectedGrade}
                                         </button>
                                         <ChevronRight className="w-3.5 h-3.5 text-gray-400" />
                                         <button 
                                             onClick={() => setHistoryStep("students")}
-                                            className="text-[#247297] hover:underline"
+                                            className="text-[#4085b3] hover:underline"
                                         >
                                             Section {historySelectedSection?.assignment?.section?.name || 'A'}
                                         </button>
@@ -1142,7 +1142,7 @@ function AttendanceContent() {
                     <Card className="border border-gray-200 bg-white">
                         <CardHeader className="pb-3 border-b border-gray-100">
                             <div className="flex items-center space-x-2">
-                                <FileCheck className="w-5 h-5 text-[#247297]" />
+                                <FileCheck className="w-5 h-5 text-[#4085b3]" />
                                 <CardTitle className="text-sm font-bold text-gray-900">
                                     Record Controlled Absence Reason & Explanation
                                 </CardTitle>
@@ -1158,7 +1158,7 @@ function AttendanceContent() {
                                     <select
                                         value={selectedClassId}
                                         onChange={(e) => handleClassChange(e.target.value)}
-                                        className="w-full bg-gray-50 border border-gray-200 rounded-xl p-2.5 font-bold text-gray-900 outline-none focus:ring-2 focus:ring-[#247297]"
+                                        className="w-full bg-gray-50 border border-gray-200 rounded-xl p-2.5 font-bold text-gray-900 outline-none focus:ring-2 focus:ring-[#4085b3]"
                                     >
                                         {classes.map((cls: any) => {
                                             const id = cls.assignment?.id || cls.id;
@@ -1182,7 +1182,7 @@ function AttendanceContent() {
                                             const st = students.find(s => s.id === e.target.value);
                                             setSelectedStudentForReason(st || null);
                                         }}
-                                        className="w-full bg-gray-50 border border-gray-200 rounded-xl p-2.5 font-bold text-gray-900 outline-none focus:ring-2 focus:ring-[#247297]"
+                                        className="w-full bg-gray-50 border border-gray-200 rounded-xl p-2.5 font-bold text-gray-900 outline-none focus:ring-2 focus:ring-[#4085b3]"
                                     >
                                         <option value="">-- Choose Student from Roster --</option>
                                         {students.map((st: any) => {
@@ -1202,7 +1202,7 @@ function AttendanceContent() {
                                         type="date"
                                         value={reasonDate}
                                         onChange={(e) => setReasonDate(e.target.value)}
-                                        className="w-full bg-gray-50 border border-gray-200 text-gray-900 font-bold rounded-xl p-2.5 outline-none focus:ring-2 focus:ring-[#247297]"
+                                        className="w-full bg-gray-50 border border-gray-200 text-gray-900 font-bold rounded-xl p-2.5 outline-none focus:ring-2 focus:ring-[#4085b3]"
                                     />
                                 </div>
                             </div>
@@ -1213,7 +1213,7 @@ function AttendanceContent() {
                                     <select
                                         value={reasonCategory}
                                         onChange={(e) => setReasonCategory(e.target.value as any)}
-                                        className="w-full bg-gray-50 border border-gray-200 rounded-xl p-2.5 font-bold text-gray-900 outline-none focus:ring-2 focus:ring-[#247297]"
+                                        className="w-full bg-gray-50 border border-gray-200 rounded-xl p-2.5 font-bold text-gray-900 outline-none focus:ring-2 focus:ring-[#4085b3]"
                                     >
                                         <option value="MEDICAL">🏥 Medical / Illness (Doctor Note / Sick Leave)</option>
                                         <option value="FAMILY">🏠 Family Emergency / Urgent Private Matter</option>
@@ -1232,7 +1232,7 @@ function AttendanceContent() {
                                             placeholder="e.g. DOC-9874 / Medical Cert #104..."
                                             value={reasonDocumentRef}
                                             onChange={(e) => setReasonDocumentRef(e.target.value)}
-                                            className="w-full bg-gray-50 border border-gray-200 text-gray-900 font-medium rounded-xl pl-9 pr-3 py-2.5 outline-none focus:ring-2 focus:ring-[#247297]"
+                                            className="w-full bg-gray-50 border border-gray-200 text-gray-900 font-medium rounded-xl pl-9 pr-3 py-2.5 outline-none focus:ring-2 focus:ring-[#4085b3]"
                                         />
                                     </div>
                                 </div>
@@ -1245,7 +1245,7 @@ function AttendanceContent() {
                                     placeholder="Enter detailed explanatory notes (e.g. 'Father called at 8:15 AM confirming student is home with high fever. Doctor note expected tomorrow.')..."
                                     value={absenceReasonText}
                                     onChange={(e) => setAbsenceReasonText(e.target.value)}
-                                    className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 outline-none focus:ring-2 focus:ring-[#247297]"
+                                    className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 outline-none focus:ring-2 focus:ring-[#4085b3]"
                                     required
                                 />
                             </div>
@@ -1253,7 +1253,7 @@ function AttendanceContent() {
                             <button
                                 onClick={handleSaveAbsenceReason}
                                 disabled={savingReason}
-                                className="px-5 py-2.5 bg-[#247297] text-white text-xs font-bold rounded-xl hover:bg-[#1b5875] transition-colors shadow-2xs flex items-center space-x-2 disabled:opacity-50"
+                                className="px-5 py-2.5 bg-[#4085b3] text-white text-xs font-bold rounded-xl hover:bg-[#32698e] transition-colors shadow-2xs flex items-center space-x-2 disabled:opacity-50"
                             >
                                 {savingReason ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
                                 <span>Save Absence Reason Log to Database</span>
@@ -1404,7 +1404,7 @@ function AttendanceContent() {
                                                 const st = students.find(s => s.id === e.target.value);
                                                 setReportingStudent(st || null);
                                             }}
-                                            className="w-full bg-gray-50 border border-gray-200 rounded-xl p-2.5 font-bold text-gray-900 outline-none focus:ring-2 focus:ring-[#247297]"
+                                            className="w-full bg-gray-50 border border-gray-200 rounded-xl p-2.5 font-bold text-gray-900 outline-none focus:ring-2 focus:ring-[#4085b3]"
                                         >
                                             <option value="">-- Choose Student from Database --</option>
                                             {students.map((st: any) => {
@@ -1423,7 +1423,7 @@ function AttendanceContent() {
                                         <select
                                             value={reportSeverity}
                                             onChange={(e) => setReportSeverity(e.target.value as any)}
-                                            className="w-full bg-gray-50 border border-gray-200 rounded-xl p-2.5 font-bold text-gray-900 outline-none focus:ring-2 focus:ring-[#247297]"
+                                            className="w-full bg-gray-50 border border-gray-200 rounded-xl p-2.5 font-bold text-gray-900 outline-none focus:ring-2 focus:ring-[#4085b3]"
                                         >
                                             <option value="LOW">LOW — First Unexcused Absence</option>
                                             <option value="MEDIUM">MEDIUM — 2 Unexcused Absences</option>
@@ -1440,7 +1440,7 @@ function AttendanceContent() {
                                         placeholder="Describe attendance pattern concerns, parent phone calls made, or administrative intervention needed..."
                                         value={reportReason}
                                         onChange={(e) => setReportReason(e.target.value)}
-                                        className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 outline-none focus:ring-2 focus:ring-[#247297]"
+                                        className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 outline-none focus:ring-2 focus:ring-[#4085b3]"
                                         required
                                     />
                                 </div>

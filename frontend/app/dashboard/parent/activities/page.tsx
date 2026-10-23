@@ -71,14 +71,14 @@ function ActivitiesContent() {
                     <div className="flex items-center gap-2">
                         <Link
                             href="/dashboard/parent"
-                            className="inline-flex items-center gap-1.5 text-xs font-semibold text-gray-500 hover:text-[#184973] transition-colors"
+                            className="inline-flex items-center gap-1.5 text-xs font-semibold text-gray-500 hover:text-[#4085b3] transition-colors"
                         >
                             <ArrowLeft className="w-3.5 h-3.5" />
                             Back to Dashboard
                         </Link>
                     </div>
                     <h1 className="text-2xl sm:text-3xl font-extrabold text-gray-900 tracking-tight flex items-center gap-2.5">
-                        <BookOpen className="w-7 h-7 text-[#184973]" />
+                        <BookOpen className="w-7 h-7 text-[#4085b3]" />
                         Learning Activities
                     </h1>
                     <p className="text-sm text-gray-500">
@@ -92,7 +92,7 @@ function ActivitiesContent() {
                         <div className="text-xs text-gray-500 font-semibold mb-1.5 flex items-center justify-between">
                             <span>Active Student</span>
                             {children.length > 1 && (
-                                <span className="text-[11px] text-[#184973] font-medium">
+                                <span className="text-[11px] text-[#4085b3] font-medium">
                                     {selectedChildIndex + 1} of {children.length}
                                 </span>
                             )}
@@ -100,10 +100,10 @@ function ActivitiesContent() {
                         <button
                             type="button"
                             onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                            className="w-full sm:w-auto min-w-[240px] flex items-center justify-between gap-3 px-4 py-2.5 bg-white border border-gray-300 hover:border-[#184973] rounded-xl shadow-sm hover:shadow transition-all text-left focus:outline-none focus:ring-2 focus:ring-[#184973]/20"
+                            className="w-full sm:w-auto min-w-[240px] flex items-center justify-between gap-3 px-4 py-2.5 bg-white border border-gray-300 hover:border-[#4085b3] rounded-xl shadow-sm hover:shadow transition-all text-left focus:outline-none focus:ring-2 focus:ring-[#4085b3]/20"
                         >
                             <div className="flex items-center gap-3">
-                                <div className="w-9 h-9 rounded-full bg-[#184973] text-white flex items-center justify-center text-sm font-bold shadow-sm">
+                                <div className="w-9 h-9 rounded-full bg-[#4085b3] text-white flex items-center justify-center text-sm font-bold shadow-sm">
                                     {currentStudent?.firstName?.[0] || "S"}
                                 </div>
                                 <div>
@@ -131,14 +131,14 @@ function ActivitiesContent() {
                                                 setIsDropdownOpen(false);
                                             }}
                                             className={`w-full flex items-center justify-between px-4 py-2.5 text-left text-sm hover:bg-gray-50 transition-colors ${
-                                                isSelected ? "bg-blue-50/70 font-semibold text-[#184973]" : "text-gray-700"
+                                                isSelected ? "bg-blue-50/70 font-semibold text-[#4085b3]" : "text-gray-700"
                                             }`}
                                         >
                                             <div>
                                                 <div>{s?.firstName} {s?.lastName}</div>
                                                 <div className="text-xs text-gray-400">{s?.studentId}</div>
                                             </div>
-                                            {isSelected && <Check className="w-4 h-4 text-[#184973]" />}
+                                            {isSelected && <Check className="w-4 h-4 text-[#4085b3]" />}
                                         </button>
                                     );
                                 })}
@@ -154,7 +154,7 @@ function ActivitiesContent() {
                     href="/dashboard/parent/activities"
                     className={`pb-3 text-sm font-semibold transition-colors border-b-2 flex items-center gap-2 ${
                         currentTab === "assignments"
-                            ? "border-[#184973] text-[#184973]"
+                            ? "border-[#4085b3] text-[#4085b3]"
                             : "border-transparent text-gray-500 hover:text-gray-900"
                     }`}
                 >
@@ -165,7 +165,7 @@ function ActivitiesContent() {
                     href="/dashboard/parent/activities?tab=deadlines"
                     className={`pb-3 text-sm font-semibold transition-colors border-b-2 flex items-center gap-2 ${
                         currentTab === "deadlines"
-                            ? "border-[#184973] text-[#184973]"
+                            ? "border-[#4085b3] text-[#4085b3]"
                             : "border-transparent text-gray-500 hover:text-gray-900"
                     }`}
                 >
@@ -178,11 +178,11 @@ function ActivitiesContent() {
             <div className="bg-gradient-to-br from-blue-50/70 via-white to-indigo-50/40 rounded-2xl border border-blue-100 p-6 sm:p-8 shadow-sm">
                 <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
                     <div className="flex items-start gap-4">
-                        <div className="w-14 h-14 rounded-2xl bg-[#184973] text-white flex items-center justify-center flex-shrink-0 shadow-md">
+                        <div className="w-14 h-14 rounded-2xl bg-[#4085b3] text-white flex items-center justify-center flex-shrink-0 shadow-md">
                             <BookOpen className="w-7 h-7" />
                         </div>
                         <div className="space-y-1.5">
-                            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-blue-100 text-[#184973]">
+                            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-blue-100 text-[#4085b3]">
                                 <Sparkles className="w-3.5 h-3.5" />
                                 Feature in Active Rollout
                             </div>
@@ -199,7 +199,7 @@ function ActivitiesContent() {
                 <div className="mt-8 grid grid-cols-1 sm:grid-cols-3 gap-4 border-t border-blue-100/80 pt-6">
                     <div className="p-4 bg-white/80 backdrop-blur rounded-xl border border-blue-100/60 shadow-xs">
                         <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1 flex items-center gap-1.5">
-                            <Calendar className="w-4 h-4 text-[#184973]" />
+                            <Calendar className="w-4 h-4 text-[#4085b3]" />
                             Live Assignment Tracker
                         </div>
                         <p className="text-xs text-gray-600">
@@ -231,7 +231,7 @@ function ActivitiesContent() {
 
             {/* Interactive Preview State */}
             <div className="bg-white rounded-2xl border border-gray-200 p-8 text-center space-y-4 shadow-sm">
-                <div className="w-12 h-12 rounded-full bg-blue-50 text-[#184973] flex items-center justify-center mx-auto">
+                <div className="w-12 h-12 rounded-full bg-blue-50 text-[#4085b3] flex items-center justify-center mx-auto">
                     <FolderKanban className="w-6 h-6" />
                 </div>
                 <div className="space-y-1">
@@ -245,7 +245,7 @@ function ActivitiesContent() {
                 <div className="pt-2">
                     <Link
                         href="/dashboard/parent/academics"
-                        className="inline-flex items-center gap-2 px-4 py-2 bg-[#184973] text-white text-xs font-semibold rounded-xl hover:bg-[#123859] transition-colors shadow-sm"
+                        className="inline-flex items-center gap-2 px-4 py-2 bg-[#4085b3] text-white text-xs font-semibold rounded-xl hover:bg-[#32698e] transition-colors shadow-sm"
                     >
                         View Published Academic Results
                     </Link>

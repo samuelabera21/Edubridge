@@ -285,7 +285,7 @@ function CurriculumContent() {
                 <div className="flex items-center space-x-2">
                     <button
                         onClick={() => setShowLogModal(true)}
-                        className="px-4 py-2.5 bg-[#4085b3] hover:bg-[#356e94] text-white rounded-xl text-xs font-bold transition-colors flex items-center space-x-2 shadow-2xs cursor-pointer"
+                        className="px-4 py-2.5 bg-[#4085b3] hover:bg-[#32698e] text-white rounded-xl text-xs font-bold transition-colors flex items-center space-x-2 shadow-2xs cursor-pointer"
                     >
                         <Plus className="w-4 h-4" />
                         <span>Log Lesson Progress</span>
@@ -453,9 +453,9 @@ function CurriculumContent() {
                                     >
                                         <Compass className="w-4 h-4 text-[#4085b3]" />
                                         <span>Subject National Competency Standards & Expected Outcomes</span>
-                                        {showCompetencies ? <ChevronUp className="w-4 h-4 text-blue-600" /> : <ChevronDown className="w-4 h-4 text-blue-600" />}
+                                        {showCompetencies ? <ChevronUp className="w-4 h-4 text-[#4085b3]" /> : <ChevronDown className="w-4 h-4 text-[#4085b3]" />}
                                     </button>
-                                    <span className="text-[10px] font-bold text-blue-600 uppercase bg-blue-100/70 px-2.5 py-0.5 rounded-full">
+                                    <span className="text-[10px] font-bold text-[#4085b3] uppercase bg-[#4085b3]/10 px-2.5 py-0.5 rounded-full">
                                         MoE Secondary Education Framework
                                     </span>
                                 </div>
@@ -875,7 +875,7 @@ function CurriculumContent() {
                         </CardTitle>
                         <button
                             onClick={() => setShowLogModal(true)}
-                            className="px-3.5 py-1.5 bg-[#4085b3] text-white rounded-lg font-bold text-xs hover:bg-[#356e94] transition-colors flex items-center space-x-1"
+                            className="px-3.5 py-1.5 bg-[#4085b3] text-white rounded-lg font-bold text-xs hover:bg-[#32698e] transition-colors flex items-center space-x-1"
                         >
                             <Plus className="w-4 h-4" />
                             <span>Log New Lesson</span>
@@ -961,7 +961,7 @@ function CurriculumContent() {
                         </CardTitle>
                         <button
                             onClick={() => setShowNoteModal(true)}
-                            className="px-3.5 py-1.5 bg-[#4085b3] text-white rounded-lg font-bold text-xs hover:bg-[#356e94] transition-colors flex items-center space-x-1"
+                            className="px-3.5 py-1.5 bg-[#4085b3] text-white rounded-lg font-bold text-xs hover:bg-[#32698e] transition-colors flex items-center space-x-1"
                         >
                             <Plus className="w-4 h-4" />
                             <span>Add Reflection Note</span>
@@ -1066,7 +1066,7 @@ function CurriculumContent() {
                                 <button
                                     type="submit"
                                     disabled={submitting}
-                                    className="px-4 py-2 bg-[#4085b3] hover:bg-[#356e94] text-white font-bold rounded-xl flex items-center space-x-1"
+                                    className="px-4 py-2 bg-[#4085b3] hover:bg-[#32698e] text-white font-bold rounded-xl flex items-center space-x-1"
                                 >
                                     <Save className="w-4 h-4" />
                                     <span>Save Lesson Log</span>
@@ -1197,7 +1197,7 @@ function CurriculumContent() {
                                 </button>
                                 <button
                                     type="submit"
-                                    className="px-4 py-2 bg-[#4085b3] hover:bg-[#356e94] text-white font-bold rounded-xl flex items-center space-x-1"
+                                    className="px-4 py-2 bg-[#4085b3] hover:bg-[#32698e] text-white font-bold rounded-xl flex items-center space-x-1"
                                 >
                                     <Save className="w-4 h-4" />
                                     <span>Save Note</span>
@@ -1315,7 +1315,7 @@ function CurriculumContent() {
                                         setTopicName(t.title);
                                         setShowLogModal(true);
                                     }}
-                                    className="px-4 py-2 bg-[#4085b3] hover:bg-[#356e94] text-white font-bold rounded-xl text-xs flex items-center space-x-1.5 transition-colors"
+                                    className="px-4 py-2 bg-[#4085b3] hover:bg-[#32698e] text-white font-bold rounded-xl text-xs flex items-center space-x-1.5 transition-colors"
                                 >
                                     <Plus className="w-3.5 h-3.5" />
                                     <span>Log Lesson for this Topic</span>

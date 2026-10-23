@@ -40,6 +40,19 @@ export default function DashboardRootPage() {
         }
 
         switch (roleName) {
+            case "FEDERAL_ADMIN":
+                router.replace("/dashboard/federal");
+                return;
+            case "REGION_ADMIN":
+                router.replace("/dashboard/region");
+                return;
+            case "ZONE_ADMIN":
+            case "ZONAL_ADMIN":
+                router.replace("/dashboard/zone");
+                return;
+            case "WOREDA_ADMIN":
+                router.replace("/dashboard/woreda");
+                return;
             case "TEACHER":
                 router.replace("/dashboard/teacher");
                 return;
@@ -59,7 +72,13 @@ export default function DashboardRootPage() {
                 router.replace("/dashboard/admin");
                 return;
             default:
-                router.replace("/dashboard/federal");
+                if (scopeType === "SCHOOL") {
+                    router.replace("/dashboard/admin");
+                } else if (scopeType === "FEDERAL") {
+                    router.replace("/dashboard/federal");
+                } else {
+                    router.replace("/dashboard/admin");
+                }
                 return;
         }
     }, [authData, loading, router]);

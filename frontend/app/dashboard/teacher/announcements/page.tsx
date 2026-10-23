@@ -612,7 +612,7 @@ export default function TeacherAnnouncementsPage() {
                             <div
                                 key={item.id}
                                 onClick={() => setSelectedAnnouncement(item)}
-                                className="group relative bg-white border border-slate-300 p-6 flex flex-col justify-between min-h-[175px] hover:bg-[#002d54] hover:border-[#002d54] transition-all duration-150 cursor-pointer"
+                                className="group relative bg-white border border-slate-300 p-6 flex flex-col justify-between min-h-[175px] hover:bg-[#4085b3] hover:border-[#4085b3] transition-all duration-150 cursor-pointer"
                             >
                                 <div>
                                     {/* Header: Title */}

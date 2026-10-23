@@ -58,11 +58,25 @@ export default function LoginPage() {
             return;
         }
 
-        // 2. School-level roles
+        // 2. Roles mapping
         switch (roleName) {
+            case "FEDERAL_ADMIN":
+                router.push("/dashboard/federal");
+                return;
+            case "REGION_ADMIN":
+                router.push("/dashboard/region");
+                return;
+            case "ZONE_ADMIN":
+            case "ZONAL_ADMIN":
+                router.push("/dashboard/zone");
+                return;
+            case "WOREDA_ADMIN":
+                router.push("/dashboard/woreda");
+                return;
             case "ADMIN":
             case "SCHOOL_ADMIN":
             case "ADMINISTRATOR":
+            case "PRINCIPAL":
                 router.push("/dashboard/admin");
                 return;
             case "TEACHER":
@@ -78,7 +92,13 @@ export default function LoginPage() {
                 router.push("/dashboard/vice-principal");
                 return;
             default:
-                router.push("/dashboard/federal");
+                if (scopeType === "SCHOOL") {
+                    router.push("/dashboard/admin");
+                } else if (scopeType === "FEDERAL") {
+                    router.push("/dashboard/federal");
+                } else {
+                    router.push("/dashboard/admin");
+                }
                 return;
         }
     };

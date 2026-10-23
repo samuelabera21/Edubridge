@@ -609,8 +609,8 @@ export default function ParentAnnouncementsRegistryView() {
                                     onClick={() => setSelectedAnnouncement(item)}
                                     className={`group relative p-6 flex flex-col justify-between min-h-[175px] transition-all duration-150 cursor-pointer ${
                                         isSelected
-                                            ? "bg-[#002d54] border border-[#002d54]"
-                                            : "bg-white border border-slate-300 hover:bg-[#002d54] hover:border-[#002d54]"
+                                            ? "bg-[#4085b3] border border-[#4085b3]"
+                                            : "bg-white border border-slate-300 hover:bg-[#4085b3] hover:border-[#4085b3]"
                                     }`}
                                 >
                                     <div>

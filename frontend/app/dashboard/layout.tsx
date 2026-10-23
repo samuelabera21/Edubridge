@@ -6,7 +6,7 @@ import { Loader2, BookOpen, LogOut, LayoutDashboard, Building, Search, Lock, Che
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { fetchApi } from "../../lib/api";
-import { getPrimaryAccess, isHierarchyAdminAccess } from "../../lib/auth-access";
+import { getPrimaryAccess, getAccessForScope, isHierarchyAdminAccess } from "../../lib/auth-access";
 import StudentNavigation from "./student/StudentNavigation";
 import ParentNavigation from "./parent/ParentNavigation";
 import AdministrativeNavigation from "../../components/governance/AdministrativeNavigation";
@@ -289,9 +289,21 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
         messages: 0,
     });
 
+    // Route-aware access resolution: match user access to active tier if available, fallback to primary access
+    const routeScopeType = pathname.startsWith("/dashboard/federal")
+        ? "FEDERAL"
+        : pathname.startsWith("/dashboard/region")
+        ? "REGION"
+        : pathname.startsWith("/dashboard/zone")
+        ? "ZONE"
+        : pathname.startsWith("/dashboard/woreda")
+        ? "WOREDA"
+        : null;
+
     const primaryAccess = getPrimaryAccess(authData?.access);
-    const roleName = primaryAccess?.role?.name || "Unassigned";
-    const scopeType = primaryAccess?.scope?.type || "";
+    const activeAccess = getAccessForScope(authData?.access, routeScopeType) || primaryAccess;
+    const roleName = activeAccess?.role?.name || primaryAccess?.role?.name || "Unassigned";
+    const scopeType = activeAccess?.scope?.type || primaryAccess?.scope?.type || "";
     const isAdminRole = ["ADMIN", "SCHOOL_ADMIN", "ADMINISTRATOR", "PRINCIPAL", "FEDERAL_ADMIN", "REGION_ADMIN", "ZONE_ADMIN", "ZONAL_ADMIN", "WOREDA_ADMIN"].includes(roleName);
     const isSchoolAdmin = scopeType === "SCHOOL" && isAdminRole;
     const isFederalScope = scopeType === "FEDERAL";
@@ -299,6 +311,54 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
     const isTeacherRoute = (pathname === "/dashboard/teacher" || pathname.startsWith("/dashboard/teacher/")) && roleName === "TEACHER";
     const isStudentRoute = (pathname === "/dashboard/student" || pathname.startsWith("/dashboard/student/")) || roleName === "STUDENT";
     const isParentRoute = (pathname === "/dashboard/parent" || pathname.startsWith("/dashboard/parent/")) || roleName === "PARENT";
+
+    // Dynamic administrative tier info
+    const adminTierInfo = (() => {
+        if (pathname.startsWith("/dashboard/region") || scopeType === "REGION" || roleName === "REGION_ADMIN") {
+            return {
+                tierRole: "Region Admin",
+                desk: "Regional Education Bureau",
+                masthead: "Regional Education Bureau"
+            };
+        }
+        if (pathname.startsWith("/dashboard/zone") || scopeType === "ZONE" || roleName === "ZONE_ADMIN" || roleName === "ZONAL_ADMIN") {
+            return {
+                tierRole: "Zone Admin",
+                desk: "Zonal Education Department",
+                masthead: "Zonal Education Department"
+            };
+        }
+        if (pathname.startsWith("/dashboard/woreda") || scopeType === "WOREDA" || roleName === "WOREDA_ADMIN") {
+            return {
+                tierRole: "Woreda Admin",
+                desk: "Woreda Education Office",
+                masthead: "Woreda Education Office"
+            };
+        }
+        if (pathname.startsWith("/dashboard/federal") || scopeType === "FEDERAL" || roleName === "FEDERAL_ADMIN") {
+            return {
+                tierRole: "Federal Admin",
+                desk: "MoE Federal Desk",
+                masthead: "Federal Ministry of Education"
+            };
+        }
+        return null;
+    })();
+
+    const displayRole = isTeacherRoute
+        ? "Teacher"
+        : isStudentRoute
+        ? "Student"
+        : isParentRoute
+        ? "Parent"
+        : adminTierInfo
+        ? adminTierInfo.tierRole
+        : (roleName !== "Unassigned" ? roleName.replace(/_/g, " ") : "User");
+
+    const displayDesk = adminTierInfo?.desk;
+    const displayName = authData?.user?.name || (adminTierInfo ? adminTierInfo.tierRole : "User");
+    const displayEmail = authData?.user?.email || "";
+
 
     const getActiveDeskOrgId = () => {
         if (!authData?.access?.length) return undefined;
@@ -554,17 +614,21 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
 
     return (
         <div className="fixed inset-0 flex flex-col bg-[#f4f5f7] font-sans overflow-hidden">
-            {/* Top Federal Masthead Strip */}
+            {/* Top Masthead Strip */}
             <div className="bg-[#0b1c2d] text-slate-300 text-[11px] px-6 py-1.5 flex items-center justify-between border-b border-[#162f49] select-none shrink-0">
                 <div className="flex items-center space-x-2">
                     <span className="font-semibold text-white tracking-wider uppercase text-[10px]">
                         Federal Democratic Republic of Ethiopia
                     </span>
                     <span className="text-slate-500">•</span>
-                    <span className="text-slate-300">Ministry of Education</span>
+                    <span className="text-slate-300">
+                        {adminTierInfo?.masthead || "Ministry of Education"}
+                    </span>
                 </div>
                 <div className="hidden sm:flex items-center space-x-3 text-[10px] text-slate-400">
-                    <span className="font-medium text-slate-300">National EMIS Portal</span>
+                    <span className="font-medium text-slate-300">
+                        {activeAccess?.scope?.name ? activeAccess.scope.name : "National EMIS Portal"}
+                    </span>
                     <span className="text-slate-600">|</span>
                     <span className="text-emerald-400 flex items-center gap-1 font-semibold">
                         <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
@@ -868,12 +932,12 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
                             className="flex items-center space-x-2.5 hover:opacity-90 transition-opacity focus:outline-none cursor-pointer"
                         >
                             <div className="w-8 h-8 rounded-md bg-[#4085b3] border border-slate-200 flex items-center justify-center text-white font-bold text-xs shadow-xs">
-                                {authData?.user?.name ? authData.user.name.split(' ').map((n: string) => n[0]).join('') : "A"}
+                                {authData?.user?.name ? authData.user.name.split(' ').map((n: string) => n[0]).join('') : (adminTierInfo ? adminTierInfo.tierRole[0] : "U")}
                             </div>
                             <div className="hidden sm:block text-left">
-                                <p className="text-xs font-bold text-slate-800 leading-tight">{authData?.user?.name || (isAdministrativeRoute ? "Federal Administrator" : "User")}</p>
+                                <p className="text-xs font-bold text-slate-800 leading-tight">{displayName}</p>
                                 <p className="text-[10px] text-slate-500 font-medium leading-tight">
-                                    {isTeacherRoute ? "Teacher" : isStudentRoute ? "Student" : isParentRoute ? "Parent" : isAdministrativeRoute ? "Federal Admin" : roleName}
+                                    {displayRole}
                                 </p>
                             </div>
                             <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform ${showProfileDropdown ? "rotate-180" : ""}`} />
@@ -887,15 +951,17 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
                             >
                                 {/* Header info */}
                                 <div className="px-4 py-2.5 border-b border-slate-100 bg-slate-50/70">
-                                    <p className="font-bold text-slate-900 text-xs">{authData?.user?.name || "Federal Administrator"}</p>
-                                    <p className="text-[10px] text-slate-500 truncate mt-0.5">{authData?.user?.email || "admin@moe.gov.et"}</p>
+                                    <p className="font-bold text-slate-900 text-xs">{displayName}</p>
+                                    {displayEmail ? (
+                                        <p className="text-[10px] text-slate-500 truncate mt-0.5">{displayEmail}</p>
+                                    ) : null}
                                     <div className="mt-1.5 flex items-center gap-1.5">
                                         <span className="inline-block px-2 py-0.5 bg-slate-100 text-slate-700 border border-slate-200 rounded font-semibold text-[9px] uppercase tracking-wider">
-                                            {isTeacherRoute ? "Teacher" : isStudentRoute ? "Student" : isParentRoute ? "Parent" : isAdministrativeRoute ? "Federal Admin" : roleName}
+                                            {displayRole}
                                         </span>
-                                        {isAdministrativeRoute && (
+                                        {displayDesk && (
                                             <span className="text-[10px] text-slate-400">
-                                                MoE Federal Desk
+                                                {displayDesk}
                                             </span>
                                         )}
                                     </div>

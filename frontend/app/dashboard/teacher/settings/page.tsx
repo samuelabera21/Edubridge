@@ -301,7 +301,7 @@ export default function TeacherSettingsPage() {
                                 <button
                                     type="submit"
                                     disabled={savingProfile}
-                                    className="px-5 py-2.5 bg-[#4085b3] hover:bg-[#356e94] text-white font-bold rounded-xl text-xs flex items-center space-x-2 transition-colors shadow-2xs disabled:opacity-50"
+                                    className="px-5 py-2.5 bg-[#4085b3] hover:bg-[#32698e] text-white font-bold rounded-xl text-xs flex items-center space-x-2 transition-colors shadow-2xs disabled:opacity-50"
                                 >
                                     {savingProfile ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
                                     <span>Save Profile Changes</span>
@@ -371,7 +371,7 @@ export default function TeacherSettingsPage() {
                                 <button
                                     type="submit"
                                     disabled={savingPassword}
-                                    className="px-5 py-2.5 bg-[#4085b3] hover:bg-[#356e94] text-white font-bold rounded-xl text-xs flex items-center space-x-2 transition-colors shadow-2xs disabled:opacity-50"
+                                    className="px-5 py-2.5 bg-[#4085b3] hover:bg-[#32698e] text-white font-bold rounded-xl text-xs flex items-center space-x-2 transition-colors shadow-2xs disabled:opacity-50"
                                 >
                                     {savingPassword ? <Loader2 className="w-4 h-4 animate-spin" /> : <Lock className="w-4 h-4" />}
                                     <span>Update Password</span>

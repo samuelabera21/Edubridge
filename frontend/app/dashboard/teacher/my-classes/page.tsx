@@ -207,7 +207,7 @@ function MyClassesContent() {
     if (loading) {
         return (
             <div className="w-full max-w-7xl mx-auto p-12 text-center text-gray-500 min-h-[400px] flex flex-col justify-center items-center">
-                <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600 mb-4"></div>
+                <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#4085b3] mb-4"></div>
                 <p className="text-sm font-semibold text-gray-600">Loading your teaching assignments...</p>
             </div>
         );
@@ -225,7 +225,7 @@ function MyClassesContent() {
             {/* Quick Metrics Bar */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                 <div className="p-4 rounded-xl bg-white border border-gray-200/80 shadow-2xs flex items-center space-x-3">
-                    <div className="p-3 bg-blue-50 text-blue-600 rounded-xl">
+                    <div className="p-3 bg-[#4085b3]/10 text-[#4085b3] rounded-xl">
                         <BookOpen className="w-5 h-5" />
                     </div>
                     <div>
@@ -275,7 +275,7 @@ function MyClassesContent() {
                             placeholder="Search by grade, section, or subject name..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            className="w-full pl-9 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs text-gray-800 placeholder-gray-400 focus:outline-hidden focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                            className="w-full pl-9 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs text-gray-800 placeholder-gray-400 focus:outline-hidden focus:ring-2 focus:ring-[#4085b3]/20 focus:border-[#4085b3] transition-all"
                         />
                     </div>
 
@@ -334,7 +334,7 @@ function MyClassesContent() {
                     onClick={() => handleTabChange("classes")}
                     className={`pb-3 px-4 flex items-center space-x-2 border-b-2 transition-colors whitespace-nowrap ${
                         activeTab === "classes" 
-                            ? "border-blue-600 text-blue-600" 
+                            ? "border-[#4085b3] text-[#4085b3]" 
                             : "border-transparent text-gray-500 hover:text-gray-800"
                     }`}
                 >
@@ -346,7 +346,7 @@ function MyClassesContent() {
                     onClick={() => handleTabChange("subjects")}
                     className={`pb-3 px-4 flex items-center space-x-2 border-b-2 transition-colors whitespace-nowrap ${
                         activeTab === "subjects" 
-                            ? "border-blue-600 text-blue-600" 
+                            ? "border-[#4085b3] text-[#4085b3]" 
                             : "border-transparent text-gray-500 hover:text-gray-800"
                     }`}
                 >
@@ -358,7 +358,7 @@ function MyClassesContent() {
                     onClick={() => handleTabChange("grades")}
                     className={`pb-3 px-4 flex items-center space-x-2 border-b-2 transition-colors whitespace-nowrap ${
                         activeTab === "grades" 
-                            ? "border-blue-600 text-blue-600" 
+                            ? "border-[#4085b3] text-[#4085b3]" 
                             : "border-transparent text-gray-500 hover:text-gray-800"
                     }`}
                 >
@@ -370,7 +370,7 @@ function MyClassesContent() {
                     onClick={() => handleTabChange("sections")}
                     className={`pb-3 px-4 flex items-center space-x-2 border-b-2 transition-colors whitespace-nowrap ${
                         activeTab === "sections" 
-                            ? "border-blue-600 text-blue-600" 
+                            ? "border-[#4085b3] text-[#4085b3]" 
                             : "border-transparent text-gray-500 hover:text-gray-800"
                     }`}
                 >
@@ -382,7 +382,7 @@ function MyClassesContent() {
                     onClick={() => handleTabChange("schedule")}
                     className={`pb-3 px-4 flex items-center space-x-2 border-b-2 transition-colors whitespace-nowrap ${
                         activeTab === "schedule" 
-                            ? "border-blue-600 text-blue-600" 
+                            ? "border-[#4085b3] text-[#4085b3]" 
                             : "border-transparent text-gray-500 hover:text-gray-800"
                     }`}
                 >
@@ -396,7 +396,7 @@ function MyClassesContent() {
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between border-b border-gray-100 bg-gray-50/50">
                         <CardTitle className="text-sm font-bold text-gray-900 flex items-center space-x-2">
-                            <BookOpen className="w-4 h-4 text-blue-600" />
+                            <BookOpen className="w-4 h-4 text-[#4085b3]" />
                             <span>Assigned Classes Master Table ({filteredClasses.length})</span>
                         </CardTitle>
                         <span className="text-xs font-semibold text-gray-500">
@@ -497,7 +497,7 @@ function MyClassesContent() {
                                                                                 onClick={() => setOpenMenuId(null)}
                                                                                 className="flex items-center space-x-2.5 px-3.5 py-2 text-gray-700 hover:bg-blue-50 hover:text-blue-700 transition-colors"
                                                                             >
-                                                                                <UserCheck className="w-4 h-4 text-blue-600" />
+                                                                                <UserCheck className="w-4 h-4 text-[#4085b3]" />
                                                                                 <span>Take Attendance</span>
                                                                             </Link>
 
@@ -539,7 +539,7 @@ function MyClassesContent() {
                                                                                 onClick={() => setOpenMenuId(null)}
                                                                                 className="flex items-center space-x-2.5 px-3.5 py-2 text-gray-700 hover:bg-blue-50 hover:text-blue-700 transition-colors border-t border-gray-100 mt-1 pt-2"
                                                                             >
-                                                                                <BookOpenCheck className="w-4 h-4 text-indigo-600" />
+                                                                                <BookOpenCheck className="w-4 h-4 text-[#4085b3]" />
                                                                                 <span>Record Lesson Progress</span>
                                                                             </Link>
                                                                         </div>
@@ -593,7 +593,7 @@ function MyClassesContent() {
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between border-b border-gray-100 bg-gray-50/50">
                         <CardTitle className="text-sm font-bold text-gray-900 flex items-center space-x-2">
-                            <Bookmark className="w-4 h-4 text-blue-600" />
+                            <Bookmark className="w-4 h-4 text-[#4085b3]" />
                             <span>Assigned Subjects Master Table ({filteredSubjectsList.length})</span>
                         </CardTitle>
                     </CardHeader>
@@ -736,7 +736,7 @@ function MyClassesContent() {
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between border-b border-gray-100 bg-gray-50/50">
                         <CardTitle className="text-sm font-bold text-gray-900 flex items-center space-x-2">
-                            <Building className="w-4 h-4 text-blue-600" />
+                            <Building className="w-4 h-4 text-[#4085b3]" />
                             <span>Assigned Sections Master Table ({filteredSectionsList.length})</span>
                         </CardTitle>
                     </CardHeader>
@@ -815,7 +815,7 @@ function MyClassesContent() {
                                                                                         onClick={() => setOpenMenuId(null)}
                                                                                         className="flex items-center space-x-2.5 px-3.5 py-2 text-gray-700 hover:bg-blue-50 hover:text-blue-700 transition-colors"
                                                                                     >
-                                                                                        <UserCheck className="w-4 h-4 text-blue-600" />
+                                                                                        <UserCheck className="w-4 h-4 text-[#4085b3]" />
                                                                                         <span>Take Attendance</span>
                                                                                     </Link>
 
@@ -855,7 +855,7 @@ function MyClassesContent() {
                                                                                         onClick={() => setOpenMenuId(null)}
                                                                                         className="flex items-center space-x-2.5 px-3.5 py-2 text-gray-700 hover:bg-blue-50 hover:text-blue-700 transition-colors border-t border-gray-100 mt-1 pt-2"
                                                                                     >
-                                                                                        <BookOpenCheck className="w-4 h-4 text-indigo-600" />
+                                                                                        <BookOpenCheck className="w-4 h-4 text-[#4085b3]" />
                                                                                         <span>Record Lesson Progress</span>
                                                                                     </Link>
                                                                                 </div>
@@ -881,7 +881,7 @@ function MyClassesContent() {
                 <Card>
                     <CardHeader>
                         <CardTitle className="flex items-center space-x-2 text-base font-bold text-gray-900">
-                            <Calendar className="w-5 h-5 text-blue-600" />
+                            <Calendar className="w-5 h-5 text-[#4085b3]" />
                             <span>Weekly Teaching Schedule</span>
                         </CardTitle>
                     </CardHeader>
@@ -927,7 +927,7 @@ export default function MyClassesPage() {
     return (
         <Suspense fallback={
             <div className="w-full max-w-7xl mx-auto p-12 text-center text-gray-500 min-h-[400px] flex flex-col justify-center items-center">
-                <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#1F5380] mb-4"></div>
+                <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#4085b3] mb-4"></div>
                 <p className="text-sm font-semibold text-gray-600">Loading teaching assignments...</p>
             </div>
         }>

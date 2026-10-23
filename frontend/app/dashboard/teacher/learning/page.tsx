@@ -213,7 +213,7 @@ function LearningContent() {
                 <div className="flex items-center space-x-2">
                     <button
                         onClick={() => setActiveTab("create")}
-                        className="px-4 py-2.5 bg-[#4085b3] hover:bg-[#356e94] text-white rounded-xl text-xs font-bold transition-colors flex items-center space-x-2 shadow-2xs cursor-pointer"
+                        className="px-4 py-2.5 bg-[#4085b3] hover:bg-[#32698e] text-white rounded-xl text-xs font-bold transition-colors flex items-center space-x-2 shadow-2xs cursor-pointer"
                     >
                         <Plus className="w-4 h-4" />
                         <span>Create Activity & Set Deadline</span>
@@ -298,7 +298,7 @@ function LearningContent() {
                                                     selectActivity(act);
                                                     setActiveTab("submissions");
                                                 }}
-                                                className="px-3.5 py-1.5 bg-[#4085b3] text-white font-bold rounded-lg hover:bg-[#356e94] transition-colors shadow-2xs text-[11px] flex items-center space-x-1"
+                                                className="px-3.5 py-1.5 bg-[#4085b3] text-white font-bold rounded-lg hover:bg-[#32698e] transition-colors shadow-2xs text-[11px] flex items-center space-x-1"
                                             >
                                                 <ClipboardCheck className="w-3.5 h-3.5" />
                                                 <span>Review Submissions</span>
@@ -403,7 +403,7 @@ function LearningContent() {
                             <button
                                 type="submit"
                                 disabled={submitting}
-                                className="w-full py-3 bg-[#4085b3] hover:bg-[#356e94] text-white font-bold rounded-xl text-xs flex items-center justify-center space-x-2 transition-colors shadow-2xs disabled:opacity-50 cursor-pointer"
+                                className="w-full py-3 bg-[#4085b3] hover:bg-[#32698e] text-white font-bold rounded-xl text-xs flex items-center justify-center space-x-2 transition-colors shadow-2xs disabled:opacity-50 cursor-pointer"
                             >
                                 {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
                                 <span>Publish Activity & Set Deadline</span>
@@ -470,7 +470,7 @@ function LearningContent() {
 
                                                     <button
                                                         onClick={() => handleGradeSubmission(sub.id)}
-                                                        className="px-3 py-1 bg-[#4085b3] text-white rounded-lg font-bold text-xs hover:bg-[#356e94] transition-colors flex items-center space-x-1 shadow-2xs"
+                                                        className="px-3 py-1 bg-[#4085b3] text-white rounded-lg font-bold text-xs hover:bg-[#32698e] transition-colors flex items-center space-x-1 shadow-2xs"
                                                     >
                                                         <Check className="w-3.5 h-3.5" />
                                                         <span>Save Grade</span>

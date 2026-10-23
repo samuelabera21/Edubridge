@@ -171,9 +171,7 @@ export default function MessagesPage() {
             }
 
             const baseText = newMessage.trim() || (uploadedAttachmentName ? `Sent an attachment: ${uploadedAttachmentName}` : "");
-            const outgoingContent = replyingTo
-                ? `> In reply to ${replyingTo.senderName}: "${replyingTo.content.slice(0, 80)}${replyingTo.content.length > 80 ? '...' : ''}"\n\n${baseText}`
-                : baseText;
+            const outgoingContent = baseText;
 
             const res = await fetchApi("/communication/messages", {
                 method: "POST",
@@ -466,7 +464,7 @@ export default function MessagesPage() {
                                                         </div>
                                                     ) : (
                                                         <div className="space-y-1.5">
-                                                            {msg.content && <p className="whitespace-pre-wrap break-words">{msg.content}</p>}
+                                                            {msg.content && <p className="whitespace-pre-wrap break-words">{msg.content.replace(/^\[[^\]]+\]\s*/, "").replace(/^>\s*In reply to\s*[^:\n]+:\s*"[^"]*"\s*\n*/i, "").replace(/^>\s*In reply to\s*[^\n]+\n*/i, "").trim()}</p>}
 
                                                             {/* Attached File Display */}
                                                             {msg.attachmentUrl && (

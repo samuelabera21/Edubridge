@@ -71,7 +71,7 @@ function ConsentContent() {
                     <div className="flex items-center gap-2">
                         <Link
                             href="/dashboard/parent"
-                            className="inline-flex items-center gap-1.5 text-xs font-semibold text-gray-500 hover:text-[#184973] transition-colors"
+                            className="inline-flex items-center gap-1.5 text-xs font-semibold text-gray-500 hover:text-[#4085b3] transition-colors"
                         >
                             <ArrowLeft className="w-3.5 h-3.5" />
                             Back to Dashboard
@@ -92,7 +92,7 @@ function ConsentContent() {
                         <div className="text-xs text-gray-500 font-semibold mb-1.5 flex items-center justify-between">
                             <span>Active Student</span>
                             {children.length > 1 && (
-                                <span className="text-[11px] text-[#184973] font-medium">
+                                <span className="text-[11px] text-[#4085b3] font-medium">
                                     {selectedChildIndex + 1} of {children.length}
                                 </span>
                             )}
@@ -100,7 +100,7 @@ function ConsentContent() {
                         <button
                             type="button"
                             onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                            className="w-full sm:w-auto min-w-[240px] flex items-center justify-between gap-3 px-4 py-2.5 bg-white border border-gray-300 hover:border-[#184973] rounded-xl shadow-sm hover:shadow transition-all text-left focus:outline-none focus:ring-2 focus:ring-[#184973]/20"
+                            className="w-full sm:w-auto min-w-[240px] flex items-center justify-between gap-3 px-4 py-2.5 bg-white border border-gray-300 hover:border-[#4085b3] rounded-xl shadow-sm hover:shadow transition-all text-left focus:outline-none focus:ring-2 focus:ring-[#4085b3]/20"
                         >
                             <div className="flex items-center gap-3">
                                 <div className="w-9 h-9 rounded-full bg-amber-600 text-white flex items-center justify-center text-sm font-bold shadow-sm">
@@ -209,7 +209,7 @@ function ConsentContent() {
 
                     <div className="p-4 bg-white/80 backdrop-blur rounded-xl border border-amber-100/60 shadow-xs">
                         <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1 flex items-center gap-1.5">
-                            <Calendar className="w-4 h-4 text-[#184973]" />
+                            <Calendar className="w-4 h-4 text-[#4085b3]" />
                             Meeting RSVPs
                         </div>
                         <p className="text-xs text-gray-600">
@@ -245,7 +245,7 @@ function ConsentContent() {
                 <div className="pt-2">
                     <Link
                         href="/dashboard/parent/communication?tab=meetings"
-                        className="inline-flex items-center gap-2 px-4 py-2 bg-[#184973] hover:bg-[#123859] text-white text-xs font-semibold rounded-xl transition-colors shadow-sm"
+                        className="inline-flex items-center gap-2 px-4 py-2 bg-[#4085b3] hover:bg-[#32698e] text-white text-xs font-semibold rounded-xl transition-colors shadow-sm"
                     >
                         Schedule a Parent-Teacher Meeting
                     </Link>

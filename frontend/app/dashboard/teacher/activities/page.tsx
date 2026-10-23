@@ -114,7 +114,7 @@ export default function ActivitiesPage() {
     if (loading) {
         return (
             <div className="w-full max-w-7xl mx-auto p-12 text-center text-gray-500 min-h-[400px] flex flex-col justify-center items-center">
-                <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600 mb-4"></div>
+                <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#4085b3] mb-4"></div>
                 <p className="text-sm font-semibold text-gray-600">Loading learning activities...</p>
             </div>
         );
@@ -138,7 +138,7 @@ export default function ActivitiesPage() {
 
                 <button
                     onClick={() => setShowModal(true)}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-xl text-xs font-bold hover:bg-blue-700 transition-colors flex items-center space-x-2 shadow-2xs self-start md:self-auto"
+                    className="px-4 py-2 bg-[#4085b3] text-white rounded-xl text-xs font-bold hover:bg-[#32698e] transition-colors flex items-center space-x-2 shadow-2xs self-start md:self-auto"
                 >
                     <Plus className="w-4 h-4" />
                     <span>Create Learning Activity</span>
@@ -148,7 +148,7 @@ export default function ActivitiesPage() {
             <Card>
                 <CardHeader>
                     <CardTitle className="flex items-center space-x-2 text-base font-bold text-gray-900">
-                        <ClipboardCheck className="w-5 h-5 text-blue-600" />
+                        <ClipboardCheck className="w-5 h-5 text-[#4085b3]" />
                         <span>Active Learning Activities</span>
                     </CardTitle>
                 </CardHeader>
@@ -281,7 +281,7 @@ export default function ActivitiesPage() {
                             </div>
                             <div className="flex space-x-2 pt-2">
                                 <button type="button" onClick={() => setShowModal(false)} className="flex-1 py-2.5 bg-gray-100 text-gray-700 font-bold rounded-xl">Cancel</button>
-                                <button type="submit" className="flex-1 py-2.5 bg-blue-600 text-white font-bold rounded-xl">Post Activity</button>
+                                <button type="submit" className="flex-1 py-2.5 bg-[#4085b3] text-white font-bold rounded-xl">Post Activity</button>
                             </div>
                         </form>
                     </div>

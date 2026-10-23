@@ -19,7 +19,7 @@ export default function ProfessionalDevelopmentPage() {
                 <Card className="md:col-span-2">
                     <CardHeader>
                         <CardTitle className="flex items-center space-x-2 text-base font-bold text-gray-900">
-                            <GraduationCap className="w-5 h-5 text-blue-600" />
+                            <GraduationCap className="w-5 h-5 text-[#4085b3]" />
                             <span>Completed & Upcoming Workshops</span>
                         </CardTitle>
                     </CardHeader>

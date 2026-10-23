@@ -532,7 +532,7 @@ function AssessmentContent() {
                 </div>
 
                 <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex items-center space-x-3">
-                    <div className="p-3 bg-indigo-50 text-indigo-600 rounded-xl">
+                    <div className="p-3 bg-[#4085b3]/10 text-[#4085b3] rounded-xl">
                         <FileSpreadsheet className="w-5 h-5" />
                     </div>
                     <div>
@@ -571,7 +571,7 @@ function AssessmentContent() {
                 <button
                     onClick={() => setActiveTab("create")}
                     className={`px-4 py-2.5 rounded-xl transition-all flex items-center space-x-2 whitespace-nowrap cursor-pointer ${
-                        activeTab === "create" ? "bg-[#0c2454] text-white shadow-xs font-black" : "text-slate-600 hover:bg-slate-100"
+                        activeTab === "create" ? "bg-[#4085b3] text-white shadow-xs font-black" : "text-slate-600 hover:bg-slate-100"
                     }`}
                 >
                     <Plus className="w-4 h-4 text-amber-400" />
@@ -581,7 +581,7 @@ function AssessmentContent() {
                 <button
                     onClick={() => setActiveTab("conduct")}
                     className={`px-4 py-2.5 rounded-xl transition-all flex items-center space-x-2 whitespace-nowrap cursor-pointer ${
-                        activeTab === "conduct" ? "bg-[#0c2454] text-white shadow-xs font-black" : "text-slate-600 hover:bg-slate-100"
+                        activeTab === "conduct" ? "bg-[#4085b3] text-white shadow-xs font-black" : "text-slate-600 hover:bg-slate-100"
                     }`}
                 >
                     <Play className="w-4 h-4 text-emerald-400" />
@@ -591,7 +591,7 @@ function AssessmentContent() {
                 <button
                     onClick={() => setActiveTab("grade")}
                     className={`px-4 py-2.5 rounded-xl transition-all flex items-center space-x-2 whitespace-nowrap cursor-pointer ${
-                        activeTab === "grade" ? "bg-[#0c2454] text-white shadow-xs font-black" : "text-slate-600 hover:bg-slate-100"
+                        activeTab === "grade" ? "bg-[#4085b3] text-white shadow-xs font-black" : "text-slate-600 hover:bg-slate-100"
                     }`}
                 >
                     <Award className="w-4 h-4 text-sky-400" />
@@ -601,7 +601,7 @@ function AssessmentContent() {
                 <button
                     onClick={() => setActiveTab("feedback")}
                     className={`px-4 py-2.5 rounded-xl transition-all flex items-center space-x-2 whitespace-nowrap cursor-pointer ${
-                        activeTab === "feedback" ? "bg-[#0c2454] text-white shadow-xs font-black" : "text-slate-600 hover:bg-slate-100"
+                        activeTab === "feedback" ? "bg-[#4085b3] text-white shadow-xs font-black" : "text-slate-600 hover:bg-slate-100"
                     }`}
                 >
                     <MessageSquare className="w-4 h-4 text-amber-400" />
@@ -642,7 +642,7 @@ function AssessmentContent() {
                                     onClick={() => setSelectedTypeFilter(typeKey)}
                                     className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                                         selectedTypeFilter === typeKey 
-                                            ? "bg-[#0c2454] text-white shadow-xs" 
+                                            ? "bg-[#4085b3] text-white shadow-xs" 
                                             : "bg-slate-100 hover:bg-slate-200 text-slate-600"
                                     }`}
                                 >
@@ -673,7 +673,7 @@ function AssessmentContent() {
 
                             <button
                                 onClick={() => setShowCreateModal(true)}
-                                className="px-3.5 py-2 bg-[#4085b3] hover:bg-[#326a8f] text-white text-xs font-bold rounded-xl flex items-center space-x-1.5 transition-all shadow-xs cursor-pointer"
+                                className="px-3.5 py-2 bg-[#4085b3] hover:bg-[#32698e] text-white text-xs font-bold rounded-xl flex items-center space-x-1.5 transition-all shadow-xs cursor-pointer"
                             >
                                 <Plus className="w-4 h-4" />
                                 <span>Create</span>
@@ -695,7 +695,7 @@ function AssessmentContent() {
                             </div>
                             <button
                                 onClick={() => setShowCreateModal(true)}
-                                className="px-5 py-2.5 bg-[#4085b3] text-white text-xs font-bold rounded-xl hover:bg-[#326a8f] transition-all inline-flex items-center space-x-2"
+                                className="px-5 py-2.5 bg-[#4085b3] text-white text-xs font-bold rounded-xl hover:bg-[#32698e] transition-all inline-flex items-center space-x-2"
                             >
                                 <Plus className="w-4 h-4" />
                                 <span>Create First Assessment</span>
@@ -803,7 +803,7 @@ function AssessmentContent() {
                                                     selectAssessment(ass);
                                                     setActiveTab("grade");
                                                 }}
-                                                className="flex-1 py-2 bg-[#0c2454] hover:bg-[#163878] text-white rounded-xl text-xs font-bold transition-all flex items-center justify-center space-x-1.5 cursor-pointer shadow-xs"
+                                                className="flex-1 py-2 bg-[#4085b3] hover:bg-[#32698e] text-white rounded-xl text-xs font-bold transition-all flex items-center justify-center space-x-1.5 cursor-pointer shadow-xs"
                                             >
                                                 <Award className="w-3.5 h-3.5 text-amber-400" />
                                                 <span>Grade Roster</span>
@@ -990,7 +990,7 @@ function AssessmentContent() {
                                                     <button
                                                         onClick={() => setStatusModal("RELEASE")}
                                                         disabled={updatingStatus}
-                                                        className="px-4 py-2 bg-[#0c2454] hover:bg-[#163878] text-white font-bold rounded-xl text-xs flex items-center space-x-1.5 transition-all cursor-pointer"
+                                                        className="px-4 py-2 bg-[#4085b3] hover:bg-[#32698e] text-white font-bold rounded-xl text-xs flex items-center space-x-1.5 transition-all cursor-pointer"
                                                     >
                                                         <RefreshCw className="w-3.5 h-3.5" />
                                                         <span>Re-Open Session (እንደገና ክፈት)</span>
@@ -1050,7 +1050,7 @@ function AssessmentContent() {
                                             <div className="flex items-center space-x-2">
                                                 <button
                                                     onClick={() => setActiveTab("grade")}
-                                                    className="px-4 py-2 bg-[#0c2454] hover:bg-[#163878] text-white font-bold rounded-xl text-xs flex items-center space-x-1.5 transition-all shadow-xs cursor-pointer"
+                                                    className="px-4 py-2 bg-[#4085b3] hover:bg-[#32698e] text-white font-bold rounded-xl text-xs flex items-center space-x-1.5 transition-all shadow-xs cursor-pointer"
                                                 >
                                                     <Award className="w-3.5 h-3.5 text-amber-400" />
                                                     <span>Open Full Gradebook</span>
@@ -1093,7 +1093,7 @@ function AssessmentContent() {
                                                                     <td className="p-3 text-center font-bold text-slate-400">{idx + 1}</td>
                                                                     <td className="p-3">
                                                                         <div className="flex items-center space-x-2.5">
-                                                                            <div className="w-8 h-8 rounded-full bg-slate-200 text-[#0c2454] font-black text-xs flex items-center justify-center border border-slate-300">
+                                                                            <div className="w-8 h-8 rounded-full bg-slate-200 text-[#4085b3] font-black text-xs flex items-center justify-center border border-slate-300">
                                                                                 {st.name?.charAt(0) || "S"}
                                                                             </div>
                                                                             <div>
@@ -1269,7 +1269,7 @@ function AssessmentContent() {
                                         <button
                                             onClick={handleSaveResults}
                                             disabled={saving}
-                                            className="px-4 py-2 bg-[#0c2454] hover:bg-[#163878] text-white font-bold rounded-xl text-xs transition-all shadow-md flex items-center space-x-1.5 disabled:opacity-50 cursor-pointer"
+                                            className="px-4 py-2 bg-[#4085b3] hover:bg-[#32698e] text-white font-bold rounded-xl text-xs transition-all shadow-md flex items-center space-x-1.5 disabled:opacity-50 cursor-pointer"
                                         >
                                             {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4 text-amber-400" />}
                                             <span>Save Scores</span>
@@ -1383,7 +1383,7 @@ function AssessmentContent() {
                                 <button
                                     onClick={handleSaveResults}
                                     disabled={saving}
-                                    className="px-4 py-2 bg-[#0c2454] hover:bg-[#163878] text-white font-bold rounded-xl text-xs transition-all shadow-md flex items-center space-x-1.5 disabled:opacity-50 cursor-pointer"
+                                    className="px-4 py-2 bg-[#4085b3] hover:bg-[#32698e] text-white font-bold rounded-xl text-xs transition-all shadow-md flex items-center space-x-1.5 disabled:opacity-50 cursor-pointer"
                                 >
                                     {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4 text-amber-400" />}
                                     <span>Save Feedback</span>
@@ -1587,7 +1587,7 @@ function AssessmentContent() {
                                                 onClick={() => setNewDurationMinutes(mins)}
                                                 className={`px-1.5 py-0.5 rounded text-[10px] font-bold transition-all cursor-pointer ${
                                                     newDurationMinutes === mins
-                                                        ? "bg-[#0c2454] text-white"
+                                                        ? "bg-[#4085b3] text-white"
                                                         : "bg-white text-slate-600 hover:bg-slate-200 border border-slate-200"
                                                 }`}
                                             >
@@ -1685,7 +1685,7 @@ function AssessmentContent() {
                                 <button
                                     type="submit"
                                     disabled={saving}
-                                    className="px-5 py-2.5 bg-[#0c2454] hover:bg-[#163878] text-white font-bold rounded-xl flex items-center space-x-1.5 transition-all shadow-md disabled:opacity-50 cursor-pointer"
+                                    className="px-5 py-2.5 bg-[#4085b3] hover:bg-[#32698e] text-white font-bold rounded-xl flex items-center space-x-1.5 transition-all shadow-md disabled:opacity-50 cursor-pointer"
                                 >
                                     {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4 text-amber-400" />}
                                     <span>Create {newType}</span>

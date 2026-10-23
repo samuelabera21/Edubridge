@@ -30,7 +30,7 @@ export default function TeacherReportsPage() {
     if (loading) {
         return (
             <div className="w-full max-w-7xl mx-auto p-12 text-center text-gray-500 min-h-[400px] flex flex-col justify-center items-center">
-                <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600 mb-4"></div>
+                <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#4085b3] mb-4"></div>
                 <p className="text-sm font-semibold text-gray-600">Generating class performance analytics...</p>
             </div>
         );
@@ -52,7 +52,7 @@ export default function TeacherReportsPage() {
                 <Card className="md:col-span-2">
                     <CardHeader>
                         <CardTitle className="flex items-center space-x-2 text-base font-bold text-gray-900">
-                            <BarChart2 className="w-5 h-5 text-blue-600" />
+                            <BarChart2 className="w-5 h-5 text-[#4085b3]" />
                             <span>Class Performance Breakdown</span>
                         </CardTitle>
                     </CardHeader>
@@ -69,11 +69,11 @@ export default function TeacherReportsPage() {
                                     <div key={idx} className="space-y-1.5 p-3 rounded-xl bg-gray-50 border border-gray-100">
                                         <div className="flex justify-between font-bold text-gray-900">
                                             <span>{item.section || item.class || `Section ${idx + 1}`} - {item.subject || "Subject"}</span>
-                                            <span className="text-blue-600 font-extrabold">{item.avgScore || item.average || 0}%</span>
+                                            <span className="text-[#4085b3] font-extrabold">{item.avgScore || item.average || 0}%</span>
                                         </div>
                                         <div className="w-full bg-gray-200 h-2 rounded-full overflow-hidden">
                                             <div
-                                                className="bg-blue-600 h-2 rounded-full transition-all"
+                                                className="bg-[#4085b3] h-2 rounded-full transition-all"
                                                 style={{ width: `${Math.min(item.avgScore || item.average || 0, 100)}%` }}
                                             ></div>
                                         </div>
