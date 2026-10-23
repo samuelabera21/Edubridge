@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import { CommunicationService } from "./communication.service.js";
 import { AnnouncementTarget } from "../../generated/prisma/enums.js";
+import { prisma } from "../../infrastructure/prisma/client.js";
 
 // =========================================================
 // ANNOUNCEMENTS
@@ -331,13 +332,109 @@ export const getUnreadNotificationCount = async (req: Request, res: Response) =>
 };
 
 // =========================================================
-// DIRECT MESSAGES
+// DIRECT MESSAGES & MESSAGING SETTINGS
 // =========================================================
+
+async function resolveOrganizationId(req: Request): Promise<string | null> {
+    if ((req as any).accessScope?.id) return (req as any).accessScope.id;
+    const headerOrgId =
+        (req.headers["x-organization-id"] as string) ||
+        (req.headers["x-scope-id"] as string) ||
+        (req.query?.organizationId as string) ||
+        (req.body?.organizationId as string);
+    if (headerOrgId) return headerOrgId;
+
+    const userId = req.user?.id;
+    if (!userId) return null;
+
+    // Check Parent first: A parent's school context is the school where their child is enrolled
+    const parent = await prisma.parent.findFirst({
+        where: { userId },
+        include: {
+            children: {
+                include: {
+                    student: {
+                        include: {
+                            enrollments: { select: { organizationId: true }, take: 1 }
+                        }
+                    }
+                },
+                take: 1
+            }
+        }
+    });
+    const parentOrgId = parent?.children?.[0]?.student?.enrollments?.[0]?.organizationId;
+    if (parentOrgId) return parentOrgId;
+
+    // Check RoleAssignment
+    const assignment = await prisma.roleAssignment.findFirst({
+        where: { userId, scope: { type: "SCHOOL" } },
+        select: { scopeId: true },
+        orderBy: { createdAt: "desc" }
+    });
+    if (assignment) return assignment.scopeId;
+
+    // Check Teacher
+    const teacher = await prisma.teacher.findFirst({
+        where: { userId },
+        select: { organizationId: true }
+    });
+    if (teacher) return teacher.organizationId;
+
+    // Check Student
+    const student = await prisma.student.findFirst({
+        where: { userId },
+        include: { enrollments: { select: { organizationId: true }, take: 1 } }
+    });
+    if (student?.enrollments?.[0]?.organizationId) return student.enrollments[0].organizationId;
+
+    return null;
+}
+
+export const getMessagingSettings = async (req: Request, res: Response) => {
+    try {
+        const organizationId = await resolveOrganizationId(req);
+        if (!organizationId) return res.status(401).json({ error: "Missing school scope" });
+
+        const settings = await CommunicationService.getMessagingSettings(organizationId);
+        return res.json(settings);
+    } catch (error: any) {
+        return res.status(500).json({ error: error.message || "Failed to fetch messaging settings" });
+    }
+};
+
+export const updateMessagingSettings = async (req: Request, res: Response) => {
+    try {
+        const userId = req.user?.id;
+        const organizationId = await resolveOrganizationId(req);
+        if (!userId || !organizationId) return res.status(401).json({ error: "Unauthorized" });
+
+        // Ensure user is School Admin
+        const assignments = await prisma.roleAssignment.findMany({
+            where: { userId, scopeId: organizationId },
+            include: { role: true }
+        });
+        const isAdmin = assignments.some(a => ["ADMIN", "SCHOOL_ADMIN", "VICE_PRINCIPAL"].includes(a.role.name));
+        if (!isAdmin) {
+            return res.status(403).json({ error: "Only school administration can update messaging settings" });
+        }
+
+        const { allowTeacherDM, allowStudentDM, allowParentDM } = req.body;
+        const updated = await CommunicationService.updateMessagingSettings(organizationId, {
+            allowTeacherDM,
+            allowStudentDM,
+            allowParentDM
+        });
+        return res.json(updated);
+    } catch (error: any) {
+        return res.status(400).json({ error: error.message || "Failed to update messaging settings" });
+    }
+};
 
 export const sendMessage = async (req: Request, res: Response) => {
     try {
         const senderId = req.user?.id;
-        const organizationId = (req as any).accessScope?.id;
+        const organizationId = await resolveOrganizationId(req);
         if (!senderId || !organizationId) return res.status(401).json({ error: "Unauthorized" });
 
         const { receiverId, content, attachmentUrl, attachmentName, attachmentType } = req.body;
@@ -361,7 +458,7 @@ export const sendMessage = async (req: Request, res: Response) => {
 export const getMyMessages = async (req: Request, res: Response) => {
     try {
         const userId = req.user?.id;
-        const organizationId = (req as any).accessScope?.id;
+        const organizationId = await resolveOrganizationId(req);
         if (!userId || !organizationId) return res.status(401).json({ error: "Unauthorized" });
 
         const { otherUserId } = req.query;
@@ -375,7 +472,7 @@ export const getMyMessages = async (req: Request, res: Response) => {
 export const getMessagingUsers = async (req: Request, res: Response) => {
     try {
         const userId = req.user?.id;
-        const organizationId = (req as any).accessScope?.id;
+        const organizationId = await resolveOrganizationId(req);
         if (!userId || !organizationId) return res.status(401).json({ error: "Unauthorized" });
 
         const users = await CommunicationService.getUsersForMessaging(userId, organizationId);
@@ -388,7 +485,7 @@ export const getMessagingUsers = async (req: Request, res: Response) => {
 export const deleteMessage = async (req: Request, res: Response) => {
     try {
         const userId = req.user?.id;
-        const organizationId = (req as any).accessScope?.id;
+        const organizationId = await resolveOrganizationId(req);
         if (!userId || !organizationId) return res.status(401).json({ error: "Unauthorized" });
 
         const { id } = req.params;
@@ -404,7 +501,7 @@ export const deleteMessage = async (req: Request, res: Response) => {
 export const updateMessage = async (req: Request, res: Response) => {
     try {
         const userId = req.user?.id;
-        const organizationId = (req as any).accessScope?.id;
+        const organizationId = await resolveOrganizationId(req);
         if (!userId || !organizationId) return res.status(401).json({ error: "Unauthorized" });
 
         const { id } = req.params;

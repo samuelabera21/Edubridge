@@ -234,6 +234,52 @@ describe("CommunicationService", () => {
                 })
             }));
         });
+
+        it("blocks student message if allowStudentDM toggle is false", async () => {
+            vi.mocked(prisma.roleAssignment.findFirst).mockResolvedValue({
+                id: "ra-rec",
+                role: { name: "SCHOOL_ADMIN" }
+            } as any);
+            vi.mocked(prisma.roleAssignment.findMany).mockResolvedValue([
+                { id: "ra-send", role: { name: "STUDENT" } }
+            ] as any);
+
+            await expect(CommunicationService.sendMessage({
+                organizationId: "school-1",
+                senderId: "student-1",
+                receiverId: "admin-1",
+                content: "Hello principal"
+            })).rejects.toThrow("Direct messaging from students is currently disabled by school administration.");
+        });
+
+        it("allows teacher recipient when sender is student or parent with active toggles", async () => {
+            vi.spyOn(CommunicationService, "getMessagingSettings").mockResolvedValue({
+                allowTeacherDM: true,
+                allowStudentDM: true,
+                allowParentDM: true
+            });
+            vi.mocked(prisma.roleAssignment.findFirst).mockResolvedValue({
+                id: "ra-rec",
+                role: { name: "TEACHER" }
+            } as any);
+            vi.mocked(prisma.roleAssignment.findMany).mockResolvedValue([
+                { id: "ra-send", role: { name: "STUDENT" } }
+            ] as any);
+            vi.mocked(prisma.message.create).mockResolvedValue({
+                id: "msg-st-1",
+                content: "Hello teacher",
+                sender: { name: "Student" },
+                receiver: { name: "Teacher" }
+            } as any);
+
+            const res = await CommunicationService.sendMessage({
+                organizationId: "school-1",
+                senderId: "student-1",
+                receiverId: "teacher-1",
+                content: "Hello teacher"
+            });
+            expect(res.id).toBe("msg-st-1");
+        });
     });
 
     describe("Teacher -> Parent Messaging", () => {
@@ -265,6 +311,9 @@ describe("CommunicationService", () => {
             } as any);
             vi.mocked(prisma.teachingAssignment.findFirst).mockResolvedValue({ id: "assign-1" } as any);
             vi.mocked(prisma.roleAssignment.findFirst).mockResolvedValue({ id: "ra-1" } as any);
+            vi.mocked(prisma.roleAssignment.findMany).mockResolvedValue([
+                { id: "ra-t", role: { name: "TEACHER" } }
+            ] as any);
             vi.mocked(prisma.message.create).mockResolvedValue({
                 id: "msg-tp-1",
                 sender: { name: "Teacher" },

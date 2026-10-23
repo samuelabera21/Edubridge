@@ -210,6 +210,7 @@ export default function TeacherNavigation({
                     basePath: "/dashboard/teacher/communication",
                     icon: MessageSquare,
                     subLinks: [
+                        { label: "Direct Messages", href: "/dashboard/teacher/communication/messages" },
                         { label: "Student Communication", href: "/dashboard/teacher/communication?channel=STUDENT" },
                         { label: "Parent Communication", href: "/dashboard/teacher/communication?channel=PARENT" },
                         { label: "Department Communication", href: "/dashboard/teacher/communication?channel=DEPARTMENT" },
