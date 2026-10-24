@@ -513,25 +513,6 @@ function MyClassesContent() {
                                                                                 <span>{isRosterOpen ? "Hide Class Roster" : "View Class Roster"}</span>
                                                                             </button>
 
-                                                                            {/* Action 3: Record / Enter Marks */}
-                                                                            <Link
-                                                                                href={`/dashboard/teacher/assessment?grade=${gradeLevel}&section=${sectionName}`}
-                                                                                onClick={() => setOpenMenuId(null)}
-                                                                                className="flex items-center space-x-2.5 px-3.5 py-2 text-gray-700 hover:bg-blue-50 hover:text-blue-700 transition-colors"
-                                                                            >
-                                                                                <BarChart3 className="w-4 h-4 text-emerald-600" />
-                                                                                <span>Record / Enter Marks</span>
-                                                                            </Link>
-
-                                                                            {/* Action 4: Create Assessment / Assignment */}
-                                                                            <Link
-                                                                                href={`/dashboard/teacher/activities?grade=${gradeLevel}&section=${sectionName}`}
-                                                                                onClick={() => setOpenMenuId(null)}
-                                                                                className="flex items-center space-x-2.5 px-3.5 py-2 text-gray-700 hover:bg-blue-50 hover:text-blue-700 transition-colors"
-                                                                            >
-                                                                                <PlusCircle className="w-4 h-4 text-amber-600" />
-                                                                                <span>Create Assessment</span>
-                                                                            </Link>
 
                                                                             {/* Action 5: Record Lesson Progress */}
                                                                             <Link
@@ -829,25 +810,6 @@ function MyClassesContent() {
                                                                                         <span>View Section Roster</span>
                                                                                     </Link>
 
-                                                                                    {/* Action 3: Record / Enter Marks */}
-                                                                                    <Link
-                                                                                        href={`/dashboard/teacher/assessment?grade=${sec.gradeLevel}&section=${sec.name}`}
-                                                                                        onClick={() => setOpenMenuId(null)}
-                                                                                        className="flex items-center space-x-2.5 px-3.5 py-2 text-gray-700 hover:bg-blue-50 hover:text-blue-700 transition-colors"
-                                                                                    >
-                                                                                        <BarChart3 className="w-4 h-4 text-emerald-600" />
-                                                                                        <span>Record / Enter Marks</span>
-                                                                                    </Link>
-
-                                                                                    {/* Action 4: Create Assessment */}
-                                                                                    <Link
-                                                                                        href={`/dashboard/teacher/activities?grade=${sec.gradeLevel}&section=${sec.name}`}
-                                                                                        onClick={() => setOpenMenuId(null)}
-                                                                                        className="flex items-center space-x-2.5 px-3.5 py-2 text-gray-700 hover:bg-blue-50 hover:text-blue-700 transition-colors"
-                                                                                    >
-                                                                                        <PlusCircle className="w-4 h-4 text-amber-600" />
-                                                                                        <span>Create Assessment</span>
-                                                                                    </Link>
 
                                                                                     {/* Action 5: Record Lesson Progress */}
                                                                                     <Link

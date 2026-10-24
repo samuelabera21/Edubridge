@@ -642,16 +642,6 @@ function StudentsContent() {
                                                                 <button
                                                                     onClick={() => {
                                                                         setOpenMenuId(null);
-                                                                        handleViewStudentDetail(item, "performance");
-                                                                    }}
-                                                                    className="w-full px-3 py-2 text-xs font-semibold text-gray-700 hover:bg-[#4085b3]/10 hover:text-[#4085b3] flex items-center space-x-2"
-                                                                >
-                                                                    <BarChart3 className="w-3.5 h-3.5 text-[#4085b3]" />
-                                                                    <span>Academic Performance</span>
-                                                                </button>
-                                                                <button
-                                                                    onClick={() => {
-                                                                        setOpenMenuId(null);
                                                                         handleViewStudentDetail(item, "history");
                                                                     }}
                                                                     className="w-full px-3 py-2 text-xs font-semibold text-gray-700 hover:bg-[#4085b3]/10 hover:text-[#4085b3] flex items-center space-x-2"
@@ -735,22 +725,13 @@ function StudentsContent() {
                                 <span>2. Attendance</span>
                             </button>
                             <button
-                                onClick={() => setActiveTab("performance")}
-                                className={`pb-3 px-1 border-b-2 flex items-center space-x-1.5 transition-colors ${
-                                    activeTab === "performance" ? "border-[#4085b3] text-[#4085b3]" : "border-transparent text-gray-500 hover:text-gray-800"
-                                }`}
-                            >
-                                <Award className="w-4 h-4 text-[#4085b3]" />
-                                <span>3. Performance</span>
-                            </button>
-                            <button
                                 onClick={() => setActiveTab("history")}
                                 className={`pb-3 px-1 border-b-2 flex items-center space-x-1.5 transition-colors ${
                                     activeTab === "history" ? "border-[#4085b3] text-[#4085b3]" : "border-transparent text-gray-500 hover:text-gray-800"
                                 }`}
                             >
                                 <TrendingUp className="w-4 h-4 text-purple-600" />
-                                <span>4. Learning History</span>
+                                <span>3. Support & History</span>
                             </button>
                         </div>
 
@@ -877,48 +858,6 @@ function StudentsContent() {
                                         </div>
                                     )}
 
-                                    {/* TAB 3: PERFORMANCE */}
-                                    {activeTab === "performance" && (
-                                        <div className="space-y-4">
-                                            <div className="bg-[#4085b3]/10 border border-[#4085b3]/20 p-4 rounded-xl flex items-center justify-between">
-                                                <div>
-                                                    <span className="text-xs font-bold text-[#4085b3] uppercase">Cumulative Academic Average</span>
-                                                    <h3 className="text-2xl font-black text-[#4085b3] mt-0.5">{avgScore !== null ? `${avgScore}%` : 'N/A'}</h3>
-                                                </div>
-                                                <Award className="w-10 h-10 text-[#4085b3]" />
-                                            </div>
-
-                                            <Card className="border border-gray-200">
-                                                <CardHeader className="pb-2 border-b border-gray-100">
-                                                    <CardTitle className="text-xs font-bold text-gray-800">Assessment Scores & Exam Results</CardTitle>
-                                                </CardHeader>
-                                                <CardContent className="p-0">
-                                                    {results.length === 0 ? (
-                                                        <p className="p-4 text-gray-500 italic">No exam or quiz results recorded for this student yet.</p>
-                                                    ) : (
-                                                        <table className="w-full text-left text-xs">
-                                                            <thead className="bg-gray-50 border-b border-gray-200 text-gray-500 font-bold">
-                                                                <tr>
-                                                                    <th className="py-2.5 px-4">Assessment Title</th>
-                                                                    <th className="py-2.5 px-4">Score</th>
-                                                                    <th className="py-2.5 px-4">Feedback</th>
-                                                                </tr>
-                                                            </thead>
-                                                            <tbody className="divide-y divide-gray-100 font-medium">
-                                                                {results.map((r: any, i: number) => (
-                                                                    <tr key={i}>
-                                                                        <td className="py-2.5 px-4 font-bold text-gray-900">{r.assessment?.title || 'Mid-Term Exam'}</td>
-                                                                        <td className="py-2.5 px-4 font-mono font-bold text-[#4085b3]">{r.score}%</td>
-                                                                        <td className="py-2.5 px-4 text-gray-600">{r.feedback || 'Good work'}</td>
-                                                                    </tr>
-                                                                ))}
-                                                            </tbody>
-                                                        </table>
-                                                    )}
-                                                </CardContent>
-                                            </Card>
-                                        </div>
-                                    )}
 
                                     {/* TAB 4: LEARNING HISTORY */}
                                     {activeTab === "history" && (

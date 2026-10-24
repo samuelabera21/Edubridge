@@ -82,45 +82,6 @@ function TeacherBreadcrumbs({ pathname, currentTab, currentType, currentChannel 
         if (currentTab && tabMap[currentTab]) {
             subItemTitle = tabMap[currentTab];
         }
-    } else if (pathname.startsWith("/dashboard/teacher/assessment")) {
-        parentTitle = "Assessment & Grades";
-        parentHref = "/dashboard/teacher/assessment";
-        const typeMap: Record<string, string> = {
-            ALL: "Create Assessment",
-            QUIZ: "Create Quiz",
-            TEST: "Create Test",
-            ASSIGNMENT: "Create Assignment",
-            PROJECT: "Create Project"
-        };
-        const tabMap: Record<string, string> = {
-            conduct: "Conduct Assessment",
-            grade: "Record Results & Grade",
-            feedback: "Provide Feedback"
-        };
-        if (currentType && typeMap[currentType]) {
-            subItemTitle = typeMap[currentType];
-        } else if (currentTab && tabMap[currentTab]) {
-            subItemTitle = tabMap[currentTab];
-        }
-    } else if (pathname.startsWith("/dashboard/teacher/learning") || pathname.startsWith("/dashboard/teacher/activities")) {
-        parentTitle = "Learning Activities";
-        parentHref = "/dashboard/teacher/learning";
-        const typeMap: Record<string, string> = {
-            HOMEWORK: "Create Assignment",
-            QUIZ: "Create Quiz",
-            CLASS_WORK: "Create Class Activity"
-        };
-        const tabMap: Record<string, string> = {
-            create: "Set Deadline",
-            submissions: "Review Submissions",
-            completion: "Mark Completion",
-            feedback: "Give Feedback"
-        };
-        if (currentType && typeMap[currentType]) {
-            subItemTitle = typeMap[currentType];
-        } else if (currentTab && tabMap[currentTab]) {
-            subItemTitle = tabMap[currentTab];
-        }
     } else if (pathname.startsWith("/dashboard/teacher/support")) {
         parentTitle = "Student Support & Advisory";
         parentHref = "/dashboard/teacher/support";
@@ -153,19 +114,6 @@ function TeacherBreadcrumbs({ pathname, currentTab, currentType, currentChannel 
         const tabMap: Record<string, string> = {
             school: "School Announcements",
             department: "Department Announcements"
-        };
-        if (currentTab && tabMap[currentTab]) {
-            subItemTitle = tabMap[currentTab];
-        }
-    } else if (pathname.startsWith("/dashboard/teacher/pd")) {
-        parentTitle = "Professional Development";
-        parentHref = "/dashboard/teacher/pd";
-        const tabMap: Record<string, string> = {
-            trainings: "Training Modules",
-            observations: "Peer Observations",
-            goals: "Annual Goals",
-            portfolio: "Teaching Portfolio",
-            certifications: "Certificates & Badges"
         };
         if (currentTab && tabMap[currentTab]) {
             subItemTitle = tabMap[currentTab];
@@ -264,12 +212,9 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
         teacherAssignments: pathname.startsWith("/dashboard/teacher/my-classes"),
         teacherAttendance: pathname.startsWith("/dashboard/teacher/attendance"),
         teacherCurriculum: pathname.startsWith("/dashboard/teacher/curriculum"),
-        teacherAssessment: pathname.startsWith("/dashboard/teacher/assessment"),
-        teacherActivities: pathname.startsWith("/dashboard/teacher/learning"),
         teacherSupport: pathname.startsWith("/dashboard/teacher/support"),
         teacherComm: pathname.startsWith("/dashboard/teacher/communication"),
         teacherAnnounce: pathname.startsWith("/dashboard/teacher/announcements"),
-        teacherPD: pathname.startsWith("/dashboard/teacher/pd"),
         teacherReports: pathname.startsWith("/dashboard/teacher/reports"),
         assessment: pathname.startsWith("/dashboard/assessment"),
         learning: pathname.startsWith("/dashboard/learning"),

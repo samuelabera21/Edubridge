@@ -68,12 +68,9 @@ export default function TeacherNavigation({
             if (pathname.startsWith("/dashboard/teacher/my-classes")) next["teacherAssignments"] = true;
             if (pathname.startsWith("/dashboard/teacher/attendance")) next["teacherAttendance"] = true;
             if (pathname.startsWith("/dashboard/teacher/curriculum")) next["teacherCurriculum"] = true;
-            if (pathname.startsWith("/dashboard/teacher/assessment")) next["teacherAssessment"] = true;
-            if (pathname.startsWith("/dashboard/teacher/learning")) next["teacherActivities"] = true;
             if (pathname.startsWith("/dashboard/teacher/support")) next["teacherSupport"] = true;
             if (pathname.startsWith("/dashboard/teacher/communication")) next["teacherComm"] = true;
             if (pathname.startsWith("/dashboard/teacher/announcements")) next["teacherAnnounce"] = true;
-            if (pathname.startsWith("/dashboard/teacher/pd")) next["teacherPD"] = true;
             if (pathname.startsWith("/dashboard/teacher/reports")) next["teacherReports"] = true;
             return next;
         });
@@ -163,35 +160,6 @@ export default function TeacherNavigation({
                     ],
                 },
                 {
-                    label: "Assessment & Grades",
-                    basePath: "/dashboard/teacher/assessment",
-                    icon: GraduationCap,
-                    subLinks: [
-                        { label: "Create Assessment", href: "/dashboard/teacher/assessment?type=ALL" },
-                        { label: "Create Quiz", href: "/dashboard/teacher/assessment?type=QUIZ" },
-                        { label: "Create Test", href: "/dashboard/teacher/assessment?type=TEST" },
-                        { label: "Create Assignment", href: "/dashboard/teacher/assessment?type=ASSIGNMENT" },
-                        { label: "Create Project", href: "/dashboard/teacher/assessment?type=PROJECT" },
-                        { label: "Conduct Assessment", href: "/dashboard/teacher/assessment?tab=conduct" },
-                        { label: "Record Results & Grade", href: "/dashboard/teacher/assessment?tab=grade" },
-                        { label: "Provide Feedback", href: "/dashboard/teacher/assessment?tab=feedback" },
-                    ],
-                },
-                {
-                    label: "Learning Activities",
-                    basePath: "/dashboard/teacher/learning",
-                    icon: ClipboardCheck,
-                    subLinks: [
-                        { label: "Create Assignment", href: "/dashboard/teacher/learning?type=HOMEWORK" },
-                        { label: "Create Quiz", href: "/dashboard/teacher/learning?type=QUIZ" },
-                        { label: "Create Class Activity", href: "/dashboard/teacher/learning?type=CLASS_WORK" },
-                        { label: "Set Deadline", href: "/dashboard/teacher/learning?tab=create" },
-                        { label: "Review Submissions", href: "/dashboard/teacher/learning?tab=submissions" },
-                        { label: "Mark Completion", href: "/dashboard/teacher/learning?tab=completion" },
-                        { label: "Give Feedback", href: "/dashboard/teacher/learning?tab=feedback" },
-                    ],
-                },
-                {
                     label: "Student Support",
                     basePath: "/dashboard/teacher/support",
                     icon: HeartHandshake,
@@ -234,20 +202,11 @@ export default function TeacherNavigation({
             title: "Development & Systems",
             items: [
                 {
-                    label: "Professional Dev.",
-                    basePath: "/dashboard/teacher/pd",
-                    icon: GraduationCap,
-                    subLinks: [
-                        { label: "Training & Workshops", href: "/dashboard/teacher/pd?tab=training" },
-                        { label: "Certificates", href: "/dashboard/teacher/pd?tab=certificates" },
-                    ],
-                },
-                {
                     label: "Teacher Reports",
                     basePath: "/dashboard/teacher/reports",
                     icon: BarChart3,
                     subLinks: [
-                        { label: "Class Attendance & Scores", href: "/dashboard/teacher/reports" },
+                        { label: "Class Attendance & Analytics", href: "/dashboard/teacher/reports" },
                     ],
                 },
                 {

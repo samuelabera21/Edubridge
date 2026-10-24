@@ -141,18 +141,14 @@ export default function TeacherDashboard() {
     const todayClasses = summary?.todayClasses || [];
     const totalStudents = summary?.totalStudents ?? 0;
     const attendancePendingCount = summary?.attendancePendingCount ?? 0;
-    const pendingAssessmentsCount = summary?.pendingAssessmentsCount ?? 0;
-    const pendingSubmissionsCount = summary?.pendingSubmissionsCount ?? 0;
     const studentsNeedAttentionCount = summary?.studentsNeedAttentionCount ?? 0;
     const attentionStudents = summary?.studentsRequiringAttention || [];
     const recentAnnouncements = summary?.recentAnnouncements || [];
     const pendingAnnouncementsCount = summary?.pendingAnnouncementsCount || 0;
 
-    // Demographic and subject breakdown from real database
+    // Demographic breakdown from real database
     const studentsByGrade = summary?.studentsByGrade || [];
     const genderDist = summary?.genderDistribution || { male: 0, female: 0, malePercentage: 0, femalePercentage: 0 };
-    const assessmentsBySubject = summary?.assessmentsBySubject || [];
-    const assignmentsBySubject = summary?.assignmentsBySubject || [];
 
     // Attendance stats
     const completedClassesToday = todayClasses.filter((c: any) => c.status === "Completed" || c.action === "Completed").length;
@@ -172,7 +168,7 @@ export default function TeacherDashboard() {
                     <div className="w-12 h-12 rounded-full border-4 border-[#4085b3]/20 border-t-[#4085b3] animate-spin"></div>
                 </div>
                 <p className="text-sm font-bold text-gray-800 mt-4">Loading Teacher Dashboard...</p>
-                <p className="text-xs text-gray-400 mt-1">Fetching live classes, roster statistics & assessments</p>
+                <p className="text-xs text-gray-400 mt-1">Fetching live classes and roster statistics</p>
             </div>
         );
     }
