@@ -623,5 +623,409 @@ export class AssessmentAdminService {
 
         return enrollments;
     }
+
+    /**
+     * Imports a result marksheet from Excel (any dynamic column schema).
+     */
+    static async importResultSheet(organizationId: string, data: {
+        title: string;
+        fileName?: string;
+        academicYearId?: string;
+        schoolGradeId?: string;
+        sectionId?: string;
+        subjectId?: string;
+        teachingAssignmentId?: string;
+        columns: string[];
+        rows: Record<string, any>[];
+        maxScore?: number;
+        passingScore?: number;
+        uploadedById?: string;
+    }) {
+        const year = await this.resolveAcademicYear(organizationId, data.academicYearId);
+        if (!year) throw new Error("No active academic year found for this school");
+        const resolvedYearId = year.id;
+
+        // Find or associate a teaching assignment
+        let assignmentId = data.teachingAssignmentId;
+        if (!assignmentId) {
+            const matchWhere: any = {
+                academicYearId: resolvedYearId,
+                academicYear: { organizationId }
+            };
+            if (data.subjectId) matchWhere.subjectId = data.subjectId;
+            if (data.schoolGradeId) matchWhere.schoolGradeId = data.schoolGradeId;
+            if (data.sectionId) matchWhere.sectionId = data.sectionId;
+
+            const existing = await prisma.teachingAssignment.findFirst({
+                where: matchWhere
+            });
+
+            if (existing) {
+                assignmentId = existing.id;
+            } else {
+                const anyAssignment = await prisma.teachingAssignment.findFirst({
+                    where: { academicYear: { organizationId } }
+                });
+                if (anyAssignment) {
+                    assignmentId = anyAssignment.id;
+                } else {
+                    const [firstTeacher, firstSubject, firstGrade] = await Promise.all([
+                        prisma.teacher.findFirst({ where: { organizationId } }),
+                        prisma.subject.findFirst({ where: { organizationId } }),
+                        prisma.schoolGrade.findFirst({ where: { academicYearId: resolvedYearId } })
+                    ]);
+
+                    if (firstTeacher && firstSubject && firstGrade) {
+                        const createdAssignment = await prisma.teachingAssignment.create({
+                            data: {
+                                academicYearId: resolvedYearId,
+                                teacherId: firstTeacher.id,
+                                subjectId: data.subjectId || firstSubject.id,
+                                schoolGradeId: data.schoolGradeId || firstGrade.id,
+                                sectionId: data.sectionId || null,
+                                status: "ACTIVE"
+                            }
+                        });
+                        assignmentId = createdAssignment.id;
+                    } else {
+                        throw new Error("Cannot import results: school requires at least one registered teacher, subject, and grade.");
+                    }
+                }
+            }
+        }
+
+        // Calculate statistics across rows
+        const numericValues: number[] = [];
+        const scoreColumnKeywords = ["total", "totalscore", "score", "mark", "final", "result", "grade", "points"];
+        let targetScoreCol: string | null = null;
+        for (const col of data.columns) {
+            const lower = col.toLowerCase().replace(/[^a-z0-9]/g, "");
+            if (scoreColumnKeywords.some(s => lower.includes(s))) {
+                targetScoreCol = col;
+                break;
+            }
+        }
+
+        if (targetScoreCol) {
+            for (const r of data.rows) {
+                const val = parseFloat(r[targetScoreCol]);
+                if (!isNaN(val)) numericValues.push(val);
+            }
+        } else {
+            for (const col of data.columns) {
+                const nums: number[] = [];
+                for (const r of data.rows) {
+                    const val = parseFloat(r[col]);
+                    if (!isNaN(val)) nums.push(val);
+                }
+                if (nums.length >= data.rows.length * 0.5 && nums.length > 0) {
+                    targetScoreCol = col;
+                    numericValues.push(...nums);
+                    break;
+                }
+            }
+        }
+
+        const calculatedMax = data.maxScore || (numericValues.length > 0 ? Math.max(...numericValues, 100) : 100);
+        const calculatedPassing = data.passingScore !== undefined ? data.passingScore : (calculatedMax * 0.5);
+        const averageScore = numericValues.length > 0 ? Math.round((numericValues.reduce((a, b) => a + b, 0) / numericValues.length) * 10) / 10 : 0;
+        const passCount = numericValues.filter(v => v >= calculatedPassing).length;
+        const passRate = numericValues.length > 0 ? Math.round((passCount / numericValues.length) * 1000) / 10 : 0;
+
+        const sheetMetadata = {
+            isExcelSheet: true,
+            fileName: data.fileName || `${data.title.replace(/\s+/g, "_")}.xlsx`,
+            columns: data.columns,
+            rows: data.rows,
+            scoreColumn: targetScoreCol,
+            uploadedAt: new Date().toISOString(),
+            uploadedById: data.uploadedById,
+            summary: {
+                totalRows: data.rows.length,
+                averageScore,
+                passRate,
+                highestScore: numericValues.length > 0 ? Math.max(...numericValues) : 0,
+                lowestScore: numericValues.length > 0 ? Math.min(...numericValues) : 0
+            }
+        };
+
+        const assessment = await prisma.assessment.create({
+            data: {
+                organizationId,
+                academicYearId: resolvedYearId,
+                teachingAssignmentId: assignmentId,
+                title: data.title,
+                description: JSON.stringify(sheetMetadata),
+                type: "EXAM",
+                status: "RELEASED",
+                maxScore: calculatedMax,
+                passingScore: calculatedPassing
+            },
+            include: {
+                teachingAssignment: {
+                    include: {
+                        subject: true,
+                        schoolGrade: { include: { grade: true } },
+                        section: true,
+                        teacher: true
+                    }
+                }
+            }
+        });
+
+        // Match rows to enrollments if student identification column is present
+        try {
+            const idKeywords = ["studentid", "id", "rollno", "studentno", "code", "admissionno"];
+            let idCol: string | null = null;
+            for (const col of data.columns) {
+                const lower = col.toLowerCase().replace(/[^a-z0-9]/g, "");
+                if (idKeywords.some(s => lower === s || lower.includes("studentid"))) {
+                    idCol = col;
+                    break;
+                }
+            }
+
+            if (idCol && targetScoreCol && data.rows.length > 0) {
+                const enrollments = await prisma.studentEnrollment.findMany({
+                    where: {
+                        organizationId,
+                        academicYearId: resolvedYearId,
+                        ...(data.sectionId ? { sectionId: data.sectionId } : {})
+                    },
+                    include: { student: true }
+                });
+
+                const enrollmentMap = new Map<string, string>();
+                for (const e of enrollments) {
+                    if (e.student?.studentId) {
+                        enrollmentMap.set(e.student.studentId.trim().toLowerCase(), e.id);
+                    }
+                }
+
+                for (const r of data.rows) {
+                    const rawId = String(r[idCol] || "").trim().toLowerCase();
+                    const enrollmentId = enrollmentMap.get(rawId);
+                    const score = parseFloat(r[targetScoreCol]);
+                    if (enrollmentId && !isNaN(score)) {
+                        await prisma.studentResult.upsert({
+                            where: {
+                                assessmentId_enrollmentId: {
+                                    assessmentId: assessment.id,
+                                    enrollmentId
+                                }
+                            },
+                            update: {
+                                score,
+                                status: "SUBMITTED"
+                            },
+                            create: {
+                                assessmentId: assessment.id,
+                                enrollmentId,
+                                score,
+                                status: "SUBMITTED"
+                            }
+                        }).catch(() => {});
+                    }
+                }
+            }
+        } catch (err) {
+            console.error("Student result matching non-critical error:", err);
+        }
+
+        return {
+            id: assessment.id,
+            title: assessment.title,
+            fileName: sheetMetadata.fileName,
+            gradeName: assessment.teachingAssignment?.schoolGrade?.grade?.name || "General",
+            sectionName: assessment.teachingAssignment?.section?.name ? `Section ${assessment.teachingAssignment.section.name}` : "All Sections",
+            subjectName: assessment.teachingAssignment?.subject?.name || "General Subject",
+            teacherName: assessment.teachingAssignment?.teacher ? `${assessment.teachingAssignment.teacher.firstName} ${assessment.teachingAssignment.teacher.lastName}` : "Faculty Member",
+            totalStudents: data.rows.length,
+            averageScore,
+            passRate,
+            submittedAt: assessment.createdAt,
+            columns: data.columns
+        };
+    }
+
+    /**
+     * Get all submitted result marksheets for the School Administrator.
+     */
+    static async getResultSheets(organizationId: string, filters: OverviewFilters & { search?: string }) {
+        const year = await this.resolveAcademicYear(organizationId, filters.academicYearId);
+        const resolvedYearId = year?.id;
+
+        const assessments = await prisma.assessment.findMany({
+            where: {
+                organizationId,
+                ...(resolvedYearId ? { academicYearId: resolvedYearId } : {}),
+                ...(filters.subjectId ? { teachingAssignment: { subjectId: filters.subjectId } } : {}),
+                ...(filters.schoolGradeId ? { teachingAssignment: { schoolGradeId: filters.schoolGradeId } } : {}),
+                ...(filters.sectionId ? { teachingAssignment: { sectionId: filters.sectionId } } : {}),
+                ...(filters.search ? {
+                    OR: [
+                        { title: { contains: filters.search, mode: "insensitive" } },
+                        { description: { contains: filters.search, mode: "insensitive" } }
+                    ]
+                } : {})
+            },
+            include: {
+                teachingAssignment: {
+                    include: {
+                        subject: true,
+                        schoolGrade: { include: { grade: true } },
+                        section: true,
+                        teacher: true
+                    }
+                },
+                results: {
+                    include: {
+                        enrollment: {
+                            include: { student: true }
+                        }
+                    }
+                }
+            },
+            orderBy: { createdAt: "desc" }
+        });
+
+        return assessments.map(a => {
+            let metadata: any = null;
+            if (a.description) {
+                try {
+                    metadata = JSON.parse(a.description);
+                } catch {
+                    metadata = null;
+                }
+            }
+
+            const isExcel = metadata && metadata.isExcelSheet;
+            const columns = isExcel && metadata.columns ? metadata.columns : ["Student ID", "Student Name", "Score", "Max Score", "Status"];
+            const totalRows = isExcel && metadata.rows ? metadata.rows.length : a.results.length;
+
+            const avgScore = isExcel && metadata.summary?.averageScore !== undefined
+                ? metadata.summary.averageScore
+                : (a.results.length > 0 ? Math.round((a.results.reduce((acc, r) => acc + r.score, 0) / a.results.length) * 10) / 10 : 0);
+
+            const passRate = isExcel && metadata.summary?.passRate !== undefined
+                ? metadata.summary.passRate
+                : (a.results.length > 0 ? Math.round((a.results.filter(r => r.score >= (a.passingScore || a.maxScore * 0.5)).length / a.results.length) * 1000) / 10 : 0);
+
+            return {
+                id: a.id,
+                title: a.title,
+                fileName: isExcel ? metadata.fileName : `${a.title.replace(/\s+/g, "_")}.xlsx`,
+                schoolGradeId: a.teachingAssignment?.schoolGradeId,
+                gradeName: a.teachingAssignment?.schoolGrade?.grade?.name || "General",
+                sectionId: a.teachingAssignment?.sectionId,
+                sectionName: a.teachingAssignment?.section?.name ? `Section ${a.teachingAssignment.section.name}` : "All Sections",
+                subjectId: a.teachingAssignment?.subjectId,
+                subjectName: a.teachingAssignment?.subject?.name || "General Subject",
+                subjectCode: a.teachingAssignment?.subject?.code || "",
+                teacherName: a.teachingAssignment?.teacher ? `${a.teachingAssignment.teacher.firstName} ${a.teachingAssignment.teacher.lastName}` : "Faculty Member",
+                submittedAt: a.createdAt,
+                totalStudents: totalRows,
+                averageScore: avgScore,
+                passRate: passRate,
+                maxScore: a.maxScore,
+                passingScore: a.passingScore,
+                columnsCount: columns.length,
+                columns
+            };
+        });
+    }
+
+    /**
+     * Get the complete raw rows and columns for a specific result sheet.
+     */
+    static async getResultSheetDetail(organizationId: string, sheetId: string) {
+        const assessment = await prisma.assessment.findFirst({
+            where: { id: sheetId, organizationId },
+            include: {
+                teachingAssignment: {
+                    include: {
+                        subject: true,
+                        schoolGrade: { include: { grade: true } },
+                        section: true,
+                        teacher: true
+                    }
+                },
+                results: {
+                    include: {
+                        enrollment: {
+                            include: { student: true }
+                        }
+                    }
+                }
+            }
+        });
+
+        if (!assessment) throw new Error("Result sheet not found");
+
+        let metadata: any = null;
+        if (assessment.description) {
+            try {
+                metadata = JSON.parse(assessment.description);
+            } catch {
+                metadata = null;
+            }
+        }
+
+        const isExcel = metadata && metadata.isExcelSheet;
+        const columns = isExcel && metadata.columns ? metadata.columns : ["Student ID", "Student Name", "Score", "Max Score", "Status"];
+        
+        const rows = isExcel && metadata.rows ? metadata.rows : assessment.results.map((r, idx) => ({
+            "Student ID": r.enrollment?.student?.studentId || `STU-${idx + 1}`,
+            "Student Name": r.enrollment?.student ? `${r.enrollment.student.firstName} ${r.enrollment.student.lastName}` : `Student ${idx + 1}`,
+            "Score": r.score,
+            "Max Score": assessment.maxScore,
+            "Status": r.score >= (assessment.passingScore || assessment.maxScore * 0.5) ? "PASSED" : "FAILED"
+        }));
+
+        return {
+            id: assessment.id,
+            title: assessment.title,
+            fileName: isExcel ? metadata.fileName : `${assessment.title.replace(/\s+/g, "_")}.xlsx`,
+            schoolGradeId: assessment.teachingAssignment?.schoolGradeId,
+            gradeName: assessment.teachingAssignment?.schoolGrade?.grade?.name || "General",
+            sectionId: assessment.teachingAssignment?.sectionId,
+            sectionName: assessment.teachingAssignment?.section?.name ? `Section ${assessment.teachingAssignment.section.name}` : "All Sections",
+            subjectId: assessment.teachingAssignment?.subjectId,
+            subjectName: assessment.teachingAssignment?.subject?.name || "General Subject",
+            subjectCode: assessment.teachingAssignment?.subject?.code || "",
+            teacherName: assessment.teachingAssignment?.teacher ? `${assessment.teachingAssignment.teacher.firstName} ${assessment.teachingAssignment.teacher.lastName}` : "Faculty Member",
+            submittedAt: assessment.createdAt,
+            totalStudents: rows.length,
+            averageScore: isExcel && metadata.summary?.averageScore !== undefined
+                ? metadata.summary.averageScore
+                : (assessment.results.length > 0 ? Math.round((assessment.results.reduce((acc, r) => acc + r.score, 0) / assessment.results.length) * 10) / 10 : 0),
+            passRate: isExcel && metadata.summary?.passRate !== undefined
+                ? metadata.summary.passRate
+                : (assessment.results.length > 0 ? Math.round((assessment.results.filter(r => r.score >= (assessment.passingScore || assessment.maxScore * 0.5)).length / assessment.results.length) * 1000) / 10 : 0),
+            maxScore: assessment.maxScore,
+            passingScore: assessment.passingScore,
+            columns,
+            rows
+        };
+    }
+
+    /**
+     * Delete a result sheet.
+     */
+    static async deleteResultSheet(organizationId: string, sheetId: string) {
+        const assessment = await prisma.assessment.findFirst({
+            where: { id: sheetId, organizationId }
+        });
+        if (!assessment) throw new Error("Result sheet not found");
+
+        await prisma.studentResult.deleteMany({
+            where: { assessmentId: sheetId }
+        });
+
+        return prisma.assessment.delete({
+            where: { id: sheetId }
+        });
+    }
 }
+
 

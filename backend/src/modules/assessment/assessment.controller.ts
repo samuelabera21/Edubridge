@@ -297,4 +297,100 @@ export const getAdminStudentsRoster = async (req: Request, res: Response) => {
     }
 };
 
+export const importResultSheet = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        if (!organizationId) return res.status(403).json({ error: "Missing school scope" });
+
+        const {
+            title,
+            fileName,
+            academicYearId,
+            schoolGradeId,
+            sectionId,
+            subjectId,
+            teachingAssignmentId,
+            columns,
+            rows,
+            maxScore,
+            passingScore
+        } = req.body;
+
+        if (!title || !Array.isArray(columns) || !Array.isArray(rows)) {
+            return res.status(400).json({ error: "Title, columns array, and rows array are required for Excel result import" });
+        }
+
+        const uploadedById = (req as any).user?.id;
+
+        const sheet = await AssessmentAdminService.importResultSheet(organizationId, {
+            title,
+            fileName,
+            academicYearId,
+            schoolGradeId,
+            sectionId,
+            subjectId,
+            teachingAssignmentId,
+            columns,
+            rows,
+            maxScore,
+            passingScore,
+            uploadedById
+        });
+
+        return res.status(201).json(sheet);
+    } catch (error: any) {
+        return res.status(400).json({ error: error.message || "Failed to import result sheet" });
+    }
+};
+
+export const getResultSheets = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        if (!organizationId) return res.status(403).json({ error: "Missing school scope" });
+
+        const { academicYearId, schoolGradeId, sectionId, subjectId, search } = req.query;
+
+        const sheets = await AssessmentAdminService.getResultSheets(organizationId, {
+            academicYearId: academicYearId as string,
+            schoolGradeId: schoolGradeId as string,
+            sectionId: sectionId as string,
+            subjectId: subjectId as string,
+            search: search as string
+        });
+
+        return res.json(sheets);
+    } catch (error: any) {
+        return res.status(500).json({ error: error.message || "Failed to fetch result marksheets" });
+    }
+};
+
+export const getResultSheetDetail = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        if (!organizationId) return res.status(403).json({ error: "Missing school scope" });
+
+        const { id } = req.params;
+        const sheet = await AssessmentAdminService.getResultSheetDetail(organizationId, id as string);
+
+        return res.json(sheet);
+    } catch (error: any) {
+        return res.status(404).json({ error: error.message || "Result sheet not found" });
+    }
+};
+
+export const deleteResultSheet = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        if (!organizationId) return res.status(403).json({ error: "Missing school scope" });
+
+        const { id } = req.params;
+        await AssessmentAdminService.deleteResultSheet(organizationId, id as string);
+
+        return res.json({ message: "Result sheet deleted successfully" });
+    } catch (error: any) {
+        return res.status(400).json({ error: error.message || "Failed to delete result sheet" });
+    }
+};
+
+
 

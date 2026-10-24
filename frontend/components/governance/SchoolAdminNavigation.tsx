@@ -83,7 +83,7 @@ export default function SchoolAdminNavigation({
             if (pathname.startsWith("/dashboard/students")) next["students"] = true;
             if (pathname.startsWith("/dashboard/teachers")) next["teachers"] = true;
             if (pathname.startsWith("/dashboard/attendance")) next["attendance"] = true;
-            if (pathname.startsWith("/dashboard/assessment")) next["assessment"] = true;
+            if (pathname.startsWith("/dashboard/assessment") || pathname.startsWith("/dashboard/results")) next["results"] = true;
             if (pathname.startsWith("/dashboard/support")) next["support"] = true;
             if (pathname.startsWith("/dashboard/communication")) next["communication"] = true;
             if (pathname.startsWith("/dashboard/improvement")) next["improvement"] = true;
@@ -131,9 +131,9 @@ export default function SchoolAdminNavigation({
                     icon: ClipboardCheck,
                 },
                 {
-                    label: "Assessments Overview",
-                    href: "/dashboard/vice-principal/assessments",
-                    icon: FileText,
+                    label: "Results Overview",
+                    href: "/dashboard/results",
+                    icon: FileSpreadsheet,
                 },
             ],
         },
@@ -235,13 +235,9 @@ export default function SchoolAdminNavigation({
             title: "Student Success & Support",
             items: [
                 {
-                    label: "Assessment & Grades",
-                    icon: FileText,
-                    basePath: "/dashboard/assessment",
-                    subLinks: [
-                        { label: "Overview & Analytics", href: "/dashboard/assessment" },
-                        { label: "Student Results", href: "/dashboard/assessment/results" },
-                    ],
+                    label: "Results",
+                    href: "/dashboard/results",
+                    icon: FileSpreadsheet,
                 },
                 {
                     // hidden: Phase 2 — not core to data-bridge mission
