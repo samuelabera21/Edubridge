@@ -507,46 +507,62 @@ export default function ResultsDashboardPage() {
                 </div>
             )}
 
-            {/* Metric Cards: Clean, minimal, reduced size with blue hover effect */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-                <div className="p-3.5 rounded-xl border border-slate-200 bg-white hover:border-[#4085b3] hover:shadow-xs transition-all duration-150 flex items-center justify-between cursor-default">
-                    <div>
-                        <span className="text-[11px] font-medium text-slate-500">Mark Sheets</span>
-                        <div className="text-xl font-bold text-slate-900 leading-tight mt-0.5">{kpiSummary.totalSheets}</div>
+            {/* Top 4 KPI Cards: Left-to-right clean blue hover fill */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                {/* 1. Mark Sheets */}
+                <div className="relative overflow-hidden border border-slate-200 bg-white rounded-lg p-4 flex items-center justify-between group cursor-pointer shadow-2xs hover:border-[#4085b3] transition-all duration-300">
+                    <span className="absolute inset-0 bg-[#4085b3] origin-left scale-x-0 group-hover:scale-x-100 transition-transform duration-300 ease-out pointer-events-none" />
+                    <div className="relative z-10">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 group-hover:text-blue-100 transition-colors duration-300 block mb-1">
+                            Mark Sheets
+                        </span>
+                        <span className="text-2xl font-bold text-slate-900 group-hover:text-white transition-colors duration-300 tabular-nums">
+                            {kpiSummary.totalSheets}
+                        </span>
                     </div>
-                    <div className="w-8 h-8 rounded-lg bg-blue-50 text-[#4085b3] flex items-center justify-center">
-                        <FileSpreadsheet className="w-4 h-4" />
-                    </div>
+                    <FileSpreadsheet className="relative z-10 w-5 h-5 text-slate-400 group-hover:text-white transition-colors duration-300 shrink-0" />
                 </div>
 
-                <div className="p-3.5 rounded-xl border border-slate-200 bg-white hover:border-[#4085b3] hover:shadow-xs transition-all duration-150 flex items-center justify-between cursor-default">
-                    <div>
-                        <span className="text-[11px] font-medium text-slate-500">Students Graded</span>
-                        <div className="text-xl font-bold text-slate-900 leading-tight mt-0.5">{kpiSummary.totalStudents}</div>
+                {/* 2. Students Graded */}
+                <div className="relative overflow-hidden border border-slate-200 bg-white rounded-lg p-4 flex items-center justify-between group cursor-pointer shadow-2xs hover:border-[#4085b3] transition-all duration-300">
+                    <span className="absolute inset-0 bg-[#4085b3] origin-left scale-x-0 group-hover:scale-x-100 transition-transform duration-300 ease-out pointer-events-none" />
+                    <div className="relative z-10">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 group-hover:text-blue-100 transition-colors duration-300 block mb-1">
+                            Students Graded
+                        </span>
+                        <span className="text-2xl font-bold text-slate-900 group-hover:text-white transition-colors duration-300 tabular-nums">
+                            {kpiSummary.totalStudents}
+                        </span>
                     </div>
-                    <div className="w-8 h-8 rounded-lg bg-slate-100 text-slate-600 flex items-center justify-center">
-                        <Users className="w-4 h-4" />
-                    </div>
+                    <Users className="relative z-10 w-5 h-5 text-slate-400 group-hover:text-white transition-colors duration-300 shrink-0" />
                 </div>
 
-                <div className="p-3.5 rounded-xl border border-slate-200 bg-white hover:border-[#4085b3] hover:shadow-xs transition-all duration-150 flex items-center justify-between cursor-default">
-                    <div>
-                        <span className="text-[11px] font-medium text-slate-500">Average Score</span>
-                        <div className="text-xl font-bold text-[#4085b3] leading-tight mt-0.5">{kpiSummary.avgScore}%</div>
+                {/* 3. Average Score */}
+                <div className="relative overflow-hidden border border-slate-200 bg-white rounded-lg p-4 flex items-center justify-between group cursor-pointer shadow-2xs hover:border-[#4085b3] transition-all duration-300">
+                    <span className="absolute inset-0 bg-[#4085b3] origin-left scale-x-0 group-hover:scale-x-100 transition-transform duration-300 ease-out pointer-events-none" />
+                    <div className="relative z-10">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 group-hover:text-blue-100 transition-colors duration-300 block mb-1">
+                            Average Score
+                        </span>
+                        <span className="text-2xl font-bold text-slate-900 group-hover:text-white transition-colors duration-300 tabular-nums">
+                            {kpiSummary.avgScore}%
+                        </span>
                     </div>
-                    <div className="w-8 h-8 rounded-lg bg-blue-50 text-[#4085b3] flex items-center justify-center">
-                        <Award className="w-4 h-4" />
-                    </div>
+                    <Award className="relative z-10 w-5 h-5 text-slate-400 group-hover:text-white transition-colors duration-300 shrink-0" />
                 </div>
 
-                <div className="p-3.5 rounded-xl border border-slate-200 bg-white hover:border-[#4085b3] hover:shadow-xs transition-all duration-150 flex items-center justify-between cursor-default">
-                    <div>
-                        <span className="text-[11px] font-medium text-slate-500">Passing Rate</span>
-                        <div className="text-xl font-bold text-slate-900 leading-tight mt-0.5">{kpiSummary.passRate}%</div>
+                {/* 4. Passing Rate */}
+                <div className="relative overflow-hidden border border-slate-200 bg-white rounded-lg p-4 flex items-center justify-between group cursor-pointer shadow-2xs hover:border-[#4085b3] transition-all duration-300">
+                    <span className="absolute inset-0 bg-[#4085b3] origin-left scale-x-0 group-hover:scale-x-100 transition-transform duration-300 ease-out pointer-events-none" />
+                    <div className="relative z-10">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 group-hover:text-blue-100 transition-colors duration-300 block mb-1">
+                            Passing Rate
+                        </span>
+                        <span className="text-2xl font-bold text-slate-900 group-hover:text-white transition-colors duration-300 tabular-nums">
+                            {kpiSummary.passRate}%
+                        </span>
                     </div>
-                    <div className="w-8 h-8 rounded-lg bg-slate-100 text-slate-600 flex items-center justify-center">
-                        <TrendingUp className="w-4 h-4" />
-                    </div>
+                    <TrendingUp className="relative z-10 w-5 h-5 text-slate-400 group-hover:text-white transition-colors duration-300 shrink-0" />
                 </div>
             </div>
 
