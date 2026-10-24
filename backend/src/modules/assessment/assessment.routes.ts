@@ -15,7 +15,11 @@ import {
     getAdminResults,
     getAdminStudentResultDetail,
     getAdminFilterOptions,
-    getAdminStudentsRoster
+    getAdminStudentsRoster,
+    getResultSheets,
+    getResultSheetDetail,
+    importResultSheet,
+    deleteResultSheet
 } from "./assessment.controller.js";
 import { requirePermission, requireScope } from "../authentication/authorization.middleware.js";
 
@@ -24,13 +28,19 @@ const router = Router();
 router.use(requireScope("SCHOOL"));
 
 // ============================================================
-// SCHOOL ADMINISTRATOR / PRINCIPAL OVERSIGHT ROUTES
+// SCHOOL ADMINISTRATOR / PRINCIPAL OVERSIGHT & RESULTS ROUTES
 // ============================================================
 router.get("/admin/overview", requirePermission("ACADEMIC:VIEW"), getAdminOverview);
 router.get("/admin/results", requirePermission("ACADEMIC:VIEW"), getAdminResults);
 router.get("/admin/students/:enrollmentId", requirePermission("ACADEMIC:VIEW"), getAdminStudentResultDetail);
 router.get("/admin/filters", requirePermission("ACADEMIC:VIEW"), getAdminFilterOptions);
 router.get("/admin/roster", requirePermission("ACADEMIC:VIEW"), getAdminStudentsRoster);
+
+// Dynamic Excel Marksheet Submissions (any schema)
+router.get("/sheets", requirePermission("ACADEMIC:VIEW"), getResultSheets);
+router.get("/sheets/:id", requirePermission("ACADEMIC:VIEW"), getResultSheetDetail);
+router.post("/import-sheet", requirePermission("ACADEMIC:CREATE"), importResultSheet);
+router.delete("/sheets/:id", requirePermission("ACADEMIC:CREATE"), deleteResultSheet);
 
 /**
  * @openapi

@@ -728,6 +728,7 @@ router.get("/users", async (req, res) => {
                 requiresPasswordChange: u.requiresPasswordChange ?? false,
                 createdAt: u.createdAt,
                 roles,
+                primaryRole: roles[0] || "USER",
                 scopeName: u.roleAssignments[0]?.scope?.name || "EduBridge Demo School",
                 entityInfo
             };
