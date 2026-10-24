@@ -167,7 +167,11 @@ export default function AccountDirectory({
       }
 
       const data = await res.json();
-      const itemsList = data.users || data.items || [];
+      const rawItems = data.users || data.items || [];
+      const itemsList = rawItems.map((u: any) => ({
+        ...u,
+        primaryRole: u.primaryRole || u.roles?.[0] || "USER"
+      }));
       setUsers(itemsList);
       setTotalPages(data.totalPages || data.pagination?.totalPages || 1);
       setTotalCount(data.total || data.pagination?.total || itemsList.length);
@@ -572,7 +576,7 @@ export default function AccountDirectory({
                       {(accountType === "ALL" || accountType === "ADMINISTRATORS" || accountType === "SUPPORT_STAFF") && (
                         <td className="py-3 px-4">
                           <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold bg-gray-100 text-gray-800 border border-gray-200">
-                            {user.primaryRole.replace(/_/g, " ")}
+                            {(user.primaryRole || user.roles?.[0] || "USER").replace(/_/g, " ")}
                           </span>
                         </td>
                       )}
@@ -993,7 +997,7 @@ export default function AccountDirectory({
 
                 <div className="bg-gray-50 p-2.5 rounded-lg border border-gray-100">
                   <span className="text-[10px] text-gray-400 block uppercase font-semibold">Role</span>
-                  <span className="font-semibold text-gray-900">{selectedUserDetail.primaryRole.replace(/_/g, " ")}</span>
+                  <span className="font-semibold text-gray-900">{(selectedUserDetail.primaryRole || selectedUserDetail.roles?.[0] || "USER").replace(/_/g, " ")}</span>
                 </div>
 
                 <div className="bg-gray-50 p-2.5 rounded-lg border border-gray-100">
