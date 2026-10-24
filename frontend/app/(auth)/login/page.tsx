@@ -301,14 +301,14 @@ export default function LoginPage() {
             <form onSubmit={handleLogin} className="space-y-4">
                 <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Username or Email
+                        Email, Phone Number, or Username
                     </label>
                     <input
                         type="text"
                         value={username}
                         onChange={(e) => setUsername(e.target.value)}
                         className="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-[#4085b3] focus:border-[#4085b3] transition-colors text-sm"
-                        placeholder="Enter your email or username"
+                        placeholder="e.g. 0911223344, parent@email.com or username"
                         required
                         disabled={loading || googleLoading}
                     />

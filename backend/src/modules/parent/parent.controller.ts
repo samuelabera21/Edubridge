@@ -289,11 +289,58 @@ export const getParentProfile = async (req: Request, res: Response) => {
             }
         });
 
-        if (!user?.parent) {
+        let parentRecord = user?.parent;
+        if (!parentRecord && user) {
+            // Fallback check by userId or phone in parent table
+            const cleanPhone = user.email.includes("@edubridge.local")
+                ? user.email.replace("@edubridge.local", "").replace("prn.", "")
+                : "";
+            const foundParent = await prisma.parent.findFirst({
+                where: {
+                    OR: [
+                        { userId: user.id },
+                        ...(cleanPhone ? [{ phoneNumber: { contains: cleanPhone } }] : [])
+                    ]
+                },
+                include: {
+                    children: {
+                        include: {
+                            student: {
+                                include: {
+                                    enrollments: {
+                                        ...(organizationId ? { where: { organizationId } } : {}),
+                                        include: {
+                                            organization: {
+                                                include: {
+                                                    schoolProfile: true
+                                                }
+                                            },
+                                            schoolGrade: { include: { grade: true } },
+                                            section: true,
+                                            academicYear: true
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+
+            if (foundParent) {
+                await prisma.parent.update({
+                    where: { id: foundParent.id },
+                    data: { userId: user.id }
+                }).catch(() => {});
+                parentRecord = foundParent as any;
+            }
+        }
+
+        if (!parentRecord) {
             return res.status(404).json({ error: "No parent profile found for your account" });
         }
 
-        return res.json(user.parent);
+        return res.json(parentRecord);
     } catch (error) {
         console.error("Error fetching parent profile:", error);
         return res.status(500).json({ error: "Internal server error" });

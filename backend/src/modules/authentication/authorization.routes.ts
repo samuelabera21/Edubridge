@@ -70,6 +70,35 @@ router.post("/resolve-username", async (req, res) => {
             if (studentUser) return res.json({ email: studentUser.email });
         }
 
+        // 3.5 Check Parent by phoneNumber or email (Ethiopian phone format: 09..., +251...)
+        const cleanPhone = input.replace(/[\s\-\(\)\+]/g, "");
+        if (cleanPhone.length >= 8) {
+            const last9 = cleanPhone.slice(-9);
+            const parent = await prisma.parent.findFirst({
+                where: {
+                    OR: [
+                        { phoneNumber: { equals: input, mode: "insensitive" } },
+                        { phoneNumber: { equals: cleanPhone, mode: "insensitive" } },
+                        { phoneNumber: { endsWith: last9, mode: "insensitive" } },
+                        { email: { equals: input, mode: "insensitive" } }
+                    ]
+                },
+                include: { user: true }
+            });
+            if (parent?.user?.email) return res.json({ email: parent.user.email });
+            if (parent?.email) return res.json({ email: parent.email });
+
+            const userByPhone = await prisma.user.findFirst({
+                where: {
+                    OR: [
+                        { email: { startsWith: cleanPhone, mode: "insensitive" } },
+                        { email: { startsWith: `prn.${cleanPhone}`, mode: "insensitive" } }
+                    ]
+                }
+            });
+            if (userByPhone) return res.json({ email: userByPhone.email });
+        }
+
         // 4. Standard Aliases
         const lower = input.toLowerCase();
         if (lower === "admin" || lower === "school_admin") return res.json({ email: "admin@edubridge.local" });
