@@ -34,7 +34,10 @@ import {
     LayoutGrid,
     BookOpen,
     FileCheck,
-    Paperclip
+    Paperclip,
+    FolderTree,
+    ClipboardList,
+    ArrowRight
 } from "lucide-react";
 
 function AttendanceContent() {
@@ -208,6 +211,9 @@ function AttendanceContent() {
             updated[st.id] = status;
         });
         setAttendanceMap(updated);
+        if (status === "PRESENT" || status === "ABSENT") {
+            setNotesMap({});
+        }
     }
 
     function handleStatusToggle(studentEnrollmentId: string, status: string) {
@@ -215,6 +221,13 @@ function AttendanceContent() {
             ...prev,
             [studentEnrollmentId]: status
         }));
+        if (status === "PRESENT" || status === "ABSENT") {
+            setNotesMap(prev => {
+                const next = { ...prev };
+                delete next[studentEnrollmentId];
+                return next;
+            });
+        }
     }
 
     function handleNoteChange(studentEnrollmentId: string, note: string) {
@@ -673,13 +686,28 @@ function AttendanceContent() {
                                                             </div>
                                                         </td>
                                                         <td className="py-3 px-4">
-                                                            <input
-                                                                type="text"
-                                                                placeholder="Add remark or reason..."
-                                                                value={notesMap[enrollmentId] || ""}
-                                                                onChange={(e) => handleNoteChange(enrollmentId, e.target.value)}
-                                                                className="w-full bg-gray-50 border border-gray-200 rounded-lg px-2.5 py-1 text-xs outline-none focus:ring-1 focus:ring-[#4085b3]"
-                                                            />
+                                                            {currentStatus === "LATE" || currentStatus === "EXCUSED" ? (
+                                                                <div className="relative animate-in fade-in duration-150">
+                                                                    <input
+                                                                        type="text"
+                                                                        placeholder={
+                                                                            currentStatus === "LATE"
+                                                                                ? "Reason for being late (e.g., Traffic, Transport delay)..."
+                                                                                : "Reason for excuse (e.g., Medical note, Family request)..."
+                                                                        }
+                                                                        value={notesMap[enrollmentId] || ""}
+                                                                        onChange={(e) => handleNoteChange(enrollmentId, e.target.value)}
+                                                                        className={`w-full rounded-lg px-2.5 py-1 text-xs outline-none border focus:ring-1 transition-all ${
+                                                                            currentStatus === "LATE"
+                                                                                ? "bg-amber-50/60 border-amber-300 text-amber-900 placeholder:text-amber-500/70 focus:ring-amber-400 focus:border-amber-400"
+                                                                                : "bg-blue-50/60 border-blue-300 text-blue-900 placeholder:text-blue-500/70 focus:ring-[#4085b3] focus:border-[#4085b3]"
+                                                                        }`}
+                                                                        autoFocus
+                                                                    />
+                                                                </div>
+                                                            ) : (
+                                                                <span className="text-gray-300 text-xs font-mono pl-2 select-none" title="Not required for Present or Absent">—</span>
+                                                            )}
                                                         </td>
                                                     </tr>
                                                 );
@@ -706,25 +734,25 @@ function AttendanceContent() {
                                     setHistoryViewMode("hierarchy");
                                     setHistoryStep("grades");
                                 }}
-                                className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center space-x-1.5 transition-colors ${
+                                className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center space-x-2 transition-colors ${
                                     historyViewMode === "hierarchy" 
                                         ? "bg-[#4085b3] text-white shadow-2xs" 
                                         : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                                 }`}
                             >
-                                <LayoutGrid className="w-3.5 h-3.5" />
-                                <span>📁 By Grade & Section Hierarchy</span>
+                                <FolderTree className="w-4 h-4" />
+                                <span>By Grade & Section Hierarchy</span>
                             </button>
                             <button
                                 onClick={() => setHistoryViewMode("table")}
-                                className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center space-x-1.5 transition-colors ${
+                                className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center space-x-2 transition-colors ${
                                     historyViewMode === "table" 
                                         ? "bg-[#4085b3] text-white shadow-2xs" 
                                         : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                                 }`}
                             >
-                                <List className="w-3.5 h-3.5" />
-                                <span>📋 All Logged Sessions Directory</span>
+                                <ClipboardList className="w-4 h-4" />
+                                <span>All Logged Sessions Directory</span>
                             </button>
                         </div>
 
@@ -946,9 +974,10 @@ function AttendanceContent() {
                                                                                 setHistorySelectedStudent(stItem);
                                                                                 setHistoryStep("detail");
                                                                             }}
-                                                                            className="px-3 py-1 bg-[#4085b3] text-white text-[11px] font-bold rounded-lg hover:bg-[#32698e] transition-colors"
+                                                                            className="px-3 py-1 bg-[#4085b3] text-white text-[11px] font-bold rounded-lg hover:bg-[#32698e] transition-colors inline-flex items-center gap-1.5"
                                                                         >
-                                                                            View Student Attendance Logs ➔
+                                                                            <span>View Student Attendance Logs</span>
+                                                                            <ArrowRight className="w-3.5 h-3.5" />
                                                                         </button>
                                                                     </td>
                                                                 </tr>
@@ -1215,11 +1244,11 @@ function AttendanceContent() {
                                         onChange={(e) => setReasonCategory(e.target.value as any)}
                                         className="w-full bg-gray-50 border border-gray-200 rounded-xl p-2.5 font-bold text-gray-900 outline-none focus:ring-2 focus:ring-[#4085b3]"
                                     >
-                                        <option value="MEDICAL">🏥 Medical / Illness (Doctor Note / Sick Leave)</option>
-                                        <option value="FAMILY">🏠 Family Emergency / Urgent Private Matter</option>
-                                        <option value="SCHOOL_ACTIVITY">🏆 Official School Activity (Sports / Field Trip)</option>
-                                        <option value="PARENT_NOTE">📞 Parent Communication Note (Phone Call / Letter)</option>
-                                        <option value="UNEXCUSED">❌ Unexcused Absence / Truancy</option>
+                                        <option value="MEDICAL">Medical / Illness (Doctor Note / Sick Leave)</option>
+                                        <option value="FAMILY">Family Emergency / Urgent Private Matter</option>
+                                        <option value="SCHOOL_ACTIVITY">Official School Activity (Sports / Field Trip)</option>
+                                        <option value="PARENT_NOTE">Parent Communication Note (Phone Call / Letter)</option>
+                                        <option value="UNEXCUSED">Unexcused Absence / Truancy</option>
                                     </select>
                                 </div>
 

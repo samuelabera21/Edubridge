@@ -32,6 +32,7 @@ import dataRequestRoutes from "./modules/data-request/data-request.routes.js";
 import { GoogleFormsSyncPoller } from "./modules/data-request/google-forms-sync.poller.js";
 import storageRoutes from "./modules/storage/storage.routes.js";
 import { StorageService } from "./modules/storage/storage.service.js";
+import gradeSubmissionRoutes from "./modules/grade-submission/grade-submission.routes.js";
 import { createServer } from "http";
 import swaggerUi from "swagger-ui-express";
 import { swaggerSpec } from "./swagger.js";
@@ -109,6 +110,7 @@ app.use("/api/programs", programRoutes);
 app.use("/api/hierarchical-reports", hierarchicalReportRoutes);
 app.use("/api/data-requests", dataRequestRoutes);
 app.use("/api/storage", storageRoutes);
+app.use("/api/grade-submissions", gradeSubmissionRoutes);
 
 app.get("/", (_req, res) => {
     res.json({
