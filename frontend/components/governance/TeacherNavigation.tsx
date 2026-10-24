@@ -16,6 +16,7 @@ import {
     BarChart3,
     Sparkles,
     Settings,
+    FileSpreadsheet,
     ChevronDown,
     ChevronRight,
     ChevronLeft,
@@ -163,19 +164,9 @@ export default function TeacherNavigation({
                     ],
                 },
                 {
-                    label: "Assessment & Grades",
-                    basePath: "/dashboard/teacher/assessment",
-                    icon: GraduationCap,
-                    subLinks: [
-                        { label: "Create Assessment", href: "/dashboard/teacher/assessment?type=ALL" },
-                        { label: "Create Quiz", href: "/dashboard/teacher/assessment?type=QUIZ" },
-                        { label: "Create Test", href: "/dashboard/teacher/assessment?type=TEST" },
-                        { label: "Create Assignment", href: "/dashboard/teacher/assessment?type=ASSIGNMENT" },
-                        { label: "Create Project", href: "/dashboard/teacher/assessment?type=PROJECT" },
-                        { label: "Conduct Assessment", href: "/dashboard/teacher/assessment?tab=conduct" },
-                        { label: "Record Results & Grade", href: "/dashboard/teacher/assessment?tab=grade" },
-                        { label: "Provide Feedback", href: "/dashboard/teacher/assessment?tab=feedback" },
-                    ],
+                    label: "Results",
+                    href: "/dashboard/teacher/results",
+                    icon: FileSpreadsheet,
                 },
                 {
                     label: "Learning Activities",
@@ -311,7 +302,8 @@ export default function TeacherNavigation({
                         <nav className="space-y-0.5">
                             {group.items.map((item) => {
                                 const Icon = item.icon;
-                                const isDirectActive = item.href && pathname === item.href;
+                                const isDirectActive = (item.href && pathname === item.href) || 
+                                    (item.href === "/dashboard/teacher/results" && (pathname === "/dashboard/teacher/results" || pathname.startsWith("/dashboard/teacher/assessment")));
                                 const isGroupActive =
                                     item.basePath &&
                                     (pathname === item.basePath || pathname.startsWith(`${item.basePath}/`));

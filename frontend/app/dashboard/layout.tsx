@@ -82,26 +82,10 @@ function TeacherBreadcrumbs({ pathname, currentTab, currentType, currentChannel 
         if (currentTab && tabMap[currentTab]) {
             subItemTitle = tabMap[currentTab];
         }
-    } else if (pathname.startsWith("/dashboard/teacher/assessment")) {
-        parentTitle = "Assessment & Grades";
-        parentHref = "/dashboard/teacher/assessment";
-        const typeMap: Record<string, string> = {
-            ALL: "Create Assessment",
-            QUIZ: "Create Quiz",
-            TEST: "Create Test",
-            ASSIGNMENT: "Create Assignment",
-            PROJECT: "Create Project"
-        };
-        const tabMap: Record<string, string> = {
-            conduct: "Conduct Assessment",
-            grade: "Record Results & Grade",
-            feedback: "Provide Feedback"
-        };
-        if (currentType && typeMap[currentType]) {
-            subItemTitle = typeMap[currentType];
-        } else if (currentTab && tabMap[currentTab]) {
-            subItemTitle = tabMap[currentTab];
-        }
+    } else if (pathname.startsWith("/dashboard/teacher/results") || pathname.startsWith("/dashboard/teacher/assessment")) {
+        parentTitle = "Results";
+        parentHref = "/dashboard/teacher/results";
+        subItemTitle = "Student Results";
     } else if (pathname.startsWith("/dashboard/teacher/learning") || pathname.startsWith("/dashboard/teacher/activities")) {
         parentTitle = "Learning Activities";
         parentHref = "/dashboard/teacher/learning";
