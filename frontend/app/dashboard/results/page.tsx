@@ -452,239 +452,201 @@ export default function ResultsDashboardPage() {
     }, [sheetDetail, drawerSearch]);
 
     return (
-        <div className="space-y-6 max-w-7xl mx-auto pb-12 font-sans">
-            {/* Page Header */}
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-2 border-b border-slate-200">
-                <div>
-                    <div className="flex items-center gap-2 text-xs font-semibold text-[#4085b3] uppercase tracking-wider mb-1">
-                        <FileSpreadsheet className="w-4 h-4" />
-                        <span>Academic Records Oversight</span>
+        <div className="space-y-4 max-w-7xl mx-auto pb-12 font-sans text-slate-800">
+            {/* Header: Clean & Concise */}
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-slate-200 pb-3">
+                <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-lg bg-blue-50 text-[#4085b3] flex items-center justify-center font-bold">
+                        <FileSpreadsheet className="w-5 h-5" />
                     </div>
-                    <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
-                        Student Results
-                    </h1>
-                    <p className="text-sm text-slate-500 mt-0.5">
-                        Import, monitor, and inspect student marksheets across grades and sections with external Excel access.
-                    </p>
+                    <div>
+                        <h1 className="text-base font-bold text-slate-900 leading-tight">Student Results</h1>
+                    </div>
                 </div>
 
-                <div className="flex items-center gap-2.5">
-                    <Button
+                <div className="flex items-center gap-2">
+                    <button
+                        type="button"
                         onClick={() => {
                             setImportError(null);
                             setParsedData(null);
                             setImportTitle("");
                             setIsImportModalOpen(true);
                         }}
-                        className="bg-[#4085b3] hover:bg-[#35729c] text-white shadow-xs font-semibold px-4 py-2 text-sm flex items-center gap-2 cursor-pointer transition-all"
+                        className="px-3 py-1.5 rounded-lg bg-[#4085b3] hover:bg-[#35729c] text-white text-xs font-semibold flex items-center gap-1.5 transition-all duration-150 cursor-pointer shadow-2xs"
                     >
-                        <Upload className="w-4 h-4" />
+                        <Upload className="w-3.5 h-3.5" />
                         <span>Import Results (Excel)</span>
-                    </Button>
+                    </button>
 
-                    <Button
-                        variant="outline"
+                    <button
+                        type="button"
                         onClick={loadSheets}
-                        className="border-slate-300 text-slate-700 hover:bg-slate-50 p-2 cursor-pointer transition-colors"
+                        className="px-3 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-[#4085b3] hover:text-white hover:border-[#4085b3] text-slate-700 text-xs font-semibold flex items-center gap-1.5 transition-all duration-150 cursor-pointer"
                         title="Refresh marksheets"
                     >
-                        <RefreshCw className="w-4 h-4" />
-                    </Button>
+                        <RefreshCw className="w-3.5 h-3.5" />
+                        <span>Refresh</span>
+                    </button>
                 </div>
             </div>
 
             {/* Success Notification */}
             {importSuccessMsg && (
-                <div className="p-4 rounded-xl bg-blue-50 border border-blue-200 text-[#4085b3] flex items-center justify-between text-sm shadow-xs animate-in fade-in">
-                    <div className="flex items-center gap-2.5">
-                        <CheckCircle2 className="w-5 h-5 shrink-0" />
+                <div className="p-3.5 rounded-xl bg-blue-50 border border-blue-200 text-[#4085b3] flex items-center justify-between text-xs shadow-2xs animate-in fade-in">
+                    <div className="flex items-center gap-2">
+                        <CheckCircle2 className="w-4 h-4 shrink-0" />
                         <span className="font-semibold">{importSuccessMsg}</span>
                     </div>
                     <button
                         onClick={() => setImportSuccessMsg(null)}
                         className="text-slate-400 hover:text-slate-600 cursor-pointer"
                     >
-                        <X className="w-4 h-4" />
+                        <X className="w-3.5 h-3.5" />
                     </button>
                 </div>
             )}
 
-            {/* Executive KPI Overview Strip (Zero green, brand blue & slates) */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <Card className="border-slate-200 shadow-xs bg-white">
-                    <CardContent className="p-5">
-                        <div className="flex items-center justify-between">
-                            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                                Result Marksheets
-                            </span>
-                            <div className="p-2 rounded-lg bg-blue-50 text-[#4085b3]">
-                                <FileSpreadsheet className="w-4 h-4" />
-                            </div>
-                        </div>
-                        <div className="mt-3 flex items-baseline gap-2">
-                            <span className="text-2xl font-bold text-slate-900">{kpiSummary.totalSheets}</span>
-                            <span className="text-xs text-slate-500">submitted</span>
-                        </div>
-                    </CardContent>
-                </Card>
+            {/* Metric Cards: Clean, minimal, reduced size with blue hover effect */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                <div className="p-3.5 rounded-xl border border-slate-200 bg-white hover:border-[#4085b3] hover:shadow-xs transition-all duration-150 flex items-center justify-between cursor-default">
+                    <div>
+                        <span className="text-[11px] font-medium text-slate-500">Mark Sheets</span>
+                        <div className="text-xl font-bold text-slate-900 leading-tight mt-0.5">{kpiSummary.totalSheets}</div>
+                    </div>
+                    <div className="w-8 h-8 rounded-lg bg-blue-50 text-[#4085b3] flex items-center justify-center">
+                        <FileSpreadsheet className="w-4 h-4" />
+                    </div>
+                </div>
 
-                <Card className="border-slate-200 shadow-xs bg-white">
-                    <CardContent className="p-5">
-                        <div className="flex items-center justify-between">
-                            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                                Students Graded
-                            </span>
-                            <div className="p-2 rounded-lg bg-slate-100 text-slate-700">
-                                <Users className="w-4 h-4" />
-                            </div>
-                        </div>
-                        <div className="mt-3 flex items-baseline gap-2">
-                            <span className="text-2xl font-bold text-slate-900">{kpiSummary.totalStudents}</span>
-                            <span className="text-xs text-slate-500">records</span>
-                        </div>
-                    </CardContent>
-                </Card>
+                <div className="p-3.5 rounded-xl border border-slate-200 bg-white hover:border-[#4085b3] hover:shadow-xs transition-all duration-150 flex items-center justify-between cursor-default">
+                    <div>
+                        <span className="text-[11px] font-medium text-slate-500">Students Graded</span>
+                        <div className="text-xl font-bold text-slate-900 leading-tight mt-0.5">{kpiSummary.totalStudents}</div>
+                    </div>
+                    <div className="w-8 h-8 rounded-lg bg-slate-100 text-slate-600 flex items-center justify-center">
+                        <Users className="w-4 h-4" />
+                    </div>
+                </div>
 
-                <Card className="border-slate-200 shadow-xs bg-white">
-                    <CardContent className="p-5">
-                        <div className="flex items-center justify-between">
-                            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                                Average Score
-                            </span>
-                            <div className="p-2 rounded-lg bg-blue-50 text-[#4085b3]">
-                                <Award className="w-4 h-4" />
-                            </div>
-                        </div>
-                        <div className="mt-3 flex items-baseline gap-2">
-                            <span className="text-2xl font-bold text-slate-900">{kpiSummary.avgScore}%</span>
-                            <span className="text-xs text-slate-500">school-wide</span>
-                        </div>
-                    </CardContent>
-                </Card>
+                <div className="p-3.5 rounded-xl border border-slate-200 bg-white hover:border-[#4085b3] hover:shadow-xs transition-all duration-150 flex items-center justify-between cursor-default">
+                    <div>
+                        <span className="text-[11px] font-medium text-slate-500">Average Score</span>
+                        <div className="text-xl font-bold text-[#4085b3] leading-tight mt-0.5">{kpiSummary.avgScore}%</div>
+                    </div>
+                    <div className="w-8 h-8 rounded-lg bg-blue-50 text-[#4085b3] flex items-center justify-center">
+                        <Award className="w-4 h-4" />
+                    </div>
+                </div>
 
-                <Card className="border-slate-200 shadow-xs bg-white">
-                    <CardContent className="p-5">
-                        <div className="flex items-center justify-between">
-                            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                                Passing Rate
-                            </span>
-                            <div className="p-2 rounded-lg bg-slate-100 text-slate-700">
-                                <TrendingUp className="w-4 h-4" />
-                            </div>
-                        </div>
-                        <div className="mt-3 flex items-baseline gap-2">
-                            <span className="text-2xl font-bold text-slate-900">{kpiSummary.passRate}%</span>
-                            <span className="text-xs text-slate-500">at or above pass mark</span>
-                        </div>
-                    </CardContent>
-                </Card>
+                <div className="p-3.5 rounded-xl border border-slate-200 bg-white hover:border-[#4085b3] hover:shadow-xs transition-all duration-150 flex items-center justify-between cursor-default">
+                    <div>
+                        <span className="text-[11px] font-medium text-slate-500">Passing Rate</span>
+                        <div className="text-xl font-bold text-slate-900 leading-tight mt-0.5">{kpiSummary.passRate}%</div>
+                    </div>
+                    <div className="w-8 h-8 rounded-lg bg-slate-100 text-slate-600 flex items-center justify-center">
+                        <TrendingUp className="w-4 h-4" />
+                    </div>
+                </div>
             </div>
 
-            {/* Filter Bar */}
-            <Card className="border-slate-200 shadow-xs bg-white">
-                <CardContent className="p-4 sm:p-5">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3.5">
-                        {/* Search Input */}
-                        <div className="relative">
-                            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
-                            <input
-                                type="text"
-                                placeholder="Search sheets, subjects, teachers..."
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                                className="w-full pl-9 pr-3 py-2 text-sm bg-slate-50 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#4085b3] text-slate-800 placeholder-slate-400 transition"
-                            />
-                        </div>
-
-                        {/* Academic Year */}
-                        <div>
-                            <select
-                                value={selectedYearId}
-                                onChange={(e) => setSelectedYearId(e.target.value)}
-                                className="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#4085b3] text-slate-800 transition"
-                            >
-                                <option value="">All Academic Years</option>
-                                {filterOptions.academicYears.map((y) => (
-                                    <option key={y.id} value={y.id}>
-                                        {y.name} {y.status === "ACTIVE" ? "(Current)" : ""}
-                                    </option>
-                                ))}
-                            </select>
-                        </div>
-
-                        {/* Grade Level */}
-                        <div>
-                            <select
-                                value={selectedGradeId}
-                                onChange={(e) => {
-                                    setSelectedGradeId(e.target.value);
-                                    setSelectedSectionId("");
-                                }}
-                                className="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#4085b3] text-slate-800 transition"
-                            >
-                                <option value="">All Grade Levels</option>
-                                {filterOptions.grades.map((g) => (
-                                    <option key={g.id} value={g.id}>
-                                        {g.name}
-                                    </option>
-                                ))}
-                            </select>
-                        </div>
-
-                        {/* Section */}
-                        <div>
-                            <select
-                                value={selectedSectionId}
-                                onChange={(e) => setSelectedSectionId(e.target.value)}
-                                disabled={!selectedGradeId || availableSections.length === 0}
-                                className="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#4085b3] text-slate-800 transition disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                                <option value="">All Sections</option>
-                                {availableSections.map((s) => (
-                                    <option key={s.id} value={s.id}>
-                                        {s.name}
-                                    </option>
-                                ))}
-                            </select>
-                        </div>
-
-                        {/* Subject */}
-                        <div>
-                            <select
-                                value={selectedSubjectId}
-                                onChange={(e) => setSelectedSubjectId(e.target.value)}
-                                className="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#4085b3] text-slate-800 transition"
-                            >
-                                <option value="">All Subjects</option>
-                                {filterOptions.subjects.map((sub) => (
-                                    <option key={sub.id} value={sub.id}>
-                                        {sub.name} {sub.code ? `(${sub.code})` : ""}
-                                    </option>
-                                ))}
-                            </select>
-                        </div>
+            {/* Filter Bar: Clean & Compact */}
+            <div className="p-3 rounded-xl border border-slate-200 bg-white shadow-2xs">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2.5">
+                    {/* Search Input */}
+                    <div className="relative">
+                        <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5" />
+                        <input
+                            type="text"
+                            placeholder="Search sheets, subjects, teachers..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className="w-full pl-8 pr-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:outline-hidden focus:border-[#4085b3] focus:bg-white text-slate-800 placeholder-slate-400 transition"
+                        />
                     </div>
-                </CardContent>
-            </Card>
+
+                    {/* Academic Year */}
+                    <div>
+                        <select
+                            value={selectedYearId}
+                            onChange={(e) => setSelectedYearId(e.target.value)}
+                            className="w-full px-2.5 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:outline-hidden focus:border-[#4085b3] focus:bg-white text-slate-800 transition cursor-pointer"
+                        >
+                            <option value="">All Academic Years</option>
+                            {filterOptions.academicYears.map((y) => (
+                                <option key={y.id} value={y.id}>
+                                    {y.name} {y.status === "ACTIVE" ? "(Current)" : ""}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+
+                    {/* Grade Level */}
+                    <div>
+                        <select
+                            value={selectedGradeId}
+                            onChange={(e) => {
+                                setSelectedGradeId(e.target.value);
+                                setSelectedSectionId("");
+                            }}
+                            className="w-full px-2.5 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:outline-hidden focus:border-[#4085b3] focus:bg-white text-slate-800 transition cursor-pointer"
+                        >
+                            <option value="">All Grade Levels</option>
+                            {filterOptions.grades.map((g) => (
+                                <option key={g.id} value={g.id}>
+                                    {g.name}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+
+                    {/* Section */}
+                    <div>
+                        <select
+                            value={selectedSectionId}
+                            onChange={(e) => setSelectedSectionId(e.target.value)}
+                            disabled={!selectedGradeId || availableSections.length === 0}
+                            className="w-full px-2.5 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:outline-hidden focus:border-[#4085b3] focus:bg-white text-slate-800 transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            <option value="">All Sections</option>
+                            {availableSections.map((s) => (
+                                <option key={s.id} value={s.id}>
+                                    {s.name}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+
+                    {/* Subject */}
+                    <div>
+                        <select
+                            value={selectedSubjectId}
+                            onChange={(e) => setSelectedSubjectId(e.target.value)}
+                            className="w-full px-2.5 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:outline-hidden focus:border-[#4085b3] focus:bg-white text-slate-800 transition cursor-pointer"
+                        >
+                            <option value="">All Subjects</option>
+                            {filterOptions.subjects.map((sub) => (
+                                <option key={sub.id} value={sub.id}>
+                                    {sub.name} {sub.code ? `(${sub.code})` : ""}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+                </div>
+            </div>
 
             {/* Results Table Card */}
-            <Card className="border-slate-200 shadow-xs bg-white overflow-hidden">
-                <CardHeader className="p-5 border-b border-slate-200 flex flex-row items-center justify-between">
-                    <div>
-                        <CardTitle className="text-base font-bold text-slate-900">
-                            Submitted Result Marksheets
-                        </CardTitle>
-                        <p className="text-xs text-slate-500 mt-0.5">
-                            Showing {filteredSheets.length} marksheets. Click &apos;View Data&apos; for complete multi-column tables or &apos;Open in Excel&apos; for external launch.
-                        </p>
-                    </div>
-
-                    <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-blue-50 text-[#4085b3] border border-blue-200">
+            <div className="border border-slate-200 rounded-xl bg-white overflow-hidden shadow-2xs">
+                <div className="p-3.5 border-b border-slate-200 flex items-center justify-between bg-white">
+                    <h3 className="text-xs font-bold text-slate-900 tracking-tight">
+                        Submitted Result Marksheets
+                    </h3>
+                    <span className="text-[11px] font-semibold px-2 py-0.5 rounded-md bg-blue-50 text-[#4085b3] border border-blue-100">
                         {filteredSheets.length} {filteredSheets.length === 1 ? "sheet" : "sheets"}
                     </span>
-                </CardHeader>
+                </div>
 
-                <CardContent className="p-0">
+                <div className="p-0">
                     {loading ? (
                         <div className="py-16">
                             <LoadingState message="Loading student result sheets..." />
@@ -786,7 +748,7 @@ export default function ResultsDashboardPage() {
                                                     {/* View Table Action */}
                                                     <button
                                                         onClick={() => openSheetDetail(sheet.id)}
-                                                        className="px-2.5 py-1.5 rounded-lg bg-blue-50 text-[#4085b3] hover:bg-blue-100 font-semibold text-xs flex items-center gap-1.5 transition-colors cursor-pointer border border-blue-100"
+                                                        className="px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-[#4085b3] hover:text-white hover:border-[#4085b3] text-slate-700 font-semibold text-xs flex items-center gap-1.5 transition-all duration-150 cursor-pointer shadow-2xs"
                                                         title="View full imported data table with all columns"
                                                     >
                                                         <Eye className="w-3.5 h-3.5" />
@@ -796,10 +758,10 @@ export default function ResultsDashboardPage() {
                                                     {/* External Excel Action */}
                                                     <button
                                                         onClick={() => handleDirectExcelOpen(sheet)}
-                                                        className="px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs flex items-center gap-1.5 transition-colors cursor-pointer border border-slate-200"
+                                                        className="px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-[#4085b3] hover:text-white hover:border-[#4085b3] text-slate-700 font-semibold text-xs flex items-center gap-1.5 transition-all duration-150 cursor-pointer shadow-2xs"
                                                         title="Open directly in Microsoft Excel"
                                                     >
-                                                        <ExternalLink className="w-3.5 h-3.5 text-[#4085b3]" />
+                                                        <ExternalLink className="w-3.5 h-3.5" />
                                                         <span>Open in Excel</span>
                                                     </button>
 
@@ -819,8 +781,8 @@ export default function ResultsDashboardPage() {
                             </table>
                         </div>
                     )}
-                </CardContent>
-            </Card>
+                </div>
+            </div>
 
             {/* Slide-Over Drawer: Full Column Clean Data View */}
             {selectedSheetId && (
@@ -834,53 +796,53 @@ export default function ResultsDashboardPage() {
                     {/* Drawer Content */}
                     <div className="relative w-full max-w-5xl bg-white shadow-2xl flex flex-col h-full z-10 border-l border-slate-200 animate-in slide-in-from-right duration-200">
                         {/* Drawer Header */}
-                        <div className="p-6 border-b border-slate-200 bg-slate-50/70 shrink-0 flex items-start justify-between">
+                        <div className="p-4 border-b border-slate-200 bg-slate-50/80 shrink-0 flex items-center justify-between">
                             <div>
-                                <div className="flex items-center gap-2 mb-1">
-                                    <span className="text-xs font-bold uppercase tracking-wider text-[#4085b3]">
-                                        Imported Excel Marksheet
-                                    </span>
-                                    <span className="text-slate-300">•</span>
-                                    <span className="text-xs font-mono text-slate-500">
-                                        {sheetDetail?.fileName || "Spreadsheet"}
-                                    </span>
+                                <div className="flex items-center gap-2">
+                                    <h2 className="text-base font-bold text-slate-900 leading-tight">
+                                        {sheetDetail?.title || "Result Sheet"}
+                                    </h2>
+                                    {sheetDetail?.fileName && (
+                                        <span className="text-[11px] font-mono text-slate-500 bg-white px-2 py-0.5 rounded border border-slate-200">
+                                            {sheetDetail.fileName}
+                                        </span>
+                                    )}
                                 </div>
-                                <h2 className="text-xl font-bold text-slate-900">
-                                    {sheetDetail?.title || "Loading Result Sheet..."}
-                                </h2>
-                                <div className="flex items-center gap-3 text-xs text-slate-500 mt-1">
+                                <div className="flex items-center gap-2 text-xs text-slate-500 mt-1">
                                     <span>{sheetDetail?.gradeName} - {sheetDetail?.sectionName}</span>
                                     <span>•</span>
-                                    <span>Subject: <strong className="text-slate-700">{sheetDetail?.subjectName}</strong></span>
+                                    <span>{sheetDetail?.subjectName}</span>
                                     <span>•</span>
-                                    <span>Teacher: <strong className="text-slate-700">{sheetDetail?.teacherName}</strong></span>
+                                    <span>{sheetDetail?.teacherName}</span>
                                 </div>
                             </div>
 
                             <div className="flex items-center gap-2">
                                 {sheetDetail && (
                                     <>
-                                        <Button
+                                        <button
+                                            type="button"
                                             onClick={() => openSheetInExcelExternally(sheetDetail, sheetDetail.rows)}
-                                            className="bg-[#4085b3] hover:bg-[#35729c] text-white shadow-xs font-semibold px-3.5 py-1.5 text-xs flex items-center gap-1.5 cursor-pointer"
+                                            className="px-3 py-1.5 rounded-lg bg-[#4085b3] hover:bg-[#35729c] text-white text-xs font-semibold flex items-center gap-1.5 cursor-pointer shadow-2xs transition-all"
                                         >
                                             <ExternalLink className="w-3.5 h-3.5" />
                                             <span>Open in Excel</span>
-                                        </Button>
+                                        </button>
 
                                         <button
+                                            type="button"
                                             onClick={handleCopyTableData}
-                                            className="px-3 py-1.5 rounded-lg border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 text-xs font-semibold flex items-center gap-1.5 cursor-pointer transition-colors shadow-2xs"
+                                            className="px-3 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-[#4085b3] hover:text-white hover:border-[#4085b3] text-slate-700 text-xs font-semibold flex items-center gap-1.5 cursor-pointer transition-all duration-150 shadow-2xs"
                                             title="Copy table contents to clipboard"
                                         >
                                             {copiedSuccess ? (
                                                 <>
-                                                    <Check className="w-3.5 h-3.5 text-[#4085b3]" />
-                                                    <span className="text-[#4085b3]">Copied!</span>
+                                                    <Check className="w-3.5 h-3.5" />
+                                                    <span>Copied!</span>
                                                 </>
                                             ) : (
                                                 <>
-                                                    <Copy className="w-3.5 h-3.5 text-slate-500" />
+                                                    <Copy className="w-3.5 h-3.5" />
                                                     <span>Copy TSV</span>
                                                 </>
                                             )}
@@ -889,11 +851,12 @@ export default function ResultsDashboardPage() {
                                 )}
 
                                 <button
+                                    type="button"
                                     onClick={() => setSelectedSheetId(null)}
-                                    className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-200 transition cursor-pointer"
+                                    className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-200 transition cursor-pointer"
                                     title="Close viewer"
                                 >
-                                    <X className="w-5 h-5" />
+                                    <X className="w-4 h-4" />
                                 </button>
                             </div>
                         </div>
