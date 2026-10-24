@@ -226,15 +226,8 @@ export default function SchoolAdminNavigation({
                 },
                 {
                     label: "Attendance Tracking",
+                    href: "/dashboard/attendance",
                     icon: ClipboardCheck,
-                    basePath: "/dashboard/attendance",
-                    subLinks: [
-                        { label: "Executive Overview", href: "/dashboard/attendance/overview" },
-                        { label: "Student Attendance", href: "/dashboard/attendance/student" },
-                        { label: "Teacher Attendance", href: "/dashboard/attendance/teacher", hidden: true },
-                        { label: "Absence Risk Alerts", href: "/dashboard/attendance/alerts", hidden: true },
-                        { label: "Official Corrections", href: "/dashboard/attendance/corrections", hidden: true },
-                    ],
                 },
             ],
         },
