@@ -118,6 +118,57 @@ app.get("/api/auth-health", async (req, res) => {
 app.use((req, res, next) => {
     if (req.path.includes("/callback/google")) {
         console.log(`[Google OAuth Callback Received] path=${req.path}, query=`, req.query);
+
+        const originalSetHeader = res.setHeader.bind(res);
+        const originalWriteHead = res.writeHead.bind(res);
+        let capturedToken: string | null = null;
+
+        const extractTokenFromCookies = (val: any) => {
+            if (!val) return;
+            const cookies = Array.isArray(val) ? val : [val];
+            for (const c of cookies) {
+                const match = String(c).match(/better-auth\.session_token=([^;]+)/);
+                if (match && match[1]) {
+                    capturedToken = match[1];
+                }
+            }
+        };
+
+        res.setHeader = function (name: string, value: any) {
+            if (name.toLowerCase() === "set-cookie") {
+                extractTokenFromCookies(value);
+            }
+            if (name.toLowerCase() === "location" && capturedToken && typeof value === "string") {
+                try {
+                    const redirectUrl = new URL(value);
+                    if (!redirectUrl.searchParams.has("auth_token")) {
+                        redirectUrl.searchParams.set("auth_token", capturedToken);
+                        value = redirectUrl.toString();
+                    }
+                } catch {
+                    // ignore
+                }
+            }
+            return originalSetHeader(name, value);
+        };
+
+        res.writeHead = function (statusCode: number, ...args: any[]) {
+            const rawCookies = res.getHeader("set-cookie");
+            extractTokenFromCookies(rawCookies);
+            const location = res.getHeader("location");
+            if (location && capturedToken && typeof location === "string") {
+                try {
+                    const redirectUrl = new URL(location);
+                    if (!redirectUrl.searchParams.has("auth_token")) {
+                        redirectUrl.searchParams.set("auth_token", capturedToken);
+                        originalSetHeader("location", redirectUrl.toString());
+                    }
+                } catch {
+                    // ignore
+                }
+            }
+            return (originalWriteHead as any)(statusCode, ...args);
+        };
     }
     if ((req.path === "/api/auth/sign-in/social" || req.path === "/api/auth/sign-in/social/") && req.method === "POST") {
         const id = process.env.GOOGLE_CLIENT_ID?.replace(/^["']|["']$/g, "").trim();

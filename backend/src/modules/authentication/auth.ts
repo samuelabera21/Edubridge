@@ -1,5 +1,6 @@
 import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
+import { bearer } from "better-auth/plugins";
 import { prisma } from "../../infrastructure/prisma/client.js";
 import { sendPasswordResetEmail } from "../email/email.service.js";
 import { assignRoleToUserByScopeId } from "./authorization.service.js";
@@ -15,6 +16,7 @@ const isProduction = backendAuthUrl.startsWith("https") || process.env.NODE_ENV 
 
 export const auth = betterAuth({
     baseURL: backendAuthUrl,
+    plugins: [bearer()],
     database: prismaAdapter(prisma, {
         provider: "postgresql",
     }),

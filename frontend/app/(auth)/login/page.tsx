@@ -120,6 +120,22 @@ export default function LoginPage() {
             }
         }
 
+        // Check for session token passed from cross-domain OAuth callback
+        if (typeof window !== "undefined") {
+            const params = new URLSearchParams(window.location.search);
+            const authToken = params.get("auth_token") || params.get("token");
+            if (authToken) {
+                try {
+                    document.cookie = `better-auth.session_token=${authToken}; path=/; max-age=604800; SameSite=Lax; Secure`;
+                    localStorage.setItem("auth_token", authToken);
+                    const cleanUrl = window.location.pathname;
+                    window.history.replaceState({}, document.title, cleanUrl);
+                } catch {
+                    // ignore
+                }
+            }
+        }
+
         checkExistingSession();
         return () => { isMounted = false; };
     }, []);

@@ -8,6 +8,7 @@ import { prisma } from "../../infrastructure/prisma/client.js";
 import {
     requirePermission,
     requireScope,
+    resolveSession,
 } from "./authorization.middleware.js";
 
 import {
@@ -127,9 +128,7 @@ router.post("/resolve-username", async (req, res) => {
 router.get(
     "/me",
     async (req, res) => {
-        const session = await auth.api.getSession({
-            headers: fromNodeHeaders(req.headers),
-        });
+        const session = await resolveSession(req);
 
         if (!session) {
             return res.status(401).json({

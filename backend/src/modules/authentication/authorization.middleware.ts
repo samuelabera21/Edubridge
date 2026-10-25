@@ -4,11 +4,32 @@ import { auth } from "../authentication/auth.js";
 import { prisma } from "../../infrastructure/prisma/client.js";
 import { HierarchyScopeService } from "../hierarchy/hierarchy-scope.service.js";
 
+export async function resolveSession(req: Request) {
+    let session = await auth.api.getSession({
+        headers: fromNodeHeaders(req.headers),
+    });
+
+    if (!session && req.headers.authorization?.startsWith("Bearer ")) {
+        const rawToken = req.headers.authorization.slice(7).trim();
+        if (rawToken) {
+            const dbSession = await prisma.session.findUnique({
+                where: { token: rawToken },
+                include: { user: true }
+            });
+            if (dbSession && dbSession.expiresAt > new Date()) {
+                session = {
+                    session: dbSession,
+                    user: dbSession.user
+                } as any;
+            }
+        }
+    }
+    return session;
+}
+
 export function requireAuth() {
     return async (req: Request, res: Response, next: NextFunction) => {
-        const session = await auth.api.getSession({
-            headers: fromNodeHeaders(req.headers),
-        });
+        const session = await resolveSession(req);
 
         if (!session) {
             return res.status(401).json({
@@ -24,15 +45,13 @@ export function requireAuth() {
 export function requirePermission(permissionName: string) {
     return async (req: Request, res: Response, next: NextFunction) => {
         try {
-            const session = await auth.api.getSession({
-                headers: fromNodeHeaders(req.headers),
-            });
+            const session = await resolveSession(req);
 
             if (!session) {
-            return res.status(401).json({
-                message: "Unauthorized",
-            });
-        }
+                return res.status(401).json({
+                    message: "Unauthorized",
+                });
+            }
 
         const permission = await prisma.rolePermission.findFirst({
             where: {
