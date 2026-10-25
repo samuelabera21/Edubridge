@@ -11,6 +11,8 @@ const googleClientId = process.env.GOOGLE_CLIENT_ID?.replace(/^["']|["']$/g, "")
 const googleClientSecret = process.env.GOOGLE_CLIENT_SECRET?.replace(/^["']|["']$/g, "").trim();
 const googleRedirectUri = process.env.GOOGLE_AUTH_CALLBACK_URL?.replace(/^["']|["']$/g, "").trim() || `${backendAuthUrl}/api/auth/callback/google`;
 
+const isProduction = backendAuthUrl.startsWith("https") || process.env.NODE_ENV === "production";
+
 export const auth = betterAuth({
     baseURL: backendAuthUrl,
     database: prismaAdapter(prisma, {
@@ -128,6 +130,23 @@ export const auth = betterAuth({
             enabled: true,
             trustedProviders: ["google"],
         },
+        storeStateStrategy: "database",
+        skipStateCookieCheck: true,
+    },
+
+    advanced: {
+        useSecureCookies: isProduction,
+        defaultCookieAttributes: isProduction
+            ? {
+                sameSite: "none",
+                secure: true,
+                httpOnly: true,
+            }
+            : {
+                sameSite: "lax",
+                secure: false,
+                httpOnly: true,
+            },
     },
 
     trustedOrigins: [
