@@ -909,14 +909,12 @@ export default function StudentsDirectoryPage() {
                         <table className="w-full text-left border-collapse">
                             <thead>
                                 <tr className="bg-slate-50/80 border-b border-slate-200 text-[11px] font-semibold text-slate-600 uppercase tracking-wider">
-                                    <th className="px-5 py-3">Student ID</th>
-                                    <th className="px-5 py-3">Full Name (3-Tier)</th>
-                                    <th className="px-5 py-3">Gender</th>
-                                    <th className="px-5 py-3">Grade & Section</th>
-                                    <th className="px-5 py-3">Status</th>
-                                    <th className="px-5 py-3">Location</th>
-                                    <th className="px-5 py-3">Primary Guardian</th>
-                                    <th className="px-5 py-3 text-right">Action</th>
+                                    <th className="px-4 py-3">Student</th>
+                                    <th className="px-3 py-3">Gender</th>
+                                    <th className="px-3 py-3">Grade & Section</th>
+                                    <th className="px-3 py-3">Status</th>
+                                    <th className="px-3 py-3">Primary Guardian</th>
+                                    <th className="px-4 py-3 text-right">Action</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100 text-xs">
@@ -941,23 +939,29 @@ export default function StudentsDirectoryPage() {
 
                                     return (
                                         <tr key={student.id} className="hover:bg-slate-50/60 transition-colors">
-                                            <td className="px-5 py-3.5 font-mono font-medium text-slate-800 whitespace-nowrap">
-                                                {student.studentId || "—"}
-                                            </td>
-                                            <td className="px-5 py-3.5">
-                                                <div className="font-semibold text-slate-900 capitalize text-xs">
+                                            {/* Student Name, ID & Location */}
+                                            <td className="px-4 py-3 min-w-[200px]">
+                                                <div className="font-semibold text-slate-900 text-xs">
                                                     {fullName}
                                                 </div>
-                                                {student.dateOfBirth && (
-                                                    <div className="text-[11px] text-slate-500 mt-0.5">
-                                                        DOB: {new Date(student.dateOfBirth).toLocaleDateString()}
-                                                    </div>
-                                                )}
+                                                <div className="flex items-center gap-1.5 text-[11px] text-slate-500 mt-0.5 font-mono">
+                                                    <span>{student.studentId || "—"}</span>
+                                                    {(student.city || student.region) && (
+                                                        <>
+                                                            <span className="text-slate-300">•</span>
+                                                            <span className="font-sans font-normal text-slate-400">{student.city || student.region}</span>
+                                                        </>
+                                                    )}
+                                                </div>
                                             </td>
-                                            <td className="px-5 py-3.5 text-slate-700 capitalize">
+
+                                            {/* Gender */}
+                                            <td className="px-3 py-3 text-slate-700 capitalize whitespace-nowrap">
                                                 {student.gender ? student.gender.toLowerCase() : "—"}
                                             </td>
-                                            <td className="px-5 py-3.5 whitespace-nowrap">
+
+                                            {/* Grade & Section */}
+                                            <td className="px-3 py-3 whitespace-nowrap">
                                                 {gradeName ? (
                                                     <div>
                                                         <span className="font-medium text-slate-800">{gradeName}</span>
@@ -969,7 +973,9 @@ export default function StudentsDirectoryPage() {
                                                     <span className="text-slate-400 italic">Unassigned</span>
                                                 )}
                                             </td>
-                                            <td className="px-5 py-3.5 whitespace-nowrap">
+
+                                            {/* Status Badge */}
+                                            <td className="px-3 py-3 whitespace-nowrap">
                                                 <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold tracking-wide uppercase ${
                                                     enrollmentStatus === "ENROLLED" || enrollmentStatus === "ACTIVE"
                                                         ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
@@ -982,39 +988,39 @@ export default function StudentsDirectoryPage() {
                                                     {enrollmentStatus}
                                                 </span>
                                             </td>
-                                            <td className="px-5 py-3.5 text-slate-700">
-                                                {student.city || student.region || "Addis Ababa"}
-                                            </td>
-                                            <td className="px-5 py-3.5 text-slate-700">
+
+                                            {/* Primary Guardian / Emergency Contact */}
+                                            <td className="px-3 py-3 text-slate-700 min-w-[160px]">
                                                 {guardianDisplayName ? (
                                                     <div>
-                                                        <span className="font-medium text-slate-900">
+                                                        <span className="font-medium text-slate-900 block truncate">
                                                             {guardianDisplayName}
                                                         </span>
-                                                        <span className="text-[11px] text-slate-500 block">
+                                                        <span className="text-[11px] text-slate-500 block truncate">
                                                             {primaryGuardian?.relationship || "Guardian"} {guardianPhone ? `• ${guardianPhone}` : ""}
                                                         </span>
                                                     </div>
                                                 ) : student.emergencyContactName ? (
                                                     <div>
-                                                        <span className="font-medium text-slate-900">
+                                                        <span className="font-medium text-slate-900 block truncate">
                                                             {student.emergencyContactName}
                                                         </span>
-                                                        <span className="text-[11px] text-slate-500 block">
-                                                            {student.emergencyContactRelation || "Emergency Contact"} {student.emergencyContactPhone ? `• ${student.emergencyContactPhone}` : ""}
+                                                        <span className="text-[11px] text-slate-500 block truncate">
+                                                            {student.emergencyContactRelation || "Emergency"} {student.emergencyContactPhone ? `• ${student.emergencyContactPhone}` : ""}
                                                         </span>
                                                     </div>
                                                 ) : (
                                                     <span className="text-slate-400">—</span>
                                                 )}
                                             </td>
-                                            <td className="px-5 py-3.5 text-right whitespace-nowrap">
+
+                                            {/* Action Link */}
+                                            <td className="px-4 py-3 text-right whitespace-nowrap">
                                                 <Link 
                                                     href={`/dashboard/students/${student.id}`}
                                                     className="inline-flex items-center text-xs font-semibold text-[#4085b3] hover:text-[#32698e] hover:underline"
                                                 >
-                                                    View Details
-                                                    <ArrowRight className="w-3.5 h-3.5 ml-1" />
+                                                    View Details &rarr;
                                                 </Link>
                                             </td>
                                         </tr>
