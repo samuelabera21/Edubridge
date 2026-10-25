@@ -30,6 +30,9 @@ import {
     getRepeatedAbsences,
     getAttendanceHistory,
     getCurriculumData,
+    getLearningMaterials,
+    createLearningMaterial,
+    deleteLearningMaterial,
     getStaffingDemand,
     getSectionCoverage,
     getFacultyWorkload,
@@ -145,6 +148,9 @@ router.get("/students/:studentId", getStudentDetail);
 
 router.get("/attendance/repeated-absences", getRepeatedAbsences);
 router.get("/curriculum", getCurriculumData);
+router.get("/curriculum/materials", getLearningMaterials);
+router.post("/curriculum/materials", createLearningMaterial);
+router.delete("/curriculum/materials/:id", deleteLearningMaterial);
 
 /**
  * @openapi
