@@ -2,7 +2,7 @@
 
 import { useState, useEffect, Suspense } from "react";
 import { useAuth } from "../../hooks/useAuth";
-import { Loader2, BookOpen, LogOut, LayoutDashboard, Building, Search, Lock, ChevronDown, ChevronRight, Calendar, Users, GraduationCap, ClipboardCheck, FileText, Settings, User, Megaphone, Bell, MessageSquare, Package, AlertOctagon, TrendingUp, HeartHandshake, BarChart2, Sparkles, Menu, Brain, Landmark, Layers, UserCheck, Shield } from "lucide-react";
+import { Loader2, BookOpen, LogOut, LayoutDashboard, Building, Search, Lock, ChevronDown, ChevronRight, Calendar, Users, GraduationCap, ClipboardCheck, FileText, Settings, User, Megaphone, Bell, Package, AlertOctagon, TrendingUp, HeartHandshake, BarChart2, Sparkles, Menu, Brain, Landmark, Layers, UserCheck, Shield } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { fetchApi } from "../../lib/api";
@@ -69,7 +69,7 @@ function TeacherBreadcrumbs({ pathname, currentTab, currentType, currentChannel 
             subItemTitle = tabMap[currentTab];
         }
     } else if (pathname.startsWith("/dashboard/teacher/curriculum")) {
-        parentTitle = "Lesson & Curriculum";
+        parentTitle = "Learning Resources";
         parentHref = "/dashboard/teacher/curriculum";
         const tabMap: Record<string, string> = {
             view: "View Curriculum",
@@ -92,20 +92,19 @@ function TeacherBreadcrumbs({ pathname, currentTab, currentType, currentChannel 
         subItemTitle = "Support Flags";
     } else if (pathname.startsWith("/dashboard/teacher/communication")) {
         parentTitle = "Communication";
-        parentHref = "/dashboard/teacher/communication/messages";
-        if (pathname.includes("/messages")) {
-            subItemTitle = "Direct Messages";
+        parentHref = "/dashboard/teacher/communication";
+        const target = (currentChannel || currentTab || "").toUpperCase();
+        const tabMap: Record<string, string> = {
+            DIRECTIVES: "Policies & Directives",
+            PROGRAMS: "Programs & Initiatives",
+            PARENT: "Parent Communication",
+            DEPARTMENT: "Department",
+            STAFF: "School Staff"
+        };
+        if (target && tabMap[target]) {
+            subItemTitle = tabMap[target];
         } else {
-            const target = (currentChannel || currentTab || "").toUpperCase();
-            const tabMap: Record<string, string> = {
-                DIRECTIVES: "Policies & Directives",
-                PROGRAMS: "Programs & Initiatives"
-            };
-            if (target && tabMap[target]) {
-                subItemTitle = tabMap[target];
-            } else {
-                subItemTitle = "Direct Messages";
-            }
+            subItemTitle = "Direct Messages";
         }
     } else if (pathname.startsWith("/dashboard/teacher/announcements")) {
         parentTitle = "Announcements";
@@ -789,23 +788,7 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
                         )}
                     </div>
 
-                    {/* Teacher specific message badge */}
-                    {isTeacherRoute && (
-                        <div className="flex items-center space-x-3">
-                            <button 
-                                onClick={() => router.push("/dashboard/teacher/communication?tab=messages")}
-                                className="relative p-2 rounded-full hover:bg-gray-100 text-gray-600 transition-colors cursor-pointer" 
-                                title="Messages & Channels"
-                            >
-                                <MessageSquare className="w-5 h-5 text-gray-600" />
-                                {headerCounts.messages > 0 && (
-                                    <span className="absolute top-1 right-1 px-1 min-w-4 h-4 bg-[#4085b3] text-white text-[10px] font-bold rounded-full flex items-center justify-center border-2 border-white">
-                                        {headerCounts.messages}
-                                    </span>
-                                )}
-                            </button>
-                        </div>
-                    )}
+
 
                     {/* User Profile Info & Interactive Dropdown Menu */}
                     <div className="relative border-l pl-4 border-gray-200">

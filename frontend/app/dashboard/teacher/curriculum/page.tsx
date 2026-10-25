@@ -49,6 +49,24 @@ interface MaterialItem {
     createdAt: string;
 }
 
+function formatVideoEmbedUrl(url?: string | null): string {
+    if (!url) return "";
+    const clean = url.trim();
+    if (clean.includes("youtube.com/watch?v=")) {
+        const id = clean.split("watch?v=")[1]?.split("&")[0];
+        return `https://www.youtube.com/embed/${id}`;
+    }
+    if (clean.includes("youtube.com/shorts/")) {
+        const id = clean.split("shorts/")[1]?.split("?")[0]?.split("/")[0];
+        return `https://www.youtube.com/embed/${id}`;
+    }
+    if (clean.includes("youtu.be/")) {
+        const id = clean.split("youtu.be/")[1]?.split("?")[0];
+        return `https://www.youtube.com/embed/${id}`;
+    }
+    return clean;
+}
+
 export default function TeacherCurriculumPage() {
     // Data State
     const [materials, setMaterials] = useState<MaterialItem[]>([]);
@@ -188,33 +206,43 @@ export default function TeacherCurriculumPage() {
                 fileSize = selectedFile.size;
                 fileTypeCategory = getFileTypeCategory(fileName, selectedFile.type);
 
-                // Upload file through storage presign or direct data url
-                try {
-                    const presignRes = await fetchApi("/storage/presign", {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({
-                            fileName: selectedFile.name,
-                            mimeType: selectedFile.type || "application/octet-stream",
-                            fileSize: selectedFile.size
-                        })
-                    });
+                // Upload file to MinIO via storage presigned URL
+                const presignRes = await fetchApi("/storage/presign", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        fileName: selectedFile.name,
+                        contentType: selectedFile.type || (fileTypeCategory === "PDF" ? "application/pdf" : "application/octet-stream"),
+                        mimeType: selectedFile.type || "application/octet-stream",
+                        fileSize: selectedFile.size,
+                        folder: "curriculum/materials"
+                    })
+                });
 
-                    if (presignRes.ok) {
-                        const { uploadUrl, downloadUrl } = await presignRes.json();
-                        await fetch(uploadUrl, {
-                            method: "PUT",
-                            headers: { "Content-Type": selectedFile.type || "application/octet-stream" },
-                            body: selectedFile
-                        });
-                        fileUrl = downloadUrl;
-                    } else {
-                        // Fallback object URL
-                        fileUrl = `/uploads/${encodeURIComponent(selectedFile.name)}`;
-                    }
-                } catch (err) {
-                    fileUrl = `/uploads/${encodeURIComponent(selectedFile.name)}`;
+                if (!presignRes.ok) {
+                    const errData = await presignRes.json().catch(() => ({}));
+                    throw new Error(errData.error || "Failed to generate storage upload URL");
                 }
+
+                const data = await presignRes.json();
+                const uploadUrl = data.presignedUrl || data.uploadUrl;
+                const publicUrl = data.publicUrl || data.downloadUrl;
+
+                if (!uploadUrl || !publicUrl) {
+                    throw new Error("Invalid response received from storage service");
+                }
+
+                const uploadRes = await fetch(uploadUrl, {
+                    method: "PUT",
+                    headers: { "Content-Type": selectedFile.type || "application/octet-stream" },
+                    body: selectedFile
+                });
+
+                if (!uploadRes.ok) {
+                    throw new Error("Failed to upload file content to storage");
+                }
+
+                fileUrl = publicUrl;
             } else if (formVideoUrl.trim()) {
                 fileUrl = formVideoUrl.trim();
                 fileName = formTitle.trim();
@@ -351,10 +379,10 @@ export default function TeacherCurriculumPage() {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200/80 pb-4">
                 <div className="flex items-center gap-2.5">
                     <div className="w-9 h-9 rounded-lg bg-blue-50 text-[#4085b3] flex items-center justify-center shrink-0">
-                        <FileText className="w-5 h-5" />
+                        <BookOpen className="w-5 h-5" />
                     </div>
                     <div>
-                        <h1 className="text-base font-bold text-slate-900 leading-tight">Lesson Materials & Tutorials</h1>
+                        <h1 className="text-base font-bold text-slate-900 leading-tight">Learning Resources</h1>
                     </div>
                 </div>
 
@@ -676,9 +704,10 @@ export default function TeacherCurriculumPage() {
                         <div className="p-4 bg-black">
                             {activeVideoModal.videoUrl && (activeVideoModal.videoUrl.includes("youtube.com") || activeVideoModal.videoUrl.includes("youtu.be")) ? (
                                 <iframe
-                                    src={activeVideoModal.videoUrl.replace("watch?v=", "embed/")}
+                                    src={formatVideoEmbedUrl(activeVideoModal.videoUrl)}
                                     className="w-full aspect-video rounded-lg"
                                     allowFullScreen
+                                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                                     title={activeVideoModal.title}
                                 />
                             ) : (

@@ -504,14 +504,14 @@ function MyClassesContent() {
                                                                             </button>
 
 
-                                                                            {/* Action 5: Record Lesson Progress */}
+                                                                            {/* Action 5: Learning Resources */}
                                                                             <Link
                                                                                 href={`/dashboard/teacher/curriculum?grade=${gradeLevel}&section=${sectionName}`}
                                                                                 onClick={() => setOpenMenuId(null)}
                                                                                 className="flex items-center space-x-2.5 px-3.5 py-2 text-gray-700 hover:bg-blue-50 hover:text-blue-700 transition-colors border-t border-gray-100 mt-1 pt-2"
                                                                             >
                                                                                 <BookOpenCheck className="w-4 h-4 text-[#4085b3]" />
-                                                                                <span>Record Lesson Progress</span>
+                                                                                <span>Learning Resources</span>
                                                                             </Link>
                                                                         </div>
                                                                     </>

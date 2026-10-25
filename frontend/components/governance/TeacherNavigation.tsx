@@ -144,9 +144,9 @@ export default function TeacherNavigation({
                     ],
                 },
                 {
-                    label: "Lesson / Curriculum",
+                    label: "Learning Resources",
                     href: "/dashboard/teacher/curriculum",
-                    icon: FileText,
+                    icon: BookOpen,
                 },
                 {
                     label: "Results",
@@ -168,7 +168,7 @@ export default function TeacherNavigation({
                     basePath: "/dashboard/teacher/communication",
                     icon: MessageSquare,
                     subLinks: [
-                        { label: "Direct Messages", href: "/dashboard/teacher/communication/messages" },
+                        { label: "Direct Messages", href: "/dashboard/teacher/communication" },
                         { label: "Policies & Directives", href: "/dashboard/teacher/communication?channel=DIRECTIVES" },
                         { label: "Programs & Initiatives", href: "/dashboard/teacher/communication?channel=PROGRAMS" },
                     ],
@@ -291,7 +291,7 @@ export default function TeacherNavigation({
                                             ? "teacherAssignments"
                                             : item.label === "Attendance"
                                             ? "teacherAttendance"
-                                            : item.label === "Lesson / Curriculum"
+                                            : (item.label === "Learning Resources" || item.label === "Lesson / Curriculum")
                                             ? "teacherCurriculum"
                                             : item.label === "Assessment & Grades"
                                             ? "teacherAssessment"
