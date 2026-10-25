@@ -799,5 +799,45 @@ export const getMyIssues = async (req: Request, res: Response) => {
     }
 };
 
+export const getLearningMaterials = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        const userId = req.user?.id;
+        if (!organizationId || !userId) return res.status(403).json({ error: "Missing school scope or authentication" });
+
+        const materials = await TeacherService.getLearningMaterials(userId, organizationId, req.query);
+        return res.json(materials);
+    } catch (error: any) {
+        return res.status(500).json({ error: error.message || "Failed to fetch learning materials" });
+    }
+};
+
+export const createLearningMaterial = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        const userId = req.user?.id;
+        if (!organizationId || !userId) return res.status(403).json({ error: "Missing school scope or authentication" });
+
+        const material = await TeacherService.createLearningMaterial(userId, organizationId, req.body);
+        return res.status(201).json(material);
+    } catch (error: any) {
+        return res.status(400).json({ error: error.message || "Failed to post learning material" });
+    }
+};
+
+export const deleteLearningMaterial = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        const userId = req.user?.id;
+        if (!organizationId || !userId) return res.status(403).json({ error: "Missing school scope or authentication" });
+
+        await TeacherService.deleteLearningMaterial(userId, organizationId, req.params.id as string);
+        return res.json({ success: true, message: "Material deleted successfully" });
+    } catch (error: any) {
+        return res.status(500).json({ error: error.message || "Failed to delete learning material" });
+    }
+};
+
+
 
 
