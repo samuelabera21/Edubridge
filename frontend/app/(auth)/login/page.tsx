@@ -106,14 +106,15 @@ export default function LoginPage() {
         // Check for error parameters returned from OAuth redirects
         if (typeof window !== "undefined") {
             const params = new URLSearchParams(window.location.search);
-            const authErr = params.get("error");
+            const allErrors = params.getAll("error");
+            const authErr = allErrors.find((e) => e !== "oauth_error") || params.get("error");
             const authDesc = params.get("error_description");
             if (authErr) {
-                if (authErr === "invalid_code") {
-                    setError("Google authorization failed: invalid code. Please verify your Google Cloud OAuth Client Secret and redirect URI on Render, or try logging in again.");
+                if (authErr === "invalid_code" || allErrors.includes("invalid_code")) {
+                    setError("Google authorization failed (invalid code): Your GOOGLE_CLIENT_SECRET on Render is mismatched. Please update GOOGLE_CLIENT_SECRET on Render to match Google Cloud Console.");
                 } else if (authErr === "state_mismatch") {
                     setError("Google authorization state mismatch. Please refresh and try again.");
-                } else {
+                } else if (authErr !== "oauth_error") {
                     setError(`Google Sign-In failed: ${authDesc || authErr}`);
                 }
             }
@@ -133,7 +134,7 @@ export default function LoginPage() {
                 body: JSON.stringify({
                     provider: "google",
                     callbackURL,
-                    errorCallbackURL: `${callbackURL}?error=oauth_error`,
+                    errorCallbackURL: callbackURL,
                 }),
             });
 
