@@ -83,20 +83,16 @@ export default function TeacherCommunicationPage() {
     const [activeCategory, setActiveCategory] = useState<CommunicationCategory>("STUDENT");
 
     useEffect(() => {
-        if (channelParam === "STUDENT" || channelParam === "STUDENTS") {
-            setActiveCategory("STUDENT");
-        } else if (channelParam === "PARENT" || channelParam === "PARENTS") {
-            setActiveCategory("PARENT");
-        } else if (channelParam === "DEPARTMENT" || channelParam === "DEPT") {
-            setActiveCategory("DEPARTMENT");
-        } else if (channelParam === "STAFF" || channelParam === "SCHOOL") {
-            setActiveCategory("STAFF");
-        } else if (channelParam === "DIRECTIVES" || channelParam === "POLICY" || channelParam === "POLICIES") {
+        if (!channelParam || ["STUDENT", "STUDENTS", "PARENT", "PARENTS", "DEPARTMENT", "DEPT", "STAFF", "SCHOOL"].includes(channelParam)) {
+            router.replace("/dashboard/teacher/communication/messages");
+            return;
+        }
+        if (channelParam === "DIRECTIVES" || channelParam === "POLICY" || channelParam === "POLICIES") {
             setActiveCategory("DIRECTIVES");
         } else if (channelParam === "PROGRAMS" || channelParam === "INITIATIVES") {
             setActiveCategory("PROGRAMS");
         }
-    }, [channelParam]);
+    }, [channelParam, router]);
 
     // Data states
     const [loading, setLoading] = useState(true);
