@@ -13,7 +13,6 @@ import {
     HeartHandshake,
     MessageSquare,
     Megaphone,
-    BarChart3,
     Sparkles,
     Settings,
     FileSpreadsheet,
@@ -70,12 +69,9 @@ export default function TeacherNavigation({
             if (pathname.startsWith("/dashboard/teacher/attendance")) next["teacherAttendance"] = true;
             if (pathname.startsWith("/dashboard/teacher/curriculum")) next["teacherCurriculum"] = true;
             if (pathname.startsWith("/dashboard/teacher/assessment")) next["teacherAssessment"] = true;
-            if (pathname.startsWith("/dashboard/teacher/learning")) next["teacherActivities"] = true;
-            if (pathname.startsWith("/dashboard/teacher/support")) next["teacherSupport"] = true;
             if (pathname.startsWith("/dashboard/teacher/communication")) next["teacherComm"] = true;
             if (pathname.startsWith("/dashboard/teacher/announcements")) next["teacherAnnounce"] = true;
             if (pathname.startsWith("/dashboard/teacher/pd")) next["teacherPD"] = true;
-            if (pathname.startsWith("/dashboard/teacher/reports")) next["teacherReports"] = true;
             return next;
         });
     }, [pathname]);
@@ -101,7 +97,7 @@ export default function TeacherNavigation({
 
         if (tab !== null) {
             if (tab === currentTab) return true;
-            if (!currentTab && (tab === "take" || tab === "view" || tab === "school" || tab === "training")) return true;
+            if (!currentTab && (tab === "take" || tab === "view" || tab === "school" || tab === "training" || tab === "attendance")) return true;
         }
         if (type !== null && type === currentType) return true;
         if (channel !== null) {
@@ -126,11 +122,8 @@ export default function TeacherNavigation({
                     basePath: "/dashboard/teacher/my-classes",
                     icon: BookOpen,
                     subLinks: [
-                        { label: "Subjects", href: "/dashboard/teacher/my-classes?tab=subjects" },
-                        { label: "Grades", href: "/dashboard/teacher/my-classes?tab=grades" },
-                        { label: "Sections", href: "/dashboard/teacher/my-classes?tab=sections" },
                         { label: "Classes", href: "/dashboard/teacher/my-classes?tab=classes" },
-                        { label: "Teaching Schedule", href: "/dashboard/teacher/my-classes?tab=schedule" },
+                        { label: "Timetable", href: "/dashboard/teacher/my-classes?tab=schedule" },
                     ],
                 },
                 {
@@ -152,16 +145,8 @@ export default function TeacherNavigation({
                 },
                 {
                     label: "Lesson / Curriculum",
-                    basePath: "/dashboard/teacher/curriculum",
+                    href: "/dashboard/teacher/curriculum",
                     icon: FileText,
-                    subLinks: [
-                        { label: "View Curriculum", href: "/dashboard/teacher/curriculum?tab=view" },
-                        { label: "Record Progress", href: "/dashboard/teacher/curriculum?tab=log" },
-                        { label: "Topics Covered", href: "/dashboard/teacher/curriculum?tab=topics" },
-                        { label: "Curriculum Tracking", href: "/dashboard/teacher/curriculum?tab=progress" },
-                        { label: "Learning Difficulties", href: "/dashboard/teacher/curriculum?tab=difficulties" },
-                        { label: "Teaching Notes", href: "/dashboard/teacher/curriculum?tab=notes" },
-                    ],
                 },
                 {
                     label: "Results",
@@ -169,27 +154,9 @@ export default function TeacherNavigation({
                     icon: FileSpreadsheet,
                 },
                 {
-                    label: "Learning Activities",
-                    basePath: "/dashboard/teacher/learning",
-                    icon: ClipboardCheck,
-                    subLinks: [
-                        { label: "Create Assignment", href: "/dashboard/teacher/learning?type=HOMEWORK" },
-                        { label: "Create Quiz", href: "/dashboard/teacher/learning?type=QUIZ" },
-                        { label: "Create Class Activity", href: "/dashboard/teacher/learning?type=CLASS_WORK" },
-                        { label: "Set Deadline", href: "/dashboard/teacher/learning?tab=create" },
-                        { label: "Review Submissions", href: "/dashboard/teacher/learning?tab=submissions" },
-                        { label: "Mark Completion", href: "/dashboard/teacher/learning?tab=completion" },
-                        { label: "Give Feedback", href: "/dashboard/teacher/learning?tab=feedback" },
-                    ],
-                },
-                {
                     label: "Student Support",
-                    basePath: "/dashboard/teacher/support",
+                    href: "/dashboard/teacher/support",
                     icon: HeartHandshake,
-                    subLinks: [
-                        { label: "Flag At-Risk Student", href: "/dashboard/teacher/support?tab=flag" },
-                        { label: "Monitor Interventions", href: "/dashboard/teacher/support?tab=interventions" },
-                    ],
                 },
             ],
         },
@@ -202,10 +169,6 @@ export default function TeacherNavigation({
                     icon: MessageSquare,
                     subLinks: [
                         { label: "Direct Messages", href: "/dashboard/teacher/communication/messages" },
-                        { label: "Student Communication", href: "/dashboard/teacher/communication?channel=STUDENT" },
-                        { label: "Parent Communication", href: "/dashboard/teacher/communication?channel=PARENT" },
-                        { label: "Department Communication", href: "/dashboard/teacher/communication?channel=DEPARTMENT" },
-                        { label: "School Communication", href: "/dashboard/teacher/communication?channel=STAFF" },
                         { label: "Policies & Directives", href: "/dashboard/teacher/communication?channel=DIRECTIVES" },
                         { label: "Programs & Initiatives", href: "/dashboard/teacher/communication?channel=PROGRAMS" },
                     ],
@@ -231,14 +194,6 @@ export default function TeacherNavigation({
                     subLinks: [
                         { label: "Training & Workshops", href: "/dashboard/teacher/pd?tab=training" },
                         { label: "Certificates", href: "/dashboard/teacher/pd?tab=certificates" },
-                    ],
-                },
-                {
-                    label: "Teacher Reports",
-                    basePath: "/dashboard/teacher/reports",
-                    icon: BarChart3,
-                    subLinks: [
-                        { label: "Class Attendance & Scores", href: "/dashboard/teacher/reports" },
                     ],
                 },
                 {
@@ -340,17 +295,13 @@ export default function TeacherNavigation({
                                             ? "teacherCurriculum"
                                             : item.label === "Assessment & Grades"
                                             ? "teacherAssessment"
-                                            : item.label === "Learning Activities"
-                                            ? "teacherActivities"
                                             : item.label === "Student Support"
                                             ? "teacherSupport"
                                             : item.label === "Communication"
                                             ? "teacherComm"
                                             : item.label === "Announcements"
                                             ? "teacherAnnounce"
-                                            : item.label === "Professional Dev."
-                                            ? "teacherPD"
-                                            : "teacherReports";
+                                            : "teacherPD";
 
                                     const isMenuOpen = !!openMenus[menuKey];
 
