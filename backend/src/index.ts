@@ -39,7 +39,7 @@ import { initSocketServer } from "./infrastructure/socket/socket.service.js";
 
 const app = express();
 const httpServer = createServer(app);
-const PORT = 5000;
+const PORT = Number(process.env.PORT) || 5000;
 
 // Initialize WebSocket / Socket.IO gateway
 initSocketServer(httpServer);
@@ -136,8 +136,8 @@ app.use(notFoundHandler);
 // Global Error Handler
 app.use(errorHandler);
 
-httpServer.listen(PORT, () => {
-    console.log(`Server running on http://localhost:${PORT}`);
+httpServer.listen(PORT, "0.0.0.0", () => {
+    console.log(`Server running on port ${PORT}`);
     // Verify MinIO bucket exists on startup (non-blocking)
     StorageService.ensureBucketExists().catch(err =>
         console.warn("[Storage] Bucket check failed:", err?.message)

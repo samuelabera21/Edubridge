@@ -58,39 +58,43 @@ const EXTENSION_MAP: Record<string, { ext: string; mime: string }> = {
     ".zip": { ext: ".zip", mime: "application/zip" },
 };
 
-const BUCKET = process.env.MINIO_BUCKET || "edubridge-documents";
-const PUBLIC_URL = process.env.MINIO_PUBLIC_URL || "http://localhost:9000";
+const isR2 = Boolean(process.env.R2_ACCOUNT_ID || process.env.R2_ENDPOINT);
+const BUCKET = process.env.R2_BUCKET || process.env.MINIO_BUCKET || "edubridge-documents";
+const R2_PUBLIC_URL = process.env.R2_PUBLIC_URL ? process.env.R2_PUBLIC_URL.replace(/\/+$/, "") : null;
+const PUBLIC_URL = R2_PUBLIC_URL || process.env.MINIO_PUBLIC_URL || "http://localhost:9000";
 const PRESIGN_EXPIRES_IN = 5 * 60; // 5 minutes
 
-// ─── S3 Client for Internal Docker Communication (Server-to-MinIO) ──────────
-const internalEndpoint = process.env.MINIO_ENDPOINT 
-    ? `http://${process.env.MINIO_ENDPOINT}:${process.env.MINIO_PORT || 9000}`
-    : `http://localhost:${process.env.MINIO_PORT || 9000}`;
+// ─── S3 Client for Server-to-Storage (MinIO / Cloudflare R2) ─────────────────
+const internalEndpoint = isR2
+    ? (process.env.R2_ENDPOINT || `https://${process.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`)
+    : (process.env.MINIO_ENDPOINT 
+        ? `http://${process.env.MINIO_ENDPOINT}:${process.env.MINIO_PORT || 9000}`
+        : `http://localhost:${process.env.MINIO_PORT || 9000}`);
+
+const accessKeyId = process.env.R2_ACCESS_KEY_ID || process.env.MINIO_ROOT_USER || "edubridge_minio";
+const secretAccessKey = process.env.R2_SECRET_ACCESS_KEY || process.env.MINIO_ROOT_PASSWORD || "";
 
 const internalS3 = new S3Client({
     endpoint: internalEndpoint,
-    region: "us-east-1",
+    region: isR2 ? "auto" : "us-east-1",
     credentials: {
-        accessKeyId: process.env.MINIO_ROOT_USER || "edubridge_minio",
-        secretAccessKey: process.env.MINIO_ROOT_PASSWORD || "",
+        accessKeyId,
+        secretAccessKey,
     },
-    forcePathStyle: true,
+    forcePathStyle: !isR2,
 });
 
-// ─── S3 Client for Presigned URLs (Browser-to-MinIO) ────────────────────────
-// AWS Signature Version 4 includes the Host header in the signed signature.
-// When the browser executes the PUT or GET directly against MinIO, it sends
-// Host: localhost:9000 (PUBLIC_URL).
-// Therefore, the presigner MUST calculate the signature using PUBLIC_URL so that
-// MinIO's signature validation succeeds without "SignatureDoesNotMatch" errors.
+// ─── S3 Client for Presigned URLs (Browser-to-Storage) ──────────────────────
+const presignEndpoint = isR2 ? internalEndpoint : PUBLIC_URL;
+
 const presignS3 = new S3Client({
-    endpoint: PUBLIC_URL,
-    region: "us-east-1",
+    endpoint: presignEndpoint,
+    region: isR2 ? "auto" : "us-east-1",
     credentials: {
-        accessKeyId: process.env.MINIO_ROOT_USER || "edubridge_minio",
-        secretAccessKey: process.env.MINIO_ROOT_PASSWORD || "",
+        accessKeyId,
+        secretAccessKey,
     },
-    forcePathStyle: true,
+    forcePathStyle: !isR2,
 });
 
 export class StorageService {
@@ -195,7 +199,7 @@ export class StorageService {
         });
 
         // 5. Build the permanent public URL for the file (after upload completes)
-        const publicUrl = `${PUBLIC_URL}/${BUCKET}/${fileKey}`;
+        const publicUrl = isR2 && R2_PUBLIC_URL ? `${R2_PUBLIC_URL}/${fileKey}` : `${PUBLIC_URL}/${BUCKET}/${fileKey}`;
 
         return {
             presignedUrl,
