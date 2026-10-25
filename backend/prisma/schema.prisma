@@ -2392,4 +2392,33 @@ model DataRequestSubmission {
   @@map("data_request_submission")
 }
 
+model LearningMaterial {
+  id                   String    @id @default(cuid())
+  organizationId       String
+  teacherId            String?
+  teachingAssignmentId String?
+  title                String
+  description          String?   @db.Text
+  materialType         String    @default("DOCUMENT") // DOCUMENT, VIDEO
+  fileType             String?   // PDF, WORD, POWERPOINT, VIDEO, OTHER
+  fileUrl              String    @db.Text
+  fileName             String
+  fileSize             Int?
+  videoUrl             String?   @db.Text
+  unitName             String?
+  subjectName          String?
+  gradeName            String?
+  sectionName          String?
+
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  @@index([organizationId])
+  @@index([teacherId])
+  @@index([teachingAssignmentId])
+  @@index([materialType])
+  @@map("learning_material")
+}
+
+
 
