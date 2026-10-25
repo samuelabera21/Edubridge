@@ -77,7 +77,7 @@ export default function RegionalAdministratorsView({
 
     // Reset Password Modal State
     const [resetCreds, setResetCreds] = useState<{ email: string; temporaryPassword: string; regionName: string } | null>(null);
-    const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
+    const [actionLoading, setActionLoading] = useState<{ id: string; action: "reset" | "resend" | "revoke" } | null>(null);
     const [copiedPassword, setCopiedPassword] = useState(false);
 
     // Feedback Toast / Notification
@@ -194,7 +194,7 @@ export default function RegionalAdministratorsView({
             return;
         }
 
-        setActionLoadingId(regionId);
+        setActionLoading({ id: regionId, action: "reset" });
         try {
             const res = await fetchApi(`/hierarchy/${apiPrefix}/${regionId}/reset-admin-password`, {
                 method: "POST"
@@ -218,13 +218,13 @@ export default function RegionalAdministratorsView({
                 message: err.message || "Failed to reset administrator password"
             });
         } finally {
-            setActionLoadingId(null);
+            setActionLoading(null);
         }
     };
 
     // Resend Invitation
     const handleResendInvite = async (regionId: string) => {
-        setActionLoadingId(regionId);
+        setActionLoading({ id: regionId, action: "resend" });
         try {
             const res = await fetchApi(`/hierarchy/${apiPrefix}/${regionId}/resend-invitation`, {
                 method: "POST"
@@ -243,7 +243,7 @@ export default function RegionalAdministratorsView({
                 message: err.message || "Failed to resend invitation"
             });
         } finally {
-            setActionLoadingId(null);
+            setActionLoading(null);
         }
     };
 
@@ -253,7 +253,7 @@ export default function RegionalAdministratorsView({
             return;
         }
 
-        setActionLoadingId(regionId);
+        setActionLoading({ id: regionId, action: "revoke" });
         try {
             const res = await fetchApi(`/hierarchy/${apiPrefix}/${regionId}/cancel-invitation`, {
                 method: "DELETE"
@@ -275,7 +275,7 @@ export default function RegionalAdministratorsView({
                 message: err.message || "Failed to revoke appointment"
             });
         } finally {
-            setActionLoadingId(null);
+            setActionLoading(null);
         }
     };
 
@@ -653,10 +653,10 @@ export default function RegionalAdministratorsView({
                                             <button
                                                 type="button"
                                                 onClick={() => handleResetPassword(inspectingRegion.id, inspectingRegion.name)}
-                                                disabled={actionLoadingId === inspectingRegion.id}
+                                                disabled={actionLoading?.id === inspectingRegion.id}
                                                 className="px-3 py-1.5 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 text-xs font-medium rounded cursor-pointer transition-colors"
                                             >
-                                                {actionLoadingId === inspectingRegion.id ? "Resetting..." : "Reset password"}
+                                                {actionLoading?.id === inspectingRegion.id && actionLoading.action === "reset" ? "Resetting..." : "Reset password"}
                                             </button>
                                         )}
 
@@ -664,20 +664,20 @@ export default function RegionalAdministratorsView({
                                             <button
                                                 type="button"
                                                 onClick={() => handleResendInvite(inspectingRegion.id)}
-                                                disabled={actionLoadingId === inspectingRegion.id}
+                                                disabled={actionLoading?.id === inspectingRegion.id}
                                                 className="px-3 py-1.5 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 text-xs font-medium rounded cursor-pointer transition-colors"
                                             >
-                                                {actionLoadingId === inspectingRegion.id ? "Resending..." : "Resend invite"}
+                                                {actionLoading?.id === inspectingRegion.id && actionLoading.action === "resend" ? "Resending..." : "Resend invite"}
                                             </button>
                                         )}
 
                                         <button
                                             type="button"
                                             onClick={() => handleRevoke(inspectingRegion.id, inspectingRegion.name)}
-                                            disabled={actionLoadingId === inspectingRegion.id}
+                                            disabled={actionLoading?.id === inspectingRegion.id}
                                             className="px-3 py-1.5 bg-white border border-slate-300 hover:bg-rose-50 text-rose-700 text-xs font-medium rounded cursor-pointer transition-colors ml-auto"
                                         >
-                                            Revoke appointment
+                                            {actionLoading?.id === inspectingRegion.id && actionLoading.action === "revoke" ? "Revoking..." : "Revoke appointment"}
                                         </button>
                                     </div>
                                 </div>

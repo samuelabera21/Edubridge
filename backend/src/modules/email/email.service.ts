@@ -16,6 +16,9 @@ function getSmtpTransporter() {
                 // Clean up any copied whitespace in the 16-character app password
                 pass: process.env.SMTP_PASS.replace(/\s+/g, ""),
             },
+            connectionTimeout: 5000,
+            greetingTimeout: 5000,
+            socketTimeout: 8000,
         });
     }
     return null;
@@ -211,13 +214,38 @@ export async function sendAdminInvitationEmail(payload: InvitationEmailPayload):
         return;
     }
 
+    const subject = `Account Activation — ${assignedRole}, ${organizationName} | EduBridge`;
+
+    // 1. Priority: Resend HTTPS API (Port 443 - bypasses cloud PaaS SMTP port blocks)
+    if (resend) {
+        try {
+            console.log(`[EmailService] Sending invitation via Resend HTTPS API to ${recipientEmail}...`);
+            const from = process.env.RESEND_FROM || "EduBridge <onboarding@resend.dev>";
+            const { error } = await resend.emails.send({
+                from,
+                to: recipientEmail,
+                subject,
+                html,
+            });
+
+            if (error) {
+                console.warn("[EmailService] Resend error:", error.message);
+            } else {
+                console.log(`[EmailService] Invitation email successfully dispatched via Resend to ${recipientEmail} for ${organizationName}`);
+                return;
+            }
+        } catch (resendErr: any) {
+            console.warn("[EmailService] Resend API failed, falling back to SMTP:", resendErr?.message || resendErr);
+        }
+    }
+
+    // 2. Fallback: SMTP Transporter (with 10-second connection timeout)
     const transporter = getSmtpTransporter();
     const fromAddress = process.env.EMAIL_FROM || (process.env.SMTP_USER ? `EduBridge <${process.env.SMTP_USER}>` : "EduBridge <onboarding@resend.dev>");
-    const subject = `Account Activation — ${assignedRole}, ${organizationName} | EduBridge`;
 
     if (transporter) {
         try {
-            console.log(`[EmailService] Sending invitation via Gmail SMTP (${process.env.SMTP_USER}) to ${recipientEmail}...`);
+            console.log(`[EmailService] Sending invitation via SMTP (${process.env.SMTP_USER}) to ${recipientEmail}...`);
             await transporter.sendMail({
                 from: fromAddress,
                 to: recipientEmail,
@@ -232,26 +260,7 @@ export async function sendAdminInvitationEmail(payload: InvitationEmailPayload):
         }
     }
 
-    // Fallback to Resend if SMTP is not configured
-    if (!resend) {
-        console.warn(`[EmailService] Neither SMTP nor RESEND_API_KEY is configured. Skipping email dispatch to ${recipientEmail}.`);
-        return;
-    }
-
-    console.log(`[EmailService] Sending invitation via Resend to ${recipientEmail}...`);
-    const { error } = await resend.emails.send({
-        from: fromAddress,
-        to: recipientEmail,
-        subject,
-        html,
-    });
-
-    if (error) {
-        console.error("[EmailService] Failed to send invitation email via Resend:", error);
-        throw new Error(`Failed to send invitation email: ${error.message}`);
-    }
-
-    console.log(`[EmailService] Invitation email successfully dispatched via Resend to ${recipientEmail} for ${organizationName}`);
+    console.warn(`[EmailService] Neither Resend nor working SMTP is available. Skipping email dispatch to ${recipientEmail}.`);
 }
 
 export interface PasswordResetEmailPayload {
@@ -381,9 +390,34 @@ export async function sendPasswordResetEmail(payload: PasswordResetEmailPayload)
         return;
     }
 
-    const transporter = getSmtpTransporter();
-    const fromAddress = process.env.EMAIL_FROM || (process.env.SMTP_USER ? `EduBridge Security <${process.env.SMTP_USER}>` : "EduBridge Security <security@resend.dev>");
     const subject = `Password Reset Request — EduBridge`;
+
+    // 1. Priority: Resend HTTPS API (Port 443 - bypasses cloud PaaS SMTP port blocks)
+    if (resend) {
+        try {
+            console.log(`[EmailService] Sending password reset email via Resend HTTPS API to ${recipientEmail}...`);
+            const from = process.env.RESEND_FROM || "EduBridge Security <onboarding@resend.dev>";
+            const { error } = await resend.emails.send({
+                from,
+                to: recipientEmail,
+                subject,
+                html,
+            });
+
+            if (error) {
+                console.warn("[EmailService] Resend error for password reset:", error.message);
+            } else {
+                console.log(`[EmailService] Password reset email successfully dispatched via Resend to ${recipientEmail}`);
+                return;
+            }
+        } catch (resendErr: any) {
+            console.warn("[EmailService] Resend API failed for reset, falling back to SMTP:", resendErr?.message || resendErr);
+        }
+    }
+
+    // 2. Fallback: SMTP Transporter
+    const transporter = getSmtpTransporter();
+    const fromAddress = process.env.EMAIL_FROM || (process.env.SMTP_USER ? `EduBridge Security <${process.env.SMTP_USER}>` : "EduBridge Security <onboarding@resend.dev>");
 
     if (transporter) {
         try {
@@ -402,25 +436,6 @@ export async function sendPasswordResetEmail(payload: PasswordResetEmailPayload)
         }
     }
 
-    // Fallback to Resend
-    if (!resend) {
-        console.warn(`[EmailService] Neither SMTP nor RESEND_API_KEY is configured. Skipping password reset email dispatch to ${recipientEmail}.`);
-        return;
-    }
-
-    console.log(`[EmailService] Sending password reset email via Resend to ${recipientEmail}...`);
-    const { error } = await resend.emails.send({
-        from: fromAddress,
-        to: recipientEmail,
-        subject,
-        html,
-    });
-
-    if (error) {
-        console.error("[EmailService] Failed to send password reset email via Resend:", error);
-        throw new Error(`Failed to send password reset email: ${error.message}`);
-    }
-
-    console.log(`[EmailService] Password reset email successfully dispatched via Resend to ${recipientEmail}`);
+    console.warn(`[EmailService] Neither Resend nor working SMTP is configured. Skipping password reset email dispatch to ${recipientEmail}.`);
 }
 
