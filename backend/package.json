@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "dev": "prisma db push && npx prisma db seed && nodemon --exec tsx src/index.ts",
-    "build": "prisma generate && tsc",
+    "build": "npx prisma generate && npx tsc",
     "start": "node dist/index.js",
     "migrate:deploy": "prisma migrate deploy",
     "seed": "npx prisma db seed",
@@ -19,17 +19,9 @@
   "license": "ISC",
   "type": "module",
   "devDependencies": {
-    "@types/cors": "^2.8.19",
-    "@types/express": "^5.0.6",
-    "@types/node": "^26.2.0",
-    "@types/supertest": "^7.2.1",
-    "@types/swagger-jsdoc": "^6.0.4",
-    "@types/swagger-ui-express": "^4.1.8",
     "nodemon": "^3.1.14",
-    "prisma": "^7.9.1",
     "supertest": "^7.2.2",
     "tsx": "^4.23.12",
-    "typescript": "^7.0.2",
     "vitest": "^4.1.10"
   },
   "dependencies": {
@@ -38,7 +30,13 @@
     "@better-auth/prisma-adapter": "^1.6.27",
     "@prisma/adapter-pg": "^7.9.1",
     "@prisma/client": "^7.9.1",
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
+    "@types/node": "^26.2.0",
     "@types/nodemailer": "^8.0.2",
+    "@types/supertest": "^7.2.1",
+    "@types/swagger-jsdoc": "^6.0.4",
+    "@types/swagger-ui-express": "^4.1.8",
     "better-auth": "^1.6.27",
     "cors": "^2.8.6",
     "exceljs": "^4.4.0",
@@ -46,9 +44,11 @@
     "googleapis": "^184.0.0",
     "nodemailer": "^10.0.13",
     "pg": "^8.23.0",
+    "prisma": "^7.9.1",
     "resend": "^6.32.0",
     "socket.io": "^4.8.4",
     "swagger-jsdoc": "^6.3.0",
-    "swagger-ui-express": "^5.0.1"
+    "swagger-ui-express": "^5.0.1",
+    "typescript": "^7.0.2"
   }
 }
