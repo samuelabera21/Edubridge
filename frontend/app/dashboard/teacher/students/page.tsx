@@ -213,9 +213,14 @@ function StudentsContent() {
     return (
         <div className="w-full max-w-7xl mx-auto space-y-6 text-gray-800">
             {/* Header */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-gray-200 pb-5">
-                <div>
-                    <h1 className="text-2xl font-extrabold tracking-tight text-gray-900">Student Management</h1>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200/80 pb-4">
+                <div className="flex items-center gap-2.5">
+                    <div className="w-9 h-9 rounded-lg bg-blue-50 text-[#4085b3] flex items-center justify-center shrink-0">
+                        <Users className="w-5 h-5" />
+                    </div>
+                    <div>
+                        <h1 className="text-base font-bold text-slate-900 leading-tight">Student Management</h1>
+                    </div>
                 </div>
 
                 {/* View Switcher Tabs */}
@@ -249,46 +254,49 @@ function StudentsContent() {
                 </div>
             </div>
 
-            {/* Metric Summary Cards */}
+            {/* Top 3 KPI Cards: Left-to-right clean blue hover fill matching results page */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <Card className="border border-[#4085b3]/20 bg-gradient-to-br from-[#4085b3]/5 to-white">
-                    <CardContent className="p-4 flex items-center justify-between">
-                        <div>
-                            <p className="text-xs font-bold text-[#4085b3] uppercase tracking-wider">Total Assigned Students</p>
-                            <h3 className="text-2xl font-black text-[#4085b3] mt-1">{metrics.total}</h3>
-                            <p className="text-[11px] text-gray-500 font-semibold mt-0.5">Enrolled across your sections</p>
-                        </div>
-                        <div className="w-12 h-12 rounded-2xl bg-[#4085b3] text-white flex items-center justify-center shadow-md">
-                            <Users className="w-6 h-6" />
-                        </div>
-                    </CardContent>
-                </Card>
+                {/* 1. Total Students */}
+                <div className="relative overflow-hidden border border-slate-200 bg-white rounded-lg p-4 flex items-center justify-between group cursor-pointer shadow-2xs hover:border-[#4085b3] transition-all duration-300">
+                    <span className="absolute inset-0 bg-[#4085b3] origin-left scale-x-0 group-hover:scale-x-100 transition-transform duration-300 ease-out pointer-events-none" />
+                    <div className="relative z-10">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 group-hover:text-blue-100 transition-colors duration-300 block mb-1">
+                            Total Students
+                        </span>
+                        <span className="text-2xl font-bold text-slate-900 group-hover:text-white transition-colors duration-300 tabular-nums">
+                            {metrics.total}
+                        </span>
+                    </div>
+                    <Users className="relative z-10 w-5 h-5 text-slate-400 group-hover:text-white transition-colors duration-300 shrink-0" />
+                </div>
 
-                <Card className="border border-emerald-100 bg-gradient-to-br from-emerald-50/50 to-white">
-                    <CardContent className="p-4 flex items-center justify-between">
-                        <div>
-                            <p className="text-xs font-bold text-emerald-600 uppercase tracking-wider">Good Standing</p>
-                            <h3 className="text-2xl font-black text-emerald-950 mt-1">{metrics.goodStanding}</h3>
-                            <p className="text-[11px] text-gray-500 font-semibold mt-0.5">Regular attendance & scores</p>
-                        </div>
-                        <div className="w-12 h-12 rounded-2xl bg-emerald-600 text-white flex items-center justify-center shadow-md">
-                            <CheckCircle2 className="w-6 h-6" />
-                        </div>
-                    </CardContent>
-                </Card>
+                {/* 2. Good Standing */}
+                <div className="relative overflow-hidden border border-slate-200 bg-white rounded-lg p-4 flex items-center justify-between group cursor-pointer shadow-2xs hover:border-[#4085b3] transition-all duration-300">
+                    <span className="absolute inset-0 bg-[#4085b3] origin-left scale-x-0 group-hover:scale-x-100 transition-transform duration-300 ease-out pointer-events-none" />
+                    <div className="relative z-10">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 group-hover:text-blue-100 transition-colors duration-300 block mb-1">
+                            Good Standing
+                        </span>
+                        <span className="text-2xl font-bold text-slate-900 group-hover:text-white transition-colors duration-300 tabular-nums">
+                            {metrics.goodStanding}
+                        </span>
+                    </div>
+                    <CheckCircle2 className="relative z-10 w-5 h-5 text-slate-400 group-hover:text-white transition-colors duration-300 shrink-0" />
+                </div>
 
-                <Card className="border border-amber-100 bg-gradient-to-br from-amber-50/50 to-white">
-                    <CardContent className="p-4 flex items-center justify-between">
-                        <div>
-                            <p className="text-xs font-bold text-amber-600 uppercase tracking-wider">Requires Support</p>
-                            <h3 className="text-2xl font-black text-amber-950 mt-1">{metrics.needsAttention}</h3>
-                            <p className="text-[11px] text-gray-500 font-semibold mt-0.5">Flagged or low attendance</p>
-                        </div>
-                        <div className="w-12 h-12 rounded-2xl bg-amber-500 text-white flex items-center justify-center shadow-md">
-                            <AlertCircle className="w-6 h-6" />
-                        </div>
-                    </CardContent>
-                </Card>
+                {/* 3. Requires Support */}
+                <div className="relative overflow-hidden border border-slate-200 bg-white rounded-lg p-4 flex items-center justify-between group cursor-pointer shadow-2xs hover:border-[#4085b3] transition-all duration-300">
+                    <span className="absolute inset-0 bg-[#4085b3] origin-left scale-x-0 group-hover:scale-x-100 transition-transform duration-300 ease-out pointer-events-none" />
+                    <div className="relative z-10">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 group-hover:text-blue-100 transition-colors duration-300 block mb-1">
+                            Requires Support
+                        </span>
+                        <span className="text-2xl font-bold text-slate-900 group-hover:text-white transition-colors duration-300 tabular-nums">
+                            {metrics.needsAttention}
+                        </span>
+                    </div>
+                    <AlertCircle className="relative z-10 w-5 h-5 text-slate-400 group-hover:text-white transition-colors duration-300 shrink-0" />
+                </div>
             </div>
 
             {/* ======================================================== */}
@@ -334,11 +342,10 @@ function StudentsContent() {
                     {!selectedGrade && (
                         <div>
                             <div className="mb-4">
-                                <h2 className="text-lg font-bold text-gray-900 flex items-center space-x-2">
-                                    <GraduationCap className="w-5 h-5 text-[#4085b3]" />
+                                <h2 className="text-sm font-bold text-gray-900 flex items-center space-x-2">
+                                    <GraduationCap className="w-4 h-4 text-[#4085b3]" />
                                     <span>Select a Grade Level</span>
                                 </h2>
-                                <p className="text-xs text-gray-500 mt-0.5">Click a grade to view its assigned sections and student rosters.</p>
                             </div>
 
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
@@ -396,11 +403,10 @@ function StudentsContent() {
                         <div>
                             <div className="flex items-center justify-between mb-4">
                                 <div>
-                                    <h2 className="text-lg font-bold text-gray-900 flex items-center space-x-2">
-                                        <BookOpenCheck className="w-5 h-5 text-[#4085b3]" />
+                                    <h2 className="text-base font-bold text-gray-900 flex items-center space-x-2">
+                                        <BookOpenCheck className="w-4 h-4 text-[#4085b3]" />
                                         <span>Sections in {selectedGrade}</span>
                                     </h2>
-                                    <p className="text-xs text-gray-500 mt-0.5">Select a section to open its enrolled student roster table.</p>
                                 </div>
                                 <button
                                     onClick={() => setSelectedGrade(null)}
