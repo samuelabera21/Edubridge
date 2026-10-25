@@ -63,8 +63,62 @@ app.use(cors({
     credentials: true,
 }));
 
+// Diagnostic health endpoint for OAuth and Auth credentials
+app.get("/api/auth-health", async (req, res) => {
+    const id = process.env.GOOGLE_CLIENT_ID?.replace(/^["']|["']$/g, "").trim();
+    const secret = process.env.GOOGLE_CLIENT_SECRET?.replace(/^["']|["']$/g, "").trim();
+    const callbackEnv = process.env.GOOGLE_AUTH_CALLBACK_URL?.replace(/^["']|["']$/g, "").trim();
+    const betterAuthUrl = (process.env.BETTER_AUTH_URL || "http://localhost:5000").replace(/\/+$/, "");
+    const frontendUrl = (process.env.FRONTEND_URL || "http://localhost:3000").replace(/\/+$/, "");
+    const resolvedCallbackUri = callbackEnv || `${betterAuthUrl}/api/auth/callback/google`;
+
+    let googleTokenEndpointTest: any = "not_run";
+    if (id && secret) {
+        try {
+            const body = new URLSearchParams({
+                code: "probe_check_dummy_code",
+                client_id: id,
+                client_secret: secret,
+                redirect_uri: resolvedCallbackUri,
+                grant_type: "authorization_code",
+            });
+            const probeRes = await fetch("https://oauth2.googleapis.com/token", {
+                method: "POST",
+                headers: { "Content-Type": "application/x-www-form-urlencoded" },
+                body,
+            });
+            const probeData: any = await probeRes.json();
+            googleTokenEndpointTest = {
+                httpStatus: probeRes.status,
+                data: probeData,
+                credentialsAccepted: probeRes.status === 400 && probeData.error === "invalid_grant",
+                clientSecretInvalid: probeRes.status === 401,
+            };
+        } catch (e: any) {
+            googleTokenEndpointTest = { error: e.message };
+        }
+    }
+
+    res.json({
+        status: "ok",
+        betterAuthUrl,
+        frontendUrl,
+        googleClientId: id ? `${id.slice(0, 15)}...${id.slice(-12)}` : null,
+        googleClientSecretSet: Boolean(secret),
+        googleClientSecretLength: secret ? secret.length : 0,
+        googleClientSecretPrefix: secret ? secret.slice(0, 7) : null,
+        googleClientSecretSuffix: secret ? secret.slice(-4) : null,
+        googleCallbackEnv: callbackEnv || null,
+        resolvedCallbackUri,
+        googleTokenEndpointTest,
+    });
+});
+
 // Better Auth - Custom middleware to preserve full URL and avoid path-to-regexp crashes
 app.use((req, res, next) => {
+    if (req.path.includes("/callback/google")) {
+        console.log(`[Google OAuth Callback Received] path=${req.path}, query=`, req.query);
+    }
     if ((req.path === "/api/auth/sign-in/social" || req.path === "/api/auth/sign-in/social/") && req.method === "POST") {
         const id = process.env.GOOGLE_CLIENT_ID?.replace(/^["']|["']$/g, "").trim();
         const secret = process.env.GOOGLE_CLIENT_SECRET?.replace(/^["']|["']$/g, "").trim();

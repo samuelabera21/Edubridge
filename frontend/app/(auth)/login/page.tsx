@@ -103,6 +103,22 @@ export default function LoginPage() {
             }
         };
 
+        // Check for error parameters returned from OAuth redirects
+        if (typeof window !== "undefined") {
+            const params = new URLSearchParams(window.location.search);
+            const authErr = params.get("error");
+            const authDesc = params.get("error_description");
+            if (authErr) {
+                if (authErr === "invalid_code") {
+                    setError("Google authorization failed: invalid code. Please verify your Google Cloud OAuth Client Secret and redirect URI on Render, or try logging in again.");
+                } else if (authErr === "state_mismatch") {
+                    setError("Google authorization state mismatch. Please refresh and try again.");
+                } else {
+                    setError(`Google Sign-In failed: ${authDesc || authErr}`);
+                }
+            }
+        }
+
         checkExistingSession();
         return () => { isMounted = false; };
     }, []);
@@ -117,6 +133,7 @@ export default function LoginPage() {
                 body: JSON.stringify({
                     provider: "google",
                     callbackURL,
+                    errorCallbackURL: `${callbackURL}?error=oauth_error`,
                 }),
             });
 

@@ -158,4 +158,15 @@ export const auth = betterAuth({
         ...(FRONTEND_URL ? [FRONTEND_URL.replace(/\/+$/, "")] : []),
         ...(backendAuthUrl ? [backendAuthUrl] : []),
     ],
+
+    onAPIError: {
+        onError: (error, ctx) => {
+            console.error("[BetterAuth API Error]:", error);
+        },
+        errorURL: `${FRONTEND_URL}/login`,
+    },
+
+    logger: {
+        level: "debug",
+    },
 });
