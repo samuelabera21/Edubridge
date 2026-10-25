@@ -86,7 +86,8 @@ export class GoogleFormsService {
 
         const clientId = process.env.GOOGLE_CLIENT_ID || "";
         const clientSecret = process.env.GOOGLE_CLIENT_SECRET || "";
-        const redirectUri = process.env.GOOGLE_REDIRECT_URI || "http://localhost:5000/api/data-requests/google-oauth/callback";
+        const backendAuthUrl = (process.env.BETTER_AUTH_URL || process.env.RENDER_EXTERNAL_URL || "http://localhost:5000").replace(/\/+$/, "");
+        const redirectUri = process.env.GOOGLE_REDIRECT_URI || `${backendAuthUrl}/api/data-requests/google-oauth/callback`;
 
         this.oauth2Client = new google.auth.OAuth2(
             clientId,

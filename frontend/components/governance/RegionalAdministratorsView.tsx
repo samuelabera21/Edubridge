@@ -81,7 +81,8 @@ export default function RegionalAdministratorsView({
     const [copiedPassword, setCopiedPassword] = useState(false);
 
     // Feedback Toast / Notification
-    const [actionNotice, setActionNotice] = useState<{ type: "success" | "error"; message: string } | null>(null);
+    const [actionNotice, setActionNotice] = useState<{ type: "success" | "error"; message: string; invitationUrl?: string } | null>(null);
+    const [copiedInvite, setCopiedInvite] = useState(false);
 
     // Quick Stats Calculation
     const metrics = useMemo(() => {
@@ -169,9 +170,11 @@ export default function RegionalAdministratorsView({
                 throw new Error(resJson.message || "Failed to appoint administrator");
             }
 
+            const inviteUrl = resJson.invitationUrl || resJson.data?.invitationUrl;
             setActionNotice({
                 type: "success",
-                message: `Invitation successfully sent to ${appointEmail.trim()}.`
+                message: `Invitation successfully sent to ${appointEmail.trim()}.`,
+                invitationUrl: inviteUrl
             });
 
             setAppointmentModalOpen(false);
@@ -232,9 +235,11 @@ export default function RegionalAdministratorsView({
             const resJson = await res.json();
             if (!res.ok) throw new Error(resJson.message || "Failed to resend invitation");
 
+            const inviteUrl = resJson.invitationUrl || resJson.data?.invitationUrl;
             setActionNotice({
                 type: "success",
-                message: resJson.message || "Invitation resent successfully."
+                message: resJson.message || "Invitation resent successfully.",
+                invitationUrl: inviteUrl
             });
             if (onRefresh) await onRefresh();
         } catch (err: any) {
@@ -350,18 +355,33 @@ export default function RegionalAdministratorsView({
                             : "bg-rose-50 border-rose-200 text-rose-900"
                     }`}
                 >
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                         {actionNotice.type === "success" ? (
                             <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
                         ) : (
                             <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
                         )}
                         <span>{actionNotice.message}</span>
+                        {actionNotice.invitationUrl && (
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    navigator.clipboard.writeText(actionNotice.invitationUrl!);
+                                    setCopiedInvite(true);
+                                    setTimeout(() => setCopiedInvite(false), 2500);
+                                }}
+                                className="ml-1 sm:ml-2 px-2 py-0.5 bg-white border border-emerald-300 text-emerald-800 rounded text-[11px] font-semibold hover:bg-emerald-100 transition-colors inline-flex items-center gap-1 cursor-pointer"
+                                title="Copy direct account activation link"
+                            >
+                                <Copy className="w-3 h-3" />
+                                <span>{copiedInvite ? "Link Copied!" : "Copy Activation Link"}</span>
+                            </button>
+                        )}
                     </div>
                     <button
                         type="button"
                         onClick={() => setActionNotice(null)}
-                        className="text-slate-400 hover:text-slate-700 p-0.5 cursor-pointer"
+                        className="text-slate-400 hover:text-slate-700 p-0.5 cursor-pointer ml-2"
                         aria-label="Dismiss banner"
                     >
                         <X className="w-3.5 h-3.5" />

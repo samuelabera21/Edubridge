@@ -1100,13 +1100,17 @@ export class HierarchyService {
             console.warn("Failed to write audit log for admin invitation:", e);
         }
 
+        const appUrl = (process.env.FRONTEND_URL || "http://localhost:3000").replace(/\/+$/, "");
+        const invitationUrl = `${appUrl}/activate?token=${inviteToken}`;
+
         return {
             id: user.id,
             name: user.name,
             email: user.email,
             status: user.emailVerified ? "ACTIVE" : "INVITATION_PENDING",
             invitedAt: assignment.createdAt,
-            roleName: "Regional Administrator"
+            roleName: "Regional Administrator",
+            invitationUrl
         };
     }
 
@@ -1186,10 +1190,14 @@ export class HierarchyService {
             });
         } catch (e) {}
 
+        const appUrl = (process.env.FRONTEND_URL || "http://localhost:3000").replace(/\/+$/, "");
+        const invitationUrl = `${appUrl}/activate?token=${inviteToken}`;
+
         return {
             success: true,
             message: `Invitation resent to ${adminAssignment.user.email}`,
-            invitedAt: new Date()
+            invitedAt: new Date(),
+            invitationUrl
         };
     }
 
@@ -1555,13 +1563,17 @@ export class HierarchyService {
             });
         } catch (e) {}
 
+        const appUrl = (process.env.FRONTEND_URL || "http://localhost:3000").replace(/\/+$/, "");
+        const invitationUrl = `${appUrl}/activate?token=${inviteToken}`;
+
         return {
             id: user.id,
             name: user.name,
             email: user.email,
             status: user.emailVerified ? ("ACTIVE" as const) : ("INVITATION_PENDING" as const),
             invitedAt: assignment.createdAt,
-            roleName: "Zonal Administrator"
+            roleName: "Zonal Administrator",
+            invitationUrl
         };
     }
 
@@ -1650,10 +1662,14 @@ export class HierarchyService {
             });
         } catch (e) {}
 
+        const appUrl = (process.env.FRONTEND_URL || "http://localhost:3000").replace(/\/+$/, "");
+        const invitationUrl = `${appUrl}/activate?token=${inviteToken}`;
+
         return {
             success: true,
             message: `Invitation resent to ${adminAssignment.user.email}`,
-            invitedAt: new Date()
+            invitedAt: new Date(),
+            invitationUrl
         };
     }
 
@@ -1966,13 +1982,17 @@ export class HierarchyService {
             });
         } catch (e) {}
 
+        const appUrl = (process.env.FRONTEND_URL || "http://localhost:3000").replace(/\/+$/, "");
+        const invitationUrl = `${appUrl}/activate?token=${inviteToken}`;
+
         return {
             id: user.id,
             name: user.name,
             email: user.email,
             status: user.emailVerified ? ("ACTIVE" as const) : ("INVITATION_PENDING" as const),
             invitedAt: assignment.createdAt,
-            roleName: "Woreda Administrator"
+            roleName: "Woreda Administrator",
+            invitationUrl
         };
     }
 
@@ -2061,10 +2081,14 @@ export class HierarchyService {
             });
         } catch (e) {}
 
+        const appUrl = (process.env.FRONTEND_URL || "http://localhost:3000").replace(/\/+$/, "");
+        const invitationUrl = `${appUrl}/activate?token=${inviteToken}`;
+
         return {
             success: true,
             message: `Invitation resent to ${adminAssignment.user.email}`,
-            invitedAt: new Date()
+            invitedAt: new Date(),
+            invitationUrl
         };
     }
 
@@ -2363,13 +2387,17 @@ export class HierarchyService {
             });
         } catch (e) {}
 
+        const appUrl = (process.env.FRONTEND_URL || "http://localhost:3000").replace(/\/+$/, "");
+        const invitationUrl = `${appUrl}/activate?token=${inviteToken}`;
+
         return {
             id: user.id,
             name: user.name,
             email: user.email,
             status: user.emailVerified ? ("ACTIVE" as const) : ("INVITATION_PENDING" as const),
             invitedAt: assignment.createdAt,
-            roleName: "School Principal"
+            roleName: "School Principal",
+            invitationUrl
         };
     }
 
@@ -2458,10 +2486,14 @@ export class HierarchyService {
             });
         } catch (e) {}
 
+        const appUrl = (process.env.FRONTEND_URL || "http://localhost:3000").replace(/\/+$/, "");
+        const invitationUrl = `${appUrl}/activate?token=${inviteToken}`;
+
         return {
             success: true,
             message: `Invitation resent to ${adminAssignment.user.email}`,
-            invitedAt: new Date()
+            invitedAt: new Date(),
+            invitationUrl
         };
     }
 

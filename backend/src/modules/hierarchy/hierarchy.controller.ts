@@ -387,6 +387,7 @@ export async function assignRegionalAdminHandler(req: Request, res: Response) {
         return res.status(200).json({
             success: true,
             message: `Invitation sent to ${email} for Regional Administrator role.`,
+            invitationUrl: (admin as any)?.invitationUrl,
             data: admin
         });
     } catch (error: any) {
@@ -522,6 +523,7 @@ export async function assignZoneAdminHandler(req: Request, res: Response) {
         return res.status(200).json({
             success: true,
             message: `Invitation sent to ${email} for Zonal Administrator role.`,
+            invitationUrl: (admin as any)?.invitationUrl,
             data: admin
         });
     } catch (error: any) {
@@ -638,6 +640,7 @@ export async function assignWoredaAdminHandler(req: Request, res: Response) {
         return res.status(200).json({
             success: true,
             message: `Invitation sent to ${email} for Woreda Administrator role.`,
+            invitationUrl: (admin as any)?.invitationUrl,
             data: admin
         });
     } catch (error: any) {
@@ -753,6 +756,7 @@ export async function assignSchoolAdminHandler(req: Request, res: Response) {
         return res.status(200).json({
             success: true,
             message: `Invitation sent to ${email} for School Principal role.`,
+            invitationUrl: (admin as any)?.invitationUrl,
             data: admin
         });
     } catch (error: any) {

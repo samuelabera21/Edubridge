@@ -216,7 +216,40 @@ export async function sendAdminInvitationEmail(payload: InvitationEmailPayload):
 
     const subject = `Account Activation — ${assignedRole}, ${organizationName} | EduBridge`;
 
-    // 1. Priority: Resend HTTPS API (Port 443 - bypasses cloud PaaS SMTP port blocks)
+    // 1. Priority: Brevo HTTPS REST API (Port 443 - free 300 emails/day to ANY recipient without domain restriction)
+    if (process.env.BREVO_API_KEY) {
+        try {
+            console.log(`[EmailService] Sending invitation via Brevo HTTPS API to ${recipientEmail}...`);
+            const senderEmail = process.env.BREVO_SENDER_EMAIL || process.env.SMTP_USER || "onboarding@resend.dev";
+            const senderName = process.env.BREVO_SENDER_NAME || "EduBridge";
+            const brevoRes = await fetch("https://api.brevo.com/v3/smtp/email", {
+                method: "POST",
+                headers: {
+                    "accept": "application/json",
+                    "api-key": process.env.BREVO_API_KEY,
+                    "content-type": "application/json",
+                },
+                body: JSON.stringify({
+                    sender: { name: senderName, email: senderEmail },
+                    to: [{ email: recipientEmail, name: recipientName }],
+                    subject,
+                    htmlContent: html,
+                }),
+            });
+
+            if (brevoRes.ok) {
+                console.log(`[EmailService] Invitation email successfully dispatched via Brevo to ${recipientEmail} for ${organizationName}`);
+                return;
+            } else {
+                const errData: any = await brevoRes.json().catch(() => ({}));
+                console.warn("[EmailService] Brevo API error:", errData?.message || errData);
+            }
+        } catch (brevoErr: any) {
+            console.warn("[EmailService] Brevo API failed, falling back to next provider:", brevoErr?.message || brevoErr);
+        }
+    }
+
+    // 2. Resend HTTPS API (Port 443 - bypasses cloud PaaS SMTP port blocks)
     if (resend) {
         try {
             console.log(`[EmailService] Sending invitation via Resend HTTPS API to ${recipientEmail}...`);
@@ -230,6 +263,9 @@ export async function sendAdminInvitationEmail(payload: InvitationEmailPayload):
 
             if (error) {
                 console.warn("[EmailService] Resend error:", error.message);
+                if (error.statusCode === 403 || error.message?.includes("only send testing emails to your own email address")) {
+                    console.warn(`[EmailService] Resend Sandbox Restriction: Resend in test mode only sends to the account owner email. Verify a domain at resend.com/domains or configure BREVO_API_KEY to send to all recipients.`);
+                }
             } else {
                 console.log(`[EmailService] Invitation email successfully dispatched via Resend to ${recipientEmail} for ${organizationName}`);
                 return;
@@ -392,7 +428,40 @@ export async function sendPasswordResetEmail(payload: PasswordResetEmailPayload)
 
     const subject = `Password Reset Request — EduBridge`;
 
-    // 1. Priority: Resend HTTPS API (Port 443 - bypasses cloud PaaS SMTP port blocks)
+    // 1. Priority: Brevo HTTPS REST API (Port 443 - free 300 emails/day to ANY recipient without domain restriction)
+    if (process.env.BREVO_API_KEY) {
+        try {
+            console.log(`[EmailService] Sending password reset email via Brevo HTTPS API to ${recipientEmail}...`);
+            const senderEmail = process.env.BREVO_SENDER_EMAIL || process.env.SMTP_USER || "onboarding@resend.dev";
+            const senderName = process.env.BREVO_SENDER_NAME || "EduBridge Security";
+            const brevoRes = await fetch("https://api.brevo.com/v3/smtp/email", {
+                method: "POST",
+                headers: {
+                    "accept": "application/json",
+                    "api-key": process.env.BREVO_API_KEY,
+                    "content-type": "application/json",
+                },
+                body: JSON.stringify({
+                    sender: { name: senderName, email: senderEmail },
+                    to: [{ email: recipientEmail, name: recipientName }],
+                    subject,
+                    htmlContent: html,
+                }),
+            });
+
+            if (brevoRes.ok) {
+                console.log(`[EmailService] Password reset email successfully dispatched via Brevo to ${recipientEmail}`);
+                return;
+            } else {
+                const errData: any = await brevoRes.json().catch(() => ({}));
+                console.warn("[EmailService] Brevo API reset error:", errData?.message || errData);
+            }
+        } catch (brevoErr: any) {
+            console.warn("[EmailService] Brevo API reset failed, falling back to next provider:", brevoErr?.message || brevoErr);
+        }
+    }
+
+    // 2. Resend HTTPS API (Port 443 - bypasses cloud PaaS SMTP port blocks)
     if (resend) {
         try {
             console.log(`[EmailService] Sending password reset email via Resend HTTPS API to ${recipientEmail}...`);
@@ -406,6 +475,9 @@ export async function sendPasswordResetEmail(payload: PasswordResetEmailPayload)
 
             if (error) {
                 console.warn("[EmailService] Resend error for password reset:", error.message);
+                if (error.statusCode === 403 || error.message?.includes("only send testing emails to your own email address")) {
+                    console.warn(`[EmailService] Resend Sandbox Restriction: Resend in test mode only sends to the account owner email.`);
+                }
             } else {
                 console.log(`[EmailService] Password reset email successfully dispatched via Resend to ${recipientEmail}`);
                 return;
