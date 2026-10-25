@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { fetchApi } from "../../../lib/api";
-import { getPrimaryAccess } from "../../../lib/auth-access";
+import { getPrimaryAccess, getDashboardPath } from "../../../lib/auth-access";
 import { Loader2, KeyRound, Mail, CheckCircle2, AlertCircle, X } from "lucide-react";
 
 export default function LoginPage() {
@@ -31,56 +31,8 @@ export default function LoginPage() {
             return;
         }
 
-        if (meData.requiresPasswordChange || meData.user?.requiresPasswordChange) {
-            router.push("/change-password");
-            return;
-        }
-
-        const primaryAccess = getPrimaryAccess(meData.access);
-        const roleName = primaryAccess?.role?.name;
-        const scopeType = primaryAccess?.scope?.type;
-
-        // 1. Hierarchy / Administrative scopes
-        if (scopeType === "FEDERAL") {
-            router.push("/dashboard/federal");
-            return;
-        }
-        if (scopeType === "REGION") {
-            router.push("/dashboard/region");
-            return;
-        }
-        if (scopeType === "ZONE") {
-            router.push("/dashboard/zone");
-            return;
-        }
-        if (scopeType === "WOREDA") {
-            router.push("/dashboard/woreda");
-            return;
-        }
-
-        // 2. School-level roles
-        switch (roleName) {
-            case "ADMIN":
-            case "SCHOOL_ADMIN":
-            case "ADMINISTRATOR":
-                router.push("/dashboard/admin");
-                return;
-            case "TEACHER":
-                router.push("/dashboard/teacher");
-                return;
-            case "STUDENT":
-                router.push("/dashboard/student");
-                return;
-            case "PARENT":
-                router.push("/dashboard/parent");
-                return;
-            case "VICE_PRINCIPAL":
-                router.push("/dashboard/vice-principal");
-                return;
-            default:
-                router.push("/dashboard/federal");
-                return;
-        }
+        const dest = getDashboardPath(meData);
+        router.push(dest);
     };
 
     // Check if user is already authenticated (e.g. returning from Google OAuth callback)
@@ -238,14 +190,17 @@ export default function LoginPage() {
             }
 
             // Verify user state server-side
-            const meRes = await fetchApi("/authorization/me");
+            const meRes = await fetchApi("/authorization/me", {
+                headers: signData?.token ? { Authorization: `Bearer ${signData.token}` } : {},
+            });
             if (meRes.ok) {
                 const meData = await meRes.json();
                 routeUserByScope(meData);
                 return;
             }
 
-            router.push("/dashboard/federal");
+            const dest = getDashboardPath(signData);
+            router.push(dest);
         } catch (err) {
             console.error(err);
             setError("A network error occurred. Please try again.");

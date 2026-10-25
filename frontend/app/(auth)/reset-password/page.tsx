@@ -4,7 +4,6 @@ import { useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { fetchApi } from "../../../lib/api";
-import { getDashboardPath } from "../../../lib/auth-access";
 import { Loader2, KeyRound, CheckCircle2, AlertCircle, Eye, EyeOff, ArrowLeft } from "lucide-react";
 
 function ResetPasswordForm() {
@@ -81,20 +80,14 @@ function ResetPasswordForm() {
                     setLoading(false);
                     return;
                 }
-
-                setSuccess(true);
-                setLoading(false);
-                return;
             }
 
-            const data = await res.json().catch(() => ({}));
-            if (data?.token) {
-                localStorage.setItem("auth_token", data.token);
-                document.cookie = `better-auth.session_token=${data.token}; path=/; max-age=604800; SameSite=Lax; Secure`;
-
-                const dest = getDashboardPath(data);
-                router.push(dest);
-                return;
+            // Clear any old stored tokens so user starts with a clean session on /login
+            try {
+                localStorage.removeItem("auth_token");
+                document.cookie = "better-auth.session_token=; path=/; max-age=0; SameSite=Lax; Secure";
+            } catch {
+                // ignore
             }
 
             setSuccess(true);
@@ -120,7 +113,7 @@ function ResetPasswordForm() {
                     href="/login"
                     className="inline-flex items-center justify-center w-full bg-[#4085b3] text-white p-3 rounded-lg font-medium hover:bg-[#32698e] transition-all shadow-sm"
                 >
-                    Proceed to Sign In &rarr;
+                    Proceed to Login &rarr;
                 </Link>
             </div>
         );
@@ -281,7 +274,7 @@ function ResetPasswordForm() {
                     disabled={loading}
                     className="w-full bg-[#4085b3] text-white p-2.5 rounded-lg font-medium hover:bg-[#32698e] transition-colors flex justify-center items-center disabled:opacity-70 shadow-sm"
                 >
-                    {loading ? <Loader2 className="animate-spin h-5 w-5" /> : "Update Password & Sign In"}
+                    {loading ? <Loader2 className="animate-spin h-5 w-5" /> : "Reset Password"}
                 </button>
             </form>
         </div>
