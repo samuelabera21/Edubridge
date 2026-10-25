@@ -40,67 +40,59 @@ export default function LoginPage() {
         const roleName = primaryAccess?.role?.name;
         const scopeType = primaryAccess?.scope?.type;
 
+        const allRoles: string[] = (meData.access || []).map((a: any) => a.role?.name).filter(Boolean);
+        const hasTeacherRole = roleName === "TEACHER" || allRoles.includes("TEACHER");
+        const hasAdminRole = ["ADMIN", "SCHOOL_ADMIN", "ADMINISTRATOR", "PRINCIPAL"].includes(roleName || "") || allRoles.some((r: string) => ["ADMIN", "SCHOOL_ADMIN", "ADMINISTRATOR", "PRINCIPAL"].includes(r));
+        const hasStudentRole = roleName === "STUDENT" || allRoles.includes("STUDENT");
+        const hasParentRole = roleName === "PARENT" || allRoles.includes("PARENT");
+        const hasVicePrincipalRole = roleName === "VICE_PRINCIPAL" || allRoles.includes("VICE_PRINCIPAL");
+
         // 1. Hierarchy / Administrative scopes
-        if (scopeType === "FEDERAL") {
+        if (scopeType === "FEDERAL" || roleName === "FEDERAL_ADMIN") {
             router.push("/dashboard/federal");
             return;
         }
-        if (scopeType === "REGION") {
+        if (scopeType === "REGION" || roleName === "REGION_ADMIN") {
             router.push("/dashboard/region");
             return;
         }
-        if (scopeType === "ZONE") {
+        if (scopeType === "ZONE" || roleName === "ZONE_ADMIN" || roleName === "ZONAL_ADMIN") {
             router.push("/dashboard/zone");
             return;
         }
-        if (scopeType === "WOREDA") {
+        if (scopeType === "WOREDA" || roleName === "WOREDA_ADMIN") {
             router.push("/dashboard/woreda");
             return;
         }
 
         // 2. Roles mapping
-        switch (roleName) {
-            case "FEDERAL_ADMIN":
-                router.push("/dashboard/federal");
-                return;
-            case "REGION_ADMIN":
-                router.push("/dashboard/region");
-                return;
-            case "ZONE_ADMIN":
-            case "ZONAL_ADMIN":
-                router.push("/dashboard/zone");
-                return;
-            case "WOREDA_ADMIN":
-                router.push("/dashboard/woreda");
-                return;
-            case "ADMIN":
-            case "SCHOOL_ADMIN":
-            case "ADMINISTRATOR":
-            case "PRINCIPAL":
-                router.push("/dashboard/admin");
-                return;
-            case "TEACHER":
-                router.push("/dashboard/teacher");
-                return;
-            case "STUDENT":
-                router.push("/dashboard/student");
-                return;
-            case "PARENT":
-                router.push("/dashboard/parent");
-                return;
-            case "VICE_PRINCIPAL":
-                router.push("/dashboard/vice-principal");
-                return;
-            default:
-                if (scopeType === "SCHOOL") {
-                    router.push("/dashboard/admin");
-                } else if (scopeType === "FEDERAL") {
-                    router.push("/dashboard/federal");
-                } else {
-                    router.push("/dashboard/admin");
-                }
-                return;
+        if (hasTeacherRole) {
+            router.push("/dashboard/teacher");
+            return;
         }
+        if (hasAdminRole) {
+            router.push("/dashboard/admin");
+            return;
+        }
+        if (hasStudentRole) {
+            router.push("/dashboard/student");
+            return;
+        }
+        if (hasParentRole) {
+            router.push("/dashboard/parent");
+            return;
+        }
+        if (hasVicePrincipalRole) {
+            router.push("/dashboard/vice-principal");
+            return;
+        }
+
+        // 3. Fallbacks
+        if (hasAdminRole && scopeType === "SCHOOL") {
+            router.push("/dashboard/admin");
+            return;
+        }
+        router.push("/dashboard/teacher");
     };
 
     // Check if user is already authenticated (e.g. returning from Google OAuth callback)
