@@ -216,7 +216,7 @@ function AcademicResultsContent() {
                         <div className="text-xs text-gray-500 font-semibold mb-1.5 flex items-center justify-between">
                             <span>Active Student</span>
                             {children.length > 1 && (
-                                <span className="text-[11px] text-[#184973] font-medium">
+                                <span className="text-[11px] text-[#4085b3] font-medium">
                                     {selectedChildIndex + 1} of {children.length}
                                 </span>
                             )}
@@ -224,10 +224,10 @@ function AcademicResultsContent() {
                         <button
                             type="button"
                             onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                            className="w-full sm:w-auto min-w-[240px] flex items-center justify-between gap-3 px-4 py-2.5 bg-white border border-gray-300 hover:border-[#184973] rounded-xl shadow-sm hover:shadow transition-all text-left focus:outline-none focus:ring-2 focus:ring-[#184973]/20"
+                            className="w-full sm:w-auto min-w-[240px] flex items-center justify-between gap-3 px-4 py-2.5 bg-white border border-gray-300 hover:border-[#4085b3] rounded-xl shadow-sm hover:shadow transition-all text-left focus:outline-none focus:ring-2 focus:ring-[#4085b3]/20"
                         >
                             <div className="flex items-center gap-3">
-                                <div className="w-9 h-9 rounded-full bg-[#184973] text-white flex items-center justify-center text-sm font-bold shadow-sm">
+                                <div className="w-9 h-9 rounded-full bg-[#4085b3] text-white flex items-center justify-center text-sm font-bold shadow-sm">
                                     {currentStudent.firstName?.charAt(0) || "S"}
                                 </div>
                                 <div className="leading-tight">
@@ -265,12 +265,12 @@ function AcademicResultsContent() {
                                                     setIsDropdownOpen(false);
                                                 }}
                                                 className={`w-full flex items-center justify-between px-3.5 py-2.5 text-left transition-colors ${
-                                                    isSelected ? "bg-blue-50/70 text-[#184973]" : "hover:bg-gray-50 text-gray-800"
+                                                    isSelected ? "bg-blue-50/70 text-[#4085b3]" : "hover:bg-gray-50 text-gray-800"
                                                 }`}
                                             >
                                                 <div className="flex items-center gap-3">
                                                     <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${
-                                                        isSelected ? "bg-[#184973] text-white" : "bg-gray-100 text-gray-700"
+                                                        isSelected ? "bg-[#4085b3] text-white" : "bg-gray-100 text-gray-700"
                                                     }`}>
                                                         {ch?.firstName?.charAt(0) || "S"}
                                                     </div>
@@ -284,7 +284,7 @@ function AcademicResultsContent() {
                                                     </div>
                                                 </div>
                                                 {isSelected && (
-                                                    <Check className="w-4 h-4 text-[#184973] flex-shrink-0" />
+                                                    <Check className="w-4 h-4 text-[#4085b3] flex-shrink-0" />
                                                 )}
                                             </button>
                                         );
@@ -345,7 +345,7 @@ function AcademicResultsContent() {
                     onClick={() => setTab("subjects")}
                     className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                         currentTab === "subjects"
-                            ? "bg-[#184973] text-white shadow-sm"
+                            ? "bg-[#4085b3] text-white shadow-sm"
                             : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
                     }`}
                 >
@@ -357,7 +357,7 @@ function AcademicResultsContent() {
                     onClick={() => setTab("trends")}
                     className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                         currentTab === "trends"
-                            ? "bg-[#184973] text-white shadow-sm"
+                            ? "bg-[#4085b3] text-white shadow-sm"
                             : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
                     }`}
                 >
@@ -369,7 +369,7 @@ function AcademicResultsContent() {
                     onClick={() => setTab("feedback")}
                     className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                         currentTab === "feedback"
-                            ? "bg-[#184973] text-white shadow-sm"
+                            ? "bg-[#4085b3] text-white shadow-sm"
                             : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
                     }`}
                 >
@@ -567,7 +567,7 @@ function AcademicResultsContent() {
                     <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm space-y-4">
                         <div className="border-b border-gray-100 pb-3">
                             <h3 className="font-bold text-sm text-gray-900 flex items-center gap-2">
-                                <GraduationCap className="w-4 h-4 text-[#184973]" />
+                                <GraduationCap className="w-4 h-4 text-[#4085b3]" />
                                 <span>Ethiopian Ministry of Education Secondary Grading Standard</span>
                             </h3>
                         </div>
@@ -615,7 +615,7 @@ function AcademicResultsContent() {
                         </div>
 
                         <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl text-xs text-gray-600 leading-relaxed flex items-start gap-2.5">
-                            <Info className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
+                            <Info className="w-4 h-4 text-[#4085b3] shrink-0 mt-0.5" />
                             <span>
                                 <strong>Secondary School Academic Promotion Policy:</strong> To qualify for semester progression and national examinations, students must maintain an overall average score of at least 50% across all subjects, with no more than two failing subjects. Regular home revision and active teacher communication are encouraged.
                             </span>
@@ -630,7 +630,7 @@ function AcademicResultsContent() {
                     <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm space-y-4">
                         <div className="flex items-center justify-between border-b border-gray-100 pb-3">
                             <h3 className="font-bold text-sm text-gray-900 flex items-center gap-2">
-                                <MessageSquare className="w-4 h-4 text-[#184973]" />
+                                <MessageSquare className="w-4 h-4 text-[#4085b3]" />
                                 <span>Subject Teacher Remarks & Guidance</span>
                             </h3>
                             <span className="text-xs text-gray-500">{allFeedbackList.length} feedback item(s)</span>

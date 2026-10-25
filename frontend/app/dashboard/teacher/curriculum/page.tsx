@@ -1,1344 +1,928 @@
 "use client";
 
-import { useEffect, useState, Suspense } from "react";
+import React, { useEffect, useState, useMemo, useCallback } from "react";
 import { fetchApi } from "@/lib/api";
-import Link from "next/link";
-import { useSearchParams } from "next/navigation";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/Card";
-import { 
-    BookOpen, 
-    CheckCircle2, 
-    Clock, 
-    Plus, 
-    FileText, 
-    TrendingUp, 
-    AlertCircle, 
-    HelpCircle, 
-    Save, 
-    Inbox, 
-    ChevronRight, 
-    Sparkles, 
-    Loader2,
-    Calendar,
-    X,
-    MessageSquare,
-    Award,
+import {
+    FileText,
+    Upload,
+    Video,
+    FileSpreadsheet,
+    File,
+    Download,
+    ExternalLink,
     Search,
     Filter,
-    ChevronDown,
-    ChevronUp,
-    Target,
-    Compass,
-    ExternalLink,
+    RefreshCw,
+    Trash2,
+    Calendar,
+    Users,
+    CheckCircle2,
+    Play,
+    Plus,
+    X,
+    Clock,
+    BookOpen,
+    Eye,
     Layers,
-    BookMarked,
-    Eye
+    AlertCircle,
+    Check
 } from "lucide-react";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/Card";
 
-function CurriculumContent() {
-    const searchParams = useSearchParams();
-    const tabParam = searchParams.get("tab");
+interface MaterialItem {
+    id: string;
+    organizationId: string;
+    teacherId?: string | null;
+    teachingAssignmentId?: string | null;
+    title: string;
+    description?: string | null;
+    materialType: "DOCUMENT" | "VIDEO";
+    fileType?: "PDF" | "WORD" | "POWERPOINT" | "VIDEO" | "OTHER" | null;
+    fileUrl: string;
+    fileName: string;
+    fileSize?: number | null;
+    videoUrl?: string | null;
+    unitName?: string | null;
+    subjectName?: string | null;
+    gradeName?: string | null;
+    sectionName?: string | null;
+    createdAt: string;
+}
 
-    const [activeTab, setActiveTab] = useState<"view" | "progress" | "log" | "difficulties" | "notes">(
-        (tabParam as any) || "view"
-    );
+function formatVideoEmbedUrl(url?: string | null): string {
+    if (!url) return "";
+    const clean = url.trim();
+    if (clean.includes("youtube.com/watch?v=")) {
+        const id = clean.split("watch?v=")[1]?.split("&")[0];
+        return `https://www.youtube.com/embed/${id}`;
+    }
+    if (clean.includes("youtube.com/shorts/")) {
+        const id = clean.split("shorts/")[1]?.split("?")[0]?.split("/")[0];
+        return `https://www.youtube.com/embed/${id}`;
+    }
+    if (clean.includes("youtu.be/")) {
+        const id = clean.split("youtu.be/")[1]?.split("?")[0];
+        return `https://www.youtube.com/embed/${id}`;
+    }
+    return clean;
+}
 
+export default function TeacherCurriculumPage() {
+    // Data State
+    const [materials, setMaterials] = useState<MaterialItem[]>([]);
     const [classes, setClasses] = useState<any[]>([]);
-    const [curriculumData, setCurriculumData] = useState<any>(null);
-    const [lessonLogs, setLessonLogs] = useState<any[]>([]);
-    const [difficulties, setDifficulties] = useState<any[]>([]);
-    const [notes, setNotes] = useState<any[]>([]);
-
-    // View Curriculum Tab state
-    const [searchQuery, setSearchQuery] = useState("");
-    const [statusFilter, setStatusFilter] = useState<"ALL" | "IN_PROGRESS" | "COMPLETED" | "UPCOMING">("ALL");
-    const [expandedUnits, setExpandedUnits] = useState<Record<string, boolean>>({});
-    const [selectedTopicModal, setSelectedTopicModal] = useState<any | null>(null);
-    const [loadingCurriculum, setLoadingCurriculum] = useState(false);
-    const [showCompetencies, setShowCompetencies] = useState(true);
-
-    // Form modal state
-    const [showLogModal, setShowLogModal] = useState(false);
-    const [selectedAssignmentId, setSelectedAssignmentId] = useState("");
-    const [unitName, setUnitName] = useState("");
-    const [topicName, setTopicName] = useState("");
-    const [durationMinutes, setDurationMinutes] = useState(45);
-    const [logNote, setLogNote] = useState("");
-
-    // Learning Difficulty Form State
-    const [diffTopic, setDiffTopic] = useState("");
-    const [diffDesc, setDiffDesc] = useState("");
-    const [remedialPlan, setRemedialPlan] = useState("");
-    const [showDiffModal, setShowDiffModal] = useState(false);
-
-    // Reflection Note Form State
-    const [noteTitle, setNoteTitle] = useState("");
-    const [noteContent, setNoteContent] = useState("");
-    const [showNoteModal, setShowNoteModal] = useState(false);
-
     const [loading, setLoading] = useState(true);
+    const [refreshing, setRefreshing] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+
+    // Filters & Search
+    const [searchQuery, setSearchQuery] = useState("");
+    const [typeFilter, setTypeFilter] = useState<"ALL" | "DOCUMENT" | "VIDEO">("ALL");
+    const [selectedAssignmentId, setSelectedAssignmentId] = useState<string>("ALL");
+
+    // Modal State
+    const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
     const [submitting, setSubmitting] = useState(false);
-    const [msg, setMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
+    const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
-    useEffect(() => {
-        if (tabParam && ["view", "progress", "log", "difficulties", "notes"].includes(tabParam)) {
-            setActiveTab(tabParam as any);
-        }
-    }, [tabParam]);
+    // Form State
+    const [formMaterialType, setFormMaterialType] = useState<"DOCUMENT" | "VIDEO">("DOCUMENT");
+    const [formClassId, setFormClassId] = useState<string>("");
+    const [formTitle, setFormTitle] = useState<string>("");
+    const [formUnitName, setFormUnitName] = useState<string>("");
+    const [formDescription, setFormDescription] = useState<string>("");
+    const [formVideoUrl, setFormVideoUrl] = useState<string>("");
+    const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
-    useEffect(() => {
-        loadData();
-    }, []);
+    // Video Player Modal
+    const [activeVideoModal, setActiveVideoModal] = useState<MaterialItem | null>(null);
 
-    async function loadData() {
+    // Load initial data
+    const loadData = useCallback(async (isRefresh = false) => {
         try {
-            setLoading(true);
-            const [classesRes, currRes] = await Promise.all([
-                fetchApi("/teacher/my-classes"),
-                fetchApi("/teacher/curriculum")
+            if (isRefresh) setRefreshing(true);
+            else setLoading(true);
+            setError(null);
+
+            const [materialsRes, classesRes] = await Promise.all([
+                fetchApi("/teacher/curriculum/materials"),
+                fetchApi("/teacher/my-classes")
             ]);
+
+            if (materialsRes.ok) {
+                const data = await materialsRes.json();
+                setMaterials(Array.isArray(data) ? data : []);
+            } else {
+                setMaterials([]);
+            }
 
             if (classesRes.ok) {
                 const cData = await classesRes.json();
-                const list = Array.isArray(cData) ? cData : [];
-                setClasses(list);
-                if (list.length > 0) {
-                    const firstId = list[0].assignment?.id || list[0].id;
-                    setSelectedAssignmentId(firstId);
+                const classList = Array.isArray(cData) ? cData : [];
+                setClasses(classList);
+                if (classList.length > 0 && !formClassId) {
+                    const firstId = classList[0].assignment?.id || classList[0].id;
+                    setFormClassId(firstId);
                 }
             }
-
-            if (currRes.ok) {
-                const cData = await currRes.json();
-                setCurriculumData(cData);
-                // Expand all units initially
-                if (cData?.units && Array.isArray(cData.units)) {
-                    const expanded: Record<string, boolean> = {};
-                    cData.units.forEach((u: any) => { expanded[u.id] = true; });
-                    setExpandedUnits(expanded);
-                }
-            }
-
-            setLessonLogs([]);
-            setDifficulties([]);
-            setNotes([]);
-
-        } catch (err) {
-            console.error("Failed to load curriculum workspace:", err);
+        } catch (err: any) {
+            console.error("Failed to load materials workspace:", err);
+            setError(err.message || "Failed to load learning materials");
         } finally {
             setLoading(false);
+            setRefreshing(false);
         }
-    }
+    }, [formClassId]);
 
-    async function handleSwitchAssignment(assignmentId: string) {
-        setSelectedAssignmentId(assignmentId);
-        try {
-            setLoadingCurriculum(true);
-            const res = await fetchApi(`/teacher/curriculum?assignmentId=${encodeURIComponent(assignmentId)}`);
-            if (res.ok) {
-                const data = await res.json();
-                setCurriculumData(data);
-                if (data?.units && Array.isArray(data.units)) {
-                    const expanded: Record<string, boolean> = {};
-                    data.units.forEach((u: any) => { expanded[u.id] = true; });
-                    setExpandedUnits(expanded);
-                }
+    useEffect(() => {
+        loadData();
+    }, [loadData]);
+
+    // Handle File Selection
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files && e.target.files[0]) {
+            const file = e.target.files[0];
+            setSelectedFile(file);
+            if (!formTitle.trim()) {
+                // Auto-fill title from file name without extension
+                const nameWithoutExt = file.name.replace(/\.[^/.]+$/, "");
+                setFormTitle(nameWithoutExt);
             }
-        } catch (err) {
-            console.error("Failed to switch assignment curriculum:", err);
-        } finally {
-            setLoadingCurriculum(false);
         }
-    }
+    };
 
-    function toggleUnit(unitId: string) {
-        setExpandedUnits(prev => ({
-            ...prev,
-            [unitId]: !prev[unitId]
-        }));
-    }
+    // Determine File Type
+    const getFileTypeCategory = (fileName: string, mimeType?: string): "PDF" | "WORD" | "POWERPOINT" | "VIDEO" | "OTHER" => {
+        const lower = fileName.toLowerCase();
+        if (lower.endsWith(".pdf") || mimeType?.includes("pdf")) return "PDF";
+        if (lower.endsWith(".doc") || lower.endsWith(".docx") || mimeType?.includes("word")) return "WORD";
+        if (lower.endsWith(".ppt") || lower.endsWith(".pptx") || mimeType?.includes("presentation") || mimeType?.includes("powerpoint")) return "POWERPOINT";
+        if (lower.endsWith(".mp4") || lower.endsWith(".webm") || lower.endsWith(".mkv") || lower.endsWith(".mov") || mimeType?.includes("video")) return "VIDEO";
+        return "OTHER";
+    };
 
-    function toggleAllUnits(expand: boolean) {
-        if (!curriculumData?.units) return;
-        const updated: Record<string, boolean> = {};
-        curriculumData.units.forEach((u: any) => {
-            updated[u.id] = expand;
-        });
-        setExpandedUnits(updated);
-    }
+    // Format file size
+    const formatBytes = (bytes?: number | null) => {
+        if (!bytes) return "";
+        if (bytes < 1024) return `${bytes} B`;
+        if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+        return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+    };
 
-    function handleOpenQuickLog(unit: any, topic: any) {
-        setUnitName(unit.title);
-        setTopicName(typeof topic === "string" ? topic : topic.title);
-        setShowLogModal(true);
-    }
-
-    function handleOpenDifficulty(topic: any) {
-        setDiffTopic(typeof topic === "string" ? topic : topic.title);
-        setActiveTab("difficulties");
-        setShowDiffModal(true);
-    }
-
-    function handleSaveLessonLog(e: React.FormEvent) {
+    // Submit New Material
+    const handlePostMaterial = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!topicName) return;
+        if (!formTitle.trim()) {
+            alert("Please enter a title for the material.");
+            return;
+        }
+
+        if (formMaterialType === "DOCUMENT" && !selectedFile) {
+            alert("Please select a document file (PDF, Word, or PowerPoint).");
+            return;
+        }
+
+        if (formMaterialType === "VIDEO" && !selectedFile && !formVideoUrl.trim()) {
+            alert("Please select a video file or provide a video tutorial URL.");
+            return;
+        }
+
         setSubmitting(true);
+        try {
+            // Find class details
+            const activeClass = classes.find(c => (c.assignment?.id || c.id) === formClassId);
+            const assignment = activeClass?.assignment || activeClass || {};
+            const gradeLevel = assignment.schoolGrade?.grade?.level ? `Grade ${assignment.schoolGrade.grade.level}` : (activeClass?.gradeLevel || "");
+            const sectionName = assignment.section?.name || activeClass?.section?.name || "";
+            const subjectName = assignment.subject?.name || activeClass?.subject?.name || "";
 
-        const selClass = classes.find(c => (c.assignment?.id || c.id) === selectedAssignmentId);
-        const a = selClass?.assignment || selClass;
-        const sectionLabel = a 
-            ? `Grade ${a.schoolGrade?.grade?.level || a.schoolGrade?.grade?.name || ""}${a.section?.name ? `-${a.section.name}` : ""} • ${a.subject?.name || ""}`.trim()
-            : (subjectInfo ? `${subjectInfo.gradeLevel || ""} - Section ${subjectInfo.section || ""}`.trim() : "Current Class");
+            let fileUrl = "";
+            let fileName = "";
+            let fileSize = 0;
+            let fileTypeCategory: "PDF" | "WORD" | "POWERPOINT" | "VIDEO" | "OTHER" = "OTHER";
 
-        const newLog = {
-            id: `log-${Date.now()}`,
-            date: new Date().toISOString().split('T')[0],
-            unit: unitName || (curriculumData?.units?.[0]?.title || "Current Unit"),
-            topic: topicName,
-            section: sectionLabel,
-            duration: durationMinutes,
-            note: logNote
-        };
-        setLessonLogs([newLog, ...lessonLogs]);
-        setUnitName("");
-        setTopicName("");
-        setLogNote("");
-        setShowLogModal(false);
-        setSubmitting(false);
-        setMsg({ type: "success", text: "Lesson progress and topics covered recorded successfully!" });
-    }
+            if (selectedFile) {
+                fileName = selectedFile.name;
+                fileSize = selectedFile.size;
+                fileTypeCategory = getFileTypeCategory(fileName, selectedFile.type);
 
-    function handleSaveDifficulty(e: React.FormEvent) {
-        e.preventDefault();
-        if (!diffTopic || !diffDesc) return;
-        const newDiff = {
-            id: `diff-${Date.now()}`,
-            date: new Date().toISOString().split('T')[0],
-            topic: diffTopic,
-            unit: unitName || (curriculumData?.units?.[0]?.title || "Current Unit"),
-            description: diffDesc,
-            remedial: remedialPlan || "No remedial plan logged"
-        };
-        setDifficulties([newDiff, ...difficulties]);
-        setDiffTopic("");
-        setDiffDesc("");
-        setRemedialPlan("");
-        setShowDiffModal(false);
-        setMsg({ type: "success", text: "Learning difficulty recorded and saved!" });
-    }
+                // Upload file to MinIO via storage presigned URL
+                const presignRes = await fetchApi("/storage/presign", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        fileName: selectedFile.name,
+                        contentType: selectedFile.type || (fileTypeCategory === "PDF" ? "application/pdf" : "application/octet-stream"),
+                        mimeType: selectedFile.type || "application/octet-stream",
+                        fileSize: selectedFile.size,
+                        folder: "curriculum/materials"
+                    })
+                });
 
-    function handleSaveReflectionNote(e: React.FormEvent) {
-        e.preventDefault();
-        if (!noteTitle || !noteContent) return;
-        const newNote = {
-            id: `note-${Date.now()}`,
-            date: new Date().toISOString().split('T')[0],
-            title: noteTitle,
-            content: noteContent
-        };
-        setNotes([newNote, ...notes]);
-        setNoteTitle("");
-        setNoteContent("");
-        setShowNoteModal(false);
-        setMsg({ type: "success", text: "Teaching note saved to your private journal." });
-    }
+                if (!presignRes.ok) {
+                    const errData = await presignRes.json().catch(() => ({}));
+                    throw new Error(errData.error || "Failed to generate storage upload URL");
+                }
 
-    if (loading) {
-        return (
-            <div className="w-full max-w-7xl mx-auto p-12 text-center text-gray-500 min-h-[400px] flex flex-col justify-center items-center">
-                <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#4085b3] mb-4"></div>
-                <p className="text-sm font-semibold text-gray-600">Loading curriculum progress workspace...</p>
-            </div>
-        );
-    }
+                const data = await presignRes.json();
+                const uploadUrl = data.presignedUrl || data.uploadUrl;
+                const publicUrl = data.publicUrl || data.downloadUrl;
 
-    const units = curriculumData?.units || [];
-    const overallProgress = curriculumData?.overallProgressPercent ?? 0;
-    const subjectInfo = curriculumData?.subject;
+                if (!uploadUrl || !publicUrl) {
+                    throw new Error("Invalid response received from storage service");
+                }
 
-    // Filter units and topics based on Search & Status Filter
-    const filteredUnits = units.filter((u: any) => {
-        if (statusFilter !== "ALL" && u.status !== statusFilter) return false;
-        if (!searchQuery.trim()) return true;
-        const q = searchQuery.toLowerCase();
-        const matchesUnit = u.title.toLowerCase().includes(q) || u.unitNumber.toLowerCase().includes(q);
-        const matchesTopics = (u.topics || []).some((t: any) => {
-            const title = typeof t === "string" ? t : t.title;
-            const concepts = typeof t === "object" && t.keyConcepts ? t.keyConcepts : "";
-            return title.toLowerCase().includes(q) || concepts.toLowerCase().includes(q);
+                const uploadRes = await fetch(uploadUrl, {
+                    method: "PUT",
+                    headers: { "Content-Type": selectedFile.type || "application/octet-stream" },
+                    body: selectedFile
+                });
+
+                if (!uploadRes.ok) {
+                    throw new Error("Failed to upload file content to storage");
+                }
+
+                fileUrl = publicUrl;
+            } else if (formVideoUrl.trim()) {
+                fileUrl = formVideoUrl.trim();
+                fileName = formTitle.trim();
+                fileTypeCategory = "VIDEO";
+            }
+
+            const payload = {
+                teachingAssignmentId: formClassId || undefined,
+                title: formTitle.trim(),
+                description: formDescription.trim() || undefined,
+                materialType: formMaterialType,
+                fileType: fileTypeCategory,
+                fileUrl: fileUrl || formVideoUrl.trim() || "#",
+                fileName: fileName || formTitle.trim(),
+                fileSize: fileSize || undefined,
+                videoUrl: formMaterialType === "VIDEO" ? (formVideoUrl.trim() || fileUrl) : undefined,
+                unitName: formUnitName.trim() || undefined,
+                subjectName: subjectName || undefined,
+                gradeName: gradeLevel || undefined,
+                sectionName: sectionName || undefined
+            };
+
+            const res = await fetchApi("/teacher/curriculum/materials", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload)
+            });
+
+            if (!res.ok) {
+                const errData = await res.json().catch(() => ({}));
+                throw new Error(errData.error || "Failed to post learning material");
+            }
+
+            setSuccessMsg(`"${formTitle.trim()}" posted successfully!`);
+            setIsUploadModalOpen(false);
+            setFormTitle("");
+            setFormUnitName("");
+            setFormDescription("");
+            setFormVideoUrl("");
+            setSelectedFile(null);
+            loadData(true);
+
+            setTimeout(() => setSuccessMsg(null), 5000);
+        } catch (err: any) {
+            alert(err.message || "Failed to post material");
+        } finally {
+            setSubmitting(false);
+        }
+    };
+
+    // Delete Material
+    const handleDeleteMaterial = async (id: string, title: string) => {
+        if (!confirm(`Are you sure you want to remove "${title}"?`)) return;
+
+        try {
+            const res = await fetchApi(`/teacher/curriculum/materials/${id}`, {
+                method: "DELETE"
+            });
+            if (res.ok) {
+                setMaterials(prev => prev.filter(m => m.id !== id));
+            } else {
+                throw new Error("Failed to delete material");
+            }
+        } catch (err: any) {
+            alert(err.message || "Failed to delete material");
+        }
+    };
+
+    // Filtered Materials
+    const filteredMaterials = useMemo(() => {
+        return materials.filter(item => {
+            const q = searchQuery.toLowerCase().trim();
+            const matchesQuery = !q || (
+                item.title.toLowerCase().includes(q) ||
+                (item.description && item.description.toLowerCase().includes(q)) ||
+                (item.unitName && item.unitName.toLowerCase().includes(q)) ||
+                (item.fileName && item.fileName.toLowerCase().includes(q)) ||
+                (item.subjectName && item.subjectName.toLowerCase().includes(q))
+            );
+
+            const matchesType = typeFilter === "ALL" || item.materialType === typeFilter;
+            const matchesClass = selectedAssignmentId === "ALL" || item.teachingAssignmentId === selectedAssignmentId;
+
+            return matchesQuery && matchesType && matchesClass;
         });
-        return matchesUnit || matchesTopics;
-    });
+    }, [materials, searchQuery, typeFilter, selectedAssignmentId]);
+
+    // KPI Metrics
+    const totalMaterials = materials.length;
+    const documentCount = materials.filter(m => m.materialType === "DOCUMENT").length;
+    const videoCount = materials.filter(m => m.materialType === "VIDEO").length;
+    const uniqueClasses = new Set(materials.map(m => m.teachingAssignmentId).filter(Boolean)).size;
+
+    // Helper for badge color based on file format
+    const getBadgeInfo = (item: MaterialItem) => {
+        if (item.materialType === "VIDEO") {
+            return {
+                label: "Video Tutorial",
+                icon: Video,
+                className: "bg-indigo-50 text-indigo-700 border-indigo-200"
+            };
+        }
+        switch (item.fileType) {
+            case "PDF":
+                return {
+                    label: "PDF Document",
+                    icon: FileText,
+                    className: "bg-rose-50 text-rose-700 border-rose-200"
+                };
+            case "WORD":
+                return {
+                    label: "Word Document",
+                    icon: FileText,
+                    className: "bg-blue-50 text-blue-700 border-blue-200"
+                };
+            case "POWERPOINT":
+                return {
+                    label: "PowerPoint Presentation",
+                    icon: FileSpreadsheet,
+                    className: "bg-amber-50 text-amber-700 border-amber-200"
+                };
+            default:
+                return {
+                    label: "Course Document",
+                    icon: File,
+                    className: "bg-slate-50 text-slate-700 border-slate-200"
+                };
+        }
+    };
 
     return (
-        <div className="w-full max-w-7xl mx-auto space-y-6 text-gray-900 pb-16">
-            
+        <div className="w-full max-w-7xl mx-auto space-y-6 text-gray-800 pb-16 font-sans">
             {/* Header */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div>
-                    <h1 className="text-2xl font-extrabold tracking-tight text-gray-900">Lesson & Curriculum Management</h1>
-                    <p className="text-xs font-medium text-gray-500 mt-0.5">
-                        View official curriculum, record lesson progress, track syllabus completion, and log learning difficulties.
-                    </p>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200/80 pb-4">
+                <div className="flex items-center gap-2.5">
+                    <div className="w-9 h-9 rounded-lg bg-blue-50 text-[#4085b3] flex items-center justify-center shrink-0">
+                        <BookOpen className="w-5 h-5" />
+                    </div>
+                    <div>
+                        <h1 className="text-base font-bold text-slate-900 leading-tight">Learning Resources</h1>
+                    </div>
                 </div>
 
-                <div className="flex items-center space-x-2">
+                <div className="flex items-center gap-2">
                     <button
-                        onClick={() => setShowLogModal(true)}
-                        className="px-4 py-2.5 bg-[#4085b3] hover:bg-[#356e94] text-white rounded-xl text-xs font-bold transition-colors flex items-center space-x-2 shadow-2xs cursor-pointer"
+                        type="button"
+                        onClick={() => setIsUploadModalOpen(true)}
+                        className="px-3.5 py-2 rounded-lg bg-[#4085b3] hover:bg-[#32698e] text-white text-xs font-semibold flex items-center gap-1.5 transition-all duration-150 cursor-pointer shadow-2xs"
                     >
-                        <Plus className="w-4 h-4" />
-                        <span>Log Lesson Progress</span>
+                        <Upload className="w-3.5 h-3.5" />
+                        <span>Post Material</span>
+                    </button>
+
+                    <button
+                        type="button"
+                        onClick={() => loadData(true)}
+                        className="px-3 py-2 rounded-lg border border-slate-200 bg-white hover:bg-[#4085b3] hover:text-white hover:border-[#4085b3] text-slate-700 text-xs font-semibold flex items-center gap-1.5 transition-all duration-150 cursor-pointer"
+                        title="Reload materials"
+                    >
+                        <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? "animate-spin" : ""}`} />
+                        <span>Refresh</span>
                     </button>
                 </div>
             </div>
 
-            {/* Navigation Tabs for Domain 5 */}
-            <div className="flex border-b border-gray-200 space-x-2 text-xs font-bold bg-white p-2 rounded-2xl border border-gray-100 shadow-2xs overflow-x-auto">
-                <button
-                    onClick={() => setActiveTab("view")}
-                    className={`px-4 py-2.5 rounded-xl transition-all flex items-center space-x-2 whitespace-nowrap ${
-                        activeTab === "view" ? "bg-[#4085b3] text-white shadow-2xs" : "text-gray-600 hover:bg-gray-50"
-                    }`}
-                >
-                    <BookOpen className="w-4 h-4" />
-                    <span>1. View Curriculum Syllabus</span>
-                </button>
-
-                <button
-                    onClick={() => setActiveTab("progress")}
-                    className={`px-4 py-2.5 rounded-xl transition-all flex items-center space-x-2 whitespace-nowrap ${
-                        activeTab === "progress" ? "bg-[#4085b3] text-white shadow-2xs" : "text-gray-600 hover:bg-gray-50"
-                    }`}
-                >
-                    <TrendingUp className="w-4 h-4" />
-                    <span>2. Track Curriculum Progress ({overallProgress}%)</span>
-                </button>
-
-                <button
-                    onClick={() => setActiveTab("log")}
-                    className={`px-4 py-2.5 rounded-xl transition-all flex items-center space-x-2 whitespace-nowrap ${
-                        activeTab === "log" ? "bg-[#4085b3] text-white shadow-2xs" : "text-gray-600 hover:bg-gray-50"
-                    }`}
-                >
-                    <FileText className="w-4 h-4" />
-                    <span>3. Record Lesson Logs ({lessonLogs.length})</span>
-                </button>
-
-                <button
-                    onClick={() => setActiveTab("difficulties")}
-                    className={`px-4 py-2.5 rounded-xl transition-all flex items-center space-x-2 whitespace-nowrap ${
-                        activeTab === "difficulties" ? "bg-[#4085b3] text-white shadow-2xs" : "text-gray-600 hover:bg-gray-50"
-                    }`}
-                >
-                    <AlertCircle className="w-4 h-4 text-amber-300" />
-                    <span>4. Learning Difficulties ({difficulties.length})</span>
-                </button>
-
-                <button
-                    onClick={() => setActiveTab("notes")}
-                    className={`px-4 py-2.5 rounded-xl transition-all flex items-center space-x-2 whitespace-nowrap ${
-                        activeTab === "notes" ? "bg-[#4085b3] text-white shadow-2xs" : "text-gray-600 hover:bg-gray-50"
-                    }`}
-                >
-                    <MessageSquare className="w-4 h-4" />
-                    <span>5. Teaching Notes ({notes.length})</span>
-                </button>
-            </div>
-
-            {msg && (
-                <div className={`p-4 rounded-xl border text-sm font-medium flex items-center space-x-2 ${
-                    msg.type === "success" 
-                        ? "bg-emerald-50 border-emerald-200 text-emerald-800" 
-                        : "bg-red-50 border-red-200 text-red-800"
-                }`}>
-                    <CheckCircle2 className="w-5 h-5 text-emerald-600" />
-                    <span>{msg.text}</span>
+            {/* Success Notification */}
+            {successMsg && (
+                <div className="p-3.5 rounded-xl bg-blue-50 border border-blue-200 text-[#4085b3] flex items-center justify-between text-xs shadow-2xs animate-in fade-in">
+                    <div className="flex items-center gap-2">
+                        <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600" />
+                        <span className="font-semibold">{successMsg}</span>
+                    </div>
+                    <button onClick={() => setSuccessMsg(null)} className="text-slate-400 hover:text-slate-600 cursor-pointer">
+                        <X className="w-3.5 h-3.5" />
+                    </button>
                 </div>
             )}
 
-            {/* TAB 1: VIEW CURRICULUM SYLLABUS & UNITS */}
-            {activeTab === "view" && (
-                <div className="space-y-6">
-                    {/* 1. Class & Subject Switcher & Metadata Card */}
-                    <Card className="bg-white border border-gray-200 shadow-2xs rounded-2xl overflow-hidden">
-                        <div className="bg-white text-gray-900 p-6">
-                            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+            {/* Top 4 KPI Cards: Left-to-right clean blue hover fill matching results page */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                {/* 1. Total Materials */}
+                <div className="relative overflow-hidden border border-slate-200 bg-white rounded-lg p-4 flex items-center justify-between group cursor-pointer shadow-2xs hover:border-[#4085b3] transition-all duration-300">
+                    <span className="absolute inset-0 bg-[#4085b3] origin-left scale-x-0 group-hover:scale-x-100 transition-transform duration-300 ease-out pointer-events-none" />
+                    <div className="relative z-10">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 group-hover:text-blue-100 transition-colors duration-300 block mb-1">
+                            Total Materials
+                        </span>
+                        <span className="text-2xl font-bold text-slate-900 group-hover:text-white transition-colors duration-300 tabular-nums">
+                            {totalMaterials}
+                        </span>
+                    </div>
+                    <BookOpen className="relative z-10 w-5 h-5 text-slate-400 group-hover:text-white transition-colors duration-300 shrink-0" />
+                </div>
+
+                {/* 2. Documents */}
+                <div className="relative overflow-hidden border border-slate-200 bg-white rounded-lg p-4 flex items-center justify-between group cursor-pointer shadow-2xs hover:border-[#4085b3] transition-all duration-300">
+                    <span className="absolute inset-0 bg-[#4085b3] origin-left scale-x-0 group-hover:scale-x-100 transition-transform duration-300 ease-out pointer-events-none" />
+                    <div className="relative z-10">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 group-hover:text-blue-100 transition-colors duration-300 block mb-1">
+                            Documents (Word/PDF/PPT)
+                        </span>
+                        <span className="text-2xl font-bold text-slate-900 group-hover:text-white transition-colors duration-300 tabular-nums">
+                            {documentCount}
+                        </span>
+                    </div>
+                    <FileText className="relative z-10 w-5 h-5 text-slate-400 group-hover:text-white transition-colors duration-300 shrink-0" />
+                </div>
+
+                {/* 3. Video Tutorials */}
+                <div className="relative overflow-hidden border border-slate-200 bg-white rounded-lg p-4 flex items-center justify-between group cursor-pointer shadow-2xs hover:border-[#4085b3] transition-all duration-300">
+                    <span className="absolute inset-0 bg-[#4085b3] origin-left scale-x-0 group-hover:scale-x-100 transition-transform duration-300 ease-out pointer-events-none" />
+                    <div className="relative z-10">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 group-hover:text-blue-100 transition-colors duration-300 block mb-1">
+                            Video Tutorials
+                        </span>
+                        <span className="text-2xl font-bold text-slate-900 group-hover:text-white transition-colors duration-300 tabular-nums">
+                            {videoCount}
+                        </span>
+                    </div>
+                    <Video className="relative z-10 w-5 h-5 text-slate-400 group-hover:text-white transition-colors duration-300 shrink-0" />
+                </div>
+
+                {/* 4. Active Classes Covered */}
+                <div className="relative overflow-hidden border border-slate-200 bg-white rounded-lg p-4 flex items-center justify-between group cursor-pointer shadow-2xs hover:border-[#4085b3] transition-all duration-300">
+                    <span className="absolute inset-0 bg-[#4085b3] origin-left scale-x-0 group-hover:scale-x-100 transition-transform duration-300 ease-out pointer-events-none" />
+                    <div className="relative z-10">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 group-hover:text-blue-100 transition-colors duration-300 block mb-1">
+                            Classes Covered
+                        </span>
+                        <span className="text-2xl font-bold text-slate-900 group-hover:text-white transition-colors duration-300 tabular-nums">
+                            {uniqueClasses || classes.length}
+                        </span>
+                    </div>
+                    <Users className="relative z-10 w-5 h-5 text-slate-400 group-hover:text-white transition-colors duration-300 shrink-0" />
+                </div>
+            </div>
+
+            {/* Filter Bar */}
+            <div className="p-3.5 rounded-xl border border-slate-200 bg-white shadow-2xs flex flex-col md:flex-row items-center justify-between gap-3 text-xs">
+                {/* Search */}
+                <div className="relative flex-1 w-full md:max-w-md">
+                    <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+                    <input
+                        type="text"
+                        placeholder="Search material title, unit, or file name..."
+                        value={searchQuery}
+                        onChange={e => setSearchQuery(e.target.value)}
+                        className="w-full pl-9 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs outline-none focus:bg-white focus:ring-1 focus:ring-[#4085b3]"
+                    />
+                    {searchQuery && (
+                        <button onClick={() => setSearchQuery("")} className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600">
+                            <X className="w-3.5 h-3.5" />
+                        </button>
+                    )}
+                </div>
+
+                {/* Type Filter Buttons */}
+                <div className="flex items-center gap-1.5 self-start md:self-auto">
+                    <button
+                        type="button"
+                        onClick={() => setTypeFilter("ALL")}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                            typeFilter === "ALL"
+                                ? "bg-[#4085b3] text-white shadow-2xs"
+                                : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                        }`}
+                    >
+                        All
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => setTypeFilter("DOCUMENT")}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 ${
+                            typeFilter === "DOCUMENT"
+                                ? "bg-[#4085b3] text-white shadow-2xs"
+                                : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                        }`}
+                    >
+                        <FileText className="w-3.5 h-3.5" />
+                        <span>Documents</span>
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => setTypeFilter("VIDEO")}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 ${
+                            typeFilter === "VIDEO"
+                                ? "bg-[#4085b3] text-white shadow-2xs"
+                                : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                        }`}
+                    >
+                        <Video className="w-3.5 h-3.5" />
+                        <span>Video Tutorials</span>
+                    </button>
+                </div>
+
+                {/* Assigned Class Selector */}
+                {classes.length > 0 && (
+                    <div className="w-full md:w-auto">
+                        <select
+                            value={selectedAssignmentId}
+                            onChange={e => setSelectedAssignmentId(e.target.value)}
+                            className="w-full md:w-auto px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-medium outline-none focus:ring-1 focus:ring-[#4085b3]"
+                        >
+                            <option value="ALL">All Assigned Classes</option>
+                            {classes.map((cls: any) => {
+                                const id = cls.assignment?.id || cls.id;
+                                const grade = cls.assignment?.schoolGrade?.grade?.level ? `Grade ${cls.assignment.schoolGrade.grade.level}` : (cls.gradeLevel || "");
+                                const section = cls.assignment?.section?.name || cls.section?.name || "";
+                                const subject = cls.assignment?.subject?.name || cls.subject?.name || "";
+                                return (
+                                    <option key={id} value={id}>
+                                        {grade} {section ? `- Section ${section}` : ""} ({subject})
+                                    </option>
+                                );
+                            })}
+                        </select>
+                    </div>
+                )}
+            </div>
+
+            {/* Materials Grid */}
+            {loading ? (
+                <div className="w-full p-16 text-center text-gray-500 flex flex-col justify-center items-center">
+                    <div className="w-10 h-10 rounded-full border-3 border-[#4085b3]/20 border-t-[#4085b3] animate-spin mb-3"></div>
+                    <p className="text-xs font-semibold text-slate-600">Loading learning materials...</p>
+                </div>
+            ) : filteredMaterials.length === 0 ? (
+                <div className="py-16 text-center bg-white rounded-2xl border border-dashed border-slate-300 p-8 space-y-3">
+                    <div className="w-12 h-12 rounded-2xl bg-blue-50 text-[#4085b3] flex items-center justify-center mx-auto">
+                        <Upload className="w-6 h-6" />
+                    </div>
+                    <div>
+                        <h3 className="text-sm font-bold text-slate-800">No Learning Materials Found</h3>
+                        <p className="text-xs text-slate-400 mt-1 max-w-sm mx-auto">
+                            Post course documents (Word, PDF, PowerPoint) or tutorial videos for your students.
+                        </p>
+                    </div>
+                    <button
+                        type="button"
+                        onClick={() => setIsUploadModalOpen(true)}
+                        className="px-4 py-2 bg-[#4085b3] text-white rounded-lg text-xs font-semibold hover:bg-[#32698e] transition-colors inline-flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                    >
+                        <Plus className="w-4 h-4" />
+                        <span>Post Your First Material</span>
+                    </button>
+                </div>
+            ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {filteredMaterials.map(item => {
+                        const badge = getBadgeInfo(item);
+                        const BadgeIcon = badge.icon;
+                        const isVideo = item.materialType === "VIDEO";
+
+                        return (
+                            <div
+                                key={item.id}
+                                className="bg-white border border-slate-200 rounded-xl p-4 flex flex-col justify-between hover:border-[#4085b3] hover:shadow-xs transition-all duration-200 group"
+                            >
                                 <div className="space-y-3">
-                                    <div className="flex flex-wrap items-center gap-2">
-                                        <span className="px-3 py-1 bg-blue-50 rounded-full text-[11px] font-bold tracking-wide uppercase text-[#4085b3] border border-blue-200/60">
-                                            National Curriculum Syllabus
+                                    {/* Top Row: Badge & Date */}
+                                    <div className="flex items-center justify-between gap-2">
+                                        <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold border flex items-center gap-1 ${badge.className}`}>
+                                            <BadgeIcon className="w-3 h-3" />
+                                            <span>{badge.label}</span>
                                         </span>
-                                        {subjectInfo?.academicYear && (
-                                            <span className="px-2.5 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full text-[11px] font-bold">
-                                                Academic Year {subjectInfo.academicYear}
-                                            </span>
+                                        <span className="text-[11px] text-slate-400">
+                                            {new Date(item.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                                        </span>
+                                    </div>
+
+                                    {/* Title & Description */}
+                                    <div>
+                                        <h3 className="text-sm font-bold text-slate-900 group-hover:text-[#4085b3] transition-colors line-clamp-1">
+                                            {item.title}
+                                        </h3>
+                                        {item.unitName && (
+                                            <p className="text-[11px] font-semibold text-[#4085b3] mt-0.5">
+                                                Unit / Topic: {item.unitName}
+                                            </p>
                                         )}
-                                        {subjectInfo?.weeklyPeriods != null && (
-                                            <span className="px-2.5 py-1 bg-purple-50 text-purple-700 border border-purple-200 rounded-full text-[11px] font-bold">
-                                                {subjectInfo.weeklyPeriods} Periods / Week
-                                            </span>
+                                        {item.description && (
+                                            <p className="text-xs text-slate-500 mt-1 line-clamp-2 leading-relaxed">
+                                                {item.description}
+                                            </p>
                                         )}
                                     </div>
-                                    <h2 className="text-2xl lg:text-3xl font-black tracking-tight text-gray-900 flex items-center gap-3">
-                                        <span>{subjectInfo?.name || (classes.length > 0 ? "Select an assigned class" : "No Class Assigned")}</span>
-                                        {subjectInfo?.gradeLevel && (
-                                            <span className="text-gray-500 text-lg font-medium">
-                                                ({subjectInfo.gradeLevel}{subjectInfo.section ? ` - Section ${subjectInfo.section}` : ""})
-                                            </span>
-                                        )}
-                                    </h2>
-                                    <p className="text-xs text-gray-500 max-w-2xl leading-relaxed">
-                                        Official Ministry of Education curriculum outline, competency standards, unit breakdowns, and recommended teaching resources.
-                                    </p>
+
+                                    {/* Class Tag */}
+                                    {(item.gradeName || item.subjectName) && (
+                                        <div className="p-2 bg-slate-50 rounded-lg text-[11px] font-medium text-slate-600 flex items-center justify-between">
+                                            <span>{item.gradeName} {item.sectionName ? `• Sec ${item.sectionName}` : ""}</span>
+                                            <span className="font-semibold text-slate-800">{item.subjectName}</span>
+                                        </div>
+                                    )}
+
+                                    {/* File Info */}
+                                    <div className="flex items-center justify-between text-[11px] text-slate-400 border-t border-slate-100 pt-2.5">
+                                        <span className="truncate max-w-[180px] font-medium">{item.fileName}</span>
+                                        {item.fileSize && <span>{formatBytes(item.fileSize)}</span>}
+                                    </div>
                                 </div>
 
-                                {/* Class Assignment Switcher */}
-                                {classes.length > 0 && (
-                                    <div className="bg-gray-50/80 p-4 rounded-2xl border border-gray-200 space-y-2 lg:min-w-[290px] shadow-2xs">
-                                        <label className="text-[11px] font-bold text-gray-700 uppercase tracking-wider block">
-                                            Select Teaching Assignment:
-                                        </label>
-                                        <select
-                                            value={selectedAssignmentId}
-                                            onChange={(e) => handleSwitchAssignment(e.target.value)}
-                                            className="w-full bg-white text-gray-900 border border-gray-300 rounded-xl px-3 py-2 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-[#4085b3] transition-all cursor-pointer shadow-2xs"
+                                {/* Actions Row */}
+                                <div className="flex items-center justify-between gap-2 border-t border-slate-100 pt-3 mt-3">
+                                    {isVideo ? (
+                                        <button
+                                            type="button"
+                                            onClick={() => setActiveVideoModal(item)}
+                                            className="px-3 py-1.5 rounded-lg bg-[#4085b3] hover:bg-[#32698e] text-white text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
                                         >
-                                            {classes.map((c, i) => {
-                                                const a = c.assignment || c;
-                                                return (
-                                                    <option key={a.id || i} value={a.id} className="bg-white text-gray-900">
-                                                        Grade {a.schoolGrade?.grade?.level || a.schoolGrade?.grade?.name || ""}{a.section?.name ? `-${a.section.name}` : ""} • {a.subject?.name || "Subject"}
-                                                    </option>
-                                                );
-                                            })}
-                                        </select>
-                                        <p className="text-[10px] text-gray-400 font-medium">
-                                            Switch between your assigned classes to view their respective syllabus.
-                                        </p>
-                                    </div>
-                                )}
-                            </div>
+                                            <Play className="w-3.5 h-3.5" />
+                                            <span>Watch Tutorial</span>
+                                        </button>
+                                    ) : (
+                                        <a
+                                            href={item.fileUrl}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-[#4085b3] hover:text-white text-slate-700 text-xs font-semibold flex items-center gap-1.5 transition-colors"
+                                        >
+                                            <Download className="w-3.5 h-3.5" />
+                                            <span>Open / Download</span>
+                                        </a>
+                                    )}
 
-                            {/* Curriculum Key Metrics Bar */}
-                            <div className="mt-6 pt-6 border-t border-gray-100 grid grid-cols-2 sm:grid-cols-4 gap-4">
-                                <div className="bg-gray-50 rounded-xl p-3.5 border border-gray-100 shadow-2xs space-y-1">
-                                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Total Units</span>
-                                    <span className="text-lg font-black text-gray-900">{curriculumData?.totalUnitsCount ?? units.length} Units</span>
-                                </div>
-                                <div className="bg-gray-50 rounded-xl p-3.5 border border-gray-100 shadow-2xs space-y-1">
-                                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Topics Syllabus</span>
-                                    <span className="text-lg font-black text-gray-900">
-                                        {curriculumData?.topicsCompletedCount ?? 0} / {curriculumData?.totalTopicsCount ?? 0} Covered
-                                    </span>
-                                </div>
-                                <div className="bg-gray-50 rounded-xl p-3.5 border border-gray-100 shadow-2xs space-y-1">
-                                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Planned Hours</span>
-                                    <span className="text-lg font-black text-gray-900">{curriculumData?.totalPlannedHours ?? 0} Periods</span>
-                                </div>
-                                <div className="bg-gray-50 rounded-xl p-3.5 border border-gray-100 shadow-2xs space-y-1">
-                                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Overall Progress</span>
-                                    <span className="text-lg font-black text-[#4085b3]">{overallProgress}% Completed</span>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Subject General Competencies (Collapsible) */}
-                        {subjectInfo?.generalCompetencies && subjectInfo.generalCompetencies.length > 0 && (
-                            <div className="bg-blue-50/60 border-t border-blue-100 p-4">
-                                <div className="flex items-center justify-between">
                                     <button
-                                        onClick={() => setShowCompetencies(!showCompetencies)}
-                                        className="flex items-center space-x-2 text-xs font-bold text-blue-900 hover:text-blue-700 transition-colors"
+                                        type="button"
+                                        onClick={() => handleDeleteMaterial(item.id, item.title)}
+                                        className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+                                        title="Delete material"
                                     >
-                                        <Compass className="w-4 h-4 text-[#4085b3]" />
-                                        <span>Subject National Competency Standards & Expected Outcomes</span>
-                                        {showCompetencies ? <ChevronUp className="w-4 h-4 text-blue-600" /> : <ChevronDown className="w-4 h-4 text-blue-600" />}
+                                        <Trash2 className="w-4 h-4" />
                                     </button>
-                                    <span className="text-[10px] font-bold text-blue-600 uppercase bg-blue-100/70 px-2.5 py-0.5 rounded-full">
-                                        MoE Secondary Education Framework
-                                    </span>
                                 </div>
+                            </div>
+                        );
+                    })}
+                </div>
+            )}
 
-                                {showCompetencies && (
-                                    <div className="mt-3 grid grid-cols-1 md:grid-cols-3 gap-3 pt-2">
-                                        {subjectInfo.generalCompetencies.map((comp: string, i: number) => (
-                                            <div key={i} className="p-3 bg-white rounded-xl border border-blue-100 shadow-2xs flex items-start space-x-2">
-                                                <Target className="w-4 h-4 text-[#4085b3] shrink-0 mt-0.5" />
-                                                <p className="text-[11px] text-gray-700 leading-snug">{comp}</p>
-                                            </div>
-                                        ))}
-                                    </div>
+            {/* Video Player Modal */}
+            {activeVideoModal && (
+                <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in">
+                    <div className="bg-white rounded-2xl w-full max-w-3xl overflow-hidden shadow-2xl border border-slate-200">
+                        <div className="p-4 border-b border-slate-200 flex items-center justify-between bg-slate-50">
+                            <div>
+                                <h3 className="text-sm font-bold text-slate-900">{activeVideoModal.title}</h3>
+                                {activeVideoModal.unitName && (
+                                    <p className="text-xs text-[#4085b3] font-medium">{activeVideoModal.unitName}</p>
                                 )}
                             </div>
-                        )}
-                    </Card>
-
-                    {/* 2. Search, Status Filter & Controls Bar */}
-                    <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-xs flex flex-col md:flex-row items-center justify-between gap-4">
-                        {/* Search Input */}
-                        <div className="relative w-full md:w-80">
-                            <Search className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-                            <input
-                                type="text"
-                                placeholder="Search units, topics, or concepts..."
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                                className="w-full pl-9 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#4085b3] transition-all"
-                            />
-                            {searchQuery && (
-                                <button
-                                    onClick={() => setSearchQuery("")}
-                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                                >
-                                    <X className="w-3.5 h-3.5" />
-                                </button>
+                            <button
+                                onClick={() => setActiveVideoModal(null)}
+                                className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg"
+                            >
+                                <X className="w-4 h-4" />
+                            </button>
+                        </div>
+                        <div className="p-4 bg-black">
+                            {activeVideoModal.videoUrl && (activeVideoModal.videoUrl.includes("youtube.com") || activeVideoModal.videoUrl.includes("youtu.be")) ? (
+                                <iframe
+                                    src={formatVideoEmbedUrl(activeVideoModal.videoUrl)}
+                                    className="w-full aspect-video rounded-lg"
+                                    allowFullScreen
+                                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                    title={activeVideoModal.title}
+                                />
+                            ) : (
+                                <video
+                                    src={activeVideoModal.videoUrl || activeVideoModal.fileUrl}
+                                    controls
+                                    className="w-full aspect-video rounded-lg bg-black"
+                                    autoPlay
+                                />
                             )}
                         </div>
-
-                        {/* Status Filter Tabs */}
-                        <div className="flex items-center space-x-1.5 overflow-x-auto w-full md:w-auto">
-                            {(["ALL", "IN_PROGRESS", "COMPLETED", "UPCOMING"] as const).map((status) => (
-                                <button
-                                    key={status}
-                                    onClick={() => setStatusFilter(status)}
-                                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${
-                                        statusFilter === status
-                                            ? "bg-[#4085b3] text-white shadow-2xs"
-                                            : "text-gray-600 hover:bg-gray-100 bg-gray-50 border border-gray-100"
-                                    }`}
-                                >
-                                    {status === "ALL" && "All Statuses"}
-                                    {status === "IN_PROGRESS" && "In Progress"}
-                                    {status === "COMPLETED" && "Completed"}
-                                    {status === "UPCOMING" && "Upcoming"}
-                                </button>
-                            ))}
-                        </div>
-
-                        {/* Expand / Collapse All */}
-                        <div className="flex items-center space-x-2 shrink-0">
+                        <div className="p-4 flex items-center justify-between text-xs text-slate-500">
+                            <span>{activeVideoModal.gradeName} {activeVideoModal.sectionName ? `• Section ${activeVideoModal.sectionName}` : ""} ({activeVideoModal.subjectName})</span>
                             <button
-                                onClick={() => toggleAllUnits(true)}
-                                className="px-2.5 py-1.5 bg-gray-50 hover:bg-gray-100 text-gray-600 rounded-lg text-[11px] font-bold border border-gray-200 transition-colors"
+                                onClick={() => setActiveVideoModal(null)}
+                                className="px-3 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-800 rounded-lg font-semibold"
                             >
-                                Expand All
-                            </button>
-                            <button
-                                onClick={() => toggleAllUnits(false)}
-                                className="px-2.5 py-1.5 bg-gray-50 hover:bg-gray-100 text-gray-600 rounded-lg text-[11px] font-bold border border-gray-200 transition-colors"
-                            >
-                                Collapse All
+                                Close
                             </button>
                         </div>
                     </div>
-
-                    {/* 3. Detailed Curriculum Units & Topics Accordion List */}
-                    {loadingCurriculum ? (
-                        <div className="p-12 text-center text-gray-400 bg-white rounded-2xl border border-gray-100 space-y-3">
-                            <Loader2 className="w-8 h-8 mx-auto animate-spin text-[#4085b3]" />
-                            <p className="text-xs font-semibold text-gray-600">Loading syllabus for selected class...</p>
-                        </div>
-                    ) : filteredUnits.length === 0 ? (
-                        <div className="p-12 text-center text-gray-400 bg-white rounded-2xl border border-gray-100 space-y-3">
-                            <BookOpen className="w-10 h-10 mx-auto text-gray-300" />
-                            <p className="text-sm font-bold text-gray-700">
-                                {units.length === 0 ? "No curriculum units uploaded yet" : "No curriculum units match your criteria"}
-                            </p>
-                            <p className="text-xs text-gray-500">
-                                {units.length === 0
-                                    ? "No syllabus breakdown or units have been configured for this subject yet."
-                                    : "Try adjusting your search terms or filter selection."}
-                            </p>
-                        </div>
-                    ) : (
-                        <div className="space-y-4">
-                            {filteredUnits.map((unit: any) => {
-                                const isExpanded = !!expandedUnits[unit.id];
-                                const topicsList = unit.topics || [];
-                                const resourcesList = unit.resources || [];
-                                const objectivesList = unit.objectives || [];
-
-                                return (
-                                    <div
-                                        key={unit.id}
-                                        className="bg-white rounded-2xl border border-gray-200 shadow-2xs overflow-hidden transition-all duration-200 hover:border-gray-300"
-                                    >
-                                        {/* Unit Header Bar (Clickable) */}
-                                        <div
-                                            onClick={() => toggleUnit(unit.id)}
-                                            className="p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 cursor-pointer hover:bg-gray-50/60 transition-colors select-none"
-                                        >
-                                            <div className="flex items-start space-x-3.5">
-                                                <div className="p-2.5 rounded-xl bg-blue-50 text-[#4085b3] mt-0.5">
-                                                    <BookOpen className="w-5 h-5" />
-                                                </div>
-                                                <div className="space-y-1">
-                                                    <div className="flex flex-wrap items-center gap-2">
-                                                        <span className="font-extrabold text-xs text-[#4085b3] uppercase tracking-wide">
-                                                            {unit.unitNumber}
-                                                        </span>
-                                                        <span className={`px-2.5 py-0.5 rounded-full font-bold text-[10px] uppercase tracking-wider ${
-                                                            unit.status === "COMPLETED"
-                                                                ? "bg-emerald-100 text-emerald-800 border border-emerald-200"
-                                                                : unit.status === "IN_PROGRESS"
-                                                                ? "bg-blue-100 text-[#4085b3] border border-blue-200"
-                                                                : "bg-gray-100 text-gray-600 border border-gray-200"
-                                                        }`}>
-                                                            {unit.status.replace("_", " ")}
-                                                        </span>
-                                                    </div>
-                                                    <h3 className="text-base font-extrabold text-gray-900 leading-snug">
-                                                        {unit.title}
-                                                    </h3>
-                                                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-gray-500 font-medium">
-                                                        <span>
-                                                            Topics: <strong className="text-gray-900">{unit.completedTopicsCount || 0} / {unit.topicsCount || topicsList.length}</strong>
-                                                        </span>
-                                                        <span>•</span>
-                                                        <span>
-                                                            Planned: <strong className="text-gray-900">{unit.plannedHours || 0} hrs</strong>
-                                                        </span>
-                                                        <span>•</span>
-                                                        <span>
-                                                            Delivered: <strong className="text-gray-900">{unit.actualHours || 0} hrs</strong>
-                                                        </span>
-                                                        {resourcesList.length > 0 && (
-                                                            <>
-                                                                <span>•</span>
-                                                                <span className="text-[#4085b3] font-semibold flex items-center gap-1">
-                                                                    <BookMarked className="w-3 h-3" /> {resourcesList.length} Resources
-                                                                </span>
-                                                            </>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            {/* Progress bar & Toggle */}
-                                            <div className="flex items-center space-x-6 md:self-center">
-                                                <div className="w-36 text-right space-y-1.5 hidden sm:block">
-                                                    <div className="flex justify-between text-xs font-bold">
-                                                        <span className="text-gray-500 text-[10px] uppercase">Unit Progress</span>
-                                                        <span className="text-[#4085b3]">{unit.progressPercent}%</span>
-                                                    </div>
-                                                    <div className="w-full bg-gray-100 h-2 rounded-full overflow-hidden">
-                                                        <div
-                                                            className={`h-full rounded-full transition-all duration-500 ${
-                                                                unit.progressPercent === 100 ? "bg-emerald-500" : "bg-[#4085b3]"
-                                                            }`}
-                                                            style={{ width: `${unit.progressPercent}%` }}
-                                                        />
-                                                    </div>
-                                                </div>
-
-                                                <div className="p-2 rounded-xl bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors">
-                                                    {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        {/* Expanded Unit Content */}
-                                        {isExpanded && (
-                                            <div className="border-t border-gray-100 p-5 bg-gray-50/40 space-y-6">
-                                                
-                                                {/* Unit Learning Objectives */}
-                                                {objectivesList.length > 0 && (
-                                                    <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-2xs space-y-2.5">
-                                                        <h4 className="text-xs font-extrabold text-gray-900 uppercase tracking-wider flex items-center space-x-2">
-                                                            <Target className="w-4 h-4 text-[#4085b3]" />
-                                                            <span>Unit Learning Objectives & Target Competencies</span>
-                                                        </h4>
-                                                        <ul className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs text-gray-700">
-                                                            {objectivesList.map((obj: string, oIdx: number) => (
-                                                                <li key={oIdx} className="flex items-start space-x-2 bg-gray-50/70 p-2.5 rounded-lg border border-gray-100">
-                                                                    <span className="w-1.5 h-1.5 rounded-full bg-[#4085b3] mt-1.5 shrink-0" />
-                                                                    <span className="text-[11px] leading-relaxed">{obj}</span>
-                                                                </li>
-                                                            ))}
-                                                        </ul>
-                                                    </div>
-                                                )}
-
-                                                {/* Detailed Topics List */}
-                                                <div className="space-y-3">
-                                                    <div className="flex items-center justify-between">
-                                                        <h4 className="text-xs font-extrabold text-gray-900 uppercase tracking-wider flex items-center space-x-2">
-                                                            <Layers className="w-4 h-4 text-[#4085b3]" />
-                                                            <span>Curriculum Topics & Sequence Breakdown ({topicsList.length})</span>
-                                                        </h4>
-                                                        <span className="text-[11px] text-gray-400 font-medium">
-                                                            Click a topic to view details or log progress
-                                                        </span>
-                                                    </div>
-
-                                                    <div className="space-y-2">
-                                                        {topicsList.map((topicItem: any, tIdx: number) => {
-                                                            const isObj = typeof topicItem === "object" && topicItem !== null;
-                                                            const topicTitle = isObj ? (topicItem.title || "") : topicItem;
-                                                            const topicNum = isObj && topicItem.topicNumber ? topicItem.topicNumber : `${tIdx + 1}`;
-                                                            const topicStatus = isObj && topicItem.status ? topicItem.status : (tIdx < (unit.completedTopicsCount || 0) ? "COMPLETED" : "PENDING");
-                                                            const plannedHrs = isObj && topicItem.plannedHours != null ? topicItem.plannedHours : 0;
-                                                            const keyConcepts = isObj ? (topicItem.keyConcepts || "") : "";
-
-                                                            return (
-                                                                <div
-                                                                    key={tIdx}
-                                                                    className="bg-white p-3.5 rounded-xl border border-gray-100 shadow-2xs flex flex-col lg:flex-row lg:items-center justify-between gap-3 hover:border-blue-200 transition-all"
-                                                                >
-                                                                    <div className="flex items-start space-x-3">
-                                                                        <div className="mt-0.5">
-                                                                            {topicStatus === "COMPLETED" ? (
-                                                                                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                                                                            ) : topicStatus === "IN_PROGRESS" ? (
-                                                                                <Clock className="w-4 h-4 text-amber-500 animate-pulse" />
-                                                                            ) : (
-                                                                                <div className="w-4 h-4 rounded-full border-2 border-gray-300" />
-                                                                            )}
-                                                                        </div>
-                                                                        <div className="space-y-0.5">
-                                                                            <div className="flex items-center space-x-2">
-                                                                                <span className="text-[11px] font-bold text-gray-500">
-                                                                                    {topicNum}
-                                                                                </span>
-                                                                                <span className={`text-xs font-bold ${
-                                                                                    topicStatus === "COMPLETED" ? "text-gray-900" : "text-gray-800"
-                                                                                }`}>
-                                                                                    {topicTitle}
-                                                                                </span>
-                                                                                <span className={`px-2 py-0.5 rounded text-[10px] font-extrabold uppercase ${
-                                                                                    topicStatus === "COMPLETED"
-                                                                                        ? "bg-emerald-50 text-emerald-700"
-                                                                                        : topicStatus === "IN_PROGRESS"
-                                                                                        ? "bg-blue-50 text-blue-700"
-                                                                                        : "bg-gray-100 text-gray-500"
-                                                                                }`}>
-                                                                                    {topicStatus}
-                                                                                </span>
-                                                                            </div>
-                                                                            {keyConcepts && (
-                                                                                <p className="text-[11px] text-gray-500 line-clamp-1">
-                                                                                    <strong>Core:</strong> {keyConcepts}
-                                                                                </p>
-                                                                            )}
-                                                                        </div>
-                                                                    </div>
-
-                                                                    {/* Topic Actions & Hours */}
-                                                                    <div className="flex items-center space-x-3 self-end lg:self-center shrink-0">
-                                                                        <span className="text-[11px] font-bold text-gray-400 bg-gray-50 px-2 py-1 rounded-md border border-gray-100">
-                                                                            {plannedHrs} hrs
-                                                                        </span>
-
-                                                                        <button
-                                                                            onClick={() => setSelectedTopicModal({ ...topicItem, unitTitle: unit.title, unitNumber: unit.unitNumber })}
-                                                                            className="px-2.5 py-1 bg-gray-50 hover:bg-gray-100 text-gray-700 rounded-lg text-[11px] font-bold border border-gray-200 flex items-center space-x-1 transition-colors"
-                                                                            title="View full topic breakdown"
-                                                                        >
-                                                                            <Eye className="w-3 h-3 text-[#4085b3]" />
-                                                                            <span>Details</span>
-                                                                        </button>
-
-                                                                        <button
-                                                                            onClick={() => handleOpenQuickLog(unit, topicItem)}
-                                                                            className="px-2.5 py-1 bg-blue-50 hover:bg-blue-100 text-[#4085b3] rounded-lg text-[11px] font-bold border border-blue-200 flex items-center space-x-1 transition-colors"
-                                                                            title="Log lesson progress for this topic"
-                                                                        >
-                                                                            <Plus className="w-3 h-3" />
-                                                                            <span>Log Lesson</span>
-                                                                        </button>
-
-                                                                        <button
-                                                                            onClick={() => handleOpenDifficulty(topicItem)}
-                                                                            className="px-2 py-1 text-amber-700 hover:bg-amber-50 rounded-lg text-[11px] font-bold transition-colors"
-                                                                            title="Log student difficulty on this topic"
-                                                                        >
-                                                                            <AlertCircle className="w-3.5 h-3.5" />
-                                                                        </button>
-                                                                    </div>
-                                                                </div>
-                                                            );
-                                                        })}
-                                                    </div>
-                                                </div>
-
-                                                {/* Attached Curriculum Resources (FR-RESOURCE-001 - 007) */}
-                                                {resourcesList.length > 0 && (
-                                                    <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-2xs space-y-2.5">
-                                                        <h4 className="text-xs font-extrabold text-gray-900 uppercase tracking-wider flex items-center space-x-2">
-                                                            <BookMarked className="w-4 h-4 text-emerald-600" />
-                                                            <span>Official Curriculum Resources & Reference Materials</span>
-                                                        </h4>
-                                                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-                                                            {resourcesList.map((res: any, rIdx: number) => (
-                                                                <div
-                                                                    key={res.id || rIdx}
-                                                                    className="p-3 bg-gray-50/70 hover:bg-blue-50/40 rounded-xl border border-gray-200 transition-colors flex flex-col justify-between space-y-2"
-                                                                >
-                                                                    <div className="space-y-1">
-                                                                        <span className="text-[10px] font-bold uppercase tracking-wider text-[#4085b3]">
-                                                                            {res.type?.replace("_", " ") || "REFERENCE"}
-                                                                        </span>
-                                                                        <h5 className="font-extrabold text-gray-900 text-xs leading-snug">
-                                                                            {res.title}
-                                                                        </h5>
-                                                                        <p className="text-[11px] text-gray-600">
-                                                                            {res.reference}
-                                                                        </p>
-                                                                    </div>
-                                                                    <div className="pt-2 border-t border-gray-200/60 flex justify-between items-center text-[10px] font-bold text-gray-500">
-                                                                        <span>MoE Approved</span>
-                                                                        <a
-                                                                            href={res.url || "#"}
-                                                                            target="_blank"
-                                                                            rel="noreferrer"
-                                                                            className="text-[#4085b3] hover:underline flex items-center gap-1 font-bold"
-                                                                        >
-                                                                            <span>Open</span>
-                                                                            <ExternalLink className="w-2.5 h-2.5" />
-                                                                        </a>
-                                                                    </div>
-                                                                </div>
-                                                            ))}
-                                                        </div>
-                                                    </div>
-                                                )}
-
-                                            </div>
-                                        )}
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    )}
                 </div>
             )}
 
-            {/* TAB 2: TRACK CURRICULUM PROGRESS */}
-            {activeTab === "progress" && (
-                <div className="space-y-6">
-                    <Card>
-                        <CardHeader>
-                            <CardTitle className="text-base font-bold text-gray-900 flex items-center space-x-2">
-                                <TrendingUp className="w-5 h-5 text-[#4085b3]" />
-                                <span>Academic Year Curriculum Progress Summary</span>
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-6 text-xs">
-                            <div className="p-6 bg-blue-50/50 rounded-2xl border border-blue-100 flex flex-col md:flex-row items-center justify-between gap-6">
-                                <div className="space-y-2 text-center md:text-left">
-                                    <span className="px-3 py-1 bg-blue-100 text-[#4085b3] rounded-full font-bold text-xs">
-                                        {overallProgress >= 70 ? "AHEAD OF SCHEDULE" : overallProgress >= 40 ? "ON SCHEDULE" : "PACING IN PROGRESS"}
-                                    </span>
-                                    <h2 className="text-3xl font-black text-blue-950">{overallProgress}% Term Syllabus Completed</h2>
-                                    <p className="text-xs text-blue-800">
-                                        {curriculumData?.topicsCompletedCount ?? 0} out of {curriculumData?.totalTopicsCount ?? 0} core curriculum topics delivered across assigned sections.
-                                    </p>
+            {/* Post Material Modal */}
+            {isUploadModalOpen && (
+                <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in">
+                    <div className="bg-white rounded-2xl w-full max-w-xl overflow-hidden shadow-2xl border border-slate-200">
+                        <div className="p-4 border-b border-slate-200 flex items-center justify-between bg-slate-50">
+                            <div className="flex items-center gap-2">
+                                <div className="w-7 h-7 rounded-lg bg-blue-50 text-[#4085b3] flex items-center justify-center">
+                                    <Upload className="w-4 h-4" />
                                 </div>
-                                <div className="w-24 h-24 rounded-full border-8 border-[#4085b3] flex items-center justify-center font-black text-xl text-[#4085b3] bg-white shadow-2xs">
-                                    {overallProgress}%
-                                </div>
+                                <h3 className="text-sm font-bold text-slate-900">Post Learning Material</h3>
                             </div>
-
-                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                                <div className="p-4 bg-gray-50 rounded-xl border border-gray-100 space-y-1">
-                                    <p className="text-gray-400 font-bold uppercase text-[10px]">Units Completed</p>
-                                    <p className="text-xl font-bold text-gray-900">
-                                        {curriculumData?.unitsCompletedCount ?? 0} / {curriculumData?.totalUnitsCount ?? units.length} Units
-                                    </p>
-                                </div>
-                                <div className="p-4 bg-gray-50 rounded-xl border border-gray-100 space-y-1">
-                                    <p className="text-gray-400 font-bold uppercase text-[10px]">Teaching Hours Delivered</p>
-                                    <p className="text-xl font-bold text-gray-900">
-                                        {curriculumData?.totalDeliveredHours ?? 0} / {curriculumData?.totalPlannedHours ?? 0} Hours
-                                    </p>
-                                </div>
-                                <div className="p-4 bg-gray-50 rounded-xl border border-gray-100 space-y-1">
-                                    <p className="text-gray-400 font-bold uppercase text-[10px]">Pace Indicator</p>
-                                    <p className="text-xl font-bold text-emerald-700">
-                                        {overallProgress >= 70 ? "Ahead of Planned Pace" : overallProgress >= 40 ? "On Target Pace" : "Pacing in Progress"}
-                                    </p>
-                                </div>
-                            </div>
-                        </CardContent>
-                    </Card>
-                </div>
-            )}
-
-            {/* TAB 3: RECORD LESSON LOGS & TOPICS COVERED */}
-            {activeTab === "log" && (
-                <Card>
-                    <CardHeader className="flex flex-row items-center justify-between">
-                        <CardTitle className="text-base font-bold text-gray-900 flex items-center space-x-2">
-                            <FileText className="w-5 h-5 text-[#4085b3]" />
-                            <span>Delivered Lesson Logs & Topics Covered</span>
-                        </CardTitle>
-                        <button
-                            onClick={() => setShowLogModal(true)}
-                            className="px-3.5 py-1.5 bg-[#4085b3] text-white rounded-lg font-bold text-xs hover:bg-[#356e94] transition-colors flex items-center space-x-1"
-                        >
-                            <Plus className="w-4 h-4" />
-                            <span>Log New Lesson</span>
-                        </button>
-                    </CardHeader>
-                    <CardContent>
-                        {lessonLogs.length === 0 ? (
-                            <div className="py-12 text-center text-gray-400 space-y-2">
-                                <Inbox className="w-10 h-10 mx-auto text-gray-300" />
-                                <p className="text-sm font-semibold text-gray-600">No lesson logs recorded yet</p>
-                                <p className="text-xs text-gray-400">Click "Log New Lesson" above to record completed topics and teaching progress.</p>
-                            </div>
-                        ) : (
-                            <div className="space-y-3 text-xs">
-                                {lessonLogs.map((log: any) => (
-                                    <div key={log.id} className="p-4 bg-gray-50 rounded-xl border border-gray-100 flex items-center justify-between">
-                                        <div className="space-y-1">
-                                            <span className="px-2 py-0.5 bg-blue-100 text-[#4085b3] rounded font-bold text-[10px] uppercase">{log.unit}</span>
-                                            <h4 className="font-extrabold text-gray-900 text-sm">{log.topic}</h4>
-                                            <p className="text-[10px] text-gray-500">
-                                                Logged Date: <strong>{log.date}</strong> • Duration: <strong>{log.duration} mins</strong> • Section: <strong>{log.section}</strong>
-                                            </p>
-                                            {log.note && <p className="text-[11px] text-gray-600 italic mt-1">"{log.note}"</p>}
-                                        </div>
-                                        <span className="px-3 py-1 bg-emerald-100 text-emerald-800 rounded-full font-bold text-[11px] flex items-center space-x-1 shrink-0">
-                                            <CheckCircle2 className="w-3.5 h-3.5 mr-1 text-emerald-600" /> Completed
-                                        </span>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-                    </CardContent>
-                </Card>
-            )}
-
-            {/* TAB 4: RECORD LEARNING DIFFICULTIES */}
-            {activeTab === "difficulties" && (
-                <Card>
-                    <CardHeader className="flex flex-row items-center justify-between">
-                        <CardTitle className="text-base font-bold text-gray-900 flex items-center space-x-2">
-                            <AlertCircle className="w-5 h-5 text-amber-500" />
-                            <span>Record Student Learning Difficulties & Remedial Plans</span>
-                        </CardTitle>
-                        <button
-                            onClick={() => setShowDiffModal(true)}
-                            className="px-3.5 py-1.5 bg-amber-600 text-white rounded-lg font-bold text-xs hover:bg-amber-700 transition-colors flex items-center space-x-1"
-                        >
-                            <Plus className="w-4 h-4" />
-                            <span>Log Learning Difficulty</span>
-                        </button>
-                    </CardHeader>
-                    <CardContent>
-                        {difficulties.length === 0 ? (
-                            <p className="text-xs text-gray-400 italic">No student learning difficulties logged yet.</p>
-                        ) : (
-                            <div className="space-y-3 text-xs">
-                                {difficulties.map((diff: any) => (
-                                    <div key={diff.id} className="p-4 bg-amber-50/70 rounded-xl border border-amber-200/80 space-y-2">
-                                        <div className="flex justify-between items-center">
-                                            <span className="font-extrabold text-gray-900 text-sm">{diff.topic}</span>
-                                            <span className="text-[10px] text-amber-800 font-bold">{diff.date}</span>
-                                        </div>
-                                        <p className="text-amber-900 text-xs"><strong>Student Challenge:</strong> {diff.description}</p>
-                                        <div className="p-2.5 bg-white rounded-lg border border-amber-100 text-emerald-900 space-y-0.5">
-                                            <p className="font-bold text-[10px] text-emerald-700 uppercase">Remedial Action Plan:</p>
-                                            <p className="text-xs">{diff.remedial}</p>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-                    </CardContent>
-                </Card>
-            )}
-
-            {/* TAB 5: RECORD TEACHING NOTES & REFLECTION */}
-            {activeTab === "notes" && (
-                <Card>
-                    <CardHeader className="flex flex-row items-center justify-between">
-                        <CardTitle className="text-base font-bold text-gray-900 flex items-center space-x-2">
-                            <MessageSquare className="w-5 h-5 text-[#4085b3]" />
-                            <span>Teaching Notes & Journal Reflections</span>
-                        </CardTitle>
-                        <button
-                            onClick={() => setShowNoteModal(true)}
-                            className="px-3.5 py-1.5 bg-[#4085b3] text-white rounded-lg font-bold text-xs hover:bg-[#356e94] transition-colors flex items-center space-x-1"
-                        >
-                            <Plus className="w-4 h-4" />
-                            <span>Add Reflection Note</span>
-                        </button>
-                    </CardHeader>
-                    <CardContent>
-                        {notes.length === 0 ? (
-                            <p className="text-xs text-gray-400 italic">No teaching notes logged yet.</p>
-                        ) : (
-                            <div className="space-y-3 text-xs">
-                                {notes.map((n: any) => (
-                                    <div key={n.id} className="p-4 bg-gray-50 rounded-xl border border-gray-100 space-y-1">
-                                        <div className="flex justify-between items-center">
-                                            <h4 className="font-extrabold text-gray-900 text-sm">{n.title}</h4>
-                                            <span className="text-[10px] text-gray-400 font-medium">{n.date}</span>
-                                        </div>
-                                        <p className="text-gray-700 leading-relaxed">{n.content}</p>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-                    </CardContent>
-                </Card>
-            )}
-
-            {/* MODAL 1: LOG LESSON PROGRESS */}
-            {showLogModal && (
-                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-                    <div className="bg-white rounded-2xl max-w-md w-full p-6 space-y-4 shadow-xl border border-gray-100">
-                        <div className="flex justify-between items-center border-b border-gray-100 pb-3">
-                            <h3 className="font-extrabold text-gray-900 text-base flex items-center space-x-2">
-                                <FileText className="w-5 h-5 text-[#4085b3]" />
-                                <span>Record Conducted Lesson</span>
-                            </h3>
-                            <button onClick={() => setShowLogModal(false)} className="p-1 text-gray-400 hover:text-gray-600 rounded-lg">
-                                <X className="w-5 h-5" />
+                            <button
+                                onClick={() => setIsUploadModalOpen(false)}
+                                className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg cursor-pointer"
+                            >
+                                <X className="w-4 h-4" />
                             </button>
                         </div>
 
-                        <form onSubmit={handleSaveLessonLog} className="space-y-4 text-xs">
+                        <form onSubmit={handlePostMaterial} className="p-5 space-y-4 text-xs">
+                            {/* Material Type Switcher */}
                             <div>
-                                <label className="block font-bold text-gray-700 mb-1">Assigned Class / Section</label>
+                                <label className="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1.5">
+                                    Material Type
+                                </label>
+                                <div className="grid grid-cols-2 gap-2">
+                                    <button
+                                        type="button"
+                                        onClick={() => setFormMaterialType("DOCUMENT")}
+                                        className={`p-3 rounded-xl border text-center font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${
+                                            formMaterialType === "DOCUMENT"
+                                                ? "border-[#4085b3] bg-blue-50/60 text-[#4085b3]"
+                                                : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+                                        }`}
+                                    >
+                                        <FileText className="w-4 h-4" />
+                                        <span>Document (Word / PDF / PPT)</span>
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setFormMaterialType("VIDEO")}
+                                        className={`p-3 rounded-xl border text-center font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${
+                                            formMaterialType === "VIDEO"
+                                                ? "border-[#4085b3] bg-blue-50/60 text-[#4085b3]"
+                                                : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+                                        }`}
+                                    >
+                                        <Video className="w-4 h-4" />
+                                        <span>Video Tutorial</span>
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* Assigned Class Target */}
+                            <div>
+                                <label className="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1.5">
+                                    Target Class & Subject
+                                </label>
                                 <select
-                                    value={selectedAssignmentId}
-                                    onChange={(e) => setSelectedAssignmentId(e.target.value)}
-                                    className="w-full bg-white border border-gray-200 rounded-xl p-2.5 text-xs outline-none focus:ring-2 focus:ring-[#4085b3]"
+                                    value={formClassId}
+                                    onChange={e => setFormClassId(e.target.value)}
+                                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg font-medium text-slate-800 outline-none focus:bg-white focus:ring-1 focus:ring-[#4085b3]"
                                 >
-                                    {classes.map((c, i) => {
-                                        const a = c.assignment || c;
+                                    {classes.map((cls: any) => {
+                                        const id = cls.assignment?.id || cls.id;
+                                        const grade = cls.assignment?.schoolGrade?.grade?.level ? `Grade ${cls.assignment.schoolGrade.grade.level}` : (cls.gradeLevel || "");
+                                        const section = cls.assignment?.section?.name || cls.section?.name || "";
+                                        const subject = cls.assignment?.subject?.name || cls.subject?.name || "";
                                         return (
-                                            <option key={a.id || i} value={a.id}>
-                                                Grade {a.schoolGrade?.grade?.level}{a.section?.name} - {a.subject?.name}
+                                            <option key={id} value={id}>
+                                                {grade} {section ? `- Section ${section}` : ""} ({subject})
                                             </option>
                                         );
                                     })}
                                 </select>
                             </div>
 
-                            <div>
-                                <label className="block font-bold text-gray-700 mb-1">Syllabus Unit</label>
-                                <input
-                                    type="text"
-                                    placeholder="e.g. Unit 2: Geometry & Analytical Trigonometry"
-                                    value={unitName}
-                                    onChange={(e) => setUnitName(e.target.value)}
-                                    required
-                                    className="w-full bg-white border border-gray-200 rounded-xl p-2.5 text-xs outline-none focus:ring-2 focus:ring-[#4085b3]"
-                                />
+                            {/* Title & Unit */}
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <div>
+                                    <label className="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1.5">
+                                        Material Title *
+                                    </label>
+                                    <input
+                                        type="text"
+                                        placeholder="e.g. Chapter 4 Motion & Energy"
+                                        value={formTitle}
+                                        onChange={e => setFormTitle(e.target.value)}
+                                        required
+                                        className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg font-medium outline-none focus:bg-white focus:ring-1 focus:ring-[#4085b3]"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1.5">
+                                        Unit / Topic (Optional)
+                                    </label>
+                                    <input
+                                        type="text"
+                                        placeholder="e.g. Unit 4: Dynamics"
+                                        value={formUnitName}
+                                        onChange={e => setFormUnitName(e.target.value)}
+                                        className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg font-medium outline-none focus:bg-white focus:ring-1 focus:ring-[#4085b3]"
+                                    />
+                                </div>
                             </div>
 
+                            {/* Description */}
                             <div>
-                                <label className="block font-bold text-gray-700 mb-1">Topic Covered</label>
-                                <input
-                                    type="text"
-                                    placeholder="e.g. Right Triangle Trigonometric Ratios"
-                                    value={topicName}
-                                    onChange={(e) => setTopicName(e.target.value)}
-                                    required
-                                    className="w-full bg-white border border-gray-200 rounded-xl p-2.5 text-xs outline-none focus:ring-2 focus:ring-[#4085b3]"
-                                />
-                            </div>
-
-                            <div>
-                                <label className="block font-bold text-gray-700 mb-1">Teaching Notes / Reflection</label>
+                                <label className="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1.5">
+                                    Instructions or Notes for Students
+                                </label>
                                 <textarea
                                     rows={2}
-                                    placeholder="Classroom notes, homework assigned, or student engagement..."
-                                    value={logNote}
-                                    onChange={(e) => setLogNote(e.target.value)}
-                                    className="w-full bg-white border border-gray-200 rounded-xl p-2.5 text-xs outline-none focus:ring-2 focus:ring-[#4085b3]"
+                                    placeholder="Brief overview or instructions for studying this material..."
+                                    value={formDescription}
+                                    onChange={e => setFormDescription(e.target.value)}
+                                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg font-medium outline-none focus:bg-white focus:ring-1 focus:ring-[#4085b3]"
                                 />
                             </div>
 
-                            <div className="flex justify-end space-x-2 pt-2">
+                            {/* File Upload Zone */}
+                            <div>
+                                <label className="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1.5">
+                                    {formMaterialType === "DOCUMENT" ? "Attach Document File *" : "Upload Video or Enter URL"}
+                                </label>
+                                <div className="p-4 border-2 border-dashed border-slate-300 hover:border-[#4085b3] rounded-xl bg-slate-50 text-center transition-colors">
+                                    <input
+                                        type="file"
+                                        id="material-file-input"
+                                        onChange={handleFileChange}
+                                        accept={formMaterialType === "DOCUMENT" ? ".pdf,.doc,.docx,.ppt,.pptx" : "video/*,.mp4,.webm"}
+                                        className="hidden"
+                                    />
+                                    <label htmlFor="material-file-input" className="cursor-pointer block">
+                                        <Upload className="w-6 h-6 text-[#4085b3] mx-auto mb-1.5" />
+                                        {selectedFile ? (
+                                            <div>
+                                                <p className="font-bold text-slate-900">{selectedFile.name}</p>
+                                                <p className="text-[11px] text-slate-400 mt-0.5">{formatBytes(selectedFile.size)}</p>
+                                            </div>
+                                        ) : (
+                                            <div>
+                                                <p className="font-bold text-slate-800">
+                                                    Click to browse {formMaterialType === "DOCUMENT" ? "Word, PDF, or PowerPoint" : "video file"}
+                                                </p>
+                                                <p className="text-[11px] text-slate-400 mt-0.5">
+                                                    {formMaterialType === "DOCUMENT" ? "Supported: .pdf, .docx, .doc, .pptx, .ppt" : "Supported: .mp4, .webm"}
+                                                </p>
+                                            </div>
+                                        )}
+                                    </label>
+                                </div>
+                            </div>
+
+                            {/* Video URL Alternative for Video Tutorials */}
+                            {formMaterialType === "VIDEO" && (
+                                <div>
+                                    <label className="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1.5">
+                                        Or Video Tutorial Link (YouTube, Vimeo, or Video Stream)
+                                    </label>
+                                    <input
+                                        type="url"
+                                        placeholder="https://www.youtube.com/watch?v=..."
+                                        value={formVideoUrl}
+                                        onChange={e => setFormVideoUrl(e.target.value)}
+                                        className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg font-medium outline-none focus:bg-white focus:ring-1 focus:ring-[#4085b3]"
+                                    />
+                                </div>
+                            )}
+
+                            {/* Modal Footer */}
+                            <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-200">
                                 <button
                                     type="button"
-                                    onClick={() => setShowLogModal(false)}
-                                    className="px-4 py-2 bg-gray-100 text-gray-700 font-bold rounded-xl hover:bg-gray-200"
+                                    onClick={() => setIsUploadModalOpen(false)}
+                                    className="px-4 py-2 border border-slate-200 text-slate-600 rounded-lg font-semibold hover:bg-slate-100 cursor-pointer"
                                 >
                                     Cancel
                                 </button>
                                 <button
                                     type="submit"
                                     disabled={submitting}
-                                    className="px-4 py-2 bg-[#4085b3] hover:bg-[#356e94] text-white font-bold rounded-xl flex items-center space-x-1"
+                                    className="px-4 py-2 bg-[#4085b3] hover:bg-[#32698e] text-white rounded-lg font-semibold flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
                                 >
-                                    <Save className="w-4 h-4" />
-                                    <span>Save Lesson Log</span>
+                                    {submitting ? "Posting..." : "Post Learning Material"}
                                 </button>
                             </div>
                         </form>
                     </div>
                 </div>
             )}
-
-            {/* MODAL 2: LOG LEARNING DIFFICULTY */}
-            {showDiffModal && (
-                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-                    <div className="bg-white rounded-2xl max-w-md w-full p-6 space-y-4 shadow-xl border border-gray-100">
-                        <div className="flex justify-between items-center border-b border-gray-100 pb-3">
-                            <h3 className="font-extrabold text-gray-900 text-base flex items-center space-x-2">
-                                <AlertCircle className="w-5 h-5 text-amber-500" />
-                                <span>Record Learning Difficulty</span>
-                            </h3>
-                            <button onClick={() => setShowDiffModal(false)} className="p-1 text-gray-400 hover:text-gray-600 rounded-lg">
-                                <X className="w-5 h-5" />
-                            </button>
-                        </div>
-
-                        <form onSubmit={handleSaveDifficulty} className="space-y-4 text-xs">
-                            <div>
-                                <label className="block font-bold text-gray-700 mb-1">Challenging Topic</label>
-                                <input
-                                    type="text"
-                                    placeholder="e.g. Matrix Inverses & Determinants"
-                                    value={diffTopic}
-                                    onChange={(e) => setDiffTopic(e.target.value)}
-                                    required
-                                    className="w-full bg-white border border-gray-200 rounded-xl p-2.5 text-xs outline-none focus:ring-2 focus:ring-[#4085b3]"
-                                />
-                            </div>
-
-                            <div>
-                                <label className="block font-bold text-gray-700 mb-1">Description of Student Difficulty</label>
-                                <textarea
-                                    rows={3}
-                                    placeholder="Describe specific conceptual confusion or calculation hurdles..."
-                                    value={diffDesc}
-                                    onChange={(e) => setDiffDesc(e.target.value)}
-                                    required
-                                    className="w-full bg-white border border-gray-200 rounded-xl p-2.5 text-xs outline-none focus:ring-2 focus:ring-[#4085b3]"
-                                />
-                            </div>
-
-                            <div>
-                                <label className="block font-bold text-gray-700 mb-1">Remedial Action Plan</label>
-                                <textarea
-                                    rows={2}
-                                    placeholder="Planned extra tutorial, peer practice, or review worksheet..."
-                                    value={remedialPlan}
-                                    onChange={(e) => setRemedialPlan(e.target.value)}
-                                    className="w-full bg-white border border-gray-200 rounded-xl p-2.5 text-xs outline-none focus:ring-2 focus:ring-[#4085b3]"
-                                />
-                            </div>
-
-                            <div className="flex justify-end space-x-2 pt-2">
-                                <button
-                                    type="button"
-                                    onClick={() => setShowDiffModal(false)}
-                                    className="px-4 py-2 bg-gray-100 text-gray-700 font-bold rounded-xl hover:bg-gray-200"
-                                >
-                                    Cancel
-                                </button>
-                                <button
-                                    type="submit"
-                                    className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-xl flex items-center space-x-1"
-                                >
-                                    <Save className="w-4 h-4" />
-                                    <span>Save Difficulty Record</span>
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            )}
-
-            {/* MODAL 3: LOG TEACHING NOTE */}
-            {showNoteModal && (
-                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-                    <div className="bg-white rounded-2xl max-w-md w-full p-6 space-y-4 shadow-xl border border-gray-100">
-                        <div className="flex justify-between items-center border-b border-gray-100 pb-3">
-                            <h3 className="font-extrabold text-gray-900 text-base flex items-center space-x-2">
-                                <MessageSquare className="w-5 h-5 text-[#4085b3]" />
-                                <span>Add Teaching Reflection Note</span>
-                            </h3>
-                            <button onClick={() => setShowNoteModal(false)} className="p-1 text-gray-400 hover:text-gray-600 rounded-lg">
-                                <X className="w-5 h-5" />
-                            </button>
-                        </div>
-
-                        <form onSubmit={handleSaveReflectionNote} className="space-y-4 text-xs">
-                            <div>
-                                <label className="block font-bold text-gray-700 mb-1">Reflection Title</label>
-                                <input
-                                    type="text"
-                                    placeholder="e.g. Visual Aids Effectiveness in Algebra"
-                                    value={noteTitle}
-                                    onChange={(e) => setNoteTitle(e.target.value)}
-                                    required
-                                    className="w-full bg-white border border-gray-200 rounded-xl p-2.5 text-xs outline-none focus:ring-2 focus:ring-[#4085b3]"
-                                />
-                            </div>
-
-                            <div>
-                                <label className="block font-bold text-gray-700 mb-1">Teaching Note & Journal Entry</label>
-                                <textarea
-                                    rows={4}
-                                    placeholder="Write your pedagogical thoughts, observations, or ideas for next class..."
-                                    value={noteContent}
-                                    onChange={(e) => setNoteContent(e.target.value)}
-                                    required
-                                    className="w-full bg-white border border-gray-200 rounded-xl p-3 text-xs outline-none focus:ring-2 focus:ring-[#4085b3]"
-                                />
-                            </div>
-
-                            <div className="flex justify-end space-x-2 pt-2">
-                                <button
-                                    type="button"
-                                    onClick={() => setShowNoteModal(false)}
-                                    className="px-4 py-2 bg-gray-100 text-gray-700 font-bold rounded-xl hover:bg-gray-200"
-                                >
-                                    Cancel
-                                </button>
-                                <button
-                                    type="submit"
-                                    className="px-4 py-2 bg-[#4085b3] hover:bg-[#356e94] text-white font-bold rounded-xl flex items-center space-x-1"
-                                >
-                                    <Save className="w-4 h-4" />
-                                    <span>Save Note</span>
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            )}
-
-            {/* MODAL 4: TOPIC DETAILS BREAKDOWN */}
-            {selectedTopicModal && (
-                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
-                    <div className="bg-white rounded-2xl max-w-lg w-full p-6 space-y-5 shadow-2xl border border-gray-100">
-                        <div className="flex justify-between items-start border-b border-gray-100 pb-3">
-                            <div className="space-y-1">
-                                <div className="flex items-center space-x-2">
-                                    <span className="text-[11px] font-extrabold text-[#4085b3] bg-blue-50 px-2 py-0.5 rounded uppercase">
-                                        Topic {selectedTopicModal.topicNumber || "Syllabus"}
-                                    </span>
-                                    <span className={`px-2 py-0.5 rounded text-[10px] font-extrabold uppercase ${
-                                        selectedTopicModal.status === "COMPLETED"
-                                            ? "bg-emerald-100 text-emerald-800"
-                                            : selectedTopicModal.status === "IN_PROGRESS"
-                                            ? "bg-blue-100 text-[#4085b3]"
-                                            : "bg-gray-100 text-gray-600"
-                                    }`}>
-                                        {selectedTopicModal.status || "PENDING"}
-                                    </span>
-                                </div>
-                                <h3 className="font-extrabold text-gray-900 text-base leading-snug">
-                                    {selectedTopicModal.title}
-                                </h3>
-                                <p className="text-[11px] text-gray-500 font-medium">
-                                    {selectedTopicModal.unitNumber ? `${selectedTopicModal.unitNumber}: ` : ""}{selectedTopicModal.unitTitle || ""}
-                                </p>
-                            </div>
-                            <button
-                                onClick={() => setSelectedTopicModal(null)}
-                                className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-                            >
-                                <X className="w-5 h-5" />
-                            </button>
-                        </div>
-
-                        <div className="space-y-3.5 text-xs">
-                            {/* Key Concepts */}
-                            <div className="p-3.5 bg-gray-50 rounded-xl border border-gray-100 space-y-1.5">
-                                <h4 className="font-extrabold text-gray-700 uppercase text-[10px] tracking-wider flex items-center gap-1.5">
-                                    <BookOpen className="w-3.5 h-3.5 text-[#4085b3]" />
-                                    <span>Core Pedagogical Concepts to Cover:</span>
-                                </h4>
-                                <p className="text-gray-700 leading-relaxed text-[11px]">
-                                    {selectedTopicModal.keyConcepts || "No pedagogical concept notes provided."}
-                                </p>
-                            </div>
-
-                            {/* Competencies */}
-                            {selectedTopicModal.competencies && (
-                                <div className="p-3.5 bg-blue-50/50 rounded-xl border border-blue-100 space-y-1.5">
-                                    <h4 className="font-extrabold text-blue-900 uppercase text-[10px] tracking-wider flex items-center gap-1.5">
-                                        <Target className="w-3.5 h-3.5 text-[#4085b3]" />
-                                        <span>Target Student Learning Competency:</span>
-                                    </h4>
-                                    <p className="text-blue-950 leading-relaxed text-[11px]">
-                                        {selectedTopicModal.competencies}
-                                    </p>
-                                </div>
-                            )}
-
-                            {/* Pacing Info */}
-                            <div className="grid grid-cols-2 gap-3 text-center">
-                                <div className="p-2.5 bg-gray-50 rounded-lg border border-gray-100">
-                                    <span className="text-[10px] font-bold text-gray-400 uppercase block">Planned Time</span>
-                                    <span className="text-xs font-black text-gray-900">{selectedTopicModal.plannedHours ?? 0} Periods</span>
-                                </div>
-                                <div className="p-2.5 bg-gray-50 rounded-lg border border-gray-100">
-                                    <span className="text-[10px] font-bold text-gray-400 uppercase block">Delivery Status</span>
-                                    <span className="text-xs font-black text-gray-900">
-                                        {selectedTopicModal.completedDate ? `Delivered on ${selectedTopicModal.completedDate}` : "Not yet delivered"}
-                                    </span>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Actions */}
-                        <div className="flex flex-col sm:flex-row justify-between items-center gap-2 pt-3 border-t border-gray-100">
-                            <button
-                                type="button"
-                                onClick={() => {
-                                    const t = selectedTopicModal;
-                                    setSelectedTopicModal(null);
-                                    handleOpenDifficulty(t);
-                                }}
-                                className="w-full sm:w-auto px-3.5 py-2 bg-amber-50 hover:bg-amber-100 text-amber-800 font-bold rounded-xl text-xs border border-amber-200 flex items-center justify-center space-x-1 transition-colors"
-                            >
-                                <AlertCircle className="w-3.5 h-3.5" />
-                                <span>Report Difficulty</span>
-                            </button>
-
-                            <div className="flex items-center space-x-2 w-full sm:w-auto justify-end">
-                                <button
-                                    type="button"
-                                    onClick={() => setSelectedTopicModal(null)}
-                                    className="px-4 py-2 bg-gray-100 text-gray-700 font-bold rounded-xl text-xs hover:bg-gray-200 transition-colors"
-                                >
-                                    Close
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() => {
-                                        const t = selectedTopicModal;
-                                        setSelectedTopicModal(null);
-                                        setUnitName(t.unitTitle || "");
-                                        setTopicName(t.title);
-                                        setShowLogModal(true);
-                                    }}
-                                    className="px-4 py-2 bg-[#4085b3] hover:bg-[#356e94] text-white font-bold rounded-xl text-xs flex items-center space-x-1.5 transition-colors"
-                                >
-                                    <Plus className="w-3.5 h-3.5" />
-                                    <span>Log Lesson for this Topic</span>
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            )}
-
         </div>
-    );
-}
-
-export default function CurriculumPage() {
-    return (
-        <Suspense fallback={
-            <div className="w-full max-w-7xl mx-auto p-12 text-center text-gray-500 min-h-[400px] flex flex-col justify-center items-center">
-                <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#4085b3] mb-4"></div>
-                <p className="text-sm font-semibold text-gray-600 font-sans">Loading curriculum workspace...</p>
-            </div>
-        }>
-            <CurriculumContent />
-        </Suspense>
     );
 }

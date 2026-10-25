@@ -10,17 +10,26 @@ import {
   ArrowLeft,
   FileCheck2,
   FolderGit2,
+  GraduationCap,
 } from "lucide-react";
 
 interface ResourcesHeaderProps {
   totalCount?: number;
   recommendedCount?: number;
+  teacherCount?: number;
 }
 
-export default function ResourcesHeader({ totalCount = 0, recommendedCount = 0 }: ResourcesHeaderProps) {
+export default function ResourcesHeader({ totalCount = 0, recommendedCount = 0, teacherCount = 0 }: ResourcesHeaderProps) {
   const pathname = usePathname();
 
   const subNavs = [
+    {
+      label: "Teacher Resources",
+      href: "/dashboard/student/resources/teacher",
+      icon: GraduationCap,
+      badge: teacherCount > 0 ? `${teacherCount} materials` : null,
+      active: pathname === "/dashboard/student/resources/teacher",
+    },
     {
       label: "Recommended Resources",
       href: "/dashboard/student/resources/recommended",

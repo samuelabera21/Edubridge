@@ -15,7 +15,9 @@ import { StorageService } from "./storage.service.js";
  */
 export const getPresignedUploadUrl = async (req: Request, res: Response) => {
     try {
-        const { fileName, contentType, folder } = req.body;
+        const fileName = req.body.fileName;
+        const contentType = req.body.contentType || req.body.mimeType;
+        const folder = req.body.folder || "curriculum/materials";
 
         if (!fileName || typeof fileName !== "string") {
             return res.status(400).json({ error: "fileName is required and must be a string." });
@@ -27,10 +29,14 @@ export const getPresignedUploadUrl = async (req: Request, res: Response) => {
         const result = await StorageService.generatePresignedUploadUrl(
             fileName.trim(),
             contentType.trim(),
-            folder || "students/documents"
+            folder
         );
 
-        return res.status(200).json(result);
+        return res.status(200).json({
+            ...result,
+            uploadUrl: result.presignedUrl,
+            downloadUrl: result.publicUrl
+        });
     } catch (error: any) {
         console.error("[Storage] Presign error:", error);
         if (error.message?.includes("not allowed")) {

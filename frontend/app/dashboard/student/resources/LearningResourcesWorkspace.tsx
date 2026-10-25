@@ -41,12 +41,11 @@ export type ResourceItem = {
   authorName?: string;
   isRecommended?: boolean;
   recommendationNote?: string | null;
+  isTeacherMaterial?: boolean;
 };
 
-
-
 interface LearningResourcesWorkspaceProps {
-  initialSubNav?: "recommended" | "school" | "links" | "all";
+  initialSubNav?: "teacher" | "recommended" | "school" | "links" | "all";
 }
 
 export default function LearningResourcesWorkspace({ initialSubNav = "all" }: LearningResourcesWorkspaceProps) {
@@ -92,6 +91,12 @@ export default function LearningResourcesWorkspace({ initialSubNav = "all" }: Le
           apiResources.forEach((r: any) => {
             const hasRec = Array.isArray(r.recommendations) && r.recommendations.length > 0;
             const recNote = hasRec ? r.recommendations[0]?.note : null;
+            const isTeacher = Boolean(
+              r.isTeacherMaterial ||
+              (r.source && r.source.toLowerCase().includes("teacher")) ||
+              (r.source && r.source.toLowerCase().includes("unit:")) ||
+              (r.authorName && r.authorName.toLowerCase().includes("teacher"))
+            );
 
             combined.push({
               id: r.id,
@@ -104,9 +109,10 @@ export default function LearningResourcesWorkspace({ initialSubNav = "all" }: Le
               externalUrl: r.externalUrl || r.fileUrl,
               source: r.source || "School Digital Repository",
               createdAt: r.createdAt || new Date().toISOString(),
-              authorName: r.createdBy?.name || "School Administrator",
-              isRecommended: hasRec,
+              authorName: r.authorName || r.createdBy?.name || "School Administrator",
+              isRecommended: hasRec || isTeacher,
               recommendationNote: recNote,
+              isTeacherMaterial: isTeacher,
             });
           });
         }
@@ -137,6 +143,7 @@ export default function LearningResourcesWorkspace({ initialSubNav = "all" }: Le
               authorName: teacherName,
               isRecommended: true,
               recommendationNote: `Class activity assigned to your section by ${teacherName}.`,
+              isTeacherMaterial: true,
             });
           });
         }
@@ -196,6 +203,9 @@ export default function LearningResourcesWorkspace({ initialSubNav = "all" }: Le
 
   // Scope resources based on initialSubNav prop
   const scopedResources = useMemo(() => {
+    if (initialSubNav === "teacher") {
+      return resources.filter((r) => r.isTeacherMaterial);
+    }
     if (initialSubNav === "recommended") {
       return resources.filter((r) => r.isRecommended);
     }
@@ -298,10 +308,15 @@ export default function LearningResourcesWorkspace({ initialSubNav = "all" }: Le
   };
 
   const recommendedCount = useMemo(() => resources.filter((r) => r.isRecommended).length, [resources]);
+  const teacherCount = useMemo(() => resources.filter((r) => r.isTeacherMaterial).length, [resources]);
 
   return (
     <div className="space-y-6">
-      <ResourcesHeader totalCount={resources.length} recommendedCount={recommendedCount} />
+      <ResourcesHeader
+        totalCount={resources.length}
+        recommendedCount={recommendedCount}
+        teacherCount={teacherCount}
+      />
 
       {/* Sub-Nav Description Banner */}
       <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -309,7 +324,12 @@ export default function LearningResourcesWorkspace({ initialSubNav = "all" }: Le
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
-                {initialSubNav === "recommended" ? (
+                {initialSubNav === "teacher" ? (
+                  <>
+                    <GraduationCap className="h-5 w-5 text-blue-600" />
+                    Teacher Materials &amp; Video Tutorials
+                  </>
+                ) : initialSubNav === "recommended" ? (
                   <>
                     <Sparkles className="h-5 w-5 text-emerald-600" />
                     Teacher-Recommended Learning Materials
@@ -317,12 +337,12 @@ export default function LearningResourcesWorkspace({ initialSubNav = "all" }: Le
                 ) : initialSubNav === "school" ? (
                   <>
                     <School className="h-5 w-5 text-indigo-600" />
-                    School Curriculum Textbooks & Syllabi
+                    School Curriculum Textbooks &amp; Syllabi
                   </>
                 ) : initialSubNav === "links" ? (
                   <>
                     <ExternalLink className="h-5 w-5 text-purple-600" />
-                    Approved External Educational Links & Labs
+                    Approved External Educational Links &amp; Labs
                   </>
                 ) : (
                   <>
@@ -332,7 +352,9 @@ export default function LearningResourcesWorkspace({ initialSubNav = "all" }: Le
                 )}
               </h2>
               <p className="text-xs text-slate-500 mt-0.5">
-                {initialSubNav === "recommended"
+                {initialSubNav === "teacher"
+                  ? "Lecture notes, Word/PDF/PowerPoint presentations, and video tutorials posted directly by your subject teachers."
+                  : initialSubNav === "recommended"
                   ? "Materials tagged by your instructors specifically for your class section, remedial support, or enrichment."
                   : initialSubNav === "school"
                   ? "Standard curriculum textbooks, departmental guides, and practice problem packets."
@@ -524,15 +546,15 @@ export default function LearningResourcesWorkspace({ initialSubNav = "all" }: Le
                         <span>Details</span>
                       </button>
 
-                      {res.externalUrl && (
+                      {(res.externalUrl || res.fileUrl) && (
                         <a
-                          href={res.externalUrl}
+                          href={res.externalUrl || res.fileUrl || "#"}
                           target="_blank"
                           rel="noreferrer"
                           onClick={(e) => e.stopPropagation()}
                           className="inline-flex items-center justify-center gap-1 rounded-xl bg-[#184973] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#123655] transition"
                         >
-                          <span>Open</span>
+                          <span>{res.resourceType === "VIDEO" ? "Watch" : res.fileUrl ? "Download" : "Open"}</span>
                           <ExternalLink className="h-3 w-3" />
                         </a>
                       )}
@@ -596,14 +618,14 @@ export default function LearningResourcesWorkspace({ initialSubNav = "all" }: Le
                           >
                             Details
                           </button>
-                          {res.externalUrl && (
+                          {(res.externalUrl || res.fileUrl) && (
                             <a
-                              href={res.externalUrl}
+                              href={res.externalUrl || res.fileUrl || "#"}
                               target="_blank"
                               rel="noreferrer"
                               className="rounded-lg bg-[#184973] px-2.5 py-1 text-xs font-semibold text-white hover:bg-[#123655]"
                             >
-                              Launch
+                              {res.resourceType === "VIDEO" ? "Watch" : res.fileUrl ? "Download" : "Launch"}
                             </a>
                           )}
                         </div>
@@ -719,14 +741,14 @@ export default function LearningResourcesWorkspace({ initialSubNav = "all" }: Le
                   Close
                 </button>
 
-                {selectedResource.externalUrl && (
+                {(selectedResource.externalUrl || selectedResource.fileUrl) && (
                   <a
-                    href={selectedResource.externalUrl}
+                    href={selectedResource.externalUrl || selectedResource.fileUrl || "#"}
                     target="_blank"
                     rel="noreferrer"
                     className="inline-flex items-center gap-1.5 rounded-xl bg-[#184973] px-4 py-2 text-xs font-semibold text-white shadow-xs hover:bg-[#123655] transition"
                   >
-                    <span>Launch Resource</span>
+                    <span>{selectedResource.resourceType === "VIDEO" ? "Watch Tutorial" : selectedResource.fileUrl ? "Open / Download" : "Launch Resource"}</span>
                     <ExternalLink className="h-3.5 w-3.5" />
                   </a>
                 )}

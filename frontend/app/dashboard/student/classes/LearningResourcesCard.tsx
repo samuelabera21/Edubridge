@@ -39,7 +39,7 @@ export default function LearningResourcesCard() {
             <h2 className="text-lg font-bold text-slate-900">Learning Resources</h2>
           </div>
           <Link
-            href="/dashboard/student/classes/resources"
+            href="/dashboard/student/resources/school"
             className="text-xs font-semibold text-blue-600 hover:text-blue-800 hover:underline flex items-center gap-1"
           >
             <span>Full Library</span>
@@ -57,7 +57,7 @@ export default function LearningResourcesCard() {
             <p className="font-semibold text-slate-700">Digital Library Ready</p>
             <p>Access national curriculum textbooks, worksheets, and course media in the library.</p>
             <Link
-              href="/dashboard/student/classes/resources"
+              href="/dashboard/student/resources/school"
               className="inline-block mt-1 font-bold text-blue-600 hover:underline text-xs"
             >
               Browse Curriculum Materials &rarr;
@@ -93,7 +93,7 @@ export default function LearningResourcesCard() {
 
       <div className="mt-6 border-t border-slate-100 pt-4 flex items-center justify-between">
         <Link
-          href="/dashboard/student/classes/resources"
+          href="/dashboard/student/resources/school"
           className="inline-flex items-center gap-1.5 text-xs font-bold text-blue-600 hover:text-blue-800"
         >
           <Sparkles className="h-4 w-4" />

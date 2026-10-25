@@ -34,6 +34,14 @@ const ALLOWED_MIME_TYPES: Record<string, string> = {
     "application/vnd.ms-powerpoint": ".ppt",
     "application/vnd.openxmlformats-officedocument.presentationml.presentation": ".pptx",
 
+    // Videos (MP4, WebM, MOV, AVI)
+    "video/mp4": ".mp4",
+    "video/webm": ".webm",
+    "video/quicktime": ".mov",
+    "video/x-msvideo": ".avi",
+    "video/mpeg": ".mpeg",
+    "video/ogg": ".ogv",
+
     // Archives
     "application/zip": ".zip",
     "application/x-zip-compressed": ".zip",
@@ -47,6 +55,11 @@ const EXTENSION_MAP: Record<string, { ext: string; mime: string }> = {
     ".xls": { ext: ".xls", mime: "application/vnd.ms-excel" },
     ".pptx": { ext: ".pptx", mime: "application/vnd.openxmlformats-officedocument.presentationml.presentation" },
     ".ppt": { ext: ".ppt", mime: "application/vnd.ms-powerpoint" },
+    ".mp4": { ext: ".mp4", mime: "video/mp4" },
+    ".webm": { ext: ".webm", mime: "video/webm" },
+    ".mov": { ext: ".mov", mime: "video/quicktime" },
+    ".avi": { ext: ".avi", mime: "video/x-msvideo" },
+    ".mkv": { ext: ".mkv", mime: "video/mp4" },
     ".csv": { ext: ".csv", mime: "text/csv" },
     ".txt": { ext: ".txt", mime: "text/plain" },
     ".jpg": { ext: ".jpg", mime: "image/jpeg" },

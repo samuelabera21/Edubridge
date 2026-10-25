@@ -362,7 +362,7 @@ export default function ResultsDashboardPage() {
 
             if (!res.ok) {
                 const errData = await res.json().catch(() => ({}));
-                throw new Error(errData.error || "Failed to import result sheet");
+                throw new Error(errData.error || errData.message || `Failed to import result sheet (${res.status})`);
             }
 
             setImportSuccessMsg(`Result sheet "${importTitle}" imported successfully (${parsedData.rows.length} student rows).`);

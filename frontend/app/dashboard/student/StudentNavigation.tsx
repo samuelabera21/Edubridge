@@ -39,7 +39,6 @@ const coreLearningGroups: StudentNavGroup[] = [
         links: [
             { label: "Subjects & Teachers", href: "/dashboard/student/classes/subjects" },
             { label: "Class Schedule", href: "/dashboard/student/classes/schedule" },
-            { label: "Learning Resources", href: "/dashboard/student/classes/resources" },
         ],
     },
 ];
@@ -104,6 +103,7 @@ const communityToolsGroups: StudentNavGroup[] = [
         label: "Learning Resources",
         icon: FileText,
         links: [
+            { label: "Teacher Resources", href: "/dashboard/student/resources/teacher" },
             { label: "Recommended Resources", href: "/dashboard/student/resources/recommended" },
             { label: "School Resources", href: "/dashboard/student/resources/school" },
             { label: "Approved External Links", href: "/dashboard/student/resources/links" },

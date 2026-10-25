@@ -30,17 +30,17 @@ router.use(requireScope("SCHOOL"));
 // ============================================================
 // SCHOOL ADMINISTRATOR / PRINCIPAL OVERSIGHT & RESULTS ROUTES
 // ============================================================
-router.get("/admin/overview", requirePermission("ACADEMIC:VIEW"), getAdminOverview);
-router.get("/admin/results", requirePermission("ACADEMIC:VIEW"), getAdminResults);
-router.get("/admin/students/:enrollmentId", requirePermission("ACADEMIC:VIEW"), getAdminStudentResultDetail);
-router.get("/admin/filters", requirePermission("ACADEMIC:VIEW"), getAdminFilterOptions);
-router.get("/admin/roster", requirePermission("ACADEMIC:VIEW"), getAdminStudentsRoster);
+router.get("/admin/overview", requirePermission(["ACADEMIC:VIEW", "ASSESSMENT:VIEW"]), getAdminOverview);
+router.get("/admin/results", requirePermission(["ACADEMIC:VIEW", "ASSESSMENT:VIEW"]), getAdminResults);
+router.get("/admin/students/:enrollmentId", requirePermission(["ACADEMIC:VIEW", "ASSESSMENT:VIEW"]), getAdminStudentResultDetail);
+router.get("/admin/filters", requirePermission(["ACADEMIC:VIEW", "ASSESSMENT:VIEW"]), getAdminFilterOptions);
+router.get("/admin/roster", requirePermission(["ACADEMIC:VIEW", "ASSESSMENT:VIEW"]), getAdminStudentsRoster);
 
 // Dynamic Excel Marksheet Submissions (any schema)
-router.get("/sheets", requirePermission("ACADEMIC:VIEW"), getResultSheets);
-router.get("/sheets/:id", requirePermission("ACADEMIC:VIEW"), getResultSheetDetail);
-router.post("/import-sheet", requirePermission("ACADEMIC:CREATE"), importResultSheet);
-router.delete("/sheets/:id", requirePermission("ACADEMIC:CREATE"), deleteResultSheet);
+router.get("/sheets", requirePermission(["ACADEMIC:VIEW", "ASSESSMENT:VIEW"]), getResultSheets);
+router.get("/sheets/:id", requirePermission(["ACADEMIC:VIEW", "ASSESSMENT:VIEW"]), getResultSheetDetail);
+router.post("/import-sheet", requirePermission(["ACADEMIC:CREATE", "ASSESSMENT:CREATE"]), importResultSheet);
+router.delete("/sheets/:id", requirePermission(["ACADEMIC:CREATE", "ASSESSMENT:CREATE"]), deleteResultSheet);
 
 /**
  * @openapi

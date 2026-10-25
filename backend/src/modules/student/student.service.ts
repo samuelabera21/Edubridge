@@ -1614,29 +1614,65 @@ export class StudentService {
         const gradeLevel = enrollment.schoolGrade?.grade?.level;
         const gradeName = enrollment.schoolGrade?.grade?.name;
 
-        return prisma.digitalResource.findMany({
-            where: {
-                organizationId,
-                status: "PUBLISHED",
-                OR: [
-                    { gradeName: null },
-                    ...(gradeName ? [{ gradeName }] : []),
-                    ...(gradeLevel ? [{ gradeName: String(gradeLevel) }, { gradeName: `Grade ${gradeLevel}` }] : [])
-                ]
-            },
-            include: {
-                recommendations: {
-                    where: {
-                        OR: [
-                            { enrollmentId: enrollment.id },
-                            { schoolGradeId: enrollment.schoolGradeId }
-                        ]
-                    },
-                    select: { note: true, teacher: { select: { firstName: true, lastName: true } } }
-                }
-            },
-            orderBy: { createdAt: "desc" }
-        });
+        const [digitalResources, learningMaterials] = await Promise.all([
+            prisma.digitalResource.findMany({
+                where: {
+                    organizationId,
+                    status: "PUBLISHED",
+                    OR: [
+                        { gradeName: null },
+                        ...(gradeName ? [{ gradeName }] : []),
+                        ...(gradeLevel ? [{ gradeName: String(gradeLevel) }, { gradeName: `Grade ${gradeLevel}` }] : [])
+                    ]
+                },
+                include: {
+                    recommendations: {
+                        where: {
+                            OR: [
+                                { enrollmentId: enrollment.id },
+                                { schoolGradeId: enrollment.schoolGradeId }
+                            ]
+                        },
+                        select: { note: true, teacher: { select: { firstName: true, lastName: true } } }
+                    }
+                },
+                orderBy: { createdAt: "desc" }
+            }),
+            (prisma as any).learningMaterial.findMany({
+                where: {
+                    organizationId,
+                    OR: [
+                        { gradeName: null },
+                        ...(gradeName ? [{ gradeName: { contains: gradeName, mode: "insensitive" } }] : []),
+                        ...(enrollment.section?.name ? [{ sectionName: enrollment.section.name }] : []),
+                        { sectionName: null }
+                    ]
+                },
+                orderBy: { createdAt: "desc" }
+            }).catch(() => [])
+        ]);
+
+        const mappedMaterials = (learningMaterials || []).map((m: any) => ({
+            id: m.id,
+            organizationId: m.organizationId,
+            title: m.title,
+            description: m.description,
+            subjectName: m.subjectName || "General",
+            gradeName: m.gradeName || gradeName || null,
+            resourceType: m.materialType === "VIDEO" ? "VIDEO" : (m.fileType || "DOCUMENT"),
+            fileUrl: m.fileUrl || null,
+            externalUrl: m.videoUrl || m.fileUrl || null,
+            source: m.unitName ? `Teacher Material (Unit: ${m.unitName})` : "Teacher Learning Material",
+            createdAt: m.createdAt,
+            authorName: "Course Teacher",
+            createdBy: { name: "Course Teacher" },
+            isTeacherMaterial: true,
+            isRecommended: true,
+            recommendationNote: m.description || `Shared by your teacher for ${m.subjectName || "class"}.`,
+            recommendations: []
+        }));
+
+        return [...mappedMaterials, ...digitalResources];
     }
 
     static async getStudentCommunicationTeachers(userId: string, organizationId: string) {

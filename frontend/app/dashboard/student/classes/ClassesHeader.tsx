@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ArrowLeft, BookOpen, CalendarDays, FolderGit2 } from "lucide-react";
+import { ArrowLeft, BookOpen, CalendarDays } from "lucide-react";
 
 interface ClassesHeaderProps {
   title?: string;
@@ -37,12 +37,6 @@ export default function ClassesHeader({
       icon: CalendarDays,
       badge: totalPeriods !== undefined ? `${totalPeriods} periods/wk` : null,
       active: pathname === "/dashboard/student/classes/schedule" || pathname === "/dashboard/student/timetable",
-    },
-    {
-      label: "Learning Resources",
-      href: "/dashboard/student/classes/resources",
-      icon: FolderGit2,
-      active: pathname === "/dashboard/student/classes/resources",
     },
   ];
 

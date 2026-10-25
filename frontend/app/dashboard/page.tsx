@@ -22,46 +22,56 @@ export default function DashboardRootPage() {
         const roleName = primaryAccess?.role?.name;
         const scopeType = primaryAccess?.scope?.type;
 
-        if (scopeType === "FEDERAL") {
+        const allRoles: string[] = (authData.access || []).map((a: any) => a.role?.name).filter(Boolean);
+        const hasTeacherRole = roleName === "TEACHER" || allRoles.includes("TEACHER");
+        const hasAdminRole = ["ADMIN", "SCHOOL_ADMIN", "ADMINISTRATOR", "PRINCIPAL"].includes(roleName || "") || allRoles.some((r: string) => ["ADMIN", "SCHOOL_ADMIN", "ADMINISTRATOR", "PRINCIPAL"].includes(r));
+        const hasStudentRole = roleName === "STUDENT" || allRoles.includes("STUDENT");
+        const hasParentRole = roleName === "PARENT" || allRoles.includes("PARENT");
+        const hasVicePrincipalRole = roleName === "VICE_PRINCIPAL" || allRoles.includes("VICE_PRINCIPAL");
+
+        if (scopeType === "FEDERAL" || roleName === "FEDERAL_ADMIN") {
             router.replace("/dashboard/federal");
             return;
         }
-        if (scopeType === "REGION") {
+        if (scopeType === "REGION" || roleName === "REGION_ADMIN") {
             router.replace("/dashboard/region");
             return;
         }
-        if (scopeType === "ZONE") {
+        if (scopeType === "ZONE" || roleName === "ZONE_ADMIN" || roleName === "ZONAL_ADMIN") {
             router.replace("/dashboard/zone");
             return;
         }
-        if (scopeType === "WOREDA") {
+        if (scopeType === "WOREDA" || roleName === "WOREDA_ADMIN") {
             router.replace("/dashboard/woreda");
             return;
         }
 
-        switch (roleName) {
-            case "TEACHER":
-                router.replace("/dashboard/teacher");
-                return;
-            case "STUDENT":
-                router.replace("/dashboard/student");
-                return;
-            case "PARENT":
-                router.replace("/dashboard/parent");
-                return;
-            case "VICE_PRINCIPAL":
-                router.replace("/dashboard/vice-principal");
-                return;
-            case "ADMIN":
-            case "SCHOOL_ADMIN":
-            case "ADMINISTRATOR":
-            case "PRINCIPAL":
-                router.replace("/dashboard/admin");
-                return;
-            default:
-                router.replace("/dashboard/federal");
-                return;
+        if (hasTeacherRole) {
+            router.replace("/dashboard/teacher");
+            return;
         }
+        if (hasAdminRole) {
+            router.replace("/dashboard/admin");
+            return;
+        }
+        if (hasStudentRole) {
+            router.replace("/dashboard/student");
+            return;
+        }
+        if (hasParentRole) {
+            router.replace("/dashboard/parent");
+            return;
+        }
+        if (hasVicePrincipalRole) {
+            router.replace("/dashboard/vice-principal");
+            return;
+        }
+
+        if (hasAdminRole && scopeType === "SCHOOL") {
+            router.replace("/dashboard/admin");
+            return;
+        }
+        router.replace("/dashboard/teacher");
     }, [authData, loading, router]);
 
     return (

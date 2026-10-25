@@ -43,7 +43,8 @@ import {
     File,
     Target,
     CheckCheck,
-    X
+    X,
+    Eye
 } from "lucide-react";
 import { LoadingState } from "@/components/ui/LoadingState";
 import DirectivesRecipientView from "@/components/governance/DirectivesRecipientView";
@@ -82,18 +83,18 @@ export default function TeacherCommunicationPage() {
     const [activeCategory, setActiveCategory] = useState<CommunicationCategory>("STUDENT");
 
     useEffect(() => {
-        if (channelParam === "STUDENT" || channelParam === "STUDENTS") {
-            setActiveCategory("STUDENT");
+        if (channelParam === "DIRECTIVES" || channelParam === "POLICY" || channelParam === "POLICIES") {
+            setActiveCategory("DIRECTIVES");
+        } else if (channelParam === "PROGRAMS" || channelParam === "INITIATIVES") {
+            setActiveCategory("PROGRAMS");
         } else if (channelParam === "PARENT" || channelParam === "PARENTS") {
             setActiveCategory("PARENT");
         } else if (channelParam === "DEPARTMENT" || channelParam === "DEPT") {
             setActiveCategory("DEPARTMENT");
         } else if (channelParam === "STAFF" || channelParam === "SCHOOL") {
             setActiveCategory("STAFF");
-        } else if (channelParam === "DIRECTIVES" || channelParam === "POLICY" || channelParam === "POLICIES") {
-            setActiveCategory("DIRECTIVES");
-        } else if (channelParam === "PROGRAMS" || channelParam === "INITIATIVES") {
-            setActiveCategory("PROGRAMS");
+        } else {
+            setActiveCategory("STUDENT");
         }
     }, [channelParam]);
 
@@ -127,6 +128,32 @@ export default function TeacherCommunicationPage() {
 
     // Parent specific selection
     const [selectedEnrollmentId, setSelectedEnrollmentId] = useState("");
+
+    // Channel selector dropdown state
+    const [channelDropdownOpen, setChannelDropdownOpen] = useState(false);
+    const channelDropdownRef = useRef<HTMLDivElement>(null);
+
+    // Document preview modal state
+    const [previewDoc, setPreviewDoc] = useState<{ url: string; name?: string; type?: string } | null>(null);
+
+    useEffect(() => {
+        function handleClickOutside(event: MouseEvent) {
+            if (channelDropdownRef.current && !channelDropdownRef.current.contains(event.target as Node)) {
+                setChannelDropdownOpen(false);
+            }
+        }
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, []);
+
+    // Helper to format clean message content (removing [Subject tag] and raw attachment dumps)
+    const formatCleanMessageContent = (content: string) => {
+        if (!content) return "";
+        return content
+            .replace(/^\[[^\]]+\]\s*/, "")
+            .replace(/\n*📎 Attached File:\s*[^\n]+(\([^)]+\))?/g, "")
+            .trim();
+    };
 
     // Message action states: Copy, Edit, Delete, Reply
     const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
@@ -944,26 +971,27 @@ export default function TeacherCommunicationPage() {
                     ? "ALL_STUDENTS"
                     : "SPECIFIC_STUDENT";
 
-                const targetUserId = selectedContact?.raw?.student?.userId || selectedContact?.raw?.userId || selectedContact?.id;
-
-                const studentMsgContent = uploadedAttachmentUrl
-                    ? `${outgoingText}\n\n📎 Attached File: ${uploadedAttachmentName} (${uploadedAttachmentUrl})`
-                    : outgoingText;
+                const targetUserId = selectedContact?.raw?.student?.userId || selectedContact?.raw?.userId || (selectedContact as any)?.userId;
 
                 const payload: any = {
                     targetType,
-                    subject: messageSubject || `${selectedContact?.name || 'Class'} Update`,
-                    content: studentMsgContent,
-                    priority: messagePriority
+                    subject: messageSubject || undefined,
+                    content: outgoingText,
+                    priority: messagePriority,
+                    attachmentUrl: uploadedAttachmentUrl,
+                    attachmentName: uploadedAttachmentName,
+                    attachmentType: uploadedAttachmentType
                 };
 
                 if (targetType === "SPECIFIC_STUDENT") {
-                    if (!targetUserId) {
+                    if (!selectedContact) {
                         alert("Please select a student from the list first.");
                         setSending(false);
                         return;
                     }
-                    payload.receiverId = targetUserId;
+                    if (targetUserId) {
+                        payload.receiverId = targetUserId;
+                    }
                     payload.studentId = selectedContact?.studentId || selectedContact?.id;
                 } else if (targetType === "SPECIFIC_SECTION") {
                     const secId = activeClassObj?.sectionId || (selectedClassId !== "ALL" ? selectedClassId : assignedClasses[0]?.sectionId);
@@ -1017,15 +1045,14 @@ export default function TeacherCommunicationPage() {
 
                 const targetParentUserId = selectedContact?.parentUserId || selectedContact?.raw?.parentUserId;
 
-                const parentMsgContent = uploadedAttachmentUrl
-                    ? `${outgoingText}\n\n📎 Attached File: ${uploadedAttachmentName} (${uploadedAttachmentUrl})`
-                    : outgoingText;
-
                 const payload: any = {
                     targetType,
-                    subject: messageSubject || (targetType === "ALL_PARENTS" ? "Broadcast to All Parents" : targetType === "SPECIFIC_SECTION" ? `Section Announcement: ${activeClassObj?.displayName || 'Parents'}` : "Message from Teacher"),
-                    content: parentMsgContent,
-                    priority: messagePriority
+                    subject: messageSubject || undefined,
+                    content: outgoingText,
+                    priority: messagePriority,
+                    attachmentUrl: uploadedAttachmentUrl,
+                    attachmentName: uploadedAttachmentName,
+                    attachmentType: uploadedAttachmentType
                 };
 
                 if (targetType === "SPECIFIC_PARENT") {
@@ -1101,8 +1128,8 @@ export default function TeacherCommunicationPage() {
                     body: JSON.stringify({
                         recipientId: targetUserId,
                         receiverId: targetUserId,
-                        subject: messageSubject || `${messageType} (${activeCategory})`,
-                        content: messageSubject ? `[${messageSubject}] ${outgoingText}` : outgoingText,
+                        subject: messageSubject || undefined,
+                        content: outgoingText,
                         priority: messagePriority,
                         attachmentUrl: uploadedAttachmentUrl,
                         attachmentName: uploadedAttachmentName,
@@ -1253,48 +1280,129 @@ export default function TeacherCommunicationPage() {
 
     return (
         <div className="w-full max-w-7xl mx-auto space-y-4 pb-12 font-sans text-slate-800">
-            {/* Category Tabs (6 Main Categories) */}
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2 bg-white p-2 rounded-2xl border border-slate-200 shadow-2xs">
-                {[
+            {/* Consolidated Communication Channel Dropdown Selector */}
+            {(() => {
+                const communicationChannels = [
                     { id: "STUDENT", label: "Students", sub: "የተማሪዎች ኮሚዩኒኬሽን", icon: GraduationCap, count: studentsList.length, desc: "Assigned Students" },
                     { id: "PARENT", label: "Parents", sub: "የወላጆች ኮሚዩኒኬሽን", icon: Users, count: parentContacts.length, desc: "Guardians & Contacts" },
                     { id: "DEPARTMENT", label: "Department", sub: "የትምህርት ክፍል", icon: Building2, count: schoolUsers.filter(u => (u.role?.name || "").includes("TEACHER")).length, desc: "Faculty & Peers" },
                     { id: "STAFF", label: "School Staff", sub: "የትምህርት ቤት አመራር", icon: Shield, count: schoolUsers.length, desc: "Admin & Leadership" },
                     { id: "DIRECTIVES", label: "Policies & Directives", sub: "ፖሊሲዎች እና መመሪያዎች", icon: FileText, count: directivesCount, desc: "School & Dept Policies" },
                     { id: "PROGRAMS", label: "Programs & Initiatives", sub: "ፕሮግራሞች እና ውጥኖች", icon: Target, count: programsCount, desc: "Academic Initiatives" }
-                ].map(tab => {
-                    const Icon = tab.icon;
-                    const isActive = activeCategory === tab.id;
-                    return (
-                        <button
-                            key={tab.id}
-                            onClick={() => handleCategoryChange(tab.id as CommunicationCategory)}
-                            className={`p-3 rounded-xl text-left transition-all border flex items-start space-x-3 cursor-pointer ${isActive
-                                    ? "bg-[#143e66] text-white border-[#143e66] shadow-xs"
-                                    : "bg-slate-50/70 hover:bg-slate-100/80 text-slate-700 border-slate-200/80"
-                                }`}
-                        >
-                            <div className={`p-2 rounded-lg shrink-0 ${isActive ? "bg-white/10 text-amber-300" : "bg-white text-slate-600 shadow-2xs"
-                                }`}>
-                                <Icon className="w-4 h-4" />
+                ];
+                const activeChannel = communicationChannels.find(c => c.id === activeCategory) || communicationChannels[0];
+                const ActiveIcon = activeChannel.icon;
+
+                return (
+                    <div className="bg-white p-3 sm:p-4 rounded-2xl border border-slate-200 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <div className="flex flex-col sm:flex-row sm:items-center gap-2.5 sm:gap-3.5">
+                            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">
+                                Channel:
+                            </span>
+
+                            {/* Dropdown Menu Container */}
+                            <div className="relative" ref={channelDropdownRef}>
+                                <button
+                                    type="button"
+                                    onClick={() => setChannelDropdownOpen(!channelDropdownOpen)}
+                                    className="w-full sm:w-auto flex items-center justify-between gap-3 px-3.5 py-2 bg-slate-50 hover:bg-slate-100/90 border border-slate-300 hover:border-[#4085b3] rounded-xl text-xs font-bold text-slate-900 transition-all cursor-pointer shadow-2xs min-w-[260px] sm:min-w-[340px] focus:outline-hidden focus:ring-2 focus:ring-[#4085b3]/20"
+                                >
+                                    <div className="flex items-center gap-2.5 min-w-0">
+                                        <div className="w-8 h-8 rounded-lg bg-[#4085b3] text-white flex items-center justify-center shrink-0 shadow-2xs">
+                                            <ActiveIcon className="w-4 h-4" />
+                                        </div>
+                                        <div className="text-left min-w-0">
+                                            <div className="flex items-center gap-1.5">
+                                                <span className="font-extrabold text-slate-900 text-xs truncate">
+                                                    {activeChannel.label}
+                                                </span>
+                                                <span className="text-[10px] font-semibold text-[#4085b3] truncate">
+                                                    ({activeChannel.sub})
+                                                </span>
+                                            </div>
+                                            <p className="text-[10px] text-slate-500 font-medium truncate">
+                                                {activeChannel.desc} • {activeChannel.count} {activeCategory === "DIRECTIVES" || activeCategory === "PROGRAMS" ? "items" : "contacts"}
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <ChevronDown className={`w-4 h-4 text-slate-500 shrink-0 transition-transform duration-200 ${channelDropdownOpen ? "rotate-180 text-[#4085b3]" : ""}`} />
+                                </button>
+
+                                {/* Dropdown List */}
+                                {channelDropdownOpen && (
+                                    <div className="absolute left-0 mt-1.5 w-full sm:w-[380px] bg-white border border-slate-200 rounded-xl shadow-xl z-50 py-1 animate-in fade-in slide-in-from-top-1 duration-150">
+                                        <div className="px-3.5 py-1.5 border-b border-slate-100 text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center justify-between">
+                                            <span>Select Communication Channel</span>
+                                            <span>ቻናል ይምረጡ</span>
+                                        </div>
+                                        <div className="max-h-[380px] overflow-y-auto p-1.5 space-y-1">
+                                            {communicationChannels.map((ch) => {
+                                                const Icon = ch.icon;
+                                                const isSelected = activeCategory === ch.id;
+                                                return (
+                                                    <button
+                                                        key={ch.id}
+                                                        type="button"
+                                                        onClick={() => {
+                                                            handleCategoryChange(ch.id as CommunicationCategory);
+                                                            setChannelDropdownOpen(false);
+                                                        }}
+                                                        className={`w-full flex items-center justify-between p-2.5 rounded-lg text-left text-xs transition-all cursor-pointer ${
+                                                            isSelected
+                                                                ? "bg-[#4085b3] text-white font-bold shadow-2xs"
+                                                                : "hover:bg-slate-50 text-slate-700"
+                                                        }`}
+                                                    >
+                                                        <div className="flex items-center gap-2.5 min-w-0">
+                                                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
+                                                                isSelected ? "bg-white/20 text-white" : "bg-slate-100 text-slate-600"
+                                                            }`}>
+                                                                <Icon className="w-4 h-4" />
+                                                            </div>
+                                                            <div className="min-w-0">
+                                                                <div className="flex items-center gap-1.5">
+                                                                    <span className={`font-extrabold ${isSelected ? "text-white" : "text-slate-900"}`}>
+                                                                        {ch.label}
+                                                                    </span>
+                                                                    <span className={`text-[10px] ${isSelected ? "text-white/80" : "text-[#4085b3] font-medium"}`}>
+                                                                        ({ch.sub})
+                                                                    </span>
+                                                                </div>
+                                                                <span className={`text-[10px] block truncate ${isSelected ? "text-white/80" : "text-slate-400"}`}>
+                                                                    {ch.desc} • {ch.count} {ch.id === "DIRECTIVES" || ch.id === "PROGRAMS" ? "items" : "contacts"}
+                                                                </span>
+                                                            </div>
+                                                        </div>
+                                                        {isSelected && <Check className="w-4 h-4 text-white shrink-0 ml-2" />}
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                )}
                             </div>
-                            <div className="overflow-hidden">
-                                <div className="flex items-center space-x-1.5">
-                                    <h3 className={`text-xs font-extrabold truncate ${isActive ? "text-amber-200" : "text-slate-900"}`}>
-                                        {tab.label}
-                                    </h3>
-                                </div>
-                                <p className={`text-[10px] font-medium truncate mt-0.5 ${isActive ? "text-amber-200/90" : "text-blue-600"}`}>
-                                    {tab.sub}
-                                </p>
-                                <p className={`text-[10px] truncate ${isActive ? "text-blue-100" : "text-slate-400"}`}>
-                                    {tab.desc} ({tab.count})
-                                </p>
-                            </div>
-                        </button>
-                    );
-                })}
-            </div>
+                        </div>
+
+                        {/* Right side status & reload */}
+                        <div className="flex items-center gap-2 text-xs text-slate-600 self-end sm:self-auto">
+                            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 rounded-lg text-xs font-semibold text-slate-700">
+                                <span className="w-2 h-2 rounded-full bg-[#4085b3]"></span>
+                                <span className="font-bold text-slate-900">{activeChannel.label}</span>
+                                <span className="text-slate-400 text-[11px]">({activeChannel.count})</span>
+                            </span>
+                            <button
+                                type="button"
+                                onClick={() => loadData(true)}
+                                className="p-2 border border-slate-200 bg-slate-50 hover:bg-[#4085b3] text-slate-600 hover:text-white rounded-lg transition-colors cursor-pointer"
+                                title="Refresh conversations"
+                            >
+                                <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? "animate-spin text-white" : ""}`} />
+                            </button>
+                        </div>
+                    </div>
+                );
+            })()}
+
 
             {/* Status Alert Banner */}
             {statusBanner && (
@@ -1339,7 +1447,7 @@ export default function TeacherCommunicationPage() {
                                     {activeCategory === "DEPARTMENT" && "Department Faculty"}
                                     {activeCategory === "STAFF" && "School Staff & Leadership"}
                                 </span>
-                                <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-blue-100 text-blue-800">
+                                <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-blue-100 text-[#245f8b]">
                                     {currentCategoryContacts.length} Available
                                 </span>
                             </div>
@@ -1352,14 +1460,14 @@ export default function TeacherCommunicationPage() {
                                 <div className="space-y-1">
                                     <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider flex items-center justify-between">
                                         <span className="flex items-center gap-1">
-                                            <Users className="w-3 h-3 text-[#143e66]" />
+                                            <Users className="w-3 h-3 text-[#4085b3]" />
                                             Recipient Mode / የመልእክት አይነት:
                                         </span>
                                     </label>
                                     <div className="relative">
                                         <div className="absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none">
                                             {studentTargetMode === "ALL" ? (
-                                                <Megaphone className="w-3.5 h-3.5 text-blue-600" />
+                                                <Megaphone className="w-3.5 h-3.5 text-[#4085b3]" />
                                             ) : studentTargetMode === "SECTION" ? (
                                                 <BookOpen className="w-3.5 h-3.5 text-amber-600" />
                                             ) : (
@@ -1384,7 +1492,7 @@ export default function TeacherCommunicationPage() {
                                     <div className="space-y-1">
                                         <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider flex items-center justify-between">
                                             <span className="flex items-center gap-1">
-                                                <BookOpen className="w-3 h-3 text-[#143e66]" />
+                                                <BookOpen className="w-3 h-3 text-[#4085b3]" />
                                                 Filter by Class / ክፍል ይምረጡ:
                                             </span>
                                             {assignedClasses.length > 0 && (
@@ -1421,7 +1529,7 @@ export default function TeacherCommunicationPage() {
                                     <div className="space-y-1">
                                         <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider flex items-center justify-between">
                                             <span className="flex items-center gap-1">
-                                                <BookOpen className="w-3 h-3 text-[#143e66]" />
+                                                <BookOpen className="w-3 h-3 text-[#4085b3]" />
                                                 Select Section / ክፍል ይምረጡ:
                                             </span>
                                             <span className="text-[10px] font-extrabold text-amber-600">
@@ -1449,11 +1557,11 @@ export default function TeacherCommunicationPage() {
                                 {studentTargetMode === "ALL" && (
                                     <div className="p-2.5 bg-blue-50/70 border border-blue-200/90 rounded-xl text-left space-y-1">
                                         <div className="flex items-center justify-between">
-                                            <span className="text-xs font-extrabold text-[#143e66] flex items-center gap-1.5">
-                                                <Megaphone className="w-3.5 h-3.5 text-blue-600" />
+                                            <span className="text-xs font-extrabold text-[#4085b3] flex items-center gap-1.5">
+                                                <Megaphone className="w-3.5 h-3.5 text-[#4085b3]" />
                                                 Target: All Assigned Classes
                                             </span>
-                                            <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-blue-100 text-blue-800">
+                                            <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-blue-100 text-[#245f8b]">
                                                 {studentsList.length} Students
                                             </span>
                                         </div>
@@ -1472,14 +1580,14 @@ export default function TeacherCommunicationPage() {
                                 <div className="space-y-1">
                                     <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider flex items-center justify-between">
                                         <span className="flex items-center gap-1">
-                                            <Users className="w-3 h-3 text-[#143e66]" />
+                                            <Users className="w-3 h-3 text-[#4085b3]" />
                                             Recipient Mode / የመልእክት አይነት:
                                         </span>
                                     </label>
                                     <div className="relative">
                                         <div className="absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none">
                                             {parentTargetMode === "ALL" ? (
-                                                <Megaphone className="w-3.5 h-3.5 text-blue-600" />
+                                                <Megaphone className="w-3.5 h-3.5 text-[#4085b3]" />
                                             ) : parentTargetMode === "SECTION" ? (
                                                 <BookOpen className="w-3.5 h-3.5 text-amber-600" />
                                             ) : (
@@ -1504,7 +1612,7 @@ export default function TeacherCommunicationPage() {
                                     <div className="space-y-1">
                                         <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider flex items-center justify-between">
                                             <span className="flex items-center gap-1">
-                                                <BookOpen className="w-3 h-3 text-[#143e66]" />
+                                                <BookOpen className="w-3 h-3 text-[#4085b3]" />
                                                 Filter by Class / ክፍል ይምረጡ:
                                             </span>
                                             {assignedClasses.length > 0 && (
@@ -1541,7 +1649,7 @@ export default function TeacherCommunicationPage() {
                                     <div className="space-y-1">
                                         <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider flex items-center justify-between">
                                             <span className="flex items-center gap-1">
-                                                <BookOpen className="w-3 h-3 text-[#143e66]" />
+                                                <BookOpen className="w-3 h-3 text-[#4085b3]" />
                                                 Select Section / ክፍል ይምረጡ:
                                             </span>
                                             <span className="text-[10px] font-extrabold text-amber-600">
@@ -1569,11 +1677,11 @@ export default function TeacherCommunicationPage() {
                                 {parentTargetMode === "ALL" && (
                                     <div className="p-2.5 bg-blue-50/70 border border-blue-200/90 rounded-xl text-left space-y-1">
                                         <div className="flex items-center justify-between">
-                                            <span className="text-xs font-extrabold text-[#143e66] flex items-center gap-1.5">
-                                                <Megaphone className="w-3.5 h-3.5 text-blue-600" />
+                                            <span className="text-xs font-extrabold text-[#4085b3] flex items-center gap-1.5">
+                                                <Megaphone className="w-3.5 h-3.5 text-[#4085b3]" />
                                                 Target: All Students' Parents
                                             </span>
-                                            <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-blue-100 text-blue-800">
+                                            <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-blue-100 text-[#245f8b]">
                                                 {parentContacts.length || studentsList.length} Parents
                                             </span>
                                         </div>
@@ -1734,7 +1842,7 @@ export default function TeacherCommunicationPage() {
                                                     setSearchQuery("");
                                                     setSelectedClassId("ALL");
                                                 }}
-                                                className="text-[11px] font-bold text-blue-600 hover:text-blue-800 underline"
+                                                className="text-[11px] font-bold text-[#4085b3] hover:text-[#245f8b] underline"
                                             >
                                                 Reset filters
                                             </button>
@@ -1754,7 +1862,7 @@ export default function TeacherCommunicationPage() {
                                                 }}
                                                 className={`w-full p-3.5 text-left flex items-center justify-between transition-colors ${
                                                     isSelected
-                                                        ? "bg-blue-50/90 border-l-4 border-[#143e66] text-blue-900 shadow-2xs"
+                                                        ? "bg-blue-50/90 border-l-4 border-[#4085b3] text-blue-900 shadow-2xs"
                                                         : "hover:bg-slate-50 text-slate-800"
                                                 }`}
                                             >
@@ -1766,7 +1874,7 @@ export default function TeacherCommunicationPage() {
                                                             ? "bg-amber-100 text-amber-800 border border-amber-200/80"
                                                             : activeCategory === "DEPARTMENT"
                                                             ? "bg-purple-100 text-purple-800 border border-purple-200/80"
-                                                            : "bg-blue-100 text-blue-800 border border-blue-200/80"
+                                                            : "bg-blue-100 text-[#245f8b] border border-blue-200/80"
                                                     }`}>
                                                         {activeCategory === "STUDENT" ? (
                                                             <GraduationCap className="w-4 h-4 text-emerald-700" />
@@ -1827,7 +1935,7 @@ export default function TeacherCommunicationPage() {
                         <div className="flex items-center space-x-3">
                             <div className={`p-2.5 rounded-xl text-white shrink-0 shadow-2xs ${
                                 (activeCategory === "STUDENT" && studentTargetMode === "ALL") || (activeCategory === "PARENT" && parentTargetMode === "ALL")
-                                    ? "bg-blue-600 shadow-blue-600/20"
+                                    ? "bg-[#4085b3] shadow-[#4085b3]/20"
                                     : (activeCategory === "STUDENT" && studentTargetMode === "SECTION") || (activeCategory === "PARENT" && parentTargetMode === "SECTION")
                                     ? "bg-amber-600 shadow-amber-600/20"
                                     : activeCategory === "STUDENT"
@@ -1836,7 +1944,7 @@ export default function TeacherCommunicationPage() {
                                     ? "bg-amber-600 shadow-amber-600/20"
                                     : activeCategory === "DEPARTMENT"
                                     ? "bg-purple-600"
-                                    : "bg-[#143e66]"
+                                    : "bg-[#4085b3]"
                             }`}>
                                 {(activeCategory === "STUDENT" && studentTargetMode !== "STUDENT") || (activeCategory === "PARENT" && parentTargetMode !== "PARENT") ? (
                                     <Megaphone className="w-4 h-4" />
@@ -1939,7 +2047,7 @@ export default function TeacherCommunicationPage() {
                             <div className="py-10 text-center text-slate-400 space-y-1">
                                 {activeCategory === "STUDENT" && studentTargetMode === "ALL" ? (
                                     <>
-                                        <Megaphone className="w-8 h-8 mx-auto stroke-1 text-blue-500/80" />
+                                        <Megaphone className="w-8 h-8 mx-auto stroke-1 text-[#4085b3]/80" />
                                         <p className="text-xs font-bold text-slate-700">All Students Broadcast Mode</p>
                                         <p className="text-[11px] text-slate-400 max-w-sm mx-auto">
                                             Type your announcement below. It will be dispatched directly to all {studentsList.length} students across all your classes.
@@ -1981,24 +2089,26 @@ export default function TeacherCommunicationPage() {
                                     >
                                         <div className={`max-w-lg p-3.5 rounded-2xl text-xs space-y-2 shadow-2xs transition-all relative ${
                                             isMe
-                                                ? "bg-[#143e66] text-white rounded-br-xs"
-                                                : "bg-white border border-slate-200 text-slate-800 rounded-bl-xs"
+                                                ? "bg-[#4085b3]/12 border border-[#4085b3]/30 text-slate-800 rounded-br-xs font-normal"
+                                                : "bg-white border border-slate-200 text-slate-800 rounded-bl-xs font-normal"
                                         }`}>
-                                            <div className="flex items-center justify-between space-x-3 text-[10px] opacity-80 font-semibold border-b pb-1.5 border-current/15">
-                                                <span>{isMe ? "You" : (msg.sender?.name || "Recipient")}</span>
-                                                <div className="flex items-center gap-1.5">
-                                                    {msg.isEdited && <span className="italic text-[9px] opacity-90 font-normal">(edited)</span>}
+                                            <div className={`flex items-center justify-between space-x-3 text-[10px] pb-1.5 border-b ${
+                                                isMe ? "text-[#245f8b] border-[#4085b3]/20" : "text-slate-500 border-slate-100"
+                                            }`}>
+                                                <span className="font-semibold">{isMe ? "You" : (msg.sender?.name || "Recipient")}</span>
+                                                <div className="flex items-center gap-1.5 text-slate-500 font-normal">
+                                                    {msg.isEdited && <span className="italic text-[9px] text-slate-400 font-normal">(edited)</span>}
                                                     <span>{new Date(msg.createdAt || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                                                     {isMe && (
                                                         <span title={msg.isRead ? "Read by recipient" : "Delivered"}>
                                                             {msg.isRead ? (
-                                                                <span className="inline-flex items-center text-amber-300 font-bold">
-                                                                    <CheckCheck className="w-3 h-3" />
+                                                                <span className="inline-flex items-center text-[#4085b3] font-medium">
+                                                                    <CheckCheck className="w-3.5 h-3.5" />
                                                                     <span className="ml-0.5 text-[9px]">Read</span>
                                                                 </span>
                                                             ) : (
-                                                                <span className="inline-flex items-center text-blue-200">
-                                                                    <Check className="w-3 h-3" />
+                                                                <span className="inline-flex items-center text-[#4085b3]/70 font-medium">
+                                                                    <Check className="w-3.5 h-3.5" />
                                                                     <span className="ml-0.5 text-[9px]">Sent</span>
                                                                 </span>
                                                             )}
@@ -2014,7 +2124,7 @@ export default function TeacherCommunicationPage() {
                                                         onChange={(e) => setEditingContent(e.target.value)}
                                                         className={`w-full p-2.5 text-xs rounded-xl border resize-none focus:outline-hidden ${
                                                             isMe
-                                                                ? "bg-[#0f2d4a] text-white border-blue-400 focus:ring-1 focus:ring-blue-300"
+                                                                ? "bg-white text-slate-900 border-[#4085b3] focus:ring-1 focus:ring-[#4085b3]/30"
                                                                 : "bg-slate-50 text-slate-800 border-slate-300 focus:ring-1 focus:ring-blue-500"
                                                         }`}
                                                         rows={3}
@@ -2024,9 +2134,7 @@ export default function TeacherCommunicationPage() {
                                                         <button
                                                             type="button"
                                                             onClick={handleCancelEdit}
-                                                            className={`px-2.5 py-1 text-[11px] rounded-lg font-medium transition-colors ${
-                                                                isMe ? "text-slate-200 hover:bg-white/10" : "text-slate-600 hover:bg-slate-100"
-                                                            }`}
+                                                            className="px-2.5 py-1 text-[11px] rounded-lg font-medium text-slate-600 hover:bg-slate-100 transition-colors"
                                                         >
                                                             Cancel
                                                         </button>
@@ -2034,7 +2142,7 @@ export default function TeacherCommunicationPage() {
                                                             type="button"
                                                             onClick={() => handleSaveEdit(msg.id)}
                                                             disabled={isUpdatingMessage || !editingContent.trim()}
-                                                            className="px-3 py-1 bg-amber-400 hover:bg-amber-500 text-slate-900 rounded-lg text-[11px] font-bold shadow-xs disabled:opacity-50 transition-colors"
+                                                            className="px-3 py-1 bg-[#4085b3] hover:bg-[#32698e] text-white rounded-lg text-[11px] font-bold shadow-xs disabled:opacity-50 transition-colors"
                                                         >
                                                             {isUpdatingMessage ? "Saving..." : "Save"}
                                                         </button>
@@ -2042,51 +2150,73 @@ export default function TeacherCommunicationPage() {
                                                 </div>
                                             ) : (
                                                 <div className="space-y-1.5">
-                                                    {msg.content && <p className="leading-relaxed whitespace-pre-wrap break-words">{msg.content}</p>}
+                                                    {msg.content && (
+                                                        <p className="leading-relaxed whitespace-pre-wrap break-words text-slate-800 font-normal text-xs">
+                                                            {formatCleanMessageContent(msg.content)}
+                                                        </p>
+                                                    )}
 
-                                                    {/* Attached File Display (Image / Document / PDF / Word) */}
+                                                    {/* Attached File Display with Live Preview */}
                                                     {msg.attachmentUrl && (
                                                         <div className="pt-1">
                                                             {(msg.attachmentType?.startsWith("image/") || msg.attachmentUrl.match(/\.(jpeg|jpg|png|webp|gif|svg)$/i)) ? (
-                                                                <div className="rounded-xl overflow-hidden border border-current/20 bg-black/10 max-w-xs mt-1">
-                                                                    <a
-                                                                        href={msg.attachmentUrl}
-                                                                        target="_blank"
-                                                                        rel="noopener noreferrer"
-                                                                        className="block relative group"
-                                                                    >
-                                                                        <img
-                                                                            src={msg.attachmentUrl}
-                                                                            alt={msg.attachmentName || "Attached Image"}
-                                                                            className="max-h-48 w-auto rounded-lg object-contain mx-auto"
-                                                                        />
-                                                                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity text-white text-[10px] font-bold gap-1">
-                                                                            <ExternalLink className="w-3.5 h-3.5" />
-                                                                            <span>View Full Image</span>
-                                                                        </div>
-                                                                    </a>
+                                                                <div
+                                                                    onClick={() => setPreviewDoc({ url: msg.attachmentUrl, name: msg.attachmentName || "Attached Image", type: "image" })}
+                                                                    className="rounded-xl overflow-hidden border border-[#4085b3]/30 bg-slate-50 max-w-xs mt-1 cursor-pointer group/img relative"
+                                                                >
+                                                                    <img
+                                                                        src={msg.attachmentUrl}
+                                                                        alt={msg.attachmentName || "Attached Image"}
+                                                                        className="max-h-48 w-auto rounded-lg object-contain mx-auto transition-transform duration-200 group-hover/img:scale-[1.02]"
+                                                                    />
+                                                                    <div className="absolute inset-0 bg-[#4085b3]/40 opacity-0 group-hover/img:opacity-100 flex items-center justify-center transition-opacity text-white text-[11px] font-bold gap-1.5">
+                                                                        <Eye className="w-4 h-4" />
+                                                                        <span>Preview Image</span>
+                                                                    </div>
                                                                 </div>
                                                             ) : (
-                                                                <div className={`p-2.5 rounded-xl border flex items-center justify-between gap-3 text-xs mt-1 ${
-                                                                    isMe ? "bg-white/10 border-white/20 text-white" : "bg-slate-50 border-slate-200 text-slate-800"
-                                                                }`}>
-                                                                    <div className="flex items-center gap-2 overflow-hidden">
-                                                                        <FileText className="w-4 h-4 shrink-0 text-amber-400" />
-                                                                        <div className="truncate">
-                                                                            <p className="truncate font-medium">{msg.attachmentName || "Attached Document"}</p>
-                                                                            <p className="text-[9px] opacity-70">Document File</p>
+                                                                <div className="p-2.5 rounded-xl border border-[#4085b3]/30 bg-white/95 text-slate-800 flex items-center justify-between gap-3 text-xs mt-1 hover:border-[#4085b3] hover:shadow-xs transition-all">
+                                                                    <div
+                                                                        onClick={() => setPreviewDoc({ url: msg.attachmentUrl, name: msg.attachmentName || "Attached Document", type: msg.attachmentType || "document" })}
+                                                                        className="flex items-center gap-2.5 overflow-hidden flex-1 cursor-pointer group/doc"
+                                                                    >
+                                                                        <div className="w-8 h-8 rounded-lg bg-[#4085b3]/10 text-[#4085b3] flex items-center justify-center shrink-0">
+                                                                            <FileText className="w-4 h-4" />
+                                                                        </div>
+                                                                        <div className="truncate min-w-0">
+                                                                            <p className="truncate font-semibold text-slate-900 group-hover/doc:text-[#4085b3] transition-colors">
+                                                                                {msg.attachmentName || "Attached Document"}
+                                                                            </p>
+                                                                            <p className="text-[10px] text-slate-400 flex items-center gap-1">
+                                                                                <span>Document</span>
+                                                                                <span>•</span>
+                                                                                <span className="text-[#4085b3] font-medium inline-flex items-center gap-0.5">
+                                                                                    <Eye className="w-3 h-3" /> Click to Preview
+                                                                                </span>
+                                                                            </p>
                                                                         </div>
                                                                     </div>
-                                                                    <a
-                                                                        href={msg.attachmentUrl}
-                                                                        target="_blank"
-                                                                        rel="noopener noreferrer"
-                                                                        download={msg.attachmentName || true}
-                                                                        className="px-2.5 py-1 rounded bg-white text-slate-900 font-bold text-[10px] hover:bg-slate-100 flex items-center gap-1 shrink-0 shadow-2xs transition-colors"
-                                                                    >
-                                                                        <Download className="w-3 h-3 text-[#143e66]" />
-                                                                        <span>Download</span>
-                                                                    </a>
+                                                                    <div className="flex items-center gap-1 shrink-0">
+                                                                        <button
+                                                                            type="button"
+                                                                            onClick={() => setPreviewDoc({ url: msg.attachmentUrl, name: msg.attachmentName || "Attached Document", type: msg.attachmentType || "document" })}
+                                                                            className="px-2.5 py-1 rounded-md text-[10px] font-bold text-[#4085b3] hover:bg-[#4085b3]/10 border border-[#4085b3]/30 flex items-center gap-1 cursor-pointer transition-colors"
+                                                                            title="Preview Document"
+                                                                        >
+                                                                            <Eye className="w-3 h-3" />
+                                                                            <span>Preview</span>
+                                                                        </button>
+                                                                        <a
+                                                                            href={msg.attachmentUrl}
+                                                                            target="_blank"
+                                                                            rel="noopener noreferrer"
+                                                                            download={msg.attachmentName || true}
+                                                                            className="p-1 rounded-md text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors cursor-pointer"
+                                                                            title="Download File"
+                                                                        >
+                                                                            <Download className="w-3.5 h-3.5" />
+                                                                        </a>
+                                                                    </div>
                                                                 </div>
                                                             )}
                                                         </div>
@@ -2097,23 +2227,19 @@ export default function TeacherCommunicationPage() {
                                             {/* Action Options: Copy, Edit, Delete, Reply */}
                                             {!isEditing && (
                                                 <div className={`flex items-center gap-1 pt-1.5 border-t ${
-                                                    isMe ? "border-white/15" : "border-slate-100"
+                                                    isMe ? "border-[#4085b3]/20" : "border-slate-100"
                                                 }`}>
                                                     {/* Copy Option */}
                                                     <button
                                                         type="button"
-                                                        onClick={() => handleCopyMessage(msg.content, msg.id)}
-                                                        className={`px-2 py-0.5 rounded-md transition-colors flex items-center gap-1 text-[10px] font-medium cursor-pointer ${
-                                                            isMe
-                                                                ? "text-blue-100 hover:bg-white/15 hover:text-white"
-                                                                : "text-slate-500 hover:bg-slate-100 hover:text-slate-800"
-                                                        }`}
+                                                        onClick={() => handleCopyMessage(formatCleanMessageContent(msg.content), msg.id)}
+                                                        className="px-2 py-0.5 rounded-md transition-colors flex items-center gap-1 text-[10px] font-medium text-slate-500 hover:bg-slate-100 hover:text-slate-800 cursor-pointer"
                                                         title="Copy text"
                                                     >
                                                         {isCopied ? (
                                                             <>
-                                                                <Check className="w-3 h-3 text-emerald-400" />
-                                                                <span className="text-[9px] text-emerald-400 font-bold">Copied</span>
+                                                                <Check className="w-3 h-3 text-emerald-500" />
+                                                                <span className="text-[9px] text-emerald-600 font-bold">Copied</span>
                                                             </>
                                                         ) : (
                                                             <>
@@ -2127,11 +2253,7 @@ export default function TeacherCommunicationPage() {
                                                     <button
                                                         type="button"
                                                         onClick={() => handleStartReply(msg)}
-                                                        className={`px-2 py-0.5 rounded-md transition-colors flex items-center gap-1 text-[10px] font-medium cursor-pointer ${
-                                                            isMe
-                                                                ? "text-blue-100 hover:bg-white/15 hover:text-white"
-                                                                : "text-slate-500 hover:bg-slate-100 hover:text-slate-800"
-                                                        }`}
+                                                        className="px-2 py-0.5 rounded-md transition-colors flex items-center gap-1 text-[10px] font-medium text-slate-500 hover:bg-slate-100 hover:text-slate-800 cursor-pointer"
                                                         title="Reply to message"
                                                     >
                                                         <Reply className="w-3 h-3" />
@@ -2143,11 +2265,7 @@ export default function TeacherCommunicationPage() {
                                                         <button
                                                             type="button"
                                                             onClick={() => handleStartEdit(msg)}
-                                                            className={`px-2 py-0.5 rounded-md transition-colors flex items-center gap-1 text-[10px] font-medium cursor-pointer ${
-                                                                isMe
-                                                                    ? "text-blue-100 hover:bg-white/15 hover:text-white"
-                                                                    : "text-slate-500 hover:bg-slate-100 hover:text-slate-800"
-                                                            }`}
+                                                            className="px-2 py-0.5 rounded-md transition-colors flex items-center gap-1 text-[10px] font-medium text-slate-500 hover:bg-slate-100 hover:text-slate-800 cursor-pointer"
                                                             title="Edit message"
                                                         >
                                                             <Edit3 className="w-3 h-3" />
@@ -2160,11 +2278,7 @@ export default function TeacherCommunicationPage() {
                                                         type="button"
                                                         onClick={() => handleDeleteMessage(msg.id)}
                                                         disabled={isDeleting}
-                                                        className={`px-2 py-0.5 rounded-md transition-colors flex items-center gap-1 text-[10px] font-medium cursor-pointer ${
-                                                            isMe
-                                                                ? "text-rose-200 hover:bg-rose-500/20 hover:text-white"
-                                                                : "text-rose-500 hover:bg-rose-50 hover:text-rose-700"
-                                                        }`}
+                                                        className="px-2 py-0.5 rounded-md transition-colors flex items-center gap-1 text-[10px] font-medium text-rose-500 hover:bg-rose-50 hover:text-rose-700 cursor-pointer"
                                                         title="Delete message"
                                                     >
                                                         <Trash2 className="w-3 h-3" />
@@ -2185,9 +2299,9 @@ export default function TeacherCommunicationPage() {
                                         {selectedContact?.name || "Student"} is typing
                                     </span>
                                     <span className="inline-flex items-center gap-1">
-                                        <span className="h-1.5 w-1.5 rounded-full bg-[#143e66] animate-bounce [animation-delay:-0.3s]"></span>
-                                        <span className="h-1.5 w-1.5 rounded-full bg-[#143e66] animate-bounce [animation-delay:-0.15s]"></span>
-                                        <span className="h-1.5 w-1.5 rounded-full bg-[#143e66] animate-bounce"></span>
+                                        <span className="h-1.5 w-1.5 rounded-full bg-[#4085b3] animate-bounce [animation-delay:-0.3s]"></span>
+                                        <span className="h-1.5 w-1.5 rounded-full bg-[#4085b3] animate-bounce [animation-delay:-0.15s]"></span>
+                                        <span className="h-1.5 w-1.5 rounded-full bg-[#4085b3] animate-bounce"></span>
                                     </span>
                                 </div>
                             </div>
@@ -2209,7 +2323,7 @@ export default function TeacherCommunicationPage() {
                         {replyingTo && (
                             <div className="flex items-center justify-between px-3 py-2 bg-blue-50 border border-blue-200/90 rounded-xl text-xs text-blue-900 shadow-2xs">
                                 <div className="flex items-center gap-2 overflow-hidden">
-                                    <Reply className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                                    <Reply className="w-3.5 h-3.5 text-[#4085b3] shrink-0" />
                                     <div className="truncate">
                                         <span className="font-bold">Replying to {replyingTo.senderName}: </span>
                                         <span className="text-slate-600 truncate">{replyingTo.content.slice(0, 80)}{replyingTo.content.length > 80 ? '...' : ''}</span>
@@ -2324,7 +2438,7 @@ export default function TeacherCommunicationPage() {
                                         }`}
                                         title="Attach Image, PDF, Word, or Document"
                                     >
-                                        <Paperclip className="w-4 h-4 text-[#143e66]" />
+                                        <Paperclip className="w-4 h-4 text-[#4085b3]" />
                                         <span className="text-[11px] font-bold">{attachedFile ? "Attached" : "Attach"}</span>
                                     </button>
 
@@ -2334,10 +2448,10 @@ export default function TeacherCommunicationPage() {
                                         disabled={sending || uploadingAttachment || (!messageText.trim() && !attachedFile)}
                                         className={`flex-1 px-4 font-bold rounded-xl disabled:opacity-50 transition-all flex flex-col items-center justify-center gap-1 shadow-xs active:scale-95 cursor-pointer ${
                                             (activeCategory === "STUDENT" && studentTargetMode === "ALL") || (activeCategory === "PARENT" && parentTargetMode === "ALL")
-                                                ? "bg-blue-600 hover:bg-blue-700 text-white"
+                                                ? "bg-[#4085b3] hover:bg-[#32698e] text-white"
                                                 : (activeCategory === "STUDENT" && studentTargetMode === "SECTION") || (activeCategory === "PARENT" && parentTargetMode === "SECTION")
                                                 ? "bg-amber-600 hover:bg-amber-700 text-white"
-                                                : "bg-[#143e66] hover:bg-[#1a4f82] text-amber-300"
+                                                : "bg-[#4085b3] hover:bg-[#32698e] text-amber-300"
                                         }`}
                                     >
                                         {(activeCategory === "STUDENT" && studentTargetMode !== "STUDENT") || (activeCategory === "PARENT" && parentTargetMode !== "PARENT") ? (
@@ -2363,6 +2477,106 @@ export default function TeacherCommunicationPage() {
                     </div>
                 </div>
             </div>
+            )}
+
+            {/* Interactive Document Preview Modal */}
+            {previewDoc && (
+                <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-6 animate-in fade-in duration-150">
+                    <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-150">
+                        {/* Modal Header */}
+                        <div className="px-5 py-3.5 border-b border-slate-200 flex items-center justify-between bg-slate-50/80">
+                            <div className="flex items-center gap-2.5 min-w-0">
+                                <div className="w-8 h-8 rounded-lg bg-[#4085b3]/15 text-[#4085b3] flex items-center justify-center shrink-0">
+                                    <FileText className="w-4 h-4" />
+                                </div>
+                                <div className="min-w-0">
+                                    <h3 className="text-xs font-bold text-slate-900 truncate max-w-md">
+                                        {previewDoc.name || "Document Preview"}
+                                    </h3>
+                                    <p className="text-[10px] text-slate-400">File Preview Viewer</p>
+                                </div>
+                            </div>
+
+                            <div className="flex items-center gap-2 shrink-0">
+                                <a
+                                    href={previewDoc.url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="px-3 py-1.5 text-xs font-bold text-slate-700 bg-white hover:bg-slate-100 border border-slate-300 rounded-lg flex items-center gap-1.5 transition-colors shadow-2xs"
+                                >
+                                    <ExternalLink className="w-3.5 h-3.5 text-[#4085b3]" />
+                                    <span>Open in New Tab</span>
+                                </a>
+                                <a
+                                    href={previewDoc.url}
+                                    download={previewDoc.name || "document"}
+                                    className="px-3 py-1.5 text-xs font-bold text-white bg-[#4085b3] hover:bg-[#32698e] rounded-lg flex items-center gap-1.5 transition-colors shadow-2xs"
+                                >
+                                    <Download className="w-3.5 h-3.5" />
+                                    <span>Download</span>
+                                </a>
+                                <button
+                                    type="button"
+                                    onClick={() => setPreviewDoc(null)}
+                                    className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
+                                    title="Close preview"
+                                >
+                                    <X className="w-5 h-5" />
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Modal Body: Document / Image Preview */}
+                        <div className="p-4 flex-1 overflow-auto flex items-center justify-center bg-slate-100/50 min-h-[400px]">
+                            {(previewDoc.type === "image" || previewDoc.url.match(/\.(jpeg|jpg|png|webp|gif|svg)$/i)) ? (
+                                <div className="max-h-[70vh] max-w-full flex items-center justify-center">
+                                    <img
+                                        src={previewDoc.url}
+                                        alt={previewDoc.name || "Image Preview"}
+                                        className="max-h-[70vh] max-w-full object-contain rounded-xl shadow-md border border-slate-200"
+                                    />
+                                </div>
+                            ) : (previewDoc.url.match(/\.pdf$/i) || previewDoc.type?.includes("pdf")) ? (
+                                <iframe
+                                    src={`${previewDoc.url}#toolbar=1`}
+                                    title={previewDoc.name || "PDF Document"}
+                                    className="w-full h-[70vh] rounded-xl border border-slate-200 bg-white shadow-xs"
+                                />
+                            ) : (
+                                <div className="bg-white p-8 rounded-2xl border border-slate-200 max-w-md w-full text-center space-y-4 shadow-sm">
+                                    <div className="w-16 h-16 rounded-2xl bg-[#4085b3]/10 text-[#4085b3] flex items-center justify-center mx-auto">
+                                        <FileText className="w-8 h-8" />
+                                    </div>
+                                    <div>
+                                        <h4 className="text-sm font-bold text-slate-900">{previewDoc.name || "Document File"}</h4>
+                                        <p className="text-xs text-slate-500 mt-1">
+                                            This document can be opened in the browser viewer or downloaded directly.
+                                        </p>
+                                    </div>
+                                    <div className="flex items-center justify-center gap-3 pt-2">
+                                        <a
+                                            href={previewDoc.url}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="px-4 py-2 bg-[#4085b3] hover:bg-[#32698e] text-white text-xs font-bold rounded-xl flex items-center gap-1.5 transition-colors shadow-2xs"
+                                        >
+                                            <ExternalLink className="w-4 h-4" />
+                                            <span>Open Viewer</span>
+                                        </a>
+                                        <a
+                                            href={previewDoc.url}
+                                            download={previewDoc.name || true}
+                                            className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold rounded-xl flex items-center gap-1.5 transition-colors"
+                                        >
+                                            <Download className="w-4 h-4 text-slate-600" />
+                                            <span>Download</span>
+                                        </a>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
             )}
         </div>
     );

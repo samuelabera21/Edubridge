@@ -21,7 +21,7 @@ export function requireAuth() {
     };
 }
 
-export function requirePermission(permissionName: string) {
+export function requirePermission(permissionName: string | string[]) {
     return async (req: Request, res: Response, next: NextFunction) => {
         try {
             const session = await auth.api.getSession({
@@ -29,25 +29,27 @@ export function requirePermission(permissionName: string) {
             });
 
             if (!session) {
-            return res.status(401).json({
-                message: "Unauthorized",
-            });
-        }
+                return res.status(401).json({
+                    message: "Unauthorized",
+                });
+            }
 
-        const permission = await prisma.rolePermission.findFirst({
-            where: {
-                role: {
-                    assignments: {
-                        some: {
-                            userId: session.user.id,
+            const permissionNames = Array.isArray(permissionName) ? permissionName : [permissionName];
+
+            const permission = await prisma.rolePermission.findFirst({
+                where: {
+                    role: {
+                        assignments: {
+                            some: {
+                                userId: session.user.id,
+                            },
                         },
                     },
+                    permission: {
+                        name: { in: permissionNames },
+                    },
                 },
-                permission: {
-                    name: permissionName,
-                },
-            },
-        });
+            });
 
             if (!permission) {
                 return res.status(403).json({
@@ -103,6 +105,19 @@ export function requireScope(scopeType: "SCHOOL" | "WOREDA" | "ZONE" | "REGION" 
                     createdAt: "desc"
                 }
             });
+        }
+
+        // Fallback for Teachers whose role assignment is at the user level or whose organization is mapped via Teacher profile
+        if (!assignment && (scopeType === "SCHOOL" || !scopeType)) {
+            const teacherProfile = await prisma.teacher.findFirst({
+                where: { userId: session.user.id },
+                include: { organization: true }
+            });
+            if (teacherProfile?.organization) {
+                (req as any).accessScope = teacherProfile.organization;
+                (req as any).user = session.user;
+                return next();
+            }
         }
 
         if (!assignment) {

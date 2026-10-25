@@ -4,14 +4,16 @@ import { useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import ProgramsRegistryView from "../../../components/governance/ProgramsRegistryView";
 import { useAuth } from "../../../hooks/useAuth";
+import { getPrimaryAccess } from "../../../lib/auth-access";
 
 export default function ProgramsPage() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const { authData, loading } = useAuth();
 
-    const activeScope = authData?.access?.[0]?.scope;
-    const roleName = authData?.access?.[0]?.role?.name || "";
+    const primaryAccess = getPrimaryAccess(authData?.access);
+    const activeScope = primaryAccess?.scope;
+    const roleName = primaryAccess?.role?.name || "";
     const unitName = activeScope?.name || "Institution";
     const unitType = (activeScope?.type || "SCHOOL") as "FEDERAL" | "REGION" | "ZONE" | "WOREDA" | "SCHOOL";
 

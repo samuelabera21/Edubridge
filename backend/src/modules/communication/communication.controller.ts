@@ -560,7 +560,7 @@ export const sendTeacherStudentBroadcast = async (req: Request, res: Response) =
         const organizationId = (req as any).accessScope?.id;
         if (!teacherUserId || !organizationId) return res.status(401).json({ error: "Unauthorized" });
 
-        const { targetType, sectionId, studentId, receiverId, subject, content, priority } = req.body;
+        const { targetType, sectionId, studentId, receiverId, subject, content, priority, attachmentUrl, attachmentName, attachmentType } = req.body;
         if (!targetType || !content) {
             return res.status(400).json({ error: "targetType and content are required" });
         }
@@ -574,7 +574,10 @@ export const sendTeacherStudentBroadcast = async (req: Request, res: Response) =
             receiverId,
             subject,
             content,
-            priority
+            priority,
+            attachmentUrl,
+            attachmentName,
+            attachmentType
         });
 
         return res.status(201).json(result);
@@ -589,7 +592,7 @@ export const sendTeacherParentBroadcast = async (req: Request, res: Response) =>
         const organizationId = (req as any).accessScope?.id;
         if (!teacherUserId || !organizationId) return res.status(401).json({ error: "Unauthorized" });
 
-        const { targetType, sectionId, studentId, enrollmentId, receiverId, subject, content, priority } = req.body;
+        const { targetType, sectionId, studentId, enrollmentId, receiverId, subject, content, priority, attachmentUrl, attachmentName, attachmentType } = req.body;
         if (!targetType || !content) {
             return res.status(400).json({ error: "targetType and content are required" });
         }
@@ -604,7 +607,10 @@ export const sendTeacherParentBroadcast = async (req: Request, res: Response) =>
             receiverId,
             subject,
             content,
-            priority
+            priority,
+            attachmentUrl,
+            attachmentName,
+            attachmentType
         });
 
         return res.status(201).json(result);

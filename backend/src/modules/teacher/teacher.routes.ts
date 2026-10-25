@@ -31,6 +31,9 @@ import {
     getRepeatedAbsences,
     getAttendanceHistory,
     getCurriculumData,
+    getLearningMaterials,
+    createLearningMaterial,
+    deleteLearningMaterial,
     getStaffingDemand,
     getSectionCoverage,
     getFacultyWorkload,
@@ -56,11 +59,13 @@ import { recordStudentAttendance, getStudentAttendance } from "../attendance/att
 import { createAssessment, deleteAssessment, getAssessments, recordResult, getStudentResults } from "../assessment/assessment.controller.js";
 import { requirePermission, requireScope } from "../authentication/authorization.middleware.js";
 import { recommendDigitalResource } from "../operational/operational.controller.js";
+import gradeSubmissionRoutes from "../grade-submission/grade-submission.routes.js";
 
 const router = Router();
 
 // Ensure all teacher routes are scoped to SCHOOL
 router.use(requireScope("SCHOOL"));
+router.use("/results", gradeSubmissionRoutes);
 router.post("/resources/recommend", recommendDigitalResource);
 
 /**
@@ -149,6 +154,9 @@ router.get("/students/:studentId", getStudentDetail);
 
 router.get("/attendance/repeated-absences", getRepeatedAbsences);
 router.get("/curriculum", getCurriculumData);
+router.get("/curriculum/materials", getLearningMaterials);
+router.post("/curriculum/materials", createLearningMaterial);
+router.delete("/curriculum/materials/:id", deleteLearningMaterial);
 
 /**
  * @openapi
