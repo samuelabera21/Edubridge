@@ -61,6 +61,24 @@ export class GoogleFormsService {
     }
 
     /**
+     * Helper to clear tokens from disk and memory when invalid or expired.
+     */
+    static clearTokens() {
+        try {
+            if (fs.existsSync(this.tokenFilePath)) {
+                fs.unlinkSync(this.tokenFilePath);
+            }
+            if (this.oauth2Client) {
+                this.oauth2Client.setCredentials({});
+                this.oauth2Client = null;
+            }
+            console.log("[GoogleFormsService] Stale/invalid Google OAuth tokens cleared.");
+        } catch (err) {
+            console.warn("[GoogleFormsService] Failed to clear token file:", err);
+        }
+    }
+
+    /**
      * Initializes or returns Google OAuth2 Client instance.
      */
     static getOAuth2Client() {
@@ -282,6 +300,11 @@ export class GoogleFormsService {
                 };
             } catch (err: any) {
                 console.error("[GoogleFormsService] Google Forms API error:", err);
+                const isInvalidGrant = err.message?.includes("invalid_grant") || err.response?.data?.error === "invalid_grant";
+                if (isInvalidGrant) {
+                    this.clearTokens();
+                    throw new Error("Google account authorization expired or belongs to a previous project. Stale credentials have been reset — please click 'Connect Google Account' above to authorize Google Forms creation.");
+                }
                 throw new Error(`Google Forms API failed: ${err.message || err}`);
             }
         }

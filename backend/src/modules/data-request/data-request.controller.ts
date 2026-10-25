@@ -365,7 +365,7 @@ export async function handleGoogleOAuthCallbackHandler(req: Request, res: Respon
             return res.status(400).send("Authorization code missing from Google OAuth callback.");
         }
         await GoogleFormsService.handleOAuthCallback(code);
-        const frontendUrl = process.env.FRONTEND_URL || "http://localhost:3001";
+        const frontendUrl = process.env.FRONTEND_URL || "http://localhost:3000";
         let targetPath = "/dashboard/federal?tab=data-requests";
         if (state && (state.startsWith("/") || state.startsWith("http"))) {
             targetPath = state;
