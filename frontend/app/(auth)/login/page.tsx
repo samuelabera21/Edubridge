@@ -231,6 +231,12 @@ export default function LoginPage() {
                 return;
             }
 
+            const signData = await res.json().catch(() => ({}));
+            if (signData?.token) {
+                localStorage.setItem("auth_token", signData.token);
+                document.cookie = `better-auth.session_token=${signData.token}; path=/; max-age=604800; SameSite=Lax; Secure`;
+            }
+
             // Verify user state server-side
             const meRes = await fetchApi("/authorization/me");
             if (meRes.ok) {

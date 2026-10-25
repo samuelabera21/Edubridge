@@ -4,6 +4,7 @@ import { useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { fetchApi } from "../../../lib/api";
+import { getDashboardPath } from "../../../lib/auth-access";
 import { Loader2, KeyRound, CheckCircle2, AlertCircle, Eye, EyeOff, ArrowLeft } from "lucide-react";
 
 function ResetPasswordForm() {
@@ -55,7 +56,7 @@ function ResetPasswordForm() {
         setLoading(true);
 
         try {
-            const res = await fetchApi("/auth/reset-password", {
+            const res = await fetchApi("/authorization/reset-password-and-login", {
                 method: "POST",
                 body: JSON.stringify({
                     newPassword: password,
@@ -64,10 +65,35 @@ function ResetPasswordForm() {
             });
 
             if (!res.ok) {
-                const data = await res.json().catch(() => ({}));
-                const msg = data.message || data.error || "Failed to reset password. The link may have expired.";
-                setError(msg);
+                // Fallback to standard reset-password if custom route isn't available
+                const fallbackRes = await fetchApi("/auth/reset-password", {
+                    method: "POST",
+                    body: JSON.stringify({
+                        newPassword: password,
+                        token,
+                    }),
+                });
+
+                if (!fallbackRes.ok) {
+                    const data = await fallbackRes.json().catch(() => ({}));
+                    const msg = data.message || data.error || "Failed to reset password. The link may have expired.";
+                    setError(msg);
+                    setLoading(false);
+                    return;
+                }
+
+                setSuccess(true);
                 setLoading(false);
+                return;
+            }
+
+            const data = await res.json().catch(() => ({}));
+            if (data?.token) {
+                localStorage.setItem("auth_token", data.token);
+                document.cookie = `better-auth.session_token=${data.token}; path=/; max-age=604800; SameSite=Lax; Secure`;
+
+                const dest = getDashboardPath(data);
+                router.push(dest);
                 return;
             }
 

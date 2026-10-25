@@ -20,6 +20,96 @@ import {
 
 const router = Router();
 
+router.post("/reset-password-and-login", async (req, res) => {
+    try {
+        const { newPassword, token } = req.body;
+        if (!token || !newPassword) {
+            return res.status(400).json({ message: "Token and new password are required." });
+        }
+
+        if (newPassword.length < 8) {
+            return res.status(400).json({ message: "Password must be at least 8 characters long." });
+        }
+
+        const id = `reset-password:${token}`;
+        const verification = await prisma.verification.findFirst({
+            where: { identifier: id }
+        });
+
+        if (!verification || verification.expiresAt < new Date()) {
+            return res.status(400).json({ message: "Invalid or expired password reset link. Please request a new one." });
+        }
+
+        const userId = verification.value;
+        const hashedPassword = await hashPassword(newPassword);
+
+        // Update or create credential account
+        const userAccount = await prisma.account.findFirst({
+            where: { userId, providerId: "credential" }
+        });
+
+        if (!userAccount) {
+            await prisma.account.create({
+                data: {
+                    id: randomUUID(),
+                    userId,
+                    providerId: "credential",
+                    password: hashedPassword,
+                    accountId: userId,
+                }
+            });
+        } else {
+            await prisma.account.update({
+                where: { id: userAccount.id },
+                data: { password: hashedPassword }
+            });
+        }
+
+        // Clean up password change requirement if set
+        await prisma.user.update({
+            where: { id: userId },
+            data: { requiresPasswordChange: false }
+        });
+
+        // Delete the used verification token
+        await prisma.verification.deleteMany({
+            where: { identifier: id }
+        });
+
+        // Revoke any old sessions
+        await prisma.session.deleteMany({
+            where: { userId }
+        });
+
+        // Create a new session for instant login
+        const sessionToken = randomUUID().replace(/-/g, "");
+        const expiresAt = new Date(Date.now() + 7 * 24 * 3600 * 1000);
+        const newSession = await prisma.session.create({
+            data: {
+                id: randomUUID(),
+                userId,
+                token: sessionToken,
+                expiresAt,
+            },
+            include: { user: true }
+        });
+
+        res.setHeader("Set-Cookie", `better-auth.session_token=${sessionToken}; Path=/; Max-Age=604800; SameSite=None; Secure; HttpOnly`);
+
+        const access = await getUserAccess(userId);
+
+        return res.json({
+            status: true,
+            token: sessionToken,
+            user: newSession.user,
+            access,
+        });
+    } catch (err: any) {
+        console.error("Reset password and login error:", err);
+        return res.status(500).json({ message: err.message || "Failed to reset password." });
+    }
+});
+
 router.post("/resolve-username", async (req, res) => {
     try {
         const { username } = req.body;
