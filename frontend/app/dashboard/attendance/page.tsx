@@ -88,6 +88,10 @@ interface OverviewData {
             lateCount?: number;
             absentCount: number;
             excusedCount?: number;
+            todayPresentCount?: number;
+            todayAbsentCount?: number;
+            todayPeriodsCount?: number;
+            todayAttendanceRate?: number | null;
             healthStatus?: "Healthy" | "Attention" | "Critical";
         }>;
     }>;
@@ -197,6 +201,8 @@ interface StudentDetailData {
         date: string;
         status: AttendanceStatus;
         remarks?: string;
+        classPeriodName?: string;
+        recordedBy?: { id: string; name: string } | null;
     }>;
 }
 
@@ -312,6 +318,10 @@ export default function AttendanceDashboardPage() {
             lateCount: number;
             totalRecords: number;
             attendanceRate: number;
+            todayPresentCount: number;
+            todayAbsentCount: number;
+            todayPeriodsCount: number;
+            todayAttendanceRate: number | null;
         }> = [];
 
         overview.gradeBreakdown.forEach(grade => {
@@ -331,7 +341,11 @@ export default function AttendanceDashboardPage() {
                     absentCount: sec.absentCount,
                     lateCount: sec.lateCount || 0,
                     totalRecords: sec.totalRecords || 0,
-                    attendanceRate: sec.attendanceRate
+                    attendanceRate: sec.attendanceRate,
+                    todayPresentCount: sec.todayPresentCount ?? 0,
+                    todayAbsentCount: sec.todayAbsentCount ?? 0,
+                    todayPeriodsCount: sec.todayPeriodsCount ?? 0,
+                    todayAttendanceRate: sec.todayAttendanceRate ?? null
                 });
             });
         });
@@ -985,20 +999,18 @@ export default function AttendanceDashboardPage() {
                             <table className="w-full text-left text-xs">
                                 <thead className="bg-slate-50/80 border-b border-slate-200 text-slate-500 font-semibold">
                                     <tr>
-                                        <th className="py-2.5 px-3.5">Grade Level</th>
-                                        <th className="py-2.5 px-3.5">Section</th>
-                                        <th className="py-2.5 px-3.5 text-center">Enrolled</th>
-                                        <th className="py-2.5 px-3.5 text-center">Present Marks</th>
-                                        <th className="py-2.5 px-3.5 text-center">Absent Marks</th>
-                                        <th className="py-2.5 px-3.5">Attendance Rate</th>
-                                        <th className="py-2.5 px-3.5 text-center">Status</th>
+                                        <th className="py-2.5 px-3.5">Class Section</th>
+                                        <th className="py-2.5 px-3 text-center">Enrolled</th>
+                                        <th className="py-2.5 px-3.5">Today's Attendance</th>
+                                        <th className="py-2.5 px-3.5">Term Rate</th>
+                                        <th className="py-2.5 px-3 text-center">Status</th>
                                         <th className="py-2.5 px-3.5 text-right">Action</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-100">
                                     {filteredSectionsList.length === 0 ? (
                                         <tr>
-                                            <td colSpan={8} className="py-8 text-center text-slate-400">
+                                            <td colSpan={6} className="py-8 text-center text-slate-400">
                                                 No sections match the selected filter criteria.
                                             </td>
                                         </tr>
@@ -1006,6 +1018,7 @@ export default function AttendanceDashboardPage() {
                                         paginatedSections.map(sec => {
                                             const hasEnrolled = sec.enrollmentCount > 0;
                                             const hasRecords = sec.totalRecords > 0;
+                                            const hasTodayLogs = sec.todayPeriodsCount > 0;
 
                                             return (
                                                 <tr 
@@ -1021,36 +1034,33 @@ export default function AttendanceDashboardPage() {
                                                             : "hover:bg-slate-50/70"
                                                     }`}
                                                 >
-                                                    <td className="py-2.5 px-3.5 font-semibold text-slate-900">{sec.gradeName}</td>
-                                                    <td className="py-2.5 px-3.5 font-medium">
-                                                        <button
-                                                            type="button"
-                                                            onClick={(e) => {
-                                                                if (hasEnrolled) {
-                                                                    e.stopPropagation();
-                                                                    handleDrilldownSection(sec);
-                                                                }
-                                                            }}
-                                                            className={`text-left transition-colors font-medium ${
-                                                                hasEnrolled ? "text-slate-800 hover:text-[#4085b3] cursor-pointer" : "text-slate-600"
-                                                            }`}
-                                                        >
-                                                            Section {sec.sectionName}
-                                                        </button>
+                                                    <td className="py-2.5 px-3.5">
+                                                        <div className="font-semibold text-slate-900">{sec.gradeName}</div>
+                                                        <div className="text-[11px] text-slate-500 font-medium">Section {sec.sectionName}</div>
                                                     </td>
-                                                    <td className="py-2.5 px-3.5 text-center text-slate-600 font-medium">
+                                                    <td className="py-2.5 px-3 text-center text-slate-600 font-medium">
                                                         {sec.enrollmentCount}
                                                     </td>
-                                                    <td className="py-2.5 px-3.5 text-center text-slate-800 font-semibold">
-                                                        {hasRecords ? sec.presentCount : "—"}
-                                                    </td>
-                                                    <td className="py-2.5 px-3.5 text-center text-slate-600 font-semibold">
-                                                        {hasRecords ? sec.absentCount : "—"}
+                                                    <td className="py-2.5 px-3.5">
+                                                        {hasTodayLogs ? (
+                                                            <div className="flex items-center gap-1.5">
+                                                                <span className="font-semibold text-slate-800">
+                                                                    {sec.todayPresentCount}/{sec.enrollmentCount} Present
+                                                                </span>
+                                                                <span className="text-[11px] text-slate-400 font-mono">
+                                                                    ({sec.todayPeriodsCount} {sec.todayPeriodsCount === 1 ? "period" : "periods"})
+                                                                </span>
+                                                            </div>
+                                                        ) : (
+                                                            <span className="text-slate-400 font-normal italic">
+                                                                {hasEnrolled ? "No roll calls today" : "No enrollments"}
+                                                            </span>
+                                                        )}
                                                     </td>
                                                     <td className="py-2.5 px-3.5">
                                                         {hasRecords ? (
                                                             <div className="flex items-center gap-2">
-                                                                <div className="w-20 bg-slate-100 rounded-full h-1.5 overflow-hidden">
+                                                                <div className="w-16 bg-slate-100 rounded-full h-1.5 overflow-hidden">
                                                                     <div 
                                                                         className={`h-full rounded-full ${
                                                                             sec.attendanceRate >= 90 ? "bg-[#4085b3]" :
@@ -1062,29 +1072,19 @@ export default function AttendanceDashboardPage() {
                                                                 <span className="font-semibold text-slate-800">{sec.attendanceRate}%</span>
                                                             </div>
                                                         ) : (
-                                                            <span className="text-slate-400 font-normal italic">
-                                                                {hasEnrolled ? "No roll calls recorded" : "No enrollments"}
-                                                            </span>
+                                                            <span className="text-slate-400 font-normal italic">—</span>
                                                         )}
                                                     </td>
-                                                    <td className="py-2.5 px-3.5 text-center">
-                                                        {!hasEnrolled ? (
-                                                            <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 border border-slate-200">
-                                                                Empty Class
-                                                            </span>
-                                                        ) : !hasRecords ? (
-                                                            <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-50 text-slate-500 border border-slate-200">
-                                                                Pending Roll Call
-                                                            </span>
-                                                        ) : (
-                                                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                                                                sec.attendanceRate >= 90 ? "bg-blue-50 text-[#4085b3] border border-blue-200" :
-                                                                sec.attendanceRate >= 80 ? "bg-amber-50 text-amber-700 border border-amber-200" :
-                                                                "bg-rose-50 text-rose-700 border border-rose-200"
-                                                            }`}>
-                                                                {sec.attendanceRate >= 90 ? "Healthy" : sec.attendanceRate >= 80 ? "Attention" : "Critical"}
-                                                            </span>
-                                                        )}
+                                                    <td className="py-2.5 px-3 text-center">
+                                                        <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
+                                                            !hasEnrolled ? "bg-slate-100 text-slate-500 border border-slate-200" :
+                                                            !hasRecords ? "bg-slate-50 text-slate-400 border border-slate-200" :
+                                                            sec.attendanceRate >= 90 ? "bg-blue-50 text-[#4085b3] border border-blue-200" :
+                                                            sec.attendanceRate >= 80 ? "bg-amber-50 text-amber-700 border border-amber-200" :
+                                                            "bg-rose-50 text-rose-700 border border-rose-200"
+                                                        }`}>
+                                                            {!hasEnrolled ? "Empty" : !hasRecords ? "Pending" : sec.attendanceRate >= 90 ? "Healthy" : sec.attendanceRate >= 80 ? "Attention" : "Critical"}
+                                                        </span>
                                                     </td>
                                                     <td className="py-2.5 px-3.5 text-right whitespace-nowrap">
                                                         {hasEnrolled ? (
@@ -1096,7 +1096,7 @@ export default function AttendanceDashboardPage() {
                                                                 }}
                                                                 className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-[#4085b3] border border-[#4085b3]/30 rounded-md hover:bg-[#4085b3] hover:text-white transition-all duration-150 cursor-pointer shadow-2xs"
                                                             >
-                                                                <span>View Class</span>
+                                                                <span>Students</span>
                                                                 <ChevronRight className="w-3.5 h-3.5" />
                                                             </button>
                                                         ) : (
@@ -1379,7 +1379,6 @@ export default function AttendanceDashboardPage() {
                                     <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 font-semibold">
                                         <tr>
                                             <th className="py-2.5 px-3.5">Student</th>
-                                            <th className="py-2.5 px-3.5">Admission ID</th>
                                             <th className="py-2.5 px-3.5">Grade & Section</th>
                                             {studentTimeframe === "today" ? (
                                                 <>
@@ -1400,23 +1399,32 @@ export default function AttendanceDashboardPage() {
                                     <tbody className="divide-y divide-slate-100">
                                         {rosterData.data.length === 0 ? (
                                             <tr>
-                                                <td colSpan={studentTimeframe === "today" ? 6 : 8} className="py-8 text-center text-slate-400">
+                                                <td colSpan={studentTimeframe === "today" ? 5 : 7} className="py-8 text-center text-slate-400">
                                                     No students enrolled matching the selected filter criteria.
                                                 </td>
                                             </tr>
                                         ) : (
-                                            rosterData.data.map((row) => (
+                                            rosterData.data.map((row: any) => (
                                                 <tr key={row.enrollmentId} className="hover:bg-slate-50/70 transition-colors">
-                                                    <td className="py-2.5 px-3.5 font-semibold text-slate-900">{row.studentName}</td>
-                                                    <td className="py-2.5 px-3.5 text-slate-500 font-mono text-[11px]">{row.admissionNumber}</td>
+                                                    <td className="py-2.5 px-3.5">
+                                                        <div className="font-semibold text-slate-900">{row.studentName}</div>
+                                                        <div className="text-[11px] font-mono text-slate-400">{row.admissionNumber}</div>
+                                                    </td>
                                                     <td className="py-2.5 px-3.5 text-slate-700 font-medium">
-                                                        {row.gradeName} - Section {row.sectionName}
+                                                        {row.gradeName} • Sec {row.sectionName}
                                                     </td>
 
                                                     {studentTimeframe === "today" ? (
                                                         <>
                                                             <td className="py-2.5 px-3.5">
-                                                                {statusBadge(row.todayStatus)}
+                                                                <div className="flex items-center gap-1.5">
+                                                                    {statusBadge(row.todayStatus)}
+                                                                    {row.todayPeriodsCount > 1 && (
+                                                                        <span className="text-[11px] text-slate-400 font-mono">
+                                                                            ({row.todayPeriodsCount} periods)
+                                                                        </span>
+                                                                    )}
+                                                                </div>
                                                             </td>
                                                             <td className="py-2.5 px-3.5 text-slate-500 truncate max-w-[180px]">
                                                                 {row.todayRemarks || "—"}
@@ -2006,16 +2014,26 @@ export default function AttendanceDashboardPage() {
                                         filteredDrawerRecords.map((rec) => (
                                             <div key={rec.id} className="p-2.5 rounded-lg hover:bg-slate-50/80 transition-colors flex items-center justify-between gap-3">
                                                 <div className="min-w-0">
-                                                    <p className="text-xs font-semibold text-slate-800">
-                                                        {formatDateDisplay(rec.date)}
-                                                    </p>
-                                                    {rec.remarks ? (
-                                                        <p className="text-[11px] text-slate-500 truncate mt-0.5" title={rec.remarks}>
-                                                            Remark: {rec.remarks}
-                                                        </p>
-                                                    ) : (
-                                                        <p className="text-[11px] text-slate-400 italic mt-0.5">No remarks</p>
-                                                    )}
+                                                    <div className="flex items-center gap-1.5 flex-wrap">
+                                                        <span className="text-xs font-semibold text-slate-800">
+                                                            {formatDateDisplay(rec.date)}
+                                                        </span>
+                                                        {rec.classPeriodName && (
+                                                            <span className="text-[10px] font-medium text-slate-600 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200">
+                                                                {rec.classPeriodName}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                    <div className="flex items-center gap-2 mt-0.5 flex-wrap text-[11px] text-slate-500">
+                                                        {rec.recordedBy?.name && (
+                                                            <span>By: <strong className="text-slate-700 font-medium">{rec.recordedBy.name}</strong></span>
+                                                        )}
+                                                        {rec.remarks ? (
+                                                            <span className="truncate max-w-[200px]" title={rec.remarks}>
+                                                                • {rec.remarks}
+                                                            </span>
+                                                        ) : null}
+                                                    </div>
                                                 </div>
                                                 <div className="shrink-0">
                                                     {statusBadge(rec.status)}

@@ -21,6 +21,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { fetchApi } from "../../../../lib/api";
+import { resolveNotificationRoute, dispatchNotificationEvents } from "../../../../lib/notificationRouter";
 
 export type StudentNotification = {
   id: string;
@@ -416,18 +417,22 @@ export default function StudentNotificationsPage() {
                       </button>
                     )}
 
-                    {n.link && (
-                      <Link
-                        href={n.link}
-                        onClick={() => {
-                          if (!n.isRead) markRead(n.id);
-                        }}
-                        className="inline-flex items-center gap-1 rounded-xl bg-[#184973] px-3 py-1.5 text-xs font-semibold text-white shadow-xs hover:bg-[#123655] transition"
-                      >
-                        <span>View</span>
-                        <ExternalLink className="h-3 w-3 text-blue-200" />
-                      </Link>
-                    )}
+                    {(() => {
+                      const routeInfo = resolveNotificationRoute(n, { roleName: "STUDENT", pathname: "/dashboard/student/notifications" });
+                      return (
+                        <Link
+                          href={routeInfo.url}
+                          onClick={() => {
+                            if (!n.isRead) markRead(n.id);
+                            dispatchNotificationEvents(routeInfo);
+                          }}
+                          className="inline-flex items-center gap-1 rounded-xl bg-[#184973] px-3 py-1.5 text-xs font-semibold text-white shadow-xs hover:bg-[#123655] transition"
+                        >
+                          <span>View</span>
+                          <ExternalLink className="h-3 w-3 text-blue-200" />
+                        </Link>
+                      );
+                    })()}
                   </div>
                 </div>
               );
@@ -501,19 +506,23 @@ export default function StudentNotificationsPage() {
                   Close
                 </button>
 
-                {selectedNotification.link && (
-                  <Link
-                    href={selectedNotification.link}
-                    onClick={() => {
-                      if (!selectedNotification.isRead) markRead(selectedNotification.id);
-                      setSelectedNotification(null);
-                    }}
-                    className="inline-flex items-center gap-1 rounded-xl bg-[#184973] px-3.5 py-1.5 text-xs font-semibold text-white hover:bg-[#123655] transition"
-                  >
-                    <span>Open Associated Item</span>
-                    <ExternalLink className="h-3 w-3" />
-                  </Link>
-                )}
+                {(() => {
+                  const routeInfo = resolveNotificationRoute(selectedNotification, { roleName: "STUDENT", pathname: "/dashboard/student/notifications" });
+                  return (
+                    <Link
+                      href={routeInfo.url}
+                      onClick={() => {
+                        if (!selectedNotification.isRead) markRead(selectedNotification.id);
+                        dispatchNotificationEvents(routeInfo);
+                        setSelectedNotification(null);
+                      }}
+                      className="inline-flex items-center gap-1 rounded-xl bg-[#184973] px-3.5 py-1.5 text-xs font-semibold text-white hover:bg-[#123655] transition"
+                    >
+                      <span>Open Associated Item</span>
+                      <ExternalLink className="h-3 w-3" />
+                    </Link>
+                  );
+                })()}
               </div>
             </div>
           </div>

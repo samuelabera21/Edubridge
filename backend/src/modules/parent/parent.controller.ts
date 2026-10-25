@@ -14,11 +14,12 @@ export const getGuardians = async (req: Request, res: Response) => {
             return res.status(403).json({ error: "Missing school scope" });
         }
 
-        const { search, schoolGradeId, sectionId, page, limit } = req.query;
+        const { search, schoolGradeId, sectionId, studentId, page, limit } = req.query;
         const result = await ParentService.getGuardians(organizationId, {
             search: search as string,
             schoolGradeId: schoolGradeId as string,
             sectionId: sectionId as string,
+            studentId: studentId as string,
             page: page ? Number(page) : undefined,
             limit: limit ? Number(limit) : undefined
         });
@@ -289,11 +290,58 @@ export const getParentProfile = async (req: Request, res: Response) => {
             }
         });
 
-        if (!user?.parent) {
+        let parentRecord = user?.parent;
+        if (!parentRecord && user) {
+            // Fallback check by userId or phone in parent table
+            const cleanPhone = user.email.includes("@edubridge.local")
+                ? user.email.replace("@edubridge.local", "").replace("prn.", "")
+                : "";
+            const foundParent = await prisma.parent.findFirst({
+                where: {
+                    OR: [
+                        { userId: user.id },
+                        ...(cleanPhone ? [{ phoneNumber: { contains: cleanPhone } }] : [])
+                    ]
+                },
+                include: {
+                    children: {
+                        include: {
+                            student: {
+                                include: {
+                                    enrollments: {
+                                        ...(organizationId ? { where: { organizationId } } : {}),
+                                        include: {
+                                            organization: {
+                                                include: {
+                                                    schoolProfile: true
+                                                }
+                                            },
+                                            schoolGrade: { include: { grade: true } },
+                                            section: true,
+                                            academicYear: true
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+
+            if (foundParent) {
+                await prisma.parent.update({
+                    where: { id: foundParent.id },
+                    data: { userId: user.id }
+                }).catch(() => {});
+                parentRecord = foundParent as any;
+            }
+        }
+
+        if (!parentRecord) {
             return res.status(404).json({ error: "No parent profile found for your account" });
         }
 
-        return res.json(user.parent);
+        return res.json(parentRecord);
     } catch (error) {
         console.error("Error fetching parent profile:", error);
         return res.status(500).json({ error: "Internal server error" });

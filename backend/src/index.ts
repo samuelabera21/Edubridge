@@ -46,8 +46,21 @@ const PORT = 5000;
 initSocketServer(httpServer);
 
 // Middleware
+const allowedOrigins = [
+    "http://localhost:3000",
+    "http://localhost:5173",
+    "http://localhost:3001",
+    "http://localhost:5001",
+    ...(process.env.FRONTEND_URL ? [process.env.FRONTEND_URL.replace(/\/+$/, "")] : []),
+];
+
 app.use(cors({
-    origin: ["http://localhost:3000", "http://localhost:5173", "http://localhost:3001", "http://localhost:5001"],
+    origin: (origin, callback) => {
+        if (!origin || allowedOrigins.includes(origin)) {
+            return callback(null, true);
+        }
+        return callback(null, true); // Allow during transition or restrict as needed
+    },
     credentials: true,
 }));
 

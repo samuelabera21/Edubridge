@@ -1021,11 +1021,7 @@ function PlacementWorkspaceContent() {
                                                             </span>
                                                         </div>
                                                         <p className="text-xs text-slate-500 mt-1">
-                                                            Homeroom: <strong className="text-slate-700 font-medium">
-                                                                {section.homeroomTeacher 
-                                                                    ? `${section.homeroomTeacher.firstName} ${section.homeroomTeacher.fatherName}` 
-                                                                    : "Unassigned"}
-                                                            </strong>
+                                                            Status: <strong className="text-slate-700 font-medium capitalize">{section.status?.toLowerCase() || "Active"}</strong>
                                                         </p>
                                                     </div>
 
@@ -1141,8 +1137,7 @@ function PlacementWorkspaceContent() {
                                             </span>
                                         </div>
                                         <p className="text-xs text-slate-500 mt-0.5">
-                                            Academic Year: <strong className="text-slate-700">{yearName}</strong> • 
-                                            Homeroom: <strong className="text-slate-700">{teacherName}</strong>
+                                            Academic Year: <strong className="text-slate-700">{yearName}</strong>
                                         </p>
                                     </div>
 

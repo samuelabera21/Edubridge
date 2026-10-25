@@ -23,7 +23,7 @@ export class ParentService {
     /**
      * Get paginated and searchable guardians scoped strictly to an organization (Tenant Isolation)
      */
-    static async getGuardians(organizationId: string, options: { search?: string; schoolGradeId?: string; sectionId?: string; page?: number; limit?: number } = {}) {
+    static async getGuardians(organizationId: string, options: { search?: string; schoolGradeId?: string; sectionId?: string; studentId?: string; page?: number; limit?: number } = {}) {
         // Graceful auto-sync: convert any unlinked student emergency contacts into Parent & ParentStudent records
         try {
             const unlinkedStudents = await prisma.student.findMany({
@@ -92,19 +92,26 @@ export class ParentService {
         const search = options.search?.trim();
         const schoolGradeId = options.schoolGradeId?.trim();
         const sectionId = options.sectionId?.trim();
+        const studentId = options.studentId?.trim();
 
         const enrollmentFilter: any = { organizationId };
         if (schoolGradeId) enrollmentFilter.schoolGradeId = schoolGradeId;
         if (sectionId) enrollmentFilter.sectionId = sectionId;
 
+        const studentWhere: any = {
+            enrollments: {
+                some: enrollmentFilter
+            }
+        };
+        if (studentId) {
+            studentWhere.id = studentId;
+        }
+
         const schoolParentWhere: any = {
             children: {
                 some: {
-                    student: {
-                        enrollments: {
-                            some: enrollmentFilter
-                        }
-                    }
+                    ...(studentId ? { studentId } : {}),
+                    student: studentWhere
                 }
             }
         };

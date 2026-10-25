@@ -24,7 +24,13 @@ import {
     X,
     Paperclip,
     Eye,
-    Loader2
+    Loader2,
+    Printer,
+    Copy,
+    Key,
+    Sparkles,
+    Lock,
+    ExternalLink
 } from "lucide-react";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
@@ -293,6 +299,8 @@ export function RegistrationForm() {
     const [submitting, setSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [successMessage, setSuccessMessage] = useState<string | null>(null);
+    const [successResult, setSuccessResult] = useState<any | null>(null);
+    const [copiedKey, setCopiedKey] = useState<string | null>(null);
 
     // Document Upload States
     const [uploadBirthCert, setUploadBirthCert] = useState<UploadState>(defaultUpload());
@@ -627,18 +635,70 @@ export function RegistrationForm() {
             }
 
             const resData = await res.json();
+            setSuccessResult(resData);
             setSuccessMessage(
                 `Student ${resData.student?.firstName} ${resData.student?.fatherName} successfully registered! ID: ${resData.student?.studentId}`
             );
-
-            setTimeout(() => {
-                router.push("/dashboard/students/enrollments");
-            }, 1800);
         } catch (err: any) {
             setError(err.message || "An error occurred during student registration");
         } finally {
             setSubmitting(false);
         }
+    };
+
+    const handleResetForm = () => {
+        setSuccessResult(null);
+        setSuccessMessage(null);
+        setError(null);
+        setCurrentStep("TYPE");
+        setIntakeMode("NEW");
+        setSelectedStudent(null);
+        setSearchQuery("");
+        setSearchResults([]);
+        setUploadBirthCert(defaultUpload());
+        setUploadGuardianId(defaultUpload());
+        setUploadTranscript(defaultUpload());
+        setUploadTransferCert(defaultUpload());
+        setFormData({
+            firstName: "",
+            fatherName: "",
+            grandfatherName: "",
+            dateOfBirth: "",
+            gender: "MALE",
+            nationality: "Ethiopian",
+            placeOfBirth: "",
+            nationalId: "",
+            region: "Addis Ababa",
+            zone: "",
+            woreda: "",
+            city: "Addis Ababa",
+            kebele: "",
+            houseNumber: "",
+            guardianName: "",
+            guardianRelationship: "Mother",
+            guardianPhone: "",
+            guardianAltPhone: "",
+            guardianEmail: "",
+            guardianCanPickup: true,
+            guardianIsPrimary: true,
+            emergencyContactName: "",
+            emergencyContactRelation: "",
+            emergencyContactPhone: "",
+            academicYearId: activeYear?.id || "",
+            schoolGradeId: schoolGrades[0]?.id || "",
+            enrollmentType: "NEW",
+            enrollmentDate: new Date().toISOString().split("T")[0],
+            previousSchool: "",
+            previousStudentId: "",
+            birthCertTitle: "Birth Certificate",
+            birthCertUrl: "",
+            guardianIdTitle: "Kebele / National ID Card",
+            guardianIdUrl: "",
+            transcriptTitle: "Previous School Official Transcript",
+            transcriptUrl: "",
+            transferCertTitle: "Transfer Clearance Certificate",
+            transferCertUrl: "",
+        });
     };
 
     const currentStepIndex = STEPS.findIndex(s => s.id === currentStep);
@@ -1380,6 +1440,278 @@ export function RegistrationForm() {
                     </Button>
                 )}
             </div>
+
+            {/* ══════════════════════════════════════════════════════════════════════ */}
+            {/* ADMISSION CONFIRMATION & PARENT PORTAL ACCESS PASS MODAL               */}
+            {/* ══════════════════════════════════════════════════════════════════════ */}
+            {successResult && (
+                <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6 animate-fade-in">
+                    <div 
+                        id="printable-admission-card"
+                        className="bg-white rounded-2xl shadow-2xl border border-slate-200 max-w-2xl w-full p-6 sm:p-8 space-y-6 relative text-slate-800 my-8"
+                    >
+                        {/* Printable CSS style */}
+                        <style dangerouslySetInnerHTML={{ __html: `
+                            @media print {
+                                body * { visibility: hidden !important; }
+                                #printable-admission-card, #printable-admission-card * { visibility: visible !important; }
+                                #printable-admission-card {
+                                    position: absolute !important;
+                                    left: 0 !important;
+                                    top: 0 !important;
+                                    width: 100% !important;
+                                    margin: 0 !important;
+                                    border: 2px solid #0f172a !important;
+                                    padding: 24px !important;
+                                    box-shadow: none !important;
+                                }
+                                .no-print { display: none !important; }
+                            }
+                        `}} />
+
+                        {/* Official Header */}
+                        <div className="flex items-start justify-between pb-4 border-b border-slate-200">
+                            <div className="flex items-center space-x-3">
+                                <div className="w-12 h-12 bg-sky-50 text-[#4085b3] rounded-xl flex items-center justify-center border border-sky-100 shadow-sm">
+                                    <ShieldCheck className="w-7 h-7" />
+                                </div>
+                                <div>
+                                    <h2 className="text-xl font-bold text-slate-900 tracking-tight">
+                                        Admission Confirmation & Parent Access Card
+                                    </h2>
+                                    <p className="text-xs text-slate-500 font-medium">
+                                        EduBridge Unified School System • Official Admission Slip
+                                    </p>
+                                </div>
+                            </div>
+                            <div className="no-print">
+                                <button
+                                    onClick={() => setSuccessResult(null)}
+                                    className="text-slate-400 hover:text-slate-600 transition-colors p-1"
+                                >
+                                    <X className="w-5 h-5" />
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Top Confirmation Badge */}
+                        <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3.5 flex items-center justify-between text-emerald-800 text-sm">
+                            <div className="flex items-center space-x-2.5">
+                                <CheckCircle2 className="w-5 h-5 text-emerald-600 flex-shrink-0" />
+                                <span className="font-semibold">Student Enrolled & Parent Account Ready</span>
+                            </div>
+                            <span className="text-xs px-2.5 py-0.5 bg-emerald-100 rounded-full font-bold uppercase tracking-wider text-emerald-800">
+                                Official Record
+                            </span>
+                        </div>
+
+                        {/* Student Details Summary */}
+                        <div className="bg-slate-50 border border-slate-200 rounded-xl p-4">
+                            <div className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2.5">
+                                Enrolled Student Profile
+                            </div>
+                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs">
+                                <div>
+                                    <span className="text-slate-500 block">Full Name:</span>
+                                    <span className="font-bold text-slate-900 text-sm">
+                                        {successResult.student?.firstName} {successResult.student?.fatherName} {successResult.student?.grandfatherName || ""}
+                                    </span>
+                                </div>
+                                <div>
+                                    <span className="text-slate-500 block">Student ID / Code:</span>
+                                    <span className="font-mono font-bold text-[#4085b3] bg-sky-50 px-2 py-0.5 rounded border border-sky-200 text-sm inline-block">
+                                        {successResult.student?.studentId}
+                                    </span>
+                                </div>
+                                <div>
+                                    <span className="text-slate-500 block">Target Grade / Cohort:</span>
+                                    <span className="font-semibold text-slate-900">
+                                        {successResult.enrollment?.schoolGrade?.grade?.name || successResult.enrollment?.schoolGrade?.name || "Target Grade"}
+                                    </span>
+                                </div>
+                                <div>
+                                    <span className="text-slate-500 block">Academic Year:</span>
+                                    <span className="font-semibold text-slate-900">
+                                        {successResult.enrollment?.academicYear?.name || activeYear?.name || "Current Year"}
+                                    </span>
+                                </div>
+                                <div>
+                                    <span className="text-slate-500 block">Gender:</span>
+                                    <span className="font-semibold text-slate-900">{successResult.student?.gender || "N/A"}</span>
+                                </div>
+                                <div>
+                                    <span className="text-slate-500 block">Enrollment Type:</span>
+                                    <span className="font-semibold text-slate-900">{successResult.enrollment?.enrollmentType || "NEW"}</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* ✨ Automatically Provisioned Parent Login Account Section */}
+                        <div className="space-y-3">
+                            <div className="flex items-center justify-between">
+                                <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                                    <Sparkles className="w-4 h-4 text-amber-500" />
+                                    <span>Parent Portal Access Credentials</span>
+                                </h3>
+                                <span className="text-[11px] text-slate-500">
+                                    Instant self-service dashboard access
+                                </span>
+                            </div>
+
+                            {(successResult.parentCredentials && successResult.parentCredentials.length > 0) ? (
+                                successResult.parentCredentials.map((cred: any, idx: number) => (
+                                    <div 
+                                        key={idx} 
+                                        className="bg-white border-2 border-[#4085b3]/30 rounded-xl p-4 shadow-sm relative overflow-hidden"
+                                    >
+                                        <div className="absolute top-0 right-0 h-full w-1.5 bg-[#4085b3]" />
+                                        
+                                        <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+                                            <div className="font-bold text-slate-900 text-sm flex items-center gap-1.5">
+                                                <Users className="w-4 h-4 text-[#4085b3]" />
+                                                <span>{cred.parentName}</span>
+                                                <span className="text-xs font-normal text-slate-500">
+                                                    ({cred.relationship || "Guardian"})
+                                                </span>
+                                            </div>
+
+                                            {cred.isNewAccount ? (
+                                                <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                                    <Sparkles className="w-3 h-3 text-emerald-600" />
+                                                    Parent Account Automatically Created
+                                                </span>
+                                            ) : (
+                                                <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-sky-50 text-[#4085b3] border border-sky-200">
+                                                    <Users className="w-3 h-3 text-[#4085b3]" />
+                                                    Existing Parent Account Linked
+                                                </span>
+                                            )}
+                                        </div>
+
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs bg-slate-50 p-3 rounded-lg border border-slate-200">
+                                            <div>
+                                                <span className="text-slate-500 block mb-0.5">Login ID (Phone Number or Email):</span>
+                                                <div className="flex items-center justify-between bg-white px-2.5 py-1.5 rounded border border-slate-300 font-mono font-bold text-slate-900">
+                                                    <span>{cred.loginId}</span>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            navigator.clipboard.writeText(cred.loginId);
+                                                            setCopiedKey(`login-${idx}`);
+                                                            setTimeout(() => setCopiedKey(null), 2000);
+                                                        }}
+                                                        className="text-slate-400 hover:text-[#4085b3] transition-colors ml-2 no-print"
+                                                        title="Copy Login ID"
+                                                    >
+                                                        {copiedKey === `login-${idx}` ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                                                    </button>
+                                                </div>
+                                            </div>
+
+                                            <div>
+                                                <span className="text-slate-500 block mb-0.5">Initial Default Password:</span>
+                                                <div className="flex items-center justify-between bg-white px-2.5 py-1.5 rounded border border-slate-300 font-mono font-bold text-[#4085b3]">
+                                                    <span>{cred.initialPassword}</span>
+                                                    {cred.initialPassword !== "(Existing Account)" && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => {
+                                                                navigator.clipboard.writeText(cred.initialPassword);
+                                                                setCopiedKey(`pass-${idx}`);
+                                                                setTimeout(() => setCopiedKey(null), 2000);
+                                                            }}
+                                                            className="text-slate-400 hover:text-[#4085b3] transition-colors ml-2 no-print"
+                                                            title="Copy Password"
+                                                        >
+                                                            {copiedKey === `pass-${idx}` ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div className="mt-2.5 flex items-center justify-between text-[11px] text-slate-500">
+                                            <span>
+                                                {cred.isNewAccount 
+                                                    ? "🔒 Prompted to set a personal password upon first sign-in." 
+                                                    : "✨ All enrolled children are connected to this single Parent Dashboard."}
+                                            </span>
+                                            <span className="font-semibold text-slate-700">Role: PARENT</span>
+                                        </div>
+                                    </div>
+                                ))
+                            ) : (
+                                <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 text-xs text-slate-600">
+                                    Guardian details registered with student. Login is available using phone number: <strong>{formData.guardianPhone || "Registered phone number"}</strong>.
+                                </div>
+                            )}
+                        </div>
+
+                        {/* How the Parent Accesses Their Dashboard (Instructions Box) */}
+                        <div className="bg-sky-50/70 border border-sky-100 rounded-xl p-3.5 text-xs text-slate-700 space-y-1.5">
+                            <div className="font-bold text-[#4085b3] flex items-center gap-1.5">
+                                <Key className="w-3.5 h-3.5" />
+                                <span>How the Parent Accesses Their Dashboard:</span>
+                            </div>
+                            <ol className="list-decimal list-inside space-y-1 text-slate-600 text-[11px] leading-relaxed">
+                                <li>Parent goes to the EduBridge portal at <strong>/auth/login</strong>.</li>
+                                <li>Enters their mobile phone number and the initial password.</li>
+                                <li>Instant access to Attendance, Results, Report Cards, and Teacher Communication.</li>
+                            </ol>
+                        </div>
+
+                        {/* Modal Action Bar */}
+                        <div className="no-print pt-4 border-t border-slate-200 flex flex-wrap items-center justify-between gap-3">
+                            <div className="flex items-center gap-2">
+                                <Button
+                                    type="button"
+                                    onClick={() => window.print()}
+                                    className="bg-slate-900 hover:bg-slate-800 text-white text-xs px-4 py-2 font-semibold shadow-sm"
+                                    leftIcon={<Printer className="w-3.5 h-3.5" />}
+                                >
+                                    Print Access Pass
+                                </Button>
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    onClick={() => {
+                                        const cred = successResult.parentCredentials?.[0];
+                                        const origin = typeof window !== "undefined" ? window.location.origin : "";
+                                        const clipText = `EduBridge Parent Portal Access Pass\nStudent: ${successResult.student?.firstName} ${successResult.student?.fatherName} (ID: ${successResult.student?.studentId})\nParent: ${cred?.parentName || formData.guardianName}\nUsername / Phone: ${cred?.loginId || formData.guardianPhone}\nPassword: ${cred?.initialPassword || "EduBridge2026!"}\nLogin Link: ${origin}/login`;
+                                        navigator.clipboard.writeText(clipText);
+                                        setCopiedKey("all-creds");
+                                        setTimeout(() => setCopiedKey(null), 2000);
+                                    }}
+                                    className="text-xs text-slate-700 border-slate-300 hover:bg-slate-50"
+                                    leftIcon={copiedKey === "all-creds" ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                                >
+                                    {copiedKey === "all-creds" ? "Copied All Credentials!" : "Copy Details"}
+                                </Button>
+                            </div>
+
+                            <div className="flex items-center gap-2">
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    onClick={handleResetForm}
+                                    className="text-xs text-[#4085b3] border-[#4085b3]/30 hover:bg-sky-50 font-semibold"
+                                    leftIcon={<UserPlus className="w-3.5 h-3.5" />}
+                                >
+                                    Register Another Student
+                                </Button>
+                                <Button
+                                    type="button"
+                                    onClick={() => router.push("/dashboard/students/enrollments")}
+                                    className="bg-[#4085b3] hover:bg-[#32698e] text-white text-xs px-4 py-2 font-bold shadow-sm flex items-center gap-1"
+                                >
+                                    <span>View Enrollments</span>
+                                    <ArrowRight className="w-3.5 h-3.5 ml-1" />
+                                </Button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

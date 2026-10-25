@@ -41,6 +41,10 @@ export const getStudents = async (req: Request, res: Response) => {
             search,
             gender,
             status,
+            schoolGradeId,
+            sectionId,
+            academicYearId,
+            city,
             all
         } = req.query;
 
@@ -54,12 +58,27 @@ export const getStudents = async (req: Request, res: Response) => {
             search: search ? String(search).trim() : undefined,
             gender: gender && gender !== "ALL" ? String(gender) : undefined,
             status: status && status !== "ALL" ? String(status) : undefined,
+            schoolGradeId: schoolGradeId && schoolGradeId !== "ALL" ? String(schoolGradeId) : undefined,
+            sectionId: sectionId && sectionId !== "ALL" ? String(sectionId) : undefined,
+            academicYearId: academicYearId && academicYearId !== "ALL" ? String(academicYearId) : undefined,
+            city: city && city !== "ALL" ? String(city) : undefined,
         });
 
         return res.json(result);
     } catch (error: any) {
         console.error("Error in getStudents:", error);
         return res.status(500).json({ error: error.message || "Internal server error" });
+    }
+};
+
+export const getStudentFilters = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        const filters = await StudentService.getStudentFilters(organizationId);
+        return res.json(filters);
+    } catch (error: any) {
+        console.error("Error in getStudentFilters:", error);
+        return res.status(500).json({ error: error.message || "Failed to fetch filter options" });
     }
 };
 

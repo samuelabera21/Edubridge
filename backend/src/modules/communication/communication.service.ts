@@ -1431,7 +1431,7 @@ export class CommunicationService {
                 organizationId: data.organizationId,
                 title: "New message",
                 content: `You have a new message from ${message.sender.name}`,
-                link: "/dashboard/communication/messages"
+                link: `/dashboard/communication/messages?contactId=${data.senderId}`
             });
         } catch (_) {
             // Notification failure must not block message delivery

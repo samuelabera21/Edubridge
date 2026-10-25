@@ -1,6 +1,8 @@
 import { prisma } from "../../infrastructure/prisma/client.js";
 import { EnrollmentStatus, EnrollmentType, DocumentVerificationStatus, AnnouncementTarget } from "../../generated/prisma/enums.js";
 import { emitNewMessageToUsers, getIO } from "../../infrastructure/socket/socket.service.js";
+import { auth } from "../authentication/auth.js";
+import { assignRoleToUserByScopeId } from "../authentication/authorization.service.js";
 
 export interface GuardianInput {
     id?: string;
@@ -173,7 +175,7 @@ export class StudentService {
         }
 
         // 5. Execute Atomic Intake Transaction
-        return await prisma.$transaction(async (tx) => {
+        const transactionResult = await prisma.$transaction(async (tx) => {
             let studentRecord = targetStudent;
 
             const lastName = `${studentData.fatherName || ""} ${studentData.grandfatherName || ""}`.trim() || studentData.fatherName || "N/A";
@@ -254,8 +256,24 @@ export class StudentService {
                 if (g.id) {
                     parent = await tx.parent.findUnique({ where: { id: g.id } });
                 } else if (phone) {
+                    const cleanPhone = phone.replace(/[\s\-\(\)\+]/g, "");
+                    const last9 = cleanPhone.length >= 9 ? cleanPhone.slice(-9) : cleanPhone;
+                    const orConditions: any[] = [
+                        { phoneNumber: phone },
+                        { phoneNumber: cleanPhone }
+                    ];
+                    if (last9) {
+                        orConditions.push({ phoneNumber: { endsWith: last9 } });
+                    }
+                    if (email) {
+                        orConditions.push({ email: { equals: email, mode: "insensitive" } });
+                    }
                     parent = await tx.parent.findFirst({
-                        where: { phoneNumber: phone }
+                        where: { OR: orConditions }
+                    });
+                } else if (email) {
+                    parent = await tx.parent.findFirst({
+                        where: { email: { equals: email, mode: "insensitive" } }
                     });
                 }
 
@@ -372,6 +390,146 @@ export class StudentService {
                 documents: savedDocuments
             };
         });
+
+        // 6. Auto-provision or link User Login Accounts for Guardians (No manual admin work needed)
+        const parentCredentials: Array<{
+            parentId: string;
+            parentName: string;
+            relationship: string;
+            loginId: string;
+            email: string;
+            initialPassword: string;
+            isNewAccount: boolean;
+        }> = [];
+
+        for (const g of transactionResult.guardians || []) {
+            if (g.parent) {
+                const creds = await StudentService.autoProvisionParentAccount(g.parent, organizationId);
+                if (creds) {
+                    parentCredentials.push({
+                        ...creds,
+                        relationship: g.link?.relationship || "Guardian"
+                    });
+                }
+            }
+        }
+
+        return {
+            ...transactionResult,
+            parentCredentials
+        };
+    }
+
+    /**
+     * Auto-provisions or links a User login account for a Parent upon student enrollment.
+     * Prevents duplicate accounts when the parent already has other children in the school.
+     */
+    static async autoProvisionParentAccount(parent: {
+        id: string;
+        firstName: string;
+        lastName: string;
+        phoneNumber?: string | null;
+        email?: string | null;
+        userId?: string | null;
+    }, organizationId: string): Promise<{
+        parentId: string;
+        parentName: string;
+        loginId: string;
+        email: string;
+        initialPassword: string;
+        isNewAccount: boolean;
+    } | null> {
+        try {
+            const fullName = `${parent.firstName} ${parent.lastName}`.trim() || "Parent";
+            const cleanPhone = (parent.phoneNumber || "").replace(/[\s\-\(\)\+]/g, "");
+
+            // 1. If parent entity already has a linked userId (e.g. existing parent registering another child)
+            if (parent.userId) {
+                const existingUser = await prisma.user.findUnique({ where: { id: parent.userId } });
+                if (existingUser) {
+                    await assignRoleToUserByScopeId(existingUser.id, "PARENT", organizationId);
+                    return {
+                        parentId: parent.id,
+                        parentName: fullName,
+                        loginId: parent.phoneNumber || existingUser.email,
+                        email: existingUser.email,
+                        initialPassword: "(Existing Account)",
+                        isNewAccount: false
+                    };
+                }
+            }
+
+            // 2. Determine target login email
+            let targetEmail = parent.email?.toLowerCase().trim();
+            if (!targetEmail) {
+                if (cleanPhone) {
+                    targetEmail = `${cleanPhone}@edubridge.local`;
+                } else {
+                    targetEmail = `parent.${parent.id.slice(-6)}@edubridge.local`;
+                }
+            }
+
+            const tempPassword = process.env.DEFAULT_INITIAL_PASSWORD || "EduBridge2026!";
+
+            // 3. Check if User already exists with this email or phone
+            const userOrConditions: any[] = [
+                { email: { equals: targetEmail, mode: "insensitive" } }
+            ];
+            if (cleanPhone) {
+                userOrConditions.push({ email: { startsWith: cleanPhone, mode: "insensitive" } });
+            }
+
+            let user = await prisma.user.findFirst({
+                where: { OR: userOrConditions }
+            });
+
+            let isNew = false;
+            if (!user) {
+                const newUserRes = await auth.api.signUpEmail({
+                    body: {
+                        email: targetEmail,
+                        password: tempPassword,
+                        name: fullName
+                    }
+                });
+                if (newUserRes?.user) {
+                    user = newUserRes.user as any;
+                    isNew = true;
+                    if (user?.id) {
+                        await prisma.user.update({
+                            where: { id: user.id },
+                            data: {
+                                requiresPasswordChange: true,
+                                isActive: true
+                            }
+                        });
+                    }
+                }
+            }
+
+            if (user) {
+                // Link Parent entity to User
+                await prisma.parent.update({
+                    where: { id: parent.id },
+                    data: { userId: user.id }
+                });
+
+                // Assign PARENT role scoped to this school
+                await assignRoleToUserByScopeId(user.id, "PARENT", organizationId);
+
+                return {
+                    parentId: parent.id,
+                    parentName: fullName,
+                    loginId: parent.phoneNumber || user.email,
+                    email: user.email,
+                    initialPassword: isNew ? tempPassword : "(Existing Account)",
+                    isNewAccount: isNew
+                };
+            }
+        } catch (err) {
+            console.error("[Auto-Provision Parent Error]:", err);
+        }
+        return null;
     }
 
     /**
@@ -676,6 +834,10 @@ export class StudentService {
         search?: string;
         gender?: string;
         status?: string;
+        schoolGradeId?: string;
+        sectionId?: string;
+        academicYearId?: string;
+        city?: string;
     } = {}) {
         const {
             page = 1,
@@ -684,7 +846,11 @@ export class StudentService {
             sortOrder = "desc",
             search,
             gender,
-            status
+            status,
+            schoolGradeId,
+            sectionId,
+            academicYearId,
+            city
         } = options;
 
         const where: any = {};
@@ -693,11 +859,27 @@ export class StudentService {
             where.gender = { equals: gender, mode: "insensitive" };
         }
 
+        if (city && city !== "ALL") {
+            where.city = { contains: city, mode: "insensitive" };
+        }
+
+        const enrollmentCondition: any = {};
         if (status && status !== "ALL") {
+            enrollmentCondition.status = status as any;
+        }
+        if (schoolGradeId && schoolGradeId !== "ALL") {
+            enrollmentCondition.schoolGradeId = schoolGradeId;
+        }
+        if (sectionId && sectionId !== "ALL") {
+            enrollmentCondition.sectionId = sectionId;
+        }
+        if (academicYearId && academicYearId !== "ALL") {
+            enrollmentCondition.academicYearId = academicYearId;
+        }
+
+        if (Object.keys(enrollmentCondition).length > 0) {
             where.enrollments = {
-                some: {
-                    status: status as any
-                }
+                some: enrollmentCondition
             };
         }
 
@@ -804,6 +986,53 @@ export class StudentService {
                 limit: isExport ? total : limit,
                 totalPages
             }
+        };
+    }
+
+    static async getStudentFilters(organizationId?: string) {
+        const whereClause: any = organizationId ? { academicYear: { organizationId } } : {};
+        
+        const schoolGrades = await prisma.schoolGrade.findMany({
+            where: whereClause,
+            include: {
+                grade: true,
+                sections: {
+                    select: { id: true, name: true, schoolGradeId: true }
+                }
+            },
+            orderBy: { grade: { level: "asc" } }
+        });
+
+        const sectionsList: Array<{ id: string; name: string; schoolGradeId: string; gradeName: string }> = [];
+        const gradesList = schoolGrades.map(sg => {
+            const gradeName = sg.grade?.name || "Grade";
+            if (sg.sections && sg.sections.length > 0) {
+                sg.sections.forEach(sec => {
+                    sectionsList.push({
+                        id: sec.id,
+                        name: sec.name,
+                        schoolGradeId: sg.id,
+                        gradeName
+                    });
+                });
+            }
+            return {
+                id: sg.id,
+                name: gradeName,
+                level: sg.grade?.level || 0
+            };
+        });
+
+        const academicYears = await prisma.academicYear.findMany({
+            where: organizationId ? { organizationId } : {},
+            orderBy: { startDate: "desc" },
+            select: { id: true, name: true, isCurrent: true }
+        });
+
+        return {
+            grades: gradesList,
+            sections: sectionsList,
+            academicYears
         };
     }
 

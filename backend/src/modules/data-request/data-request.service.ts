@@ -333,14 +333,15 @@ export class DataRequestService {
 
             if (notifMap.size > 0) {
                 const issuerPrefix = actorScope.type === "FEDERAL" ? "Federal Ministry of Education" : actorScope.name;
+                const reqParam = request.id ? `&requestId=${request.id}` : "";
                 await prisma.notification.createMany({
                     data: Array.from(notifMap.values()).map(item => {
                         let link = "/dashboard/data-requests";
-                        if (item.scopeType === "REGION") link = "/dashboard/region?tab=data-requests";
-                        else if (item.scopeType === "ZONE") link = "/dashboard/zone?tab=data-requests";
-                        else if (item.scopeType === "WOREDA") link = "/dashboard/woreda?tab=data-requests";
-                        else if (item.scopeType === "FEDERAL") link = "/dashboard/federal?tab=data-requests";
-                        else if (item.scopeType === "SCHOOL") link = "/dashboard/data-requests";
+                        if (item.scopeType === "REGION") link = `/dashboard/region?tab=data-requests${reqParam}`;
+                        else if (item.scopeType === "ZONE") link = `/dashboard/zone?tab=data-requests${reqParam}`;
+                        else if (item.scopeType === "WOREDA") link = `/dashboard/woreda?tab=data-requests${reqParam}`;
+                        else if (item.scopeType === "FEDERAL") link = `/dashboard/federal?tab=data-requests${reqParam}`;
+                        else if (item.scopeType === "SCHOOL") link = `/dashboard/data-requests${request.id ? `?requestId=${request.id}` : ""}`;
 
                         return {
                             userId: item.userId,
@@ -378,12 +379,13 @@ export class DataRequestService {
                 creatorOrgType = org?.type;
             }
 
+            const reqParam = request.id ? `&requestId=${request.id}` : "";
             let link = "/dashboard/data-requests";
-            if (creatorOrgType === "REGION") link = "/dashboard/region?tab=data-requests";
-            else if (creatorOrgType === "ZONE") link = "/dashboard/zone?tab=data-requests";
-            else if (creatorOrgType === "WOREDA") link = "/dashboard/woreda?tab=data-requests";
-            else if (creatorOrgType === "FEDERAL") link = "/dashboard/federal?tab=data-requests";
-            else if (creatorOrgType === "SCHOOL") link = "/dashboard/data-requests";
+            if (creatorOrgType === "REGION") link = `/dashboard/region?tab=data-requests${reqParam}`;
+            else if (creatorOrgType === "ZONE") link = `/dashboard/zone?tab=data-requests${reqParam}`;
+            else if (creatorOrgType === "WOREDA") link = `/dashboard/woreda?tab=data-requests${reqParam}`;
+            else if (creatorOrgType === "FEDERAL") link = `/dashboard/federal?tab=data-requests${reqParam}`;
+            else if (creatorOrgType === "SCHOOL") link = `/dashboard/data-requests${request.id ? `?requestId=${request.id}` : ""}`;
 
             await prisma.notification.create({
                 data: {
@@ -414,14 +416,17 @@ export class DataRequestService {
             });
 
             const reqTitle = submission.request?.title || "Data Request";
+            const reqId = submission.requestId || submission.request?.id;
+            const reqParam = reqId ? `&requestId=${reqId}` : "";
             const reviewerName = reviewerScope.type === "FEDERAL" ? "Federal MoE" : reviewerScope.name;
             const isAccepted = submission.status === DataRequestSubmissionStatus.ACCEPTED;
 
             for (const ra of roleAssignments) {
                 let link = "/dashboard/data-requests";
-                if (ra.scope?.type === "REGION") link = "/dashboard/region?tab=data-requests";
-                else if (ra.scope?.type === "ZONE") link = "/dashboard/zone?tab=data-requests";
-                else if (ra.scope?.type === "WOREDA") link = "/dashboard/woreda?tab=data-requests";
+                if (ra.scope?.type === "REGION") link = `/dashboard/region?tab=data-requests${reqParam}`;
+                else if (ra.scope?.type === "ZONE") link = `/dashboard/zone?tab=data-requests${reqParam}`;
+                else if (ra.scope?.type === "WOREDA") link = `/dashboard/woreda?tab=data-requests${reqParam}`;
+                else if (ra.scope?.type === "SCHOOL") link = `/dashboard/data-requests${reqId ? `?requestId=${reqId}` : ""}`;
 
                 await prisma.notification.create({
                     data: {
@@ -527,6 +532,23 @@ export class DataRequestService {
             where: { id: request.id },
             data: { status: DataRequestStatus.PUBLISHED }
         });
+
+        // Dispatch in-app notifications to target organizations now that form is live
+        try {
+            const fullRequest = await prisma.dataRequest.findUnique({
+                where: { id: request.id },
+                include: {
+                    targets: {
+                        include: { organization: { select: { id: true, name: true, type: true } } }
+                    }
+                }
+            });
+            if (fullRequest) {
+                await this.dispatchDataRequestNotifications(fullRequest, actorScope);
+            }
+        } catch (notifErr) {
+            console.warn("[DataRequestService] Failed to dispatch notifications on Google Form creation:", notifErr);
+        }
 
         // Audit Logging
         try {

@@ -85,7 +85,7 @@ export default function SchoolAdminNavigation({
             if (pathname.startsWith("/dashboard/attendance")) next["attendance"] = true;
             if (pathname.startsWith("/dashboard/assessment") || pathname.startsWith("/dashboard/results")) next["results"] = true;
             if (pathname.startsWith("/dashboard/support")) next["support"] = true;
-            if (pathname.startsWith("/dashboard/communication")) next["communication"] = true;
+            if (pathname.startsWith("/dashboard/communication") || pathname.startsWith("/dashboard/directives") || pathname.startsWith("/dashboard/data-requests")) next["communication"] = true;
             if (pathname.startsWith("/dashboard/improvement")) next["improvement"] = true;
             if (pathname.startsWith("/dashboard/reports")) next["reports"] = true;
             if (pathname.startsWith("/dashboard/ai-leadership")) next["aiLeadership"] = true;
@@ -266,28 +266,16 @@ export default function SchoolAdminNavigation({
             title: "Directives & Communications",
             items: [
                 {
-                    label: "Policies & Directives",
-                    href: "/dashboard/directives",
-                    icon: FileText,
-                },
-                {
-                    label: "Data Requests & Surveys",
-                    href: "/dashboard/data-requests",
-                    icon: FileSpreadsheet,
-                },
-                {
                     label: "Communications",
                     icon: Megaphone,
                     basePath: "/dashboard/communication",
                     subLinks: [
+                        { label: "Policies & Directives", href: "/dashboard/directives" },
+                        { label: "Data Requests & Surveys", href: "/dashboard/data-requests" },
                         { label: "Announcements", href: "/dashboard/communication/announcements" },
                         { label: "Important Notices", href: "/dashboard/communication/notices", hidden: true },
                         { label: "Direct Messages", href: "/dashboard/communication/messages" },
                         { label: "Messaging Settings", href: "/dashboard/communication/settings" },
-                        { label: "Notifications", href: "/dashboard/communication/notifications" },
-                        { label: "Faculty Circulars", href: "/dashboard/communication/teacher" },
-                        { label: "Student Broadcasts", href: "/dashboard/communication/student" },
-                        { label: "Parent Broadcasts", href: "/dashboard/communication/parent" },
                         { label: "Staff Circulars", href: "/dashboard/communication/staff", hidden: true },
                     ],
                 },
@@ -472,7 +460,7 @@ export default function SchoolAdminNavigation({
 
                                 // Active calculation for parent group
                                 const isGroupActive = item.basePath
-                                    ? pathname.startsWith(item.basePath)
+                                    ? pathname.startsWith(item.basePath) || (item.subLinks?.some(sl => pathname === sl.href || pathname.startsWith(`${sl.href}/`)) ?? false)
                                     : false;
 
                                 if (isSubGroup && item.subLinks) {

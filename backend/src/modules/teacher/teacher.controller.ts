@@ -178,6 +178,19 @@ export const getTeacherById = async (req: Request, res: Response) => {
     }
 };
 
+export const getTeacherStudents = async (req: Request, res: Response) => {
+    try {
+        const organizationId = (req as any).accessScope?.id;
+        if (!organizationId) return res.status(403).json({ error: "Missing school scope" });
+
+        const teacherId = req.params.id as string;
+        const result = await TeacherService.getTeacherStudents(organizationId, teacherId);
+        return res.json(result);
+    } catch (error: any) {
+        return res.status(400).json({ error: error.message || "Failed to fetch teacher students" });
+    }
+};
+
 // Create a teaching assignment
 export const assignTeacher = async (req: Request, res: Response) => {
     try {

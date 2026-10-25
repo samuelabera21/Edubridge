@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useMemo } from "react";
+import { useSearchParams } from "next/navigation";
 import { fetchApi } from "../../lib/api";
 import {
     FileSpreadsheet,
@@ -52,6 +53,28 @@ export default function DataRequestsListView({
     // Active View state: 'list' | 'create' | 'detail'
     const [activeView, setActiveView] = useState<"list" | "create" | "detail">("list");
     const [selectedRequestId, setSelectedRequestId] = useState<string | null>(null);
+
+    const searchParams = useSearchParams();
+    const paramRequestId = searchParams?.get("requestId");
+
+    useEffect(() => {
+        if (paramRequestId) {
+            setSelectedRequestId(paramRequestId);
+            setActiveView("detail");
+        }
+    }, [paramRequestId]);
+
+    useEffect(() => {
+        const handleOpenDetail = (e: any) => {
+            const reqId = e.detail?.requestId;
+            if (reqId) {
+                setSelectedRequestId(reqId);
+                setActiveView("detail");
+            }
+        };
+        window.addEventListener("open-data-request-detail", handleOpenDetail);
+        return () => window.removeEventListener("open-data-request-detail", handleOpenDetail);
+    }, []);
 
     // Hierarchy tree data for cascading filters
     const [treeData, setTreeData] = useState<any>(null);

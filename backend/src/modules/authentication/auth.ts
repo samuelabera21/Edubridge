@@ -4,14 +4,15 @@ import { prisma } from "../../infrastructure/prisma/client.js";
 import { sendPasswordResetEmail } from "../email/email.service.js";
 import { assignRoleToUserByScopeId } from "./authorization.service.js";
 
-const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:3001";
+const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:3000";
+const backendAuthUrl = (process.env.BETTER_AUTH_URL || "http://localhost:5000").replace(/\/+$/, "");
 
 const googleClientId = process.env.GOOGLE_CLIENT_ID?.replace(/^["']|["']$/g, "").trim();
 const googleClientSecret = process.env.GOOGLE_CLIENT_SECRET?.replace(/^["']|["']$/g, "").trim();
-const googleRedirectUri = process.env.GOOGLE_AUTH_CALLBACK_URL?.replace(/^["']|["']$/g, "").trim() || "http://localhost:3001/api/auth/callback/google";
+const googleRedirectUri = process.env.GOOGLE_AUTH_CALLBACK_URL?.replace(/^["']|["']$/g, "").trim() || `${backendAuthUrl}/api/auth/callback/google`;
 
 export const auth = betterAuth({
-    baseURL: process.env.BETTER_AUTH_URL || "http://localhost:3001/api/auth",
+    baseURL: backendAuthUrl,
     database: prismaAdapter(prisma, {
         provider: "postgresql",
     }),
@@ -134,6 +135,8 @@ export const auth = betterAuth({
         "http://localhost:3000",
         "http://localhost:5173",
         "http://localhost:3001",
-        "http://localhost:5001"
+        "http://localhost:5001",
+        ...(FRONTEND_URL ? [FRONTEND_URL.replace(/\/+$/, "")] : []),
+        ...(backendAuthUrl ? [backendAuthUrl] : []),
     ],
 });

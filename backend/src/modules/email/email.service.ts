@@ -5,7 +5,7 @@ const resend = (process.env.RESEND_API_KEY && process.env.RESEND_API_KEY !== "re
     ? new Resend(process.env.RESEND_API_KEY)
     : null;
 
-const APP_URL = process.env.FRONTEND_URL || "http://localhost:3001";
+const APP_URL = process.env.FRONTEND_URL || "http://localhost:3000";
 
 function getSmtpTransporter() {
     if (process.env.SMTP_USER && process.env.SMTP_PASS) {
