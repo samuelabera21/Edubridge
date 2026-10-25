@@ -58,43 +58,68 @@ const EXTENSION_MAP: Record<string, { ext: string; mime: string }> = {
     ".zip": { ext: ".zip", mime: "application/zip" },
 };
 
-const isR2 = Boolean(process.env.R2_ACCOUNT_ID || process.env.R2_ENDPOINT);
-const BUCKET = process.env.R2_BUCKET || process.env.MINIO_BUCKET || "edubridge-documents";
-const R2_PUBLIC_URL = process.env.R2_PUBLIC_URL ? process.env.R2_PUBLIC_URL.replace(/\/+$/, "") : null;
-const PUBLIC_URL = R2_PUBLIC_URL || process.env.MINIO_PUBLIC_URL || "http://localhost:9000";
-const PRESIGN_EXPIRES_IN = 5 * 60; // 5 minutes
+const cloudEndpoint =
+    process.env.STORAGE_ENDPOINT ||
+    process.env.S3_ENDPOINT ||
+    (process.env.R2_ENDPOINT || (process.env.R2_ACCOUNT_ID ? `https://${process.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com` : undefined));
 
-// ─── S3 Client for Server-to-Storage (MinIO / Cloudflare R2) ─────────────────
-const internalEndpoint = isR2
-    ? (process.env.R2_ENDPOINT || `https://${process.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`)
-    : (process.env.MINIO_ENDPOINT 
+const isCloud = Boolean(cloudEndpoint);
+const BUCKET = process.env.STORAGE_BUCKET || process.env.S3_BUCKET || process.env.R2_BUCKET || process.env.MINIO_BUCKET || "edubridge-documents";
+
+const region =
+    process.env.STORAGE_REGION ||
+    process.env.S3_REGION ||
+    process.env.R2_REGION ||
+    (isCloud ? "eu-west-1" : "us-east-1");
+
+const accessKeyId =
+    process.env.STORAGE_ACCESS_KEY_ID ||
+    process.env.STORAGE_KEY ||
+    process.env.S3_ACCESS_KEY_ID ||
+    process.env.R2_ACCESS_KEY_ID ||
+    process.env.MINIO_ROOT_USER ||
+    "edubridge_minio";
+
+const secretAccessKey =
+    process.env.STORAGE_SECRET_ACCESS_KEY ||
+    process.env.STORAGE_SECRET ||
+    process.env.S3_SECRET_ACCESS_KEY ||
+    process.env.R2_SECRET_ACCESS_KEY ||
+    process.env.MINIO_ROOT_PASSWORD ||
+    "";
+
+const internalEndpoint = isCloud
+    ? cloudEndpoint!
+    : (process.env.MINIO_ENDPOINT
         ? `http://${process.env.MINIO_ENDPOINT}:${process.env.MINIO_PORT || 9000}`
         : `http://localhost:${process.env.MINIO_PORT || 9000}`);
 
-const accessKeyId = process.env.R2_ACCESS_KEY_ID || process.env.MINIO_ROOT_USER || "edubridge_minio";
-const secretAccessKey = process.env.R2_SECRET_ACCESS_KEY || process.env.MINIO_ROOT_PASSWORD || "";
+const cloudPublicUrl = process.env.STORAGE_PUBLIC_URL || process.env.R2_PUBLIC_URL;
+const PUBLIC_URL = (cloudPublicUrl ? cloudPublicUrl.replace(/\/+$/, "") : null) || process.env.MINIO_PUBLIC_URL || "http://localhost:9000";
+const PRESIGN_EXPIRES_IN = 5 * 60; // 5 minutes
 
+// ─── S3 Client for Server-to-Storage (MinIO / Supabase S3 / Cloudflare R2) ───
 const internalS3 = new S3Client({
     endpoint: internalEndpoint,
-    region: isR2 ? "auto" : "us-east-1",
+    region,
     credentials: {
         accessKeyId,
         secretAccessKey,
     },
-    forcePathStyle: !isR2,
+    forcePathStyle: true,
 });
 
 // ─── S3 Client for Presigned URLs (Browser-to-Storage) ──────────────────────
-const presignEndpoint = isR2 ? internalEndpoint : PUBLIC_URL;
+const presignEndpoint = isCloud ? internalEndpoint : PUBLIC_URL;
 
 const presignS3 = new S3Client({
     endpoint: presignEndpoint,
-    region: isR2 ? "auto" : "us-east-1",
+    region,
     credentials: {
         accessKeyId,
         secretAccessKey,
     },
-    forcePathStyle: !isR2,
+    forcePathStyle: true,
 });
 
 export class StorageService {
@@ -199,7 +224,9 @@ export class StorageService {
         });
 
         // 5. Build the permanent public URL for the file (after upload completes)
-        const publicUrl = isR2 && R2_PUBLIC_URL ? `${R2_PUBLIC_URL}/${fileKey}` : `${PUBLIC_URL}/${BUCKET}/${fileKey}`;
+        const publicUrl = cloudPublicUrl
+            ? `${cloudPublicUrl.replace(/\/+$/, "")}/${fileKey}`
+            : `${PUBLIC_URL}/${BUCKET}/${fileKey}`;
 
         return {
             presignedUrl,
