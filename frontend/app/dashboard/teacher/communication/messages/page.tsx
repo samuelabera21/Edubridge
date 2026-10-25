@@ -7,7 +7,7 @@ export default function TeacherMessagesPage() {
         <ActorDirectMessagingView
             actorRole="TEACHER"
             portalTitle="Direct Messages"
-            portalDescription="Official direct communication channel with students, parents, and school administration."
+            portalDescription=""
             toggleKey="allowTeacherDM"
         />
     );
