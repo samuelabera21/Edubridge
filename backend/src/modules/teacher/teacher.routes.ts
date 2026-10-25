@@ -44,7 +44,12 @@ import {
     bulkProposeAssignments,
     getTeacherSpecializations,
     addTeacherSpecialization,
-    removeTeacherSpecialization
+    removeTeacherSpecialization,
+    addTeacherQualification,
+    verifyTeacherQualification,
+    addTeacherDocument,
+    verifyTeacherDocument,
+    updateTeacherEmploymentStatus
 } from "./teacher.controller.js";
 import { createActivity, getActivities, submitActivity, raiseSupportFlag, getSupportFlags } from "../learning/learning.controller.js";
 import { recordStudentAttendance, getStudentAttendance } from "../attendance/attendance.controller.js";
@@ -568,6 +573,17 @@ router.get("/:id/specializations", requirePermission("ACADEMIC:VIEW"), getTeache
 router.post("/:id/specializations", requirePermission("ACADEMIC:UPDATE"), addTeacherSpecialization);
 router.delete("/:id/specializations/:subjectId", requirePermission("ACADEMIC:DELETE"), removeTeacherSpecialization);
 router.get("/:id/students", requirePermission("ACADEMIC:VIEW"), getTeacherStudents);
+
+// Teacher Qualifications & Verification
+router.post("/:id/qualifications", requirePermission("ACADEMIC:CREATE"), addTeacherQualification);
+router.post("/:id/qualifications/:qualificationId/verify", requirePermission("ACADEMIC:UPDATE"), verifyTeacherQualification);
+
+// Teacher Documents & Verification
+router.post("/:id/documents", requirePermission("ACADEMIC:CREATE"), addTeacherDocument);
+router.post("/:id/documents/:documentId/verify", requirePermission("ACADEMIC:UPDATE"), verifyTeacherDocument);
+
+// Teacher Employment Status
+router.post("/:id/employment-status", requirePermission("ACADEMIC:UPDATE"), updateTeacherEmploymentStatus);
 
 /**
  * @openapi
