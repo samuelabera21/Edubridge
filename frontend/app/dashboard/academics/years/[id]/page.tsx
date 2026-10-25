@@ -308,65 +308,93 @@ export default function AcademicYearDetailsPage() {
                     {/* 4 Clean Elevated Metric Cards (EAES Portal Style) */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                         <Link href="/dashboard/students" className="block group">
-                            <div className="bg-white border border-gray-200 rounded-lg p-5 shadow-xs group-hover:border-[#4085b3] group-hover:shadow-md group-hover:-translate-y-0.5 transition-all duration-200">
-                                <div className="flex items-center justify-between">
-                                    <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider">Enrolled Students</p>
-                                    <div className="w-9 h-9 rounded-lg bg-sky-50 text-[#4085b3] flex items-center justify-center transition-colors group-hover:bg-[#4085b3] group-hover:text-white">
-                                        <Users className="w-4 h-4" />
+                            <div className="relative overflow-hidden bg-white border border-slate-200 rounded-lg p-5 shadow-2xs hover:border-[#4085b3] transition-all duration-300">
+                                <span className="absolute inset-0 bg-[#4085b3] origin-left scale-x-0 group-hover:scale-x-100 transition-transform duration-300 ease-out pointer-events-none" />
+                                <div className="relative z-10">
+                                    <div className="flex items-center justify-between">
+                                        <p className="text-[11px] font-semibold text-slate-500 group-hover:text-blue-100 uppercase tracking-wider transition-colors duration-300">
+                                            Enrolled Students
+                                        </p>
+                                        <div className="w-9 h-9 rounded-lg bg-sky-50 text-[#4085b3] group-hover:bg-white/20 group-hover:text-white flex items-center justify-center transition-colors duration-300">
+                                            <Users className="w-4 h-4" />
+                                        </div>
                                     </div>
-                                </div>
-                                <p className="text-2xl font-bold text-gray-900 mt-2 font-mono">{year.stats?.students || 0}</p>
-                                <div className="mt-3 pt-2 border-t border-gray-100 flex items-center justify-between text-[11px] text-gray-500">
-                                    <span>Student Directory</span>
-                                    <span className="text-[#4085b3] font-medium group-hover:underline">View &rarr;</span>
+                                    <p className="text-2xl font-bold text-slate-900 group-hover:text-white mt-2 font-mono transition-colors duration-300">
+                                        {year.stats?.students || 0}
+                                    </p>
+                                    <div className="mt-3 pt-2 border-t border-slate-100 group-hover:border-white/20 flex items-center justify-between text-[11px] text-slate-500 group-hover:text-blue-100 transition-colors duration-300">
+                                        <span>Student Directory</span>
+                                        <span className="text-[#4085b3] group-hover:text-white font-medium">View &rarr;</span>
+                                    </div>
                                 </div>
                             </div>
                         </Link>
                         
                         <Link href="/dashboard/teachers/assignments" className="block group">
-                            <div className="bg-white border border-gray-200 rounded-lg p-5 shadow-xs group-hover:border-[#4085b3] group-hover:shadow-md group-hover:-translate-y-0.5 transition-all duration-200">
-                                <div className="flex items-center justify-between">
-                                    <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider">Assigned Teachers</p>
-                                    <div className="w-9 h-9 rounded-lg bg-sky-50 text-[#4085b3] flex items-center justify-center transition-colors group-hover:bg-[#4085b3] group-hover:text-white">
-                                        <UserCheck className="w-4 h-4" />
+                            <div className="relative overflow-hidden bg-white border border-slate-200 rounded-lg p-5 shadow-2xs hover:border-[#4085b3] transition-all duration-300">
+                                <span className="absolute inset-0 bg-[#4085b3] origin-left scale-x-0 group-hover:scale-x-100 transition-transform duration-300 ease-out pointer-events-none" />
+                                <div className="relative z-10">
+                                    <div className="flex items-center justify-between">
+                                        <p className="text-[11px] font-semibold text-slate-500 group-hover:text-blue-100 uppercase tracking-wider transition-colors duration-300">
+                                            Assigned Teachers
+                                        </p>
+                                        <div className="w-9 h-9 rounded-lg bg-sky-50 text-[#4085b3] group-hover:bg-white/20 group-hover:text-white flex items-center justify-center transition-colors duration-300">
+                                            <UserCheck className="w-4 h-4" />
+                                        </div>
                                     </div>
-                                </div>
-                                <p className="text-2xl font-bold text-gray-900 mt-2 font-mono">{year.stats?.teachers || 0}</p>
-                                <div className="mt-3 pt-2 border-t border-gray-100 flex items-center justify-between text-[11px] text-gray-500">
-                                    <span>Staffing Coverage</span>
-                                    <span className="text-[#4085b3] font-medium group-hover:underline">View &rarr;</span>
+                                    <p className="text-2xl font-bold text-slate-900 group-hover:text-white mt-2 font-mono transition-colors duration-300">
+                                        {year.stats?.teachers || 0}
+                                    </p>
+                                    <div className="mt-3 pt-2 border-t border-slate-100 group-hover:border-white/20 flex items-center justify-between text-[11px] text-slate-500 group-hover:text-blue-100 transition-colors duration-300">
+                                        <span>Staffing Coverage</span>
+                                        <span className="text-[#4085b3] group-hover:text-white font-medium">View &rarr;</span>
+                                    </div>
                                 </div>
                             </div>
                         </Link>
 
                         <Link href="/dashboard/academics/grades" className="block group">
-                            <div className="bg-white border border-gray-200 rounded-lg p-5 shadow-xs group-hover:border-[#4085b3] group-hover:shadow-md group-hover:-translate-y-0.5 transition-all duration-200">
-                                <div className="flex items-center justify-between">
-                                    <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider">Configured Grades</p>
-                                    <div className="w-9 h-9 rounded-lg bg-sky-50 text-[#4085b3] flex items-center justify-center transition-colors group-hover:bg-[#4085b3] group-hover:text-white">
-                                        <Layers className="w-4 h-4" />
+                            <div className="relative overflow-hidden bg-white border border-slate-200 rounded-lg p-5 shadow-2xs hover:border-[#4085b3] transition-all duration-300">
+                                <span className="absolute inset-0 bg-[#4085b3] origin-left scale-x-0 group-hover:scale-x-100 transition-transform duration-300 ease-out pointer-events-none" />
+                                <div className="relative z-10">
+                                    <div className="flex items-center justify-between">
+                                        <p className="text-[11px] font-semibold text-slate-500 group-hover:text-blue-100 uppercase tracking-wider transition-colors duration-300">
+                                            Configured Grades
+                                        </p>
+                                        <div className="w-9 h-9 rounded-lg bg-sky-50 text-[#4085b3] group-hover:bg-white/20 group-hover:text-white flex items-center justify-center transition-colors duration-300">
+                                            <Layers className="w-4 h-4" />
+                                        </div>
                                     </div>
-                                </div>
-                                <p className="text-2xl font-bold text-gray-900 mt-2 font-mono">{year.stats?.grades || 0}</p>
-                                <div className="mt-3 pt-2 border-t border-gray-100 flex items-center justify-between text-[11px] text-gray-500">
-                                    <span>Grade Levels</span>
-                                    <span className="text-[#4085b3] font-medium group-hover:underline">View &rarr;</span>
+                                    <p className="text-2xl font-bold text-slate-900 group-hover:text-white mt-2 font-mono transition-colors duration-300">
+                                        {year.stats?.grades || 0}
+                                    </p>
+                                    <div className="mt-3 pt-2 border-t border-slate-100 group-hover:border-white/20 flex items-center justify-between text-[11px] text-slate-500 group-hover:text-blue-100 transition-colors duration-300">
+                                        <span>Grade Levels</span>
+                                        <span className="text-[#4085b3] group-hover:text-white font-medium">View &rarr;</span>
+                                    </div>
                                 </div>
                             </div>
                         </Link>
 
                         <Link href="/dashboard/academics/grades" className="block group">
-                            <div className="bg-white border border-gray-200 rounded-lg p-5 shadow-xs group-hover:border-[#4085b3] group-hover:shadow-md group-hover:-translate-y-0.5 transition-all duration-200">
-                                <div className="flex items-center justify-between">
-                                    <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider">Active Sections</p>
-                                    <div className="w-9 h-9 rounded-lg bg-sky-50 text-[#4085b3] flex items-center justify-center transition-colors group-hover:bg-[#4085b3] group-hover:text-white">
-                                        <LayoutGrid className="w-4 h-4" />
+                            <div className="relative overflow-hidden bg-white border border-slate-200 rounded-lg p-5 shadow-2xs hover:border-[#4085b3] transition-all duration-300">
+                                <span className="absolute inset-0 bg-[#4085b3] origin-left scale-x-0 group-hover:scale-x-100 transition-transform duration-300 ease-out pointer-events-none" />
+                                <div className="relative z-10">
+                                    <div className="flex items-center justify-between">
+                                        <p className="text-[11px] font-semibold text-slate-500 group-hover:text-blue-100 uppercase tracking-wider transition-colors duration-300">
+                                            Active Sections
+                                        </p>
+                                        <div className="w-9 h-9 rounded-lg bg-sky-50 text-[#4085b3] group-hover:bg-white/20 group-hover:text-white flex items-center justify-center transition-colors duration-300">
+                                            <LayoutGrid className="w-4 h-4" />
+                                        </div>
                                     </div>
-                                </div>
-                                <p className="text-2xl font-bold text-gray-900 mt-2 font-mono">{year.stats?.sections || 0}</p>
-                                <div className="mt-3 pt-2 border-t border-gray-100 flex items-center justify-between text-[11px] text-gray-500">
-                                    <span>Class Sections</span>
-                                    <span className="text-[#4085b3] font-medium group-hover:underline">View &rarr;</span>
+                                    <p className="text-2xl font-bold text-slate-900 group-hover:text-white mt-2 font-mono transition-colors duration-300">
+                                        {year.stats?.sections || 0}
+                                    </p>
+                                    <div className="mt-3 pt-2 border-t border-slate-100 group-hover:border-white/20 flex items-center justify-between text-[11px] text-slate-500 group-hover:text-blue-100 transition-colors duration-300">
+                                        <span>Class Sections</span>
+                                        <span className="text-[#4085b3] group-hover:text-white font-medium">View &rarr;</span>
+                                    </div>
                                 </div>
                             </div>
                         </Link>
@@ -426,56 +454,65 @@ export default function AcademicYearDetailsPage() {
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 pt-1">
                             <Link 
                                 href="/dashboard/academics/grades"
-                                className="group p-4 rounded-lg border border-gray-200 hover:border-[#4085b3] hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 bg-white"
+                                className="group relative overflow-hidden p-4 rounded-lg border border-gray-200 hover:border-[#4085b3] shadow-xs hover:shadow-md transition-all duration-300 bg-white block"
                             >
-                                <div className="flex items-start justify-between">
-                                    <div className="w-9 h-9 rounded-lg bg-sky-50 text-[#4085b3] flex items-center justify-center group-hover:bg-[#4085b3] group-hover:text-white transition-colors">
-                                        <Layers className="w-4 h-4" />
+                                <span className="absolute inset-0 bg-[#4085b3] origin-left scale-x-0 group-hover:scale-x-100 transition-transform duration-300 ease-out pointer-events-none" />
+                                <div className="relative z-10">
+                                    <div className="flex items-start justify-between">
+                                        <div className="w-9 h-9 rounded-lg bg-sky-50 text-[#4085b3] flex items-center justify-center group-hover:bg-white/20 group-hover:text-white transition-colors duration-300">
+                                            <Layers className="w-4 h-4" />
+                                        </div>
+                                        <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-white group-hover:translate-x-0.5 transition-all duration-300" />
                                     </div>
-                                    <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-[#4085b3] group-hover:translate-x-0.5 transition-all" />
+                                    <h4 className="text-xs font-bold text-gray-900 mt-3 group-hover:text-white transition-colors duration-300">
+                                        Grades & Class Sections
+                                    </h4>
+                                    <p className="text-[11px] text-gray-500 mt-1 group-hover:text-blue-100 transition-colors duration-300">
+                                        Configure academic grade levels, student streams, and section divisions.
+                                    </p>
                                 </div>
-                                <h4 className="text-xs font-bold text-gray-900 mt-3 group-hover:text-[#4085b3] transition-colors">
-                                    Grades & Class Sections
-                                </h4>
-                                <p className="text-[11px] text-gray-500 mt-1">
-                                    Configure academic grade levels, student streams, and homeroom divisions.
-                                </p>
                             </Link>
 
                             <Link 
                                 href="/dashboard/academics/subjects"
-                                className="group p-4 rounded-lg border border-gray-200 hover:border-[#4085b3] hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 bg-white"
+                                className="group relative overflow-hidden p-4 rounded-lg border border-gray-200 hover:border-[#4085b3] shadow-xs hover:shadow-md transition-all duration-300 bg-white block"
                             >
-                                <div className="flex items-start justify-between">
-                                    <div className="w-9 h-9 rounded-lg bg-sky-50 text-[#4085b3] flex items-center justify-center group-hover:bg-[#4085b3] group-hover:text-white transition-colors">
-                                        <BookOpen className="w-4 h-4" />
+                                <span className="absolute inset-0 bg-[#4085b3] origin-left scale-x-0 group-hover:scale-x-100 transition-transform duration-300 ease-out pointer-events-none" />
+                                <div className="relative z-10">
+                                    <div className="flex items-start justify-between">
+                                        <div className="w-9 h-9 rounded-lg bg-sky-50 text-[#4085b3] flex items-center justify-center group-hover:bg-white/20 group-hover:text-white transition-colors duration-300">
+                                            <BookOpen className="w-4 h-4" />
+                                        </div>
+                                        <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-white group-hover:translate-x-0.5 transition-all duration-300" />
                                     </div>
-                                    <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-[#4085b3] group-hover:translate-x-0.5 transition-all" />
+                                    <h4 className="text-xs font-bold text-gray-900 mt-3 group-hover:text-white transition-colors duration-300">
+                                        Curriculum Subjects
+                                    </h4>
+                                    <p className="text-[11px] text-gray-500 mt-1 group-hover:text-blue-100 transition-colors duration-300">
+                                        Define official courses, curriculum codes, credits, and weekly period counts.
+                                    </p>
                                 </div>
-                                <h4 className="text-xs font-bold text-gray-900 mt-3 group-hover:text-[#4085b3] transition-colors">
-                                    Curriculum Subjects
-                                </h4>
-                                <p className="text-[11px] text-gray-500 mt-1">
-                                    Define official courses, curriculum codes, credits, and weekly period counts.
-                                </p>
                             </Link>
 
                             <Link 
                                 href="/dashboard/academics/calendar"
-                                className="group p-4 rounded-lg border border-gray-200 hover:border-[#4085b3] hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 bg-white"
+                                className="group relative overflow-hidden p-4 rounded-lg border border-gray-200 hover:border-[#4085b3] shadow-xs hover:shadow-md transition-all duration-300 bg-white block"
                             >
-                                <div className="flex items-start justify-between">
-                                    <div className="w-9 h-9 rounded-lg bg-sky-50 text-[#4085b3] flex items-center justify-center group-hover:bg-[#4085b3] group-hover:text-white transition-colors">
-                                        <Calendar className="w-4 h-4" />
+                                <span className="absolute inset-0 bg-[#4085b3] origin-left scale-x-0 group-hover:scale-x-100 transition-transform duration-300 ease-out pointer-events-none" />
+                                <div className="relative z-10">
+                                    <div className="flex items-start justify-between">
+                                        <div className="w-9 h-9 rounded-lg bg-sky-50 text-[#4085b3] flex items-center justify-center group-hover:bg-white/20 group-hover:text-white transition-colors duration-300">
+                                            <Calendar className="w-4 h-4" />
+                                        </div>
+                                        <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-white group-hover:translate-x-0.5 transition-all duration-300" />
                                     </div>
-                                    <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-[#4085b3] group-hover:translate-x-0.5 transition-all" />
+                                    <h4 className="text-xs font-bold text-gray-900 mt-3 group-hover:text-white transition-colors duration-300">
+                                        Academic Calendar
+                                    </h4>
+                                    <p className="text-[11px] text-gray-500 mt-1 group-hover:text-blue-100 transition-colors duration-300">
+                                        Manage semesters, term examination dates, holidays, and school periods.
+                                    </p>
                                 </div>
-                                <h4 className="text-xs font-bold text-gray-900 mt-3 group-hover:text-[#4085b3] transition-colors">
-                                    Academic Calendar
-                                </h4>
-                                <p className="text-[11px] text-gray-500 mt-1">
-                                    Manage semesters, term examination dates, holidays, and school periods.
-                                </p>
                             </Link>
                         </div>
                     </div>

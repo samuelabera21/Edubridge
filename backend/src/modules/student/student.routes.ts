@@ -2,6 +2,7 @@ import { Router } from "express";
 import { 
     createStudent, 
     getStudents,
+    getStudentFilters,
     getStudentById,
     enrollStudent, 
     getEnrollments, 
@@ -80,6 +81,7 @@ router.post("/", requirePermission("ACADEMIC:CREATE"), createStudent);
  *       - cookieAuth: []
  */
 router.get("/", requirePermission("ACADEMIC:VIEW"), getStudents);
+router.get("/filters", requirePermission("ACADEMIC:VIEW"), getStudentFilters);
 
 
 

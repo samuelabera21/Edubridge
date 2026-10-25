@@ -6,7 +6,8 @@ import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { 
     ArrowLeft, CheckCircle2, X, Plus, 
-    AlertTriangle, Calendar, Search, ChevronLeft, ChevronRight
+    AlertTriangle, Calendar, Search, ChevronLeft, ChevronRight,
+    Users, GraduationCap, ExternalLink, Filter, BookOpen
 } from "lucide-react";
 import { LoadingState } from "@/components/ui/LoadingState";
 import { ErrorState } from "@/components/ui/ErrorState";
@@ -24,6 +25,32 @@ export default function TeacherProfilePage() {
     const [actionLoading, setActionLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+    // Enrolled Students Data
+    const [studentsData, setStudentsData] = useState<{
+        teacher: any;
+        students: any[];
+        sections: any[];
+        stats: { totalStudents: number; maleCount: number; femaleCount: number; totalSections: number };
+    } | null>(null);
+    const [studentsLoading, setStudentsLoading] = useState(false);
+
+    // Students Directory Filter & Pagination
+    const [studentSearch, setStudentSearch] = useState("");
+    const [selectedSectionFilter, setSelectedSectionFilter] = useState("ALL");
+    const [selectedGenderFilter, setSelectedGenderFilter] = useState("ALL");
+    const [studentCurrentPage, setStudentCurrentPage] = useState(1);
+    const [studentPageSize, setStudentPageSize] = useState(10);
+
+    // Section Specific Modal
+    const [sectionModalOpen, setSectionModalOpen] = useState(false);
+    const [selectedSectionForModal, setSelectedSectionForModal] = useState<{
+        sectionId?: string;
+        gradeName?: string;
+        sectionName?: string;
+        subjectName?: string;
+    } | null>(null);
+    const [sectionModalSearch, setSectionModalSearch] = useState("");
 
     // Allocation Table Filter & Pagination
     const [allocationSearch, setAllocationSearch] = useState("");
@@ -68,9 +95,25 @@ export default function TeacherProfilePage() {
         }
     };
 
+    const loadStudents = async () => {
+        try {
+            setStudentsLoading(true);
+            const res = await fetchApi(`/teacher/${teacherId}/students`);
+            if (res.ok) {
+                const data = await res.json();
+                setStudentsData(data);
+            }
+        } catch (err) {
+            console.error("Failed to load teacher students:", err);
+        } finally {
+            setStudentsLoading(false);
+        }
+    };
+
     useEffect(() => {
         if (teacherId) {
             loadTeacher();
+            loadStudents();
         }
     }, [teacherId]);
 
@@ -198,6 +241,60 @@ export default function TeacherProfilePage() {
         return teacher?.assignments?.reduce((acc: number, a: any) => acc + (a.periodsPerWeek || 5), 0) || 0;
     }, [teacher?.assignments]);
 
+    // Filtered & Paginated Students List
+    const filteredStudents = useMemo(() => {
+        if (!studentsData?.students) return [];
+        return studentsData.students.filter((s: any) => {
+            if (selectedSectionFilter !== "ALL") {
+                if (s.sectionId !== selectedSectionFilter && s.sectionName !== selectedSectionFilter) {
+                    return false;
+                }
+            }
+            if (selectedGenderFilter !== "ALL") {
+                if (s.gender?.toUpperCase() !== selectedGenderFilter.toUpperCase()) {
+                    return false;
+                }
+            }
+            if (studentSearch.trim()) {
+                const q = studentSearch.toLowerCase();
+                const matchesName = s.fullName?.toLowerCase().includes(q);
+                const matchesId = s.studentId?.toLowerCase().includes(q);
+                const matchesGrade = s.gradeName?.toLowerCase().includes(q);
+                const matchesSection = s.sectionName?.toLowerCase().includes(q);
+                return matchesName || matchesId || matchesGrade || matchesSection;
+            }
+            return true;
+        });
+    }, [studentsData?.students, selectedSectionFilter, selectedGenderFilter, studentSearch]);
+
+    useEffect(() => {
+        setStudentCurrentPage(1);
+    }, [studentSearch, selectedSectionFilter, selectedGenderFilter, studentPageSize]);
+
+    const studentTotalPages = Math.max(1, Math.ceil(filteredStudents.length / studentPageSize));
+    const paginatedStudents = useMemo(() => {
+        const start = (studentCurrentPage - 1) * studentPageSize;
+        return filteredStudents.slice(start, start + studentPageSize);
+    }, [filteredStudents, studentCurrentPage, studentPageSize]);
+
+    // Section Modal Students List
+    const sectionModalStudents = useMemo(() => {
+        if (!studentsData?.students || !selectedSectionForModal) return [];
+        let list = studentsData.students;
+        if (selectedSectionForModal.sectionId) {
+            list = list.filter((s: any) => s.sectionId === selectedSectionForModal.sectionId);
+        } else if (selectedSectionForModal.gradeName) {
+            list = list.filter((s: any) => s.gradeName === selectedSectionForModal.gradeName);
+        }
+        if (sectionModalSearch.trim()) {
+            const q = sectionModalSearch.toLowerCase();
+            list = list.filter((s: any) => 
+                s.fullName?.toLowerCase().includes(q) || s.studentId?.toLowerCase().includes(q)
+            );
+        }
+        return list;
+    }, [studentsData?.students, selectedSectionForModal, sectionModalSearch]);
+
     if (loading && !teacher) {
         return <LoadingState message="Loading teacher profile..." />;
     }
@@ -293,16 +390,12 @@ export default function TeacherProfilePage() {
                                 {teacher.employmentType?.replace("_", " ") || "Permanent"}
                             </span>
 
-                            {teacher.homeroomSections && teacher.homeroomSections.length > 0 && (
-                                <span className="text-[10px] font-medium px-2 py-0.5 rounded bg-sky-50 text-[#4085b3] border border-sky-200">
-                                    Homeroom: {teacher.homeroomSections[0].schoolGrade?.grade?.name} ({teacher.homeroomSections[0].name})
-                                </span>
-                            )}
+
                         </div>
                     </div>
                 </div>
 
-                {/* Workload Quick KPI */}
+                {/* Workload & Student Quick KPI */}
                 <div className="bg-gray-50 rounded-md p-3.5 border border-gray-200 text-xs flex items-center space-x-4">
                     <div>
                         <p className="text-gray-500 text-[10px] uppercase font-semibold">Assigned Sections</p>
@@ -312,6 +405,17 @@ export default function TeacherProfilePage() {
                         <p className="text-gray-500 text-[10px] uppercase font-semibold">Total Load</p>
                         <p className="text-base font-bold font-mono text-gray-900">
                             {totalLoad} <span className="text-xs font-normal text-gray-500">p/wk</span>
+                        </p>
+                    </div>
+                    <div className="border-l border-gray-200 pl-4">
+                        <p className="text-gray-500 text-[10px] uppercase font-semibold">Enrolled Students</p>
+                        <p className="text-base font-bold text-gray-900 flex items-center space-x-1.5">
+                            <span>{studentsData?.stats?.totalStudents ?? (studentsLoading ? "..." : 0)}</span>
+                            {studentsData?.stats && (
+                                <span className="text-[10px] font-normal text-gray-500">
+                                    ({studentsData.stats.maleCount}M / {studentsData.stats.femaleCount}F)
+                                </span>
+                            )}
                         </p>
                     </div>
                 </div>
@@ -589,6 +693,7 @@ export default function TeacherProfilePage() {
                                                     <th className="px-4 py-2.5">Grade & Section</th>
                                                     <th className="px-4 py-2.5 text-center">Weekly Load</th>
                                                     <th className="px-4 py-2.5 text-center">Status</th>
+                                                    <th className="px-4 py-2.5 text-center">Class Roster</th>
                                                 </tr>
                                             </thead>
                                             <tbody className="divide-y divide-gray-100">
@@ -601,7 +706,7 @@ export default function TeacherProfilePage() {
                                                             {asgn.subject?.name}
                                                         </td>
                                                         <td className="px-4 py-2.5 text-gray-700">
-                                                            {asgn.schoolGrade?.grade?.name} {asgn.section ? `\u2014 Sec ${asgn.section.name}` : "(All)"}
+                                                            {asgn.schoolGrade?.grade?.name} {asgn.section ? `— Sec ${asgn.section.name}` : "(All)"}
                                                         </td>
                                                         <td className="px-4 py-2.5 text-center font-mono font-medium text-gray-900">
                                                             {asgn.periodsPerWeek || 5} p/wk
@@ -616,6 +721,25 @@ export default function TeacherProfilePage() {
                                                             }`}>
                                                                 {asgn.status}
                                                             </span>
+                                                        </td>
+                                                        <td className="px-4 py-2.5 text-center">
+                                                            <button
+                                                                onClick={() => {
+                                                                    setSelectedSectionForModal({
+                                                                        sectionId: asgn.sectionId,
+                                                                        gradeName: asgn.schoolGrade?.grade?.name,
+                                                                        sectionName: asgn.section?.name,
+                                                                        subjectName: asgn.subject?.name
+                                                                    });
+                                                                    setSectionModalSearch("");
+                                                                    setSectionModalOpen(true);
+                                                                }}
+                                                                className="inline-flex items-center space-x-1 px-2.5 py-1 text-[11px] font-medium text-[#4085b3] bg-sky-50 hover:bg-sky-100 rounded border border-sky-200 transition-colors cursor-pointer"
+                                                                title="View enrolled students for this class"
+                                                            >
+                                                                <Users className="w-3 h-3" />
+                                                                <span>View Students</span>
+                                                            </button>
                                                         </td>
                                                     </tr>
                                                 ))}
@@ -669,6 +793,238 @@ export default function TeacherProfilePage() {
                             )}
                         </div>
                     </div>
+                </div>
+            </div>
+
+            {/* 4. Enrolled Students Under This Teacher (Full Width) */}
+            <div className="bg-white border border-gray-200 rounded-lg shadow-xs overflow-hidden">
+                <div className="px-5 py-4 bg-gray-50/70 border-b border-gray-200 flex flex-col md:flex-row md:items-center justify-between gap-3">
+                    <div>
+                        <div className="flex items-center space-x-2">
+                            <GraduationCap className="w-4 h-4 text-[#4085b3]" />
+                            <h2 className="text-sm font-bold text-gray-900 tracking-tight">
+                                Enrolled Students Under This Teacher
+                            </h2>
+                            <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-sky-50 text-[#4085b3] border border-sky-200">
+                                {studentsData?.stats?.totalStudents || 0} Total
+                            </span>
+                        </div>
+                        <p className="text-xs text-gray-500 mt-1">
+                            Roster of students across sections, grades, and subjects taught by {teacher.firstName} {teacher.lastName}
+                        </p>
+                    </div>
+
+                    {/* Quick Stats Chips */}
+                    {studentsData?.stats && (
+                        <div className="flex flex-wrap items-center gap-2 text-xs">
+                            <span className="px-2.5 py-1 rounded bg-slate-100 text-slate-700 font-medium border border-slate-200">
+                                {studentsData.stats.totalSections} Assigned Class{studentsData.stats.totalSections === 1 ? "" : "es"}
+                            </span>
+                            <span className="px-2.5 py-1 rounded bg-blue-50 text-blue-700 font-medium border border-blue-200">
+                                {studentsData.stats.maleCount} Male
+                            </span>
+                            <span className="px-2.5 py-1 rounded bg-pink-50 text-pink-700 font-medium border border-pink-200">
+                                {studentsData.stats.femaleCount} Female
+                            </span>
+                        </div>
+                    )}
+                </div>
+
+                {/* Filter and Search Bar */}
+                <div className="p-4 bg-white border-b border-gray-200 flex flex-col md:flex-row gap-3 items-stretch md:items-center justify-between">
+                    <div className="flex flex-1 flex-col sm:flex-row gap-2.5 items-stretch sm:items-center">
+                        {/* Search Input */}
+                        <div className="relative flex-1 min-w-[200px]">
+                            <Search className="w-3.5 h-3.5 absolute left-3 top-2.5 text-gray-400" />
+                            <input
+                                type="text"
+                                placeholder="Search by student name or ID..."
+                                value={studentSearch}
+                                onChange={(e) => setStudentSearch(e.target.value)}
+                                className="w-full pl-8 pr-3 py-1.5 text-xs bg-white border border-gray-300 rounded-md focus:ring-2 focus:ring-[#4085b3] outline-none"
+                            />
+                        </div>
+
+                        {/* Section / Class Filter */}
+                        <div className="flex items-center space-x-1">
+                            <Filter className="w-3.5 h-3.5 text-gray-400 hidden sm:block" />
+                            <select
+                                value={selectedSectionFilter}
+                                onChange={(e) => setSelectedSectionFilter(e.target.value)}
+                                className="px-3 py-1.5 text-xs bg-white border border-gray-300 rounded-md focus:ring-2 focus:ring-[#4085b3] outline-none text-gray-700"
+                            >
+                                <option value="ALL">All Assigned Classes ({studentsData?.students?.length || 0})</option>
+                                {studentsData?.sections?.map((sec: any, idx: number) => (
+                                    <option key={idx} value={sec.sectionId || sec.sectionName}>
+                                        {sec.gradeName} &bull; Sec {sec.sectionName} {sec.subjects?.length ? `(${sec.subjects.join(", ")})` : ""}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+
+                        {/* Gender Filter */}
+                        <select
+                            value={selectedGenderFilter}
+                            onChange={(e) => setSelectedGenderFilter(e.target.value)}
+                            className="px-3 py-1.5 text-xs bg-white border border-gray-300 rounded-md focus:ring-2 focus:ring-[#4085b3] outline-none text-gray-700"
+                        >
+                            <option value="ALL">All Genders</option>
+                            <option value="MALE">Male</option>
+                            <option value="FEMALE">Female</option>
+                        </select>
+                    </div>
+
+                    <div className="flex items-center space-x-2 text-xs text-gray-500 justify-end">
+                        <span>Show:</span>
+                        <select
+                            value={studentPageSize}
+                            onChange={(e) => setStudentPageSize(Number(e.target.value))}
+                            className="px-2 py-1 text-xs bg-white border border-gray-300 rounded-md focus:ring-2 focus:ring-[#4085b3] outline-none"
+                        >
+                            <option value={10}>10</option>
+                            <option value={25}>25</option>
+                            <option value={50}>50</option>
+                        </select>
+                    </div>
+                </div>
+
+                {/* Table Content */}
+                <div className="p-0">
+                    {studentsLoading && (!studentsData || studentsData.students.length === 0) ? (
+                        <div className="p-8 text-center text-xs text-gray-500">
+                            Loading students roster...
+                        </div>
+                    ) : filteredStudents.length === 0 ? (
+                        <div className="p-8 text-center text-xs text-gray-400 italic">
+                            {studentsData?.students?.length === 0 
+                                ? "No students are currently enrolled in this teacher's assigned classes."
+                                : "No students matched your search criteria."}
+                        </div>
+                    ) : (
+                        <>
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-xs text-left text-gray-700">
+                                    <thead className="text-[11px] text-gray-600 uppercase bg-gray-50 border-b border-gray-200 font-semibold">
+                                        <tr>
+                                            <th className="px-4 py-2.5 w-12 text-center">#</th>
+                                            <th className="px-4 py-2.5">Student ID</th>
+                                            <th className="px-4 py-2.5">Student Full Name</th>
+                                            <th className="px-4 py-2.5 text-center">Gender</th>
+                                            <th className="px-4 py-2.5">Grade & Section</th>
+                                            <th className="px-4 py-2.5">Subject(s) Taught</th>
+                                            <th className="px-4 py-2.5 text-center">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-100">
+                                        {paginatedStudents.map((st: any, idx: number) => (
+                                            <tr key={st.enrollmentId || idx} className="hover:bg-gray-50/70 transition-colors">
+                                                <td className="px-4 py-2.5 text-center text-gray-400 font-mono">
+                                                    {(studentCurrentPage - 1) * studentPageSize + idx + 1}
+                                                </td>
+                                                <td className="px-4 py-2.5 font-mono text-gray-800 font-medium">
+                                                    {st.studentId}
+                                                </td>
+                                                <td className="px-4 py-2.5 font-semibold text-gray-900">
+                                                    {st.studentDbId ? (
+                                                        <Link 
+                                                            href={`/dashboard/students/${st.studentDbId}`}
+                                                            className="hover:text-[#4085b3] transition-colors flex items-center space-x-1"
+                                                        >
+                                                            <span>{st.fullName}</span>
+                                                        </Link>
+                                                    ) : (
+                                                        st.fullName
+                                                    )}
+                                                </td>
+                                                <td className="px-4 py-2.5 text-center">
+                                                    <span className={`text-[10px] font-semibold px-2 py-0.5 rounded uppercase ${
+                                                        st.gender?.toUpperCase() === "MALE" 
+                                                            ? "bg-blue-50 text-blue-700 border border-blue-200"
+                                                            : st.gender?.toUpperCase() === "FEMALE"
+                                                            ? "bg-pink-50 text-pink-700 border border-pink-200"
+                                                            : "bg-gray-50 text-gray-600 border border-gray-200"
+                                                    }`}>
+                                                        {st.gender}
+                                                    </span>
+                                                </td>
+                                                <td className="px-4 py-2.5 text-gray-800">
+                                                    {st.gradeName} &bull; Sec {st.sectionName}
+                                                </td>
+                                                <td className="px-4 py-2.5">
+                                                    {st.subjectsTaught && st.subjectsTaught.length > 0 ? (
+                                                        <div className="flex flex-wrap gap-1">
+                                                            {st.subjectsTaught.map((sub: string, sIdx: number) => (
+                                                                <span key={sIdx} className="text-[10px] px-2 py-0.5 rounded bg-gray-100 text-gray-700 border border-gray-200">
+                                                                    {sub}
+                                                                </span>
+                                                            ))}
+                                                        </div>
+                                                    ) : (
+                                                        <span className="text-gray-400 italic">General</span>
+                                                    )}
+                                                </td>
+                                                <td className="px-4 py-2.5 text-center">
+                                                    {st.studentDbId && (
+                                                        <Link
+                                                            href={`/dashboard/students/${st.studentDbId}`}
+                                                            className="inline-flex items-center space-x-1 text-xs text-[#4085b3] hover:text-[#2b6a94] font-medium"
+                                                            title="View Student Profile"
+                                                        >
+                                                            <span>Profile</span>
+                                                            <ExternalLink className="w-3 h-3" />
+                                                        </Link>
+                                                    )}
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            {/* Pagination Bar */}
+                            <div className="px-4 py-2.5 border-t border-gray-200 bg-gray-50/60 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs text-gray-600">
+                                <span>
+                                    Showing <span className="font-semibold text-gray-900">{(studentCurrentPage - 1) * studentPageSize + 1}</span> to{" "}
+                                    <span className="font-semibold text-gray-900">{Math.min(studentCurrentPage * studentPageSize, filteredStudents.length)}</span> of{" "}
+                                    <span className="font-semibold text-gray-900">{filteredStudents.length}</span> students
+                                </span>
+
+                                {studentTotalPages > 1 && (
+                                    <div className="flex items-center space-x-1">
+                                        <button
+                                            onClick={() => setStudentCurrentPage(p => Math.max(1, p - 1))}
+                                            disabled={studentCurrentPage === 1}
+                                            className="p-1 rounded border border-gray-300 bg-white hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                                        >
+                                            <ChevronLeft className="w-3.5 h-3.5" />
+                                        </button>
+                                        
+                                        {Array.from({ length: studentTotalPages }, (_, i) => i + 1).map(page => (
+                                            <button
+                                                key={page}
+                                                onClick={() => setStudentCurrentPage(page)}
+                                                className={`w-6 h-6 rounded border text-[11px] font-medium transition-colors cursor-pointer ${
+                                                    studentCurrentPage === page 
+                                                        ? "bg-[#4085b3] text-white border-[#4085b3]" 
+                                                        : "bg-white border-gray-300 text-gray-700 hover:bg-gray-100"
+                                                }`}
+                                            >
+                                                {page}
+                                            </button>
+                                        ))}
+
+                                        <button
+                                            onClick={() => setStudentCurrentPage(p => Math.min(studentTotalPages, p + 1))}
+                                            disabled={studentCurrentPage === studentTotalPages}
+                                            className="p-1 rounded border border-gray-300 bg-white hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                                        >
+                                            <ChevronRight className="w-3.5 h-3.5" />
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+                        </>
+                    )}
                 </div>
             </div>
 
@@ -828,6 +1184,108 @@ export default function TeacherProfilePage() {
                         </button>
                     </div>
                 </form>
+            </Modal>
+
+            {/* Section Specific Students Modal */}
+            <Modal
+                isOpen={sectionModalOpen}
+                onClose={() => {
+                    setSectionModalOpen(false);
+                    setSelectedSectionForModal(null);
+                }}
+                title={`Class Roster — ${selectedSectionForModal?.gradeName || "Grade"} ${selectedSectionForModal?.sectionName ? "— Section " + selectedSectionForModal.sectionName : ""} ${selectedSectionForModal?.subjectName ? `(${selectedSectionForModal.subjectName})` : ""}`}
+                maxWidth="3xl"
+            >
+                <div className="space-y-4 text-xs">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-gray-50 p-3 rounded-lg border border-gray-200">
+                        <div>
+                            <p className="font-semibold text-gray-900">
+                                {selectedSectionForModal?.gradeName} &bull; Section {selectedSectionForModal?.sectionName || "(All)"}
+                            </p>
+                            <p className="text-[11px] text-gray-500">
+                                Subject: {selectedSectionForModal?.subjectName || "Assigned Instruction"} &bull; Teacher: {teacher.firstName} {teacher.lastName}
+                            </p>
+                        </div>
+                        <div className="flex items-center space-x-2 text-xs">
+                            <span className="px-2.5 py-1 bg-white rounded border border-gray-200 font-semibold text-gray-800">
+                                {sectionModalStudents.length} Students
+                            </span>
+                        </div>
+                    </div>
+
+                    <div className="relative">
+                        <Search className="w-3.5 h-3.5 absolute left-3 top-2.5 text-gray-400" />
+                        <input
+                            type="text"
+                            placeholder="Filter students in this class..."
+                            value={sectionModalSearch}
+                            onChange={(e) => setSectionModalSearch(e.target.value)}
+                            className="w-full pl-8 pr-3 py-1.5 text-xs bg-white border border-gray-300 rounded-md focus:ring-2 focus:ring-[#4085b3] outline-none"
+                        />
+                    </div>
+
+                    <div className="border border-gray-200 rounded-md overflow-hidden max-h-[50vh] overflow-y-auto">
+                        {sectionModalStudents.length === 0 ? (
+                            <div className="p-6 text-center text-gray-400 italic">
+                                No students found for this class section.
+                            </div>
+                        ) : (
+                            <table className="w-full text-xs text-left text-gray-700">
+                                <thead className="text-[11px] text-gray-600 uppercase bg-gray-50 border-b border-gray-200 sticky top-0">
+                                    <tr>
+                                        <th className="px-3 py-2 w-10 text-center">#</th>
+                                        <th className="px-3 py-2">ID</th>
+                                        <th className="px-3 py-2">Full Name</th>
+                                        <th className="px-3 py-2 text-center">Gender</th>
+                                        <th className="px-3 py-2 text-center">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-gray-100">
+                                    {sectionModalStudents.map((st: any, idx: number) => (
+                                        <tr key={st.enrollmentId || idx} className="hover:bg-gray-50/70">
+                                            <td className="px-3 py-2 text-center font-mono text-gray-400">{idx + 1}</td>
+                                            <td className="px-3 py-2 font-mono font-medium text-gray-800">{st.studentId}</td>
+                                            <td className="px-3 py-2 font-semibold text-gray-900">{st.fullName}</td>
+                                            <td className="px-3 py-2 text-center">
+                                                <span className={`text-[10px] font-semibold px-2 py-0.5 rounded uppercase ${
+                                                    st.gender?.toUpperCase() === "MALE" 
+                                                        ? "bg-blue-50 text-blue-700" 
+                                                        : "bg-pink-50 text-pink-700"
+                                                }`}>
+                                                    {st.gender}
+                                                </span>
+                                            </td>
+                                            <td className="px-3 py-2 text-center">
+                                                {st.studentDbId && (
+                                                    <Link
+                                                        href={`/dashboard/students/${st.studentDbId}`}
+                                                        className="text-[#4085b3] hover:underline font-medium inline-flex items-center space-x-1"
+                                                    >
+                                                        <span>Profile</span>
+                                                        <ExternalLink className="w-3 h-3" />
+                                                    </Link>
+                                                )}
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        )}
+                    </div>
+
+                    <div className="flex justify-end pt-2">
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setSectionModalOpen(false);
+                                setSelectedSectionForModal(null);
+                            }}
+                            className="px-4 py-1.5 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 cursor-pointer text-xs"
+                        >
+                            Close
+                        </button>
+                    </div>
+                </div>
             </Modal>
         </div>
     );

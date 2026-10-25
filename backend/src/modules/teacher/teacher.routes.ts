@@ -3,6 +3,7 @@ import {
     createTeacher, 
     getTeachers,
     getTeacherById,
+    getTeacherStudents,
     assignTeacher, 
     getAssignments, 
     getTeacherProfile,
@@ -562,10 +563,11 @@ router.get("/assignments", requirePermission("ACADEMIC:VIEW"), getAssignments);
 router.put("/assignments/:id", requirePermission("ACADEMIC:UPDATE"), updateAssignment);
 router.delete("/assignments/:id", requirePermission("ACADEMIC:DELETE"), deleteAssignment);
 
-// Teacher Specializations (must precede /:id)
+// Teacher Specializations & Students (must precede /:id)
 router.get("/:id/specializations", requirePermission("ACADEMIC:VIEW"), getTeacherSpecializations);
 router.post("/:id/specializations", requirePermission("ACADEMIC:UPDATE"), addTeacherSpecialization);
 router.delete("/:id/specializations/:subjectId", requirePermission("ACADEMIC:DELETE"), removeTeacherSpecialization);
+router.get("/:id/students", requirePermission("ACADEMIC:VIEW"), getTeacherStudents);
 
 /**
  * @openapi

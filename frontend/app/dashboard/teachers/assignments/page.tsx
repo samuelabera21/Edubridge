@@ -49,22 +49,6 @@ export default function TeachingAssignmentsPage() {
     const [successMessage, setSuccessMessage] = useState<string | null>(null);
     const [expandedTeacherId, setExpandedTeacherId] = useState<string | null>(null);
 
-    // Homeroom assignment modal state
-    const [homeroomModal, setHomeroomModal] = useState<{
-        open: boolean;
-        sectionId: string;
-        sectionName: string;
-        gradeName: string;
-        currentTeacherId: string | null;
-        selectedTeacherId: string;
-    }>({
-        open: false,
-        sectionId: "",
-        sectionName: "",
-        gradeName: "",
-        currentTeacherId: null,
-        selectedTeacherId: ""
-    });
 
     const hasCreatePermission = authData?.access.some(acc => 
         acc.role.permissions.some((p: any) => ["ADMIN", "SCHOOL_ADMIN", "ACADEMIC:MANAGE", "TEACHER:ASSIGN", "ACADEMIC:CREATE"].includes(p.permission.name))
@@ -266,30 +250,6 @@ export default function TeachingAssignmentsPage() {
         }
     };
 
-    // Homeroom assignment handler
-    const handleSaveHomeroom = async () => {
-        try {
-            setActionLoading(true);
-            const res = await fetchApi(`/teacher/sections/${homeroomModal.sectionId}/homeroom`, {
-                method: "POST",
-                body: JSON.stringify({
-                    homeroomTeacherId: homeroomModal.selectedTeacherId || null
-                })
-            });
-            if (!res.ok) {
-                const data = await res.json();
-                throw new Error(data.error || "Failed to update homeroom teacher");
-            }
-            setSuccessMessage("Homeroom teacher updated.");
-            setHomeroomModal(prev => ({ ...prev, open: false }));
-            if (selectedYearId) loadStaffingData(selectedYearId);
-        } catch (err: any) {
-            setError(err.message || "Failed to update homeroom teacher");
-        } finally {
-            setActionLoading(false);
-        }
-    };
-
     const pendingProposals = useMemo(() => {
         return assignments.filter(a => a.status === "PROPOSED");
     }, [assignments]);
@@ -356,11 +316,10 @@ export default function TeachingAssignmentsPage() {
                 if (searchQuery) {
                     const q = searchQuery.toLowerCase();
                     const matchSec = sec.sectionName.toLowerCase().includes(q) || sec.gradeName.toLowerCase().includes(q);
-                    const matchHomeroom = sec.homeroomTeacher?.name?.toLowerCase().includes(q);
                     const matchSubject = sec.subjectAllocations?.some((sa: any) => 
                         sa.subjectName.toLowerCase().includes(q) || sa.teacher?.name?.toLowerCase().includes(q)
                     );
-                    return matchSec || matchHomeroom || matchSubject;
+                    return matchSec || matchSubject;
                 }
                 return true;
             })
@@ -940,30 +899,9 @@ export default function TeachingAssignmentsPage() {
                                                 {gradeDisplayName} &mdash; Section {sec.sectionName}
                                             </h3>
 
-                                            {/* Homeroom Assignment */}
-                                            <div className="flex items-center space-x-1.5 text-xs text-slate-500">
-                                                <span>Homeroom:</span>
-                                                {sec.homeroomTeacher ? (
-                                                    <span className="font-medium text-slate-800">{sec.homeroomTeacher.name}</span>
-                                                ) : (
-                                                    <span className="text-slate-400">Unassigned</span>
-                                                )}
-                                                {hasCreatePermission && !isYearLocked && (
-                                                    <button
-                                                        onClick={() => setHomeroomModal({
-                                                            open: true,
-                                                            sectionId: sec.sectionId,
-                                                            sectionName: sec.sectionName,
-                                                            gradeName: gradeDisplayName,
-                                                            currentTeacherId: sec.homeroomTeacher?.id || null,
-                                                            selectedTeacherId: sec.homeroomTeacher?.id || ""
-                                                        })}
-                                                        className="text-[#4085b3] hover:underline font-medium ml-1 cursor-pointer"
-                                                    >
-                                                        {sec.homeroomTeacher ? "Edit" : "Assign"}
-                                                    </button>
-                                                )}
-                                            </div>
+                                            <span className="text-[11px] text-slate-500 font-medium">
+                                                {sec.subjectAllocations?.length || 0} {sec.subjectAllocations?.length === 1 ? "Subject" : "Subjects"}
+                                            </span>
                                         </div>
 
                                         {/* Clean Subject Table */}
@@ -1149,11 +1087,7 @@ export default function TeachingAssignmentsPage() {
                                             <tr key={w.teacherId} className="hover:bg-slate-50/50 transition-colors align-top">
                                                 <td className="px-4 py-2.5">
                                                     <div className="font-medium text-slate-900">{w.name}</div>
-                                                    {w.homeroomSection && (
-                                                        <div className="text-[11px] text-slate-500 mt-0.5">
-                                                            Homeroom: {w.homeroomSection.gradeName} {w.homeroomSection.name}
-                                                        </div>
-                                                    )}
+
                                                 </td>
 
                                                 <td className="px-4 py-2.5 font-mono text-slate-700">
@@ -1321,54 +1255,7 @@ export default function TeachingAssignmentsPage() {
                 </div>
             )}
 
-            {/* Homeroom Assignment Modal */}
-            <Modal
-                isOpen={homeroomModal.open}
-                onClose={() => setHomeroomModal(prev => ({ ...prev, open: false }))}
-                title={`Assign Homeroom Teacher — ${homeroomModal.gradeName} (${homeroomModal.sectionName})`}
-            >
-                <div className="space-y-4">
-                    <p className="text-xs text-gray-500">
-                        Designate the faculty member who supervises this section and coordinates attendance.
-                    </p>
 
-                    <div>
-                        <label className="block text-xs font-medium text-gray-700 mb-1">
-                            Homeroom Faculty Member
-                        </label>
-                        <select
-                            value={homeroomModal.selectedTeacherId}
-                            onChange={(e) => setHomeroomModal(prev => ({ ...prev, selectedTeacherId: e.target.value }))}
-                            className="w-full text-xs border border-gray-300 rounded-lg p-2 bg-white text-gray-900 focus:ring-2 focus:ring-[#4085b3] outline-none"
-                        >
-                            <option value="">-- No Homeroom Teacher (Vacant) --</option>
-                            {allTeachers.map((t: any) => (
-                                <option key={t.id} value={t.id}>
-                                    {t.firstName} {t.lastName} ({t.employeeId || t.staffIdCode || "Staff"})
-                                </option>
-                            ))}
-                        </select>
-                    </div>
-
-                    <div className="flex justify-end space-x-2 pt-3 border-t border-gray-100">
-                        <button
-                            type="button"
-                            onClick={() => setHomeroomModal(prev => ({ ...prev, open: false }))}
-                            className="px-3 py-1.5 text-xs font-medium text-gray-700 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer"
-                        >
-                            Cancel
-                        </button>
-                        <button
-                            type="button"
-                            onClick={handleSaveHomeroom}
-                            disabled={actionLoading}
-                            className="px-3.5 py-1.5 text-xs font-medium text-white bg-[#4085b3] hover:bg-[#2b6a94] rounded-lg transition-colors shadow-xs cursor-pointer"
-                        >
-                            Save
-                        </button>
-                    </div>
-                </div>
-            </Modal>
         </div>
     );
 }

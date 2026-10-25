@@ -159,32 +159,45 @@ export class AttendanceAdminService {
             ? Number(((teacherEffectivePresent / teacherTotalRecords) * 100).toFixed(1))
             : 0;
 
-        // 4. Today's Snapshot
+        // 4. Today's Snapshot (date range to be timezone-safe)
+        const startOfToday = new Date();
+        startOfToday.setUTCHours(0, 0, 0, 0);
+        const endOfToday = new Date();
+        endOfToday.setUTCHours(23, 59, 59, 999);
+
         const todayStudentRecords = await prisma.studentAttendance.findMany({
             where: {
                 organizationId,
-                date: today,
+                date: { gte: startOfToday, lte: endOfToday },
                 ...(academicYearId ? { academicYearId } : {})
             },
-            select: { status: true }
+            select: { status: true, enrollmentId: true, classPeriodId: true }
         });
 
+        const todayMarkedEnrollmentIds = new Set(todayStudentRecords.map(r => r.enrollmentId));
+        const todayPresentEnrollmentIds = new Set(
+            todayStudentRecords.filter(r => r.status === "PRESENT" || r.status === "LATE").map(r => r.enrollmentId)
+        );
+        const todayAbsentEnrollmentIds = new Set(
+            todayStudentRecords.filter(r => r.status === "ABSENT").map(r => r.enrollmentId)
+        );
+
         const todayStudentStats = {
-            present: todayStudentRecords.filter(r => r.status === "PRESENT").length,
+            present: todayPresentEnrollmentIds.size,
             late: todayStudentRecords.filter(r => r.status === "LATE").length,
-            absent: todayStudentRecords.filter(r => r.status === "ABSENT").length,
+            absent: todayAbsentEnrollmentIds.size,
             excused: todayStudentRecords.filter(r => r.status === "EXCUSED").length,
-            totalMarked: todayStudentRecords.length,
+            totalMarked: todayMarkedEnrollmentIds.size,
             totalEnrolled: totalEnrolledStudents,
-            rate: todayStudentRecords.length > 0
-                ? Number((((todayStudentRecords.filter(r => r.status === "PRESENT" || r.status === "LATE").length) / todayStudentRecords.length) * 100).toFixed(1))
+            rate: totalEnrolledStudents > 0 && todayMarkedEnrollmentIds.size > 0
+                ? Number(((todayPresentEnrollmentIds.size / totalEnrolledStudents) * 100).toFixed(1))
                 : 0
         };
 
         const todayTeacherRecords = await prisma.teacherAttendance.findMany({
             where: {
                 organizationId,
-                date: today,
+                date: { gte: startOfToday, lte: endOfToday },
                 ...(academicYearId ? { academicYearId } : {})
             },
             select: { status: true }
@@ -315,7 +328,7 @@ export class AttendanceAdminService {
                                     where: {
                                         ...(academicYearId ? { academicYearId } : {})
                                     },
-                                    select: { status: true }
+                                    select: { status: true, date: true, classPeriodId: true }
                                 }
                             }
                         }
@@ -343,6 +356,10 @@ export class AttendanceAdminService {
                 let secLate = 0;
                 let secExcused = 0;
 
+                const todayPeriodsSet = new Set<string>();
+                const todayEnrollmentsPresent = new Set<string>();
+                const todayEnrollmentsAbsent = new Set<string>();
+
                 for (const enr of sec.studentEnrollments) {
                     for (const att of enr.attendances) {
                         secRecords++;
@@ -350,6 +367,16 @@ export class AttendanceAdminService {
                         else if (att.status === "LATE") secLate++;
                         else if (att.status === "ABSENT") secAbsent++;
                         else if (att.status === "EXCUSED") secExcused++;
+
+                        const attDate = new Date(att.date);
+                        if ((attDate >= startOfToday && attDate <= endOfToday) || toIsoDate(att.date) === toIsoDate(today)) {
+                            if (att.classPeriodId) todayPeriodsSet.add(att.classPeriodId);
+                            if (att.status === "PRESENT" || att.status === "LATE") {
+                                todayEnrollmentsPresent.add(enr.id);
+                            } else if (att.status === "ABSENT") {
+                                todayEnrollmentsAbsent.add(enr.id);
+                            }
+                        }
                     }
                 }
 
@@ -370,6 +397,11 @@ export class AttendanceAdminService {
                     else if (secRate < 90) healthStatus = "Attention";
                 }
 
+                const todayStudentsMarked = todayEnrollmentsPresent.size + todayEnrollmentsAbsent.size;
+                const todayRate = enrollmentCount > 0 && todayStudentsMarked > 0
+                    ? Number(((todayEnrollmentsPresent.size / enrollmentCount) * 100).toFixed(1))
+                    : null;
+
                 return {
                     id: sec.id,
                     name: sec.name,
@@ -380,6 +412,10 @@ export class AttendanceAdminService {
                     absentCount: secAbsent,
                     excusedCount: secExcused,
                     attendanceRate: secRate,
+                    todayPresentCount: todayEnrollmentsPresent.size,
+                    todayAbsentCount: todayEnrollmentsAbsent.size,
+                    todayPeriodsCount: todayPeriodsSet.size || (todayStudentsMarked > 0 ? 1 : 0),
+                    todayAttendanceRate: todayRate,
                     healthStatus
                 };
             });
@@ -580,8 +616,40 @@ export class AttendanceAdminService {
                     ? Number(((effectivePresent / totalSessions) * 100).toFixed(1))
                     : 100;
 
-                const todayIso = toIsoDate(now);
-                const todayRec = records.find(r => toIsoDate(r.date) === todayIso);
+                const startOfToday = new Date(now);
+                startOfToday.setUTCHours(0, 0, 0, 0);
+                const endOfToday = new Date(now);
+                endOfToday.setUTCHours(23, 59, 59, 999);
+
+                const todayRecords = records.filter(r => {
+                    const rDate = new Date(r.date);
+                    return (rDate >= startOfToday && rDate <= endOfToday) || toIsoDate(r.date) === toIsoDate(now);
+                });
+
+                let todayStatus = "PENDING";
+                let todaySummary = "Unmarked";
+                const todayPeriodsCount = todayRecords.length;
+
+                if (todayRecords.length > 0) {
+                    const hasAbsent = todayRecords.some(r => r.status === "ABSENT");
+                    const hasLate = todayRecords.some(r => r.status === "LATE");
+                    const allPresent = todayRecords.every(r => r.status === "PRESENT");
+
+                    if (allPresent) {
+                        todayStatus = "PRESENT";
+                        todaySummary = todayRecords.length > 1 ? `Present (${todayRecords.length} periods)` : "Present";
+                    } else if (hasAbsent) {
+                        const absentCount = todayRecords.filter(r => r.status === "ABSENT").length;
+                        todayStatus = "ABSENT";
+                        todaySummary = `Absent (${absentCount}/${todayRecords.length} periods)`;
+                    } else if (hasLate) {
+                        todayStatus = "LATE";
+                        todaySummary = "Late";
+                    } else {
+                        todayStatus = todayRecords[0]?.status || "PENDING";
+                        todaySummary = todayRecords[0]?.status || "Pending";
+                    }
+                }
 
                 return {
                     id: enr.id,
@@ -594,8 +662,10 @@ export class AttendanceAdminService {
                     sectionName: enr.section?.name || "Unassigned",
                     timeframe,
                     timeframeLabel,
-                    todayStatus: todayRec ? todayRec.status : "PENDING",
-                    todayRemarks: todayRec?.remarks || null,
+                    todayStatus,
+                    todaySummary,
+                    todayPeriodsCount,
+                    todayRemarks: todayRecords[0]?.remarks || null,
                     presentDays: presentCount,
                     lateDays: lateCount,
                     absentDays: absentCount,

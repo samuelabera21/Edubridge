@@ -834,6 +834,10 @@ export class StudentService {
         search?: string;
         gender?: string;
         status?: string;
+        schoolGradeId?: string;
+        sectionId?: string;
+        academicYearId?: string;
+        city?: string;
     } = {}) {
         const {
             page = 1,
@@ -842,7 +846,11 @@ export class StudentService {
             sortOrder = "desc",
             search,
             gender,
-            status
+            status,
+            schoolGradeId,
+            sectionId,
+            academicYearId,
+            city
         } = options;
 
         const where: any = {};
@@ -851,11 +859,27 @@ export class StudentService {
             where.gender = { equals: gender, mode: "insensitive" };
         }
 
+        if (city && city !== "ALL") {
+            where.city = { contains: city, mode: "insensitive" };
+        }
+
+        const enrollmentCondition: any = {};
         if (status && status !== "ALL") {
+            enrollmentCondition.status = status as any;
+        }
+        if (schoolGradeId && schoolGradeId !== "ALL") {
+            enrollmentCondition.schoolGradeId = schoolGradeId;
+        }
+        if (sectionId && sectionId !== "ALL") {
+            enrollmentCondition.sectionId = sectionId;
+        }
+        if (academicYearId && academicYearId !== "ALL") {
+            enrollmentCondition.academicYearId = academicYearId;
+        }
+
+        if (Object.keys(enrollmentCondition).length > 0) {
             where.enrollments = {
-                some: {
-                    status: status as any
-                }
+                some: enrollmentCondition
             };
         }
 
@@ -962,6 +986,53 @@ export class StudentService {
                 limit: isExport ? total : limit,
                 totalPages
             }
+        };
+    }
+
+    static async getStudentFilters(organizationId?: string) {
+        const whereClause: any = organizationId ? { academicYear: { organizationId } } : {};
+        
+        const schoolGrades = await prisma.schoolGrade.findMany({
+            where: whereClause,
+            include: {
+                grade: true,
+                sections: {
+                    select: { id: true, name: true, schoolGradeId: true }
+                }
+            },
+            orderBy: { grade: { level: "asc" } }
+        });
+
+        const sectionsList: Array<{ id: string; name: string; schoolGradeId: string; gradeName: string }> = [];
+        const gradesList = schoolGrades.map(sg => {
+            const gradeName = sg.grade?.name || "Grade";
+            if (sg.sections && sg.sections.length > 0) {
+                sg.sections.forEach(sec => {
+                    sectionsList.push({
+                        id: sec.id,
+                        name: sec.name,
+                        schoolGradeId: sg.id,
+                        gradeName
+                    });
+                });
+            }
+            return {
+                id: sg.id,
+                name: gradeName,
+                level: sg.grade?.level || 0
+            };
+        });
+
+        const academicYears = await prisma.academicYear.findMany({
+            where: organizationId ? { organizationId } : {},
+            orderBy: { startDate: "desc" },
+            select: { id: true, name: true, isCurrent: true }
+        });
+
+        return {
+            grades: gradesList,
+            sections: sectionsList,
+            academicYears
         };
     }
 

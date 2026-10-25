@@ -13,7 +13,8 @@ import {
     RotateCcw,
     FileSpreadsheet,
     Printer,
-    Loader2
+    Loader2,
+    Filter
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { LoadingState } from "@/components/ui/LoadingState";
@@ -62,8 +63,19 @@ export default function StudentsDirectoryPage() {
     const [searchQuery, setSearchQuery] = useState("");
     const [genderFilter, setGenderFilter] = useState("ALL");
     const [statusFilter, setStatusFilter] = useState("ALL");
+    const [selectedGradeId, setSelectedGradeId] = useState("");
+    const [selectedSectionId, setSelectedSectionId] = useState("");
+    const [selectedAcademicYearId, setSelectedAcademicYearId] = useState("");
     const [sortBy, setSortBy] = useState<"createdAt" | "firstName" | "studentId">("createdAt");
     const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
+    const [showFilters, setShowFilters] = useState(false);
+
+    // Filter Metadata Options
+    const [filterOptions, setFilterOptions] = useState<{
+        grades: Array<{ id: string; name: string; level: number }>;
+        sections: Array<{ id: string; name: string; schoolGradeId: string; gradeName: string }>;
+        academicYears?: Array<{ id: string; name: string; isCurrent: boolean }>;
+    }>({ grades: [], sections: [], academicYears: [] });
 
     // Close export dropdown when clicking outside
     useEffect(() => {
@@ -80,6 +92,26 @@ export default function StudentsDirectoryPage() {
         };
     }, [showExportMenu]);
 
+    // Load filter options (grades, sections, academic years)
+    useEffect(() => {
+        async function loadFilterOptions() {
+            try {
+                const res = await fetchApi("/student/filters");
+                if (res.ok) {
+                    const data = await res.json();
+                    setFilterOptions({
+                        grades: data.grades || [],
+                        sections: data.sections || [],
+                        academicYears: data.academicYears || []
+                    });
+                }
+            } catch (err) {
+                console.error("Failed to load student filter options:", err);
+            }
+        }
+        loadFilterOptions();
+    }, []);
+
     const loadData = useCallback(async () => {
         try {
             setLoading(true);
@@ -93,6 +125,9 @@ export default function StudentsDirectoryPage() {
             if (searchQuery.trim()) params.append("search", searchQuery.trim());
             if (genderFilter !== "ALL") params.append("gender", genderFilter);
             if (statusFilter !== "ALL") params.append("status", statusFilter);
+            if (selectedGradeId) params.append("schoolGradeId", selectedGradeId);
+            if (selectedSectionId) params.append("sectionId", selectedSectionId);
+            if (selectedAcademicYearId) params.append("academicYearId", selectedAcademicYearId);
 
             const res = await fetchApi(`/student?${params.toString()}`);
             if (!res.ok) throw new Error("Failed to load student directory");
@@ -118,7 +153,7 @@ export default function StudentsDirectoryPage() {
         } finally {
             setLoading(false);
         }
-    }, [page, limit, searchQuery, genderFilter, statusFilter, sortBy, sortOrder]);
+    }, [page, limit, searchQuery, genderFilter, statusFilter, selectedGradeId, selectedSectionId, selectedAcademicYearId, sortBy, sortOrder]);
 
     useEffect(() => {
         const timeoutId = setTimeout(() => {
@@ -131,6 +166,9 @@ export default function StudentsDirectoryPage() {
         setSearchQuery("");
         setGenderFilter("ALL");
         setStatusFilter("ALL");
+        setSelectedGradeId("");
+        setSelectedSectionId("");
+        setSelectedAcademicYearId("");
         setSortBy("createdAt");
         setSortOrder("desc");
         setPage(1);
@@ -148,6 +186,9 @@ export default function StudentsDirectoryPage() {
         if (searchQuery.trim()) params.append("search", searchQuery.trim());
         if (genderFilter !== "ALL") params.append("gender", genderFilter);
         if (statusFilter !== "ALL") params.append("status", statusFilter);
+        if (selectedGradeId) params.append("schoolGradeId", selectedGradeId);
+        if (selectedSectionId) params.append("sectionId", selectedSectionId);
+        if (selectedAcademicYearId) params.append("academicYearId", selectedAcademicYearId);
 
         const res = await fetchApi(`/student?${params.toString()}`);
         if (!res.ok) throw new Error("Failed to fetch students for export");
@@ -266,8 +307,11 @@ export default function StudentsDirectoryPage() {
             });
 
             const filterSummary = [
+                selectedGradeId ? `Grade: ${filterOptions.grades.find(g => g.id === selectedGradeId)?.name || selectedGradeId}` : null,
+                selectedSectionId ? `Section: ${filterOptions.sections.find(s => s.id === selectedSectionId)?.name || selectedSectionId}` : null,
                 genderFilter !== "ALL" ? `Gender: ${genderFilter}` : null,
                 statusFilter !== "ALL" ? `Status: ${statusFilter}` : null,
+                selectedAcademicYearId ? `Session: ${filterOptions.academicYears?.find(y => y.id === selectedAcademicYearId)?.name || selectedAcademicYearId}` : null,
                 searchQuery.trim() ? `Search: "${searchQuery.trim()}"` : null
             ].filter(Boolean).join(" • ") || "All Registered Students";
 
@@ -496,7 +540,15 @@ export default function StudentsDirectoryPage() {
         }
     };
 
-    const hasActiveFilters = searchQuery !== "" || genderFilter !== "ALL" || statusFilter !== "ALL";
+    const activeFilterCount = [
+        genderFilter !== "ALL",
+        statusFilter !== "ALL",
+        Boolean(selectedGradeId),
+        Boolean(selectedSectionId),
+        Boolean(selectedAcademicYearId)
+    ].filter(Boolean).length;
+
+    const hasActiveFilters = searchQuery !== "" || activeFilterCount > 0;
 
     const startRecord = totalCount === 0 ? 0 : (page - 1) * limit + 1;
     const endRecord = Math.min(page * limit, totalCount);
@@ -577,116 +629,267 @@ export default function StudentsDirectoryPage() {
                 </div>
             </div>
 
-            {/* Modern Search & Filtering Control Panel */}
-            <div className="bg-white border border-slate-200 rounded-lg p-4 shadow-sm space-y-3.5">
-                {/* Full Width Modern Search Input */}
-                <div className="relative w-full">
-                    <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
-                    <input
-                        type="text"
-                        placeholder="Search student directory by 3-tier name, Student ID (e.g. STU-2609-...), or location..."
-                        value={searchQuery}
-                        onChange={(e) => {
-                            setSearchQuery(e.target.value);
-                            setPage(1);
-                        }}
-                        className="w-full pl-10 pr-10 py-2 text-sm bg-slate-50/50 border border-slate-300 rounded-md focus:bg-white focus:outline-none focus:border-[#4085b3] focus:ring-1 focus:ring-[#4085b3] text-slate-900 placeholder:text-slate-400"
-                    />
-                    {searchQuery && (
-                        <button 
-                            onClick={() => {
-                                setSearchQuery("");
-                                setPage(1);
-                            }}
-                            className="absolute right-3 top-2.5 p-0.5 text-slate-400 hover:text-slate-600 rounded-full hover:bg-slate-100"
-                        >
-                            <X className="w-4 h-4" />
-                        </button>
-                    )}
-                </div>
-
-                {/* Filter Controls Row */}
-                <div className="flex flex-wrap items-center justify-between gap-3 pt-1 border-t border-slate-100 text-xs">
-                    <div className="flex flex-wrap items-center gap-2.5">
-                        {/* Gender Filter */}
-                        <select
-                            value={genderFilter}
+            {/* Modern Search & Collapsible Filtering Control Panel */}
+            <div className="bg-white border border-slate-200 rounded-lg shadow-2xs overflow-hidden">
+                {/* Search Bar + Filter Trigger Row */}
+                <div className="p-3.5 flex flex-wrap items-center justify-between gap-3 bg-white">
+                    {/* Full Width / Flexible Modern Search Input */}
+                    <div className="relative flex-1 min-w-[260px]">
+                        <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                        <input
+                            type="text"
+                            placeholder="Search student directory by 3-tier name, Student ID (e.g. STU-2609-...), or location..."
+                            value={searchQuery}
                             onChange={(e) => {
-                                setGenderFilter(e.target.value);
+                                setSearchQuery(e.target.value);
                                 setPage(1);
                             }}
-                            className="text-xs bg-white border border-slate-300 rounded-md px-2.5 py-1.5 text-slate-700 shadow-sm focus:outline-none focus:border-[#4085b3]"
-                        >
-                            <option value="ALL">All Genders</option>
-                            <option value="MALE">Male</option>
-                            <option value="FEMALE">Female</option>
-                        </select>
-
-                        {/* Status Filter */}
-                        <select
-                            value={statusFilter}
-                            onChange={(e) => {
-                                setStatusFilter(e.target.value);
-                                setPage(1);
-                            }}
-                            className="text-xs bg-white border border-slate-300 rounded-md px-2.5 py-1.5 text-slate-700 shadow-sm focus:outline-none focus:border-[#4085b3]"
-                        >
-                            <option value="ALL">All Statuses</option>
-                            <option value="ACTIVE">Active</option>
-                            <option value="ENROLLED">Enrolled</option>
-                            <option value="TRANSFERRED">Transferred</option>
-                            <option value="WITHDRAWN">Withdrawn</option>
-                            <option value="GRADUATED">Graduated</option>
-                            <option value="DROPPED_OUT">Dropped Out</option>
-                        </select>
-
-                        {/* Sort Order */}
-                        <select
-                            value={`${sortBy}:${sortOrder}`}
-                            onChange={(e) => {
-                                const [field, order] = e.target.value.split(":");
-                                setSortBy(field as any);
-                                setSortOrder(order as any);
-                                setPage(1);
-                            }}
-                            className="text-xs bg-white border border-slate-300 rounded-md px-2.5 py-1.5 text-slate-700 shadow-sm focus:outline-none focus:border-[#4085b3]"
-                        >
-                            <option value="createdAt:desc">Newest First</option>
-                            <option value="createdAt:asc">Oldest First</option>
-                            <option value="firstName:asc">Name (A-Z)</option>
-                            <option value="firstName:desc">Name (Z-A)</option>
-                            <option value="studentId:asc">Student ID (Asc)</option>
-                        </select>
-
-                        {hasActiveFilters && (
-                            <button
-                                onClick={handleResetFilters}
-                                className="inline-flex items-center text-xs text-slate-500 hover:text-slate-900 border border-slate-200 hover:bg-slate-50 rounded-md px-2.5 py-1.5 transition-colors"
+                            className="w-full pl-10 pr-10 py-2 text-xs sm:text-sm bg-slate-50/70 border border-slate-300 rounded-lg focus:bg-white focus:outline-none focus:border-[#4085b3] focus:ring-1 focus:ring-[#4085b3] text-slate-900 placeholder:text-slate-400 transition-colors"
+                        />
+                        {searchQuery && (
+                            <button 
+                                onClick={() => {
+                                    setSearchQuery("");
+                                    setPage(1);
+                                }}
+                                className="absolute right-3 top-1/2 -translate-y-1/2 p-0.5 text-slate-400 hover:text-slate-600 rounded-full hover:bg-slate-100"
                             >
-                                <RotateCcw className="w-3 h-3 mr-1" />
-                                Reset
+                                <X className="w-4 h-4" />
                             </button>
                         )}
                     </div>
 
-                    {/* Rows Per Page */}
-                    <div className="flex items-center gap-2">
-                        <span className="text-slate-500">Rows:</span>
-                        <select
-                            value={limit}
-                            onChange={(e) => {
-                                setLimit(Number(e.target.value));
-                                setPage(1);
-                            }}
-                            className="text-xs bg-white border border-slate-300 rounded-md px-2 py-1 text-slate-700 shadow-sm focus:outline-none focus:border-[#4085b3]"
+                    {/* Filter Toggle Button & Rows Dropdown */}
+                    <div className="flex items-center gap-2.5">
+                        <button
+                            type="button"
+                            onClick={() => setShowFilters(prev => !prev)}
+                            className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border text-xs font-semibold transition-all duration-200 cursor-pointer shadow-2xs ${
+                                showFilters || activeFilterCount > 0
+                                    ? "bg-[#4085b3] text-white border-[#4085b3]"
+                                    : "bg-white text-slate-700 border-slate-300 hover:border-[#4085b3] hover:text-[#4085b3] hover:bg-[#4085b3]/5"
+                            }`}
                         >
-                            <option value={10}>10</option>
-                            <option value={25}>25</option>
-                            <option value={50}>50</option>
-                            <option value={100}>100</option>
-                        </select>
+                            <Filter className="w-3.5 h-3.5" />
+                            <span>Filters</span>
+                            {activeFilterCount > 0 && (
+                                <span className={`w-4 h-4 rounded-full text-[10px] font-bold flex items-center justify-center ${
+                                    showFilters ? "bg-white text-[#4085b3]" : "bg-white text-[#4085b3]"
+                                }`}>
+                                    {activeFilterCount}
+                                </span>
+                            )}
+                        </button>
+
+                        <div className="flex items-center gap-1.5 text-xs text-slate-600 pl-1 border-l border-slate-200">
+                            <span className="hidden sm:inline text-slate-500">Rows:</span>
+                            <select
+                                value={limit}
+                                onChange={(e) => {
+                                    setLimit(Number(e.target.value));
+                                    setPage(1);
+                                }}
+                                className="text-xs bg-white border border-slate-300 rounded-lg px-2 py-1.5 text-slate-700 shadow-2xs focus:outline-none focus:border-[#4085b3]"
+                            >
+                                <option value={10}>10</option>
+                                <option value={25}>25</option>
+                                <option value={50}>50</option>
+                                <option value={100}>100</option>
+                            </select>
+                        </div>
                     </div>
                 </div>
+
+                {/* Collapsible Filter Panel (Hides and Displays when Clicked) */}
+                {showFilters && (
+                    <div className="p-4 bg-slate-50/70 border-t border-slate-200 space-y-3.5 animate-in fade-in slide-in-from-top-1 duration-150">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 text-xs">
+                            {/* Grade Filter */}
+                            <div className="space-y-1">
+                                <label className="block text-[11px] font-semibold text-slate-600">Grade Level</label>
+                                <select
+                                    value={selectedGradeId}
+                                    onChange={(e) => {
+                                        setSelectedGradeId(e.target.value);
+                                        setSelectedSectionId("");
+                                        setPage(1);
+                                    }}
+                                    className="w-full text-xs bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-slate-800 shadow-2xs focus:outline-none focus:border-[#4085b3] cursor-pointer"
+                                >
+                                    <option value="">All Grades ({filterOptions.grades.length})</option>
+                                    {filterOptions.grades.map(g => (
+                                        <option key={g.id} value={g.id}>{g.name}</option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            {/* Section Filter (Cascades with selected grade) */}
+                            <div className="space-y-1">
+                                <label className="block text-[11px] font-semibold text-slate-600">Class Section</label>
+                                <select
+                                    value={selectedSectionId}
+                                    onChange={(e) => {
+                                        setSelectedSectionId(e.target.value);
+                                        setPage(1);
+                                    }}
+                                    className="w-full text-xs bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-slate-800 shadow-2xs focus:outline-none focus:border-[#4085b3] cursor-pointer"
+                                >
+                                    <option value="">
+                                        {selectedGradeId ? "All Sections in Grade" : "All Sections"}
+                                    </option>
+                                    {filterOptions.sections
+                                        .filter(s => !selectedGradeId || s.schoolGradeId === selectedGradeId)
+                                        .map(s => (
+                                            <option key={s.id} value={s.id}>
+                                                {s.gradeName ? `${s.gradeName} - ` : ""}Section {s.name}
+                                            </option>
+                                        ))}
+                                </select>
+                            </div>
+
+                            {/* Gender Filter */}
+                            <div className="space-y-1">
+                                <label className="block text-[11px] font-semibold text-slate-600">Gender</label>
+                                <select
+                                    value={genderFilter}
+                                    onChange={(e) => {
+                                        setGenderFilter(e.target.value);
+                                        setPage(1);
+                                    }}
+                                    className="w-full text-xs bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-slate-800 shadow-2xs focus:outline-none focus:border-[#4085b3] cursor-pointer"
+                                >
+                                    <option value="ALL">All Genders</option>
+                                    <option value="MALE">Male</option>
+                                    <option value="FEMALE">Female</option>
+                                </select>
+                            </div>
+
+                            {/* Status Filter */}
+                            <div className="space-y-1">
+                                <label className="block text-[11px] font-semibold text-slate-600">Enrollment Status</label>
+                                <select
+                                    value={statusFilter}
+                                    onChange={(e) => {
+                                        setStatusFilter(e.target.value);
+                                        setPage(1);
+                                    }}
+                                    className="w-full text-xs bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-slate-800 shadow-2xs focus:outline-none focus:border-[#4085b3] cursor-pointer"
+                                >
+                                    <option value="ALL">All Statuses</option>
+                                    <option value="ENROLLED">Enrolled</option>
+                                    <option value="ACTIVE">Active</option>
+                                    <option value="TRANSFERRED">Transferred</option>
+                                    <option value="WITHDRAWN">Withdrawn</option>
+                                    <option value="GRADUATED">Graduated</option>
+                                    <option value="DROPPED_OUT">Dropped Out</option>
+                                </select>
+                            </div>
+
+                            {/* Academic Year Filter */}
+                            {filterOptions.academicYears && filterOptions.academicYears.length > 0 && (
+                                <div className="space-y-1">
+                                    <label className="block text-[11px] font-semibold text-slate-600">Academic Year</label>
+                                    <select
+                                        value={selectedAcademicYearId}
+                                        onChange={(e) => {
+                                            setSelectedAcademicYearId(e.target.value);
+                                            setPage(1);
+                                        }}
+                                        className="w-full text-xs bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-slate-800 shadow-2xs focus:outline-none focus:border-[#4085b3] cursor-pointer"
+                                    >
+                                        <option value="">All Academic Years</option>
+                                        {filterOptions.academicYears.map(y => (
+                                            <option key={y.id} value={y.id}>
+                                                {y.name} {y.isCurrent ? "(Current)" : ""}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+                            )}
+
+                            {/* Sort Order */}
+                            <div className="space-y-1">
+                                <label className="block text-[11px] font-semibold text-slate-600">Sort By</label>
+                                <select
+                                    value={`${sortBy}:${sortOrder}`}
+                                    onChange={(e) => {
+                                        const [field, order] = e.target.value.split(":");
+                                        setSortBy(field as any);
+                                        setSortOrder(order as any);
+                                        setPage(1);
+                                    }}
+                                    className="w-full text-xs bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-slate-800 shadow-2xs focus:outline-none focus:border-[#4085b3] cursor-pointer"
+                                >
+                                    <option value="createdAt:desc">Newest First</option>
+                                    <option value="createdAt:asc">Oldest First</option>
+                                    <option value="firstName:asc">Name (A-Z)</option>
+                                    <option value="firstName:desc">Name (Z-A)</option>
+                                    <option value="studentId:asc">Student ID (Asc)</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        {/* Reset and Active Filter Badges */}
+                        <div className="flex flex-wrap items-center justify-between gap-2 pt-2.5 border-t border-slate-200/80">
+                            <div className="flex flex-wrap items-center gap-1.5 text-[11px]">
+                                <span className="text-slate-500 font-medium">Active criteria:</span>
+                                {selectedGradeId && (
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-blue-50 text-[#4085b3] border border-blue-200 font-medium">
+                                        Grade: {filterOptions.grades.find(g => g.id === selectedGradeId)?.name || selectedGradeId}
+                                        <button onClick={() => { setSelectedGradeId(""); setSelectedSectionId(""); setPage(1); }} className="hover:text-blue-900 cursor-pointer">
+                                            <X className="w-3 h-3" />
+                                        </button>
+                                    </span>
+                                )}
+                                {selectedSectionId && (
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-blue-50 text-[#4085b3] border border-blue-200 font-medium">
+                                        Section: {filterOptions.sections.find(s => s.id === selectedSectionId)?.name || selectedSectionId}
+                                        <button onClick={() => { setSelectedSectionId(""); setPage(1); }} className="hover:text-blue-900 cursor-pointer">
+                                            <X className="w-3 h-3" />
+                                        </button>
+                                    </span>
+                                )}
+                                {genderFilter !== "ALL" && (
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-blue-50 text-[#4085b3] border border-blue-200 font-medium">
+                                        Gender: {genderFilter}
+                                        <button onClick={() => { setGenderFilter("ALL"); setPage(1); }} className="hover:text-blue-900 cursor-pointer">
+                                            <X className="w-3 h-3" />
+                                        </button>
+                                    </span>
+                                )}
+                                {statusFilter !== "ALL" && (
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-blue-50 text-[#4085b3] border border-blue-200 font-medium">
+                                        Status: {statusFilter}
+                                        <button onClick={() => { setStatusFilter("ALL"); setPage(1); }} className="hover:text-blue-900 cursor-pointer">
+                                            <X className="w-3 h-3" />
+                                        </button>
+                                    </span>
+                                )}
+                                {selectedAcademicYearId && (
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-blue-50 text-[#4085b3] border border-blue-200 font-medium">
+                                        Year: {filterOptions.academicYears?.find(y => y.id === selectedAcademicYearId)?.name}
+                                        <button onClick={() => { setSelectedAcademicYearId(""); setPage(1); }} className="hover:text-blue-900 cursor-pointer">
+                                            <X className="w-3 h-3" />
+                                        </button>
+                                    </span>
+                                )}
+                                {!selectedGradeId && !selectedSectionId && genderFilter === "ALL" && statusFilter === "ALL" && !selectedAcademicYearId && (
+                                    <span className="text-slate-400 italic">None (Displaying all records)</span>
+                                )}
+                            </div>
+
+                            {hasActiveFilters && (
+                                <button
+                                    onClick={handleResetFilters}
+                                    className="inline-flex items-center text-xs text-rose-600 hover:text-rose-700 hover:bg-rose-50 border border-rose-200 rounded-md px-2.5 py-1 transition-colors cursor-pointer"
+                                >
+                                    <RotateCcw className="w-3 h-3 mr-1" />
+                                    Clear all filters
+                                </button>
+                            )}
+                        </div>
+                    </div>
+                )}
             </div>
 
             {/* Error Banner */}
@@ -709,6 +912,8 @@ export default function StudentsDirectoryPage() {
                                     <th className="px-5 py-3">Student ID</th>
                                     <th className="px-5 py-3">Full Name (3-Tier)</th>
                                     <th className="px-5 py-3">Gender</th>
+                                    <th className="px-5 py-3">Grade & Section</th>
+                                    <th className="px-5 py-3">Status</th>
                                     <th className="px-5 py-3">Location</th>
                                     <th className="px-5 py-3">Primary Guardian</th>
                                     <th className="px-5 py-3 text-right">Action</th>
@@ -722,6 +927,11 @@ export default function StudentsDirectoryPage() {
                                         student.parents?.[0];
 
                                     const fullName = `${student.firstName} ${student.fatherName || student.lastName || ""} ${student.grandfatherName || ""}`.trim();
+
+                                    const latestEnrollment = student.enrollments?.[0];
+                                    const gradeName = latestEnrollment?.schoolGrade?.grade?.name || latestEnrollment?.schoolGrade?.name;
+                                    const sectionName = latestEnrollment?.section?.name;
+                                    const enrollmentStatus = latestEnrollment?.status || (student.enrollments && student.enrollments.length > 0 ? "ENROLLED" : "REGISTERED");
 
                                     const guardianDisplayName = primaryGuardian?.parent?.user?.name || 
                                         `${primaryGuardian?.parent?.firstName || ""} ${primaryGuardian?.parent?.lastName || ""}`.trim() || 
@@ -746,6 +956,31 @@ export default function StudentsDirectoryPage() {
                                             </td>
                                             <td className="px-5 py-3.5 text-slate-700 capitalize">
                                                 {student.gender ? student.gender.toLowerCase() : "—"}
+                                            </td>
+                                            <td className="px-5 py-3.5 whitespace-nowrap">
+                                                {gradeName ? (
+                                                    <div>
+                                                        <span className="font-medium text-slate-800">{gradeName}</span>
+                                                        {sectionName && (
+                                                            <span className="text-[11px] text-slate-500 block">Section {sectionName}</span>
+                                                        )}
+                                                    </div>
+                                                ) : (
+                                                    <span className="text-slate-400 italic">Unassigned</span>
+                                                )}
+                                            </td>
+                                            <td className="px-5 py-3.5 whitespace-nowrap">
+                                                <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold tracking-wide uppercase ${
+                                                    enrollmentStatus === "ENROLLED" || enrollmentStatus === "ACTIVE"
+                                                        ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                                                        : enrollmentStatus === "TRANSFERRED"
+                                                        ? "bg-blue-50 text-blue-700 border border-blue-200"
+                                                        : enrollmentStatus === "WITHDRAWN" || enrollmentStatus === "DROPPED_OUT"
+                                                        ? "bg-rose-50 text-rose-700 border border-rose-200"
+                                                        : "bg-slate-100 text-slate-700 border border-slate-200"
+                                                }`}>
+                                                    {enrollmentStatus}
+                                                </span>
                                             </td>
                                             <td className="px-5 py-3.5 text-slate-700">
                                                 {student.city || student.region || "Addis Ababa"}

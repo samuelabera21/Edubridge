@@ -14,11 +14,12 @@ export const getGuardians = async (req: Request, res: Response) => {
             return res.status(403).json({ error: "Missing school scope" });
         }
 
-        const { search, schoolGradeId, sectionId, page, limit } = req.query;
+        const { search, schoolGradeId, sectionId, studentId, page, limit } = req.query;
         const result = await ParentService.getGuardians(organizationId, {
             search: search as string,
             schoolGradeId: schoolGradeId as string,
             sectionId: sectionId as string,
+            studentId: studentId as string,
             page: page ? Number(page) : undefined,
             limit: limit ? Number(limit) : undefined
         });

@@ -259,6 +259,174 @@ export class TeacherService {
         });
     }
 
+    static async getTeacherStudents(organizationId: string, teacherId: string) {
+        const teacher = await prisma.teacher.findFirst({
+            where: { id: teacherId, organizationId },
+            include: {
+                assignments: {
+                    include: {
+                        subject: true,
+                        schoolGrade: { include: { grade: true } },
+                        section: true,
+                        academicYear: true
+                    }
+                },
+                homeroomSections: {
+                    include: {
+                        schoolGrade: { include: { grade: true } }
+                    }
+                }
+            }
+        });
+
+        if (!teacher) {
+            throw new Error("Teacher not found in this school");
+        }
+
+        const assignmentSectionIds = teacher.assignments
+            .map((a: any) => a.sectionId)
+            .filter((id: any): id is string => Boolean(id));
+
+        const homeroomSectionIds = (teacher.homeroomSections || [])
+            .map((h: any) => h.id)
+            .filter((id: any): id is string => Boolean(id));
+
+        const allSectionIds = Array.from(new Set([...assignmentSectionIds, ...homeroomSectionIds]));
+
+        const gradeIds = teacher.assignments
+            .filter((a: any) => !a.sectionId && a.schoolGradeId)
+            .map((a: any) => a.schoolGradeId);
+
+        if (allSectionIds.length === 0 && gradeIds.length === 0) {
+            return {
+                teacher: {
+                    id: teacher.id,
+                    name: `${teacher.firstName} ${teacher.fatherName} ${teacher.lastName}`.trim(),
+                    staffIdCode: teacher.staffIdCode || teacher.employeeId
+                },
+                sections: [],
+                students: [],
+                stats: {
+                    totalStudents: 0,
+                    maleCount: 0,
+                    femaleCount: 0,
+                    totalSections: 0
+                }
+            };
+        }
+
+        const whereClause: any = {
+            organizationId,
+            status: { in: ["ACTIVE", "ENROLLED"] }
+        };
+
+        if (allSectionIds.length > 0 && gradeIds.length > 0) {
+            whereClause.OR = [
+                { sectionId: { in: allSectionIds } },
+                { schoolGradeId: { in: gradeIds } }
+            ];
+        } else if (allSectionIds.length > 0) {
+            whereClause.sectionId = { in: allSectionIds };
+        } else {
+            whereClause.schoolGradeId = { in: gradeIds };
+        }
+
+        const enrollments = await prisma.studentEnrollment.findMany({
+            where: whereClause,
+            include: {
+                student: true,
+                section: true,
+                schoolGrade: { include: { grade: true } }
+            },
+            orderBy: [
+                { schoolGrade: { grade: { level: "asc" } } },
+                { section: { name: "asc" } },
+                { student: { firstName: "asc" } }
+            ]
+        });
+
+        const sectionsMap = new Map<string, any>();
+        teacher.assignments.forEach((asgn: any) => {
+            const key = asgn.sectionId || asgn.schoolGradeId;
+            if (!sectionsMap.has(key)) {
+                sectionsMap.set(key, {
+                    sectionId: asgn.sectionId,
+                    schoolGradeId: asgn.schoolGradeId,
+                    gradeName: asgn.schoolGrade?.grade?.name || "Unknown Grade",
+                    sectionName: asgn.section ? asgn.section.name : "All Sections",
+                    subjects: [asgn.subject?.name].filter(Boolean),
+                    isHomeroom: asgn.sectionId ? homeroomSectionIds.includes(asgn.sectionId) : false,
+                    academicYear: asgn.academicYear?.name
+                });
+            } else {
+                const existing = sectionsMap.get(key);
+                if (asgn.subject?.name && !existing.subjects.includes(asgn.subject.name)) {
+                    existing.subjects.push(asgn.subject.name);
+                }
+            }
+        });
+
+        teacher.homeroomSections.forEach((h: any) => {
+            if (!sectionsMap.has(h.id)) {
+                sectionsMap.set(h.id, {
+                    sectionId: h.id,
+                    schoolGradeId: h.schoolGradeId,
+                    gradeName: h.schoolGrade?.grade?.name || "Unknown Grade",
+                    sectionName: h.name,
+                    subjects: [],
+                    isHomeroom: true,
+                    academicYear: ""
+                });
+            }
+        });
+
+        const studentsList = enrollments.map((enr: any, idx: number) => {
+            const relevantAssignments = teacher.assignments.filter((a: any) => 
+                (a.sectionId && a.sectionId === enr.sectionId) ||
+                (!a.sectionId && a.schoolGradeId === enr.schoolGradeId)
+            );
+            const subjects = Array.from(new Set(relevantAssignments.map((a: any) => a.subject?.name).filter(Boolean)));
+            const isHomeroom = enr.sectionId ? homeroomSectionIds.includes(enr.sectionId) : false;
+
+            return {
+                rollNumber: idx + 1,
+                enrollmentId: enr.id,
+                studentId: enr.student?.studentId || "—",
+                studentDbId: enr.student?.id,
+                fullName: `${enr.student?.firstName || ""} ${enr.student?.fatherName || enr.student?.lastName || ""} ${enr.student?.grandfatherName || ""}`.trim(),
+                firstName: enr.student?.firstName,
+                fatherName: enr.student?.fatherName,
+                lastName: enr.student?.lastName,
+                gender: enr.student?.gender || "UNKNOWN",
+                gradeName: enr.schoolGrade?.grade?.name || "—",
+                sectionId: enr.sectionId,
+                sectionName: enr.section?.name || "—",
+                subjectsTaught: subjects,
+                isHomeroom,
+                enrollmentStatus: enr.status
+            };
+        });
+
+        const maleCount = studentsList.filter(s => s.gender?.toUpperCase() === "MALE").length;
+        const femaleCount = studentsList.filter(s => s.gender?.toUpperCase() === "FEMALE").length;
+
+        return {
+            teacher: {
+                id: teacher.id,
+                name: `${teacher.firstName} ${teacher.fatherName} ${teacher.lastName}`.trim(),
+                staffIdCode: teacher.staffIdCode || teacher.employeeId
+            },
+            sections: Array.from(sectionsMap.values()),
+            students: studentsList,
+            stats: {
+                totalStudents: studentsList.length,
+                maleCount,
+                femaleCount,
+                totalSections: sectionsMap.size
+            }
+        };
+    }
+
     static async getTeachers(organizationId: string) {
         return prisma.teacher.findMany({
             where: { organizationId },
