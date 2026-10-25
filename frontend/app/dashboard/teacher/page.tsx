@@ -134,9 +134,16 @@ export default function TeacherDashboard() {
         }
     }
 
-    const teacherName = summary?.profile?.firstName 
-        ? `Mr. ${summary.profile.firstName} ${summary.profile.lastName || ''}`.trim() 
-        : authData?.user?.name || "Mr. Teacher";
+    const teacherFirstName = summary?.profile?.firstName?.trim()
+        || (authData?.user?.name ? authData.user.name.trim().split(/\s+/)[0] : "Teacher");
+    const capitalizedFirstName = teacherFirstName.charAt(0).toUpperCase() + teacherFirstName.slice(1);
+
+    const currentHour = new Date().getHours();
+    const timeGreeting = currentHour < 12 
+        ? "Good morning" 
+        : currentHour < 17 
+            ? "Good afternoon" 
+            : "Good evening";
 
     const todayClasses = summary?.todayClasses || [];
     const totalStudents = summary?.totalStudents ?? 0;
@@ -179,76 +186,68 @@ export default function TeacherDashboard() {
     return (
         <div className="w-full max-w-[1400px] mx-auto space-y-5 text-gray-800 font-sans pb-12">
             
-            {/* Top Bar: Greeting & Academic Term Info */}
+            {/* Top Bar: Greeting */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
                 <div>
-                    <h1 className="text-2xl font-black text-gray-900 tracking-tight">
-                        Good morning, {teacherName}
+                    <h1 className="text-lg sm:text-xl font-bold text-gray-900 tracking-tight">
+                        {timeGreeting}, {capitalizedFirstName}
                     </h1>
-                    <p className="text-xs text-gray-500 font-medium mt-0.5">
-                        Here's what's happening in your classes today.
-                    </p>
-                </div>
-
-                <div className="flex items-center space-x-3 self-start sm:self-auto">
-                    {/* AI Assistant Quick Trigger */}
-                    <button
-                        onClick={() => setShowAiModal(true)}
-                        className="px-3.5 py-1.5 bg-[#4085b3] hover:bg-[#32698e] text-white rounded-xl transition-all cursor-pointer shadow-xs flex items-center space-x-1.5 text-xs font-bold"
-                        title="AI Lesson Assistant"
-                    >
-                        <Sparkles className="w-4 h-4 text-white" />
-                        <span>AI Assistant</span>
-                    </button>
                 </div>
             </div>
 
-            {/* Top 3 KPI Cards Row */}
+            {/* Top 3 KPI Cards Row: Left-to-right clean blue hover fill matching results page */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 
                 {/* 1. Total Students */}
-                <div className="bg-white border border-gray-200/90 rounded-2xl p-5 shadow-2xs flex items-center justify-between transition-all hover:shadow-xs">
-                    <div className="space-y-1">
-                        <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Total Students</span>
-                        <p className="text-3xl font-black text-gray-900">{totalStudents}</p>
-                        <p className="text-[11px] font-bold text-[#4085b3] flex items-center gap-0.5">
-                            <span>Active in your sections</span>
-                        </p>
+                <Link
+                    href="/dashboard/teacher/students"
+                    className="relative overflow-hidden border border-slate-200 bg-white rounded-lg p-4 flex items-center justify-between group cursor-pointer shadow-2xs hover:border-[#4085b3] transition-all duration-300"
+                >
+                    <span className="absolute inset-0 bg-[#4085b3] origin-left scale-x-0 group-hover:scale-x-100 transition-transform duration-300 ease-out pointer-events-none" />
+                    <div className="relative z-10">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 group-hover:text-blue-100 transition-colors duration-300 block mb-1">
+                            Total Students
+                        </span>
+                        <span className="text-2xl font-bold text-slate-900 group-hover:text-white transition-colors duration-300 tabular-nums">
+                            {totalStudents}
+                        </span>
                     </div>
-                    <div className="w-14 h-14 rounded-2xl bg-[#4085b3]/10 text-[#4085b3] flex items-center justify-center shadow-xs">
-                        <Users className="w-7 h-7" />
-                    </div>
-                </div>
+                    <Users className="relative z-10 w-5 h-5 text-slate-400 group-hover:text-white transition-colors duration-300 shrink-0" />
+                </Link>
 
                 {/* 2. Today's Classes */}
-                <div className="bg-white border border-gray-200/90 rounded-2xl p-5 shadow-2xs flex items-center justify-between transition-all hover:shadow-xs">
-                    <div className="space-y-1">
-                        <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Today's Classes</span>
-                        <p className="text-3xl font-black text-gray-900">{todayClasses.length}</p>
-                        <p className="text-[11px] font-semibold text-gray-600 flex items-center gap-1.5">
-                            <span className="w-2 h-2 rounded-full bg-[#4085b3]"></span>
-                            <span>{completedClassesToday} completed • {upcomingClassesToday} upcoming</span>
-                        </p>
+                <Link
+                    href="/dashboard/teacher/my-classes"
+                    className="relative overflow-hidden border border-slate-200 bg-white rounded-lg p-4 flex items-center justify-between group cursor-pointer shadow-2xs hover:border-[#4085b3] transition-all duration-300"
+                >
+                    <span className="absolute inset-0 bg-[#4085b3] origin-left scale-x-0 group-hover:scale-x-100 transition-transform duration-300 ease-out pointer-events-none" />
+                    <div className="relative z-10">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 group-hover:text-blue-100 transition-colors duration-300 block mb-1">
+                            Today's Classes
+                        </span>
+                        <span className="text-2xl font-bold text-slate-900 group-hover:text-white transition-colors duration-300 tabular-nums">
+                            {todayClasses.length}
+                        </span>
                     </div>
-                    <div className="w-14 h-14 rounded-2xl bg-[#4085b3]/10 text-[#4085b3] flex items-center justify-center shadow-xs">
-                        <MonitorPlay className="w-7 h-7" />
-                    </div>
-                </div>
+                    <MonitorPlay className="relative z-10 w-5 h-5 text-slate-400 group-hover:text-white transition-colors duration-300 shrink-0" />
+                </Link>
 
                 {/* 3. Students Needing Attention */}
-                <div className="bg-white border border-gray-200/90 rounded-2xl p-5 shadow-2xs flex items-center justify-between transition-all hover:shadow-xs">
-                    <div className="space-y-1">
-                        <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Needs Attention</span>
-                        <p className="text-3xl font-black text-gray-900">{studentsNeedAttentionCount}</p>
-                        <a href="#students-attention" className="text-[11px] font-bold text-[#4085b3] hover:underline flex items-center gap-0.5">
-                            <span>View intervention details</span>
-                            <span>→</span>
-                        </a>
+                <a
+                    href="#students-attention"
+                    className="relative overflow-hidden border border-slate-200 bg-white rounded-lg p-4 flex items-center justify-between group cursor-pointer shadow-2xs hover:border-[#4085b3] transition-all duration-300"
+                >
+                    <span className="absolute inset-0 bg-[#4085b3] origin-left scale-x-0 group-hover:scale-x-100 transition-transform duration-300 ease-out pointer-events-none" />
+                    <div className="relative z-10">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 group-hover:text-blue-100 transition-colors duration-300 block mb-1">
+                            Needs Attention
+                        </span>
+                        <span className="text-2xl font-bold text-slate-900 group-hover:text-white transition-colors duration-300 tabular-nums">
+                            {studentsNeedAttentionCount}
+                        </span>
                     </div>
-                    <div className="w-14 h-14 rounded-2xl bg-[#4085b3]/10 text-[#4085b3] flex items-center justify-center shadow-xs">
-                        <AlertCircle className="w-7 h-7" />
-                    </div>
-                </div>
+                    <AlertCircle className="relative z-10 w-5 h-5 text-slate-400 group-hover:text-white transition-colors duration-300 shrink-0" />
+                </a>
 
             </div>
 
