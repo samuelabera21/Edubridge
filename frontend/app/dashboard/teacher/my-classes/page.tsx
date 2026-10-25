@@ -216,52 +216,73 @@ function MyClassesContent() {
     return (
         <div className="w-full max-w-7xl mx-auto space-y-6 text-gray-800">
             {/* Header */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div>
-                    <h1 className="text-2xl font-extrabold tracking-tight text-gray-900">My Teaching Assignments</h1>
-                </div>
-            </div>
-
-            {/* Quick Metrics Bar */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                <div className="p-4 rounded-xl bg-white border border-gray-200/80 shadow-2xs flex items-center space-x-3">
-                    <div className="p-3 bg-[#4085b3]/10 text-[#4085b3] rounded-xl">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200/80 pb-4">
+                <div className="flex items-center gap-2.5">
+                    <div className="w-9 h-9 rounded-lg bg-blue-50 text-[#4085b3] flex items-center justify-center shrink-0">
                         <BookOpen className="w-5 h-5" />
                     </div>
                     <div>
-                        <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Assigned Classes</p>
-                        <p className="text-xl font-extrabold text-gray-900 mt-0.5">{classes.length}</p>
+                        <h1 className="text-base font-bold text-slate-900 leading-tight">Teaching Assignments</h1>
                     </div>
                 </div>
+            </div>
 
-                <div className="p-4 rounded-xl bg-white border border-gray-200/80 shadow-2xs flex items-center space-x-3">
-                    <div className="p-3 bg-purple-50 text-purple-600 rounded-xl">
-                        <Users className="w-5 h-5" />
+            {/* Top 4 KPI Cards: Left-to-right clean blue hover fill matching dashboard / results */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                {/* 1. Assigned Classes */}
+                <div className="relative overflow-hidden border border-slate-200 bg-white rounded-lg p-4 flex items-center justify-between group cursor-pointer shadow-2xs hover:border-[#4085b3] transition-all duration-300">
+                    <span className="absolute inset-0 bg-[#4085b3] origin-left scale-x-0 group-hover:scale-x-100 transition-transform duration-300 ease-out pointer-events-none" />
+                    <div className="relative z-10">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 group-hover:text-blue-100 transition-colors duration-300 block mb-1">
+                            Assigned Classes
+                        </span>
+                        <span className="text-2xl font-bold text-slate-900 group-hover:text-white transition-colors duration-300 tabular-nums">
+                            {classes.length}
+                        </span>
                     </div>
-                    <div>
-                        <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Total Students</p>
-                        <p className="text-xl font-extrabold text-gray-900 mt-0.5">{totalEnrolledStudents}</p>
-                    </div>
+                    <BookOpen className="relative z-10 w-5 h-5 text-slate-400 group-hover:text-white transition-colors duration-300 shrink-0" />
                 </div>
 
-                <div className="p-4 rounded-xl bg-white border border-gray-200/80 shadow-2xs flex items-center space-x-3">
-                    <div className="p-3 bg-emerald-50 text-emerald-600 rounded-xl">
-                        <Clock className="w-5 h-5" />
+                {/* 2. Total Students */}
+                <div className="relative overflow-hidden border border-slate-200 bg-white rounded-lg p-4 flex items-center justify-between group cursor-pointer shadow-2xs hover:border-[#4085b3] transition-all duration-300">
+                    <span className="absolute inset-0 bg-[#4085b3] origin-left scale-x-0 group-hover:scale-x-100 transition-transform duration-300 ease-out pointer-events-none" />
+                    <div className="relative z-10">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 group-hover:text-blue-100 transition-colors duration-300 block mb-1">
+                            Total Students
+                        </span>
+                        <span className="text-2xl font-bold text-slate-900 group-hover:text-white transition-colors duration-300 tabular-nums">
+                            {totalEnrolledStudents}
+                        </span>
                     </div>
-                    <div>
-                        <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Weekly Periods</p>
-                        <p className="text-xl font-extrabold text-gray-900 mt-0.5">{totalWeeklyPeriods}</p>
-                    </div>
+                    <Users className="relative z-10 w-5 h-5 text-slate-400 group-hover:text-white transition-colors duration-300 shrink-0" />
                 </div>
 
-                <div className="p-4 rounded-xl bg-white border border-gray-200/80 shadow-2xs flex items-center space-x-3">
-                    <div className="p-3 bg-amber-50 text-amber-600 rounded-xl">
-                        <Bookmark className="w-5 h-5" />
+                {/* 3. Weekly Periods */}
+                <div className="relative overflow-hidden border border-slate-200 bg-white rounded-lg p-4 flex items-center justify-between group cursor-pointer shadow-2xs hover:border-[#4085b3] transition-all duration-300">
+                    <span className="absolute inset-0 bg-[#4085b3] origin-left scale-x-0 group-hover:scale-x-100 transition-transform duration-300 ease-out pointer-events-none" />
+                    <div className="relative z-10">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 group-hover:text-blue-100 transition-colors duration-300 block mb-1">
+                            Weekly Periods
+                        </span>
+                        <span className="text-2xl font-bold text-slate-900 group-hover:text-white transition-colors duration-300 tabular-nums">
+                            {totalWeeklyPeriods}
+                        </span>
                     </div>
-                    <div>
-                        <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Unique Subjects</p>
-                        <p className="text-xl font-extrabold text-gray-900 mt-0.5">{subjectsMap.size}</p>
+                    <Clock className="relative z-10 w-5 h-5 text-slate-400 group-hover:text-white transition-colors duration-300 shrink-0" />
+                </div>
+
+                {/* 4. Unique Subjects */}
+                <div className="relative overflow-hidden border border-slate-200 bg-white rounded-lg p-4 flex items-center justify-between group cursor-pointer shadow-2xs hover:border-[#4085b3] transition-all duration-300">
+                    <span className="absolute inset-0 bg-[#4085b3] origin-left scale-x-0 group-hover:scale-x-100 transition-transform duration-300 ease-out pointer-events-none" />
+                    <div className="relative z-10">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 group-hover:text-blue-100 transition-colors duration-300 block mb-1">
+                            Unique Subjects
+                        </span>
+                        <span className="text-2xl font-bold text-slate-900 group-hover:text-white transition-colors duration-300 tabular-nums">
+                            {subjectsMap.size}
+                        </span>
                     </div>
+                    <Bookmark className="relative z-10 w-5 h-5 text-slate-400 group-hover:text-white transition-colors duration-300 shrink-0" />
                 </div>
             </div>
 
@@ -333,66 +354,30 @@ function MyClassesContent() {
                 <button
                     onClick={() => handleTabChange("classes")}
                     className={`pb-3 px-4 flex items-center space-x-2 border-b-2 transition-colors whitespace-nowrap ${
-                        activeTab === "classes" 
+                        activeTab !== "schedule" && activeTab !== "timetable"
                             ? "border-[#4085b3] text-[#4085b3]" 
                             : "border-transparent text-gray-500 hover:text-gray-800"
                     }`}
                 >
-                    <FileSpreadsheet className="w-4 h-4" />
-                    <span>Classes Table ({filteredClasses.length})</span>
-                </button>
-
-                <button
-                    onClick={() => handleTabChange("subjects")}
-                    className={`pb-3 px-4 flex items-center space-x-2 border-b-2 transition-colors whitespace-nowrap ${
-                        activeTab === "subjects" 
-                            ? "border-[#4085b3] text-[#4085b3]" 
-                            : "border-transparent text-gray-500 hover:text-gray-800"
-                    }`}
-                >
-                    <Bookmark className="w-4 h-4" />
-                    <span>Subjects Table ({filteredSubjectsList.length})</span>
-                </button>
-
-                <button
-                    onClick={() => handleTabChange("grades")}
-                    className={`pb-3 px-4 flex items-center space-x-2 border-b-2 transition-colors whitespace-nowrap ${
-                        activeTab === "grades" 
-                            ? "border-[#4085b3] text-[#4085b3]" 
-                            : "border-transparent text-gray-500 hover:text-gray-800"
-                    }`}
-                >
-                    <Layers className="w-4 h-4" />
-                    <span>Grades Table ({filteredGradesList.length})</span>
-                </button>
-
-                <button
-                    onClick={() => handleTabChange("sections")}
-                    className={`pb-3 px-4 flex items-center space-x-2 border-b-2 transition-colors whitespace-nowrap ${
-                        activeTab === "sections" 
-                            ? "border-[#4085b3] text-[#4085b3]" 
-                            : "border-transparent text-gray-500 hover:text-gray-800"
-                    }`}
-                >
-                    <Building className="w-4 h-4" />
-                    <span>Sections Table ({filteredSectionsList.length})</span>
+                    <BookOpen className="w-4 h-4" />
+                    <span>Classes ({filteredClasses.length})</span>
                 </button>
 
                 <button
                     onClick={() => handleTabChange("schedule")}
                     className={`pb-3 px-4 flex items-center space-x-2 border-b-2 transition-colors whitespace-nowrap ${
-                        activeTab === "schedule" 
+                        activeTab === "schedule" || activeTab === "timetable"
                             ? "border-[#4085b3] text-[#4085b3]" 
                             : "border-transparent text-gray-500 hover:text-gray-800"
                     }`}
                 >
                     <Calendar className="w-4 h-4" />
-                    <span>Teaching Schedule</span>
+                    <span>Timetable</span>
                 </button>
             </div>
 
             {/* TAB 1: CLASSES DATA TABLE */}
-            {activeTab === "classes" && (
+            {(activeTab !== "schedule" && activeTab !== "timetable") && (
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between border-b border-gray-100 bg-gray-50/50">
                         <CardTitle className="text-sm font-bold text-gray-900 flex items-center space-x-2">
@@ -416,8 +401,9 @@ function MyClassesContent() {
                                     <thead>
                                         <tr className="border-b border-gray-200 bg-gray-50 text-gray-500 font-bold uppercase tracking-wider">
                                             <th className="py-3.5 px-4">#</th>
-                                            <th className="py-3.5 px-4">Grade & Section</th>
-                                            <th className="py-3.5 px-4">Subject Name</th>
+                                            <th className="py-3.5 px-4">Grade</th>
+                                            <th className="py-3.5 px-4">Section</th>
+                                            <th className="py-3.5 px-4">Subject</th>
                                             <th className="py-3.5 px-4 text-center">Enrolled Students</th>
                                             <th className="py-3.5 px-4 text-center">Weekly Periods</th>
                                             <th className="py-3.5 px-4 text-center">Status</th>
@@ -439,19 +425,23 @@ function MyClassesContent() {
                                                 <Fragment key={itemKey}>
                                                     <tr className="hover:bg-gray-50/80 transition-colors group">
                                                         <td className="py-3.5 px-4 font-bold text-gray-400">{idx + 1}</td>
-                                                        <td className="py-3.5 px-4 font-extrabold text-gray-900">
-                                                            <div className="flex items-center space-x-2">
-                                                                <span className="px-2.5 py-1 bg-blue-50 text-blue-700 rounded-lg font-extrabold text-xs border border-blue-100">
-                                                                    Grade {gradeLevel}-{sectionName}
-                                                                </span>
-                                                            </div>
+                                                        <td className="py-3.5 px-4">
+                                                            <span className="px-2.5 py-1 bg-blue-50 text-blue-700 rounded-lg font-extrabold text-xs border border-blue-100">
+                                                                Grade {gradeLevel || "General"}
+                                                            </span>
+                                                        </td>
+                                                        <td className="py-3.5 px-4">
+                                                            <span className="px-2.5 py-1 bg-emerald-50 text-emerald-700 rounded-lg font-bold text-xs border border-emerald-100 flex items-center gap-1 w-fit">
+                                                                <Building className="w-3.5 h-3.5 text-emerald-600" />
+                                                                <span>Section {sectionName || "General"}</span>
+                                                            </span>
                                                         </td>
                                                         <td className="py-3.5 px-4">
                                                             <div className="flex items-center space-x-2">
                                                                 <span className="px-2 py-0.5 bg-gray-100 text-gray-700 font-mono text-[10px] font-bold rounded">
                                                                     {subjectCode}
                                                                 </span>
-                                                                <span className="font-bold text-gray-800">{subjectName}</span>
+                                                                <span className="font-bold text-gray-900">{subjectName}</span>
                                                             </div>
                                                         </td>
                                                         <td className="py-3.5 px-4 text-center">
@@ -533,7 +523,7 @@ function MyClassesContent() {
                                                     {/* Expandable Roster Sub-Row */}
                                                     {isRosterOpen && (
                                                         <tr className="bg-blue-50/30">
-                                                            <td colSpan={7} className="py-3 px-6 border-b border-blue-100">
+                                                            <td colSpan={8} className="py-3 px-6 border-b border-blue-100">
                                                                 <div className="space-y-2">
                                                                     <div className="flex items-center justify-between text-xs font-bold text-gray-800">
                                                                         <span>Enrolled Roster — Grade {gradeLevel} Section {sectionName} ({students.length} Students)</span>
@@ -569,277 +559,9 @@ function MyClassesContent() {
                 </Card>
             )}
 
-            {/* TAB 2: SUBJECTS DATA TABLE */}
-            {activeTab === "subjects" && (
-                <Card>
-                    <CardHeader className="flex flex-row items-center justify-between border-b border-gray-100 bg-gray-50/50">
-                        <CardTitle className="text-sm font-bold text-gray-900 flex items-center space-x-2">
-                            <Bookmark className="w-4 h-4 text-[#4085b3]" />
-                            <span>Assigned Subjects Master Table ({filteredSubjectsList.length})</span>
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent className="p-0">
-                        {filteredSubjectsList.length === 0 ? (
-                            <div className="py-12 text-center text-gray-400 text-xs">
-                                No assigned subjects match your query.
-                            </div>
-                        ) : (
-                            <div className="overflow-x-auto">
-                                <table className="w-full text-left text-xs">
-                                    <thead>
-                                        <tr className="border-b border-gray-200 bg-gray-50 text-gray-500 font-bold uppercase tracking-wider">
-                                            <th className="py-3.5 px-4">Subject Code</th>
-                                            <th className="py-3.5 px-4">Subject Name</th>
-                                            <th className="py-3.5 px-4">Assigned Grade Sections</th>
-                                            <th className="py-3.5 px-4 text-center">Total Sections</th>
-                                            <th className="py-3.5 px-4 text-center">Total Students</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-gray-100">
-                                        {filteredSubjectsList.map((sub: any) => {
-                                            const totalStudents = sub.assignedClasses.reduce((sum: number, c: any) => {
-                                                const st = c.students || c.assignment?.section?.studentEnrollments || [];
-                                                return sum + st.length;
-                                            }, 0);
 
-                                            return (
-                                                <tr key={sub.id} className="hover:bg-gray-50/80 transition-colors">
-                                                    <td className="py-3.5 px-4 font-mono font-bold text-blue-700">
-                                                        <span className="px-2 py-0.5 bg-blue-50 rounded border border-blue-100">
-                                                            {sub.code || "SUB"}
-                                                        </span>
-                                                    </td>
-                                                    <td className="py-3.5 px-4 font-extrabold text-gray-900">{sub.name}</td>
-                                                    <td className="py-3.5 px-4">
-                                                        <div className="flex flex-wrap gap-1">
-                                                            {sub.assignedClasses.map((item: any, i: number) => {
-                                                                const assignment = item.assignment || item;
-                                                                const gradeLevel = assignment.schoolGrade?.grade?.level;
-                                                                const sectionName = assignment.section?.name || '';
-                                                                return (
-                                                                    <span key={i} className="px-2 py-0.5 bg-gray-100 text-gray-800 rounded font-bold text-[10px]">
-                                                                        Grade {gradeLevel}-{sectionName}
-                                                                    </span>
-                                                                );
-                                                            })}
-                                                        </div>
-                                                    </td>
-                                                    <td className="py-3.5 px-4 text-center font-bold text-gray-700">
-                                                        {sub.assignedClasses.length} Section(s)
-                                                    </td>
-                                                    <td className="py-3.5 px-4 text-center font-bold text-purple-700">
-                                                        {totalStudents} Students
-                                                    </td>
-                                                </tr>
-                                            );
-                                        })}
-                                    </tbody>
-                                </table>
-                            </div>
-                        )}
-                    </CardContent>
-                </Card>
-            )}
-
-            {/* TAB 3: GRADES DATA TABLE */}
-            {activeTab === "grades" && (
-                <Card>
-                    <CardHeader className="flex flex-row items-center justify-between border-b border-gray-100 bg-gray-50/50">
-                        <CardTitle className="text-sm font-bold text-gray-900 flex items-center space-x-2">
-                            <Layers className="w-4 h-4 text-purple-600" />
-                            <span>Assigned Grades Master Table ({filteredGradesList.length})</span>
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent className="p-0">
-                        {filteredGradesList.length === 0 ? (
-                            <div className="py-12 text-center text-gray-400 text-xs">
-                                No assigned grade levels match your query.
-                            </div>
-                        ) : (
-                            <div className="overflow-x-auto">
-                                <table className="w-full text-left text-xs">
-                                    <thead>
-                                        <tr className="border-b border-gray-200 bg-gray-50 text-gray-500 font-bold uppercase tracking-wider">
-                                            <th className="py-3.5 px-4">Grade Level</th>
-                                            <th className="py-3.5 px-4">Grade Title</th>
-                                            <th className="py-3.5 px-4">Assigned Sections</th>
-                                            <th className="py-3.5 px-4 text-center">Taught Classes Count</th>
-                                            <th className="py-3.5 px-4 text-center">Total Enrolled</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-gray-100">
-                                        {filteredGradesList.map((g: any) => {
-                                            const totalStudents = g.assignedClasses.reduce((sum: number, c: any) => {
-                                                const st = c.students || c.assignment?.section?.studentEnrollments || [];
-                                                return sum + st.length;
-                                            }, 0);
-
-                                            return (
-                                                <tr key={g.id} className="hover:bg-gray-50/80 transition-colors">
-                                                    <td className="py-3.5 px-4 font-extrabold text-gray-900">
-                                                        <span className="px-3 py-1 bg-purple-50 text-purple-700 rounded-lg font-extrabold border border-purple-100">
-                                                            Grade {g.level}
-                                                        </span>
-                                                    </td>
-                                                    <td className="py-3.5 px-4 font-bold text-gray-800">{g.name || `Grade Level ${g.level}`}</td>
-                                                    <td className="py-3.5 px-4">
-                                                        <div className="flex flex-wrap gap-1">
-                                                            {g.assignedClasses.map((item: any, i: number) => {
-                                                                const assignment = item.assignment || item;
-                                                                const sectionName = assignment.section?.name || '';
-                                                                return (
-                                                                    <span key={i} className="px-2 py-0.5 bg-gray-100 text-gray-800 rounded font-bold text-[10px]">
-                                                                        Section {sectionName}
-                                                                    </span>
-                                                                );
-                                                            })}
-                                                        </div>
-                                                    </td>
-                                                    <td className="py-3.5 px-4 text-center font-bold text-gray-700">
-                                                        {g.assignedClasses.length} Class Module(s)
-                                                    </td>
-                                                    <td className="py-3.5 px-4 text-center font-bold text-purple-700">
-                                                        {totalStudents} Students
-                                                    </td>
-                                                </tr>
-                                            );
-                                        })}
-                                    </tbody>
-                                </table>
-                            </div>
-                        )}
-                    </CardContent>
-                </Card>
-            )}
-
-            {/* TAB 4: SECTIONS DATA TABLE */}
-            {activeTab === "sections" && (
-                <Card>
-                    <CardHeader className="flex flex-row items-center justify-between border-b border-gray-100 bg-gray-50/50">
-                        <CardTitle className="text-sm font-bold text-gray-900 flex items-center space-x-2">
-                            <Building className="w-4 h-4 text-[#4085b3]" />
-                            <span>Assigned Sections Master Table ({filteredSectionsList.length})</span>
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent className="p-0">
-                        {filteredSectionsList.length === 0 ? (
-                            <div className="py-12 text-center text-gray-400 text-xs">
-                                No assigned sections match your query.
-                            </div>
-                        ) : (
-                            <div className="overflow-x-auto">
-                                <table className="w-full text-left text-xs">
-                                    <thead>
-                                        <tr className="border-b border-gray-200 bg-gray-50 text-gray-500 font-bold uppercase tracking-wider">
-                                            <th className="py-3.5 px-4">Section Identifier</th>
-                                            <th className="py-3.5 px-4">Grade Level</th>
-                                            <th className="py-3.5 px-4">Taught Subjects</th>
-                                            <th className="py-3.5 px-4 text-center">Enrolled Students</th>
-                                            <th className="py-3.5 px-4 text-right">Actions</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-gray-100">
-                                        {filteredSectionsList.map((sec: any) => {
-                                            const firstItem = sec.assignedClasses[0];
-                                            const students = firstItem?.students || firstItem?.assignment?.section?.studentEnrollments || [];
-
-                                            return (
-                                                <tr key={sec.id} className="hover:bg-gray-50/80 transition-colors">
-                                                    <td className="py-3.5 px-4 font-extrabold text-gray-900">
-                                                        <span className="px-3 py-1 bg-blue-50 text-blue-700 rounded-lg font-extrabold border border-blue-100">
-                                                            Grade {sec.gradeLevel}-{sec.name}
-                                                        </span>
-                                                    </td>
-                                                    <td className="py-3.5 px-4 font-bold text-gray-800">Grade {sec.gradeLevel}</td>
-                                                    <td className="py-3.5 px-4">
-                                                        <div className="flex flex-wrap gap-1">
-                                                            {sec.assignedClasses.map((item: any, i: number) => {
-                                                                const assignment = item.assignment || item;
-                                                                const subjectName = assignment.subject?.name || 'Subject';
-                                                                return (
-                                                                    <span key={i} className="px-2 py-0.5 bg-gray-100 text-gray-800 rounded font-bold text-[10px]">
-                                                                        {subjectName}
-                                                                    </span>
-                                                                );
-                                                            })}
-                                                        </div>
-                                                    </td>
-                                                    <td className="py-3.5 px-4 text-center font-bold text-purple-700">
-                                                        {students.length} Students
-                                                    </td>
-                                                        <td className="py-3.5 px-4 text-right relative">
-                                                            {(() => {
-                                                                const secKey = `sec-${sec.id}`;
-                                                                return (
-                                                                    <div className="inline-block text-left">
-                                                                        <button
-                                                                            onClick={() => setOpenMenuId(openMenuId === secKey ? null : secKey)}
-                                                                            className="p-2 rounded-xl hover:bg-gray-100 text-gray-600 transition-colors focus:outline-hidden focus:ring-2 focus:ring-blue-500/20 border border-transparent hover:border-gray-200"
-                                                                            title="Section Actions Menu"
-                                                                        >
-                                                                            <MoreVertical className="w-4 h-4" />
-                                                                        </button>
-
-                                                                        {/* Floating 5-Action Dropdown Menu for Section */}
-                                                                        {openMenuId === secKey && (
-                                                                            <>
-                                                                                {/* Click Outside Overlay */}
-                                                                                <div 
-                                                                                    className="fixed inset-0 z-20 cursor-default" 
-                                                                                    onClick={() => setOpenMenuId(null)} 
-                                                                                />
-
-                                                                                <div className="absolute right-0 mt-1 w-56 bg-white rounded-xl shadow-xl border border-gray-200 py-1.5 z-30 text-xs font-semibold animate-in fade-in zoom-in-95 duration-100 text-left">
-                                                                                    {/* Action 1: Take Attendance */}
-                                                                                    <Link
-                                                                                        href={`/dashboard/attendance/teacher?grade=${sec.gradeLevel}&section=${sec.name}`}
-                                                                                        onClick={() => setOpenMenuId(null)}
-                                                                                        className="flex items-center space-x-2.5 px-3.5 py-2 text-gray-700 hover:bg-blue-50 hover:text-blue-700 transition-colors"
-                                                                                    >
-                                                                                        <UserCheck className="w-4 h-4 text-[#4085b3]" />
-                                                                                        <span>Take Attendance</span>
-                                                                                    </Link>
-
-                                                                                    {/* Action 2: View Section Roster */}
-                                                                                    <Link
-                                                                                        href={`/dashboard/teacher/students?grade=${sec.gradeLevel}&section=${sec.name}`}
-                                                                                        onClick={() => setOpenMenuId(null)}
-                                                                                        className="flex items-center space-x-2.5 px-3.5 py-2 text-gray-700 hover:bg-blue-50 hover:text-blue-700 transition-colors"
-                                                                                    >
-                                                                                        <Eye className="w-4 h-4 text-purple-600" />
-                                                                                        <span>View Section Roster</span>
-                                                                                    </Link>
-
-
-                                                                                    {/* Action 5: Record Lesson Progress */}
-                                                                                    <Link
-                                                                                        href={`/dashboard/teacher/curriculum?grade=${sec.gradeLevel}&section=${sec.name}`}
-                                                                                        onClick={() => setOpenMenuId(null)}
-                                                                                        className="flex items-center space-x-2.5 px-3.5 py-2 text-gray-700 hover:bg-blue-50 hover:text-blue-700 transition-colors border-t border-gray-100 mt-1 pt-2"
-                                                                                    >
-                                                                                        <BookOpenCheck className="w-4 h-4 text-[#4085b3]" />
-                                                                                        <span>Record Lesson Progress</span>
-                                                                                    </Link>
-                                                                                </div>
-                                                                            </>
-                                                                        )}
-                                                                    </div>
-                                                                );
-                                                            })()}
-                                                        </td>
-                                                </tr>
-                                            );
-                                        })}
-                                    </tbody>
-                                </table>
-                            </div>
-                        )}
-                    </CardContent>
-                </Card>
-            )}
-
-            {/* TAB 5: TEACHING SCHEDULE */}
-            {activeTab === "schedule" && (
+            {/* TAB 2: TIMETABLE / TEACHING SCHEDULE */}
+            {(activeTab === "schedule" || activeTab === "timetable") && (
                 <Card>
                     <CardHeader>
                         <CardTitle className="flex items-center space-x-2 text-base font-bold text-gray-900">
