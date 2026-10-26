@@ -2,7 +2,7 @@
 
 import { useState, useEffect, Suspense } from "react";
 import { useAuth } from "../../hooks/useAuth";
-import { Loader2, BookOpen, LogOut, LayoutDashboard, Building, Search, Lock, ChevronDown, ChevronRight, Calendar, Users, GraduationCap, ClipboardCheck, FileText, Settings, User, Megaphone, Bell, MessageSquare, Package, AlertOctagon, TrendingUp, HeartHandshake, BarChart2, Sparkles, Menu, Brain, Landmark, Layers, UserCheck, Shield } from "lucide-react";
+import { Loader2, BookOpen, LogOut, LayoutDashboard, Building, Search, Lock, ChevronDown, ChevronRight, Calendar, Users, GraduationCap, ClipboardCheck, FileText, Settings, User, Megaphone, Bell, MessageSquare, Package, AlertOctagon, TrendingUp, HeartHandshake, BarChart2, Sparkles, Menu, X, Brain, Landmark, Layers, UserCheck, Shield } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { fetchApi } from "../../lib/api";
@@ -264,6 +264,12 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
         operations: pathname.startsWith("/dashboard/operations"),
     });
     const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+    const [mobileNavOpen, setMobileNavOpen] = useState(false);
+
+    // Auto-close mobile drawer on route or tab change
+    useEffect(() => {
+        setMobileNavOpen(false);
+    }, [pathname, searchParams]);
 
     const [showProfileDropdown, setShowProfileDropdown] = useState(false);
     const [showNotificationsDropdown, setShowNotificationsDropdown] = useState(false);
@@ -540,13 +546,13 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
     return (
         <div className="fixed inset-0 flex flex-col bg-[#f4f5f7] font-sans overflow-hidden">
             {/* Top Federal Masthead Strip */}
-            <div className="bg-[#0b1c2d] text-slate-300 text-[11px] px-6 py-1.5 flex items-center justify-between border-b border-[#162f49] select-none shrink-0">
-                <div className="flex items-center space-x-2">
-                    <span className="font-semibold text-white tracking-wider uppercase text-[10px]">
-                        Federal Democratic Republic of Ethiopia
+            <div className="bg-[#0b1c2d] text-slate-300 text-[10px] sm:text-[11px] px-3 sm:px-6 py-1.5 flex items-center justify-between border-b border-[#162f49] select-none shrink-0 overflow-hidden">
+                <div className="flex items-center space-x-1.5 sm:space-x-2 truncate">
+                    <span className="font-semibold text-white tracking-wider uppercase text-[9px] sm:text-[10px] truncate">
+                        FDRE
                     </span>
                     <span className="text-slate-500">•</span>
-                    <span className="text-slate-300">Ministry of Education</span>
+                    <span className="text-slate-300 truncate">Ministry of Education</span>
                 </div>
                 <div className="hidden sm:flex items-center space-x-3 text-[10px] text-slate-400">
                     <span className="font-medium text-slate-300">National EMIS Portal</span>
@@ -559,14 +565,24 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
             </div>
 
             {/* Top Navigation Bar */}
-            <header className="bg-white border-b border-gray-200 h-14 flex items-center justify-between px-6 z-10 shrink-0">
-                <div className="flex items-center space-x-3">
-                    <Link href="/dashboard" className="flex items-center space-x-3 group">
-                        <div className="w-8 h-8 rounded-md bg-[#4085b3] flex items-center justify-center text-white shadow-xs transition-transform group-hover:scale-105">
+            <header className="bg-white border-b border-gray-200 h-14 flex items-center justify-between px-3 sm:px-6 z-10 shrink-0">
+                <div className="flex items-center space-x-2 sm:space-x-3">
+                    {/* Mobile Menu Toggle Button */}
+                    <button
+                        type="button"
+                        onClick={() => setMobileNavOpen(!mobileNavOpen)}
+                        className="p-1.5 -ml-1 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-md md:hidden transition-colors cursor-pointer"
+                        aria-label={mobileNavOpen ? "Close navigation" : "Open navigation"}
+                    >
+                        {mobileNavOpen ? <X className="w-5 h-5 text-slate-700" /> : <Menu className="w-5 h-5 text-slate-700" />}
+                    </button>
+
+                    <Link href="/dashboard" className="flex items-center space-x-2 sm:space-x-3 group">
+                        <div className="w-8 h-8 rounded-md bg-[#4085b3] flex items-center justify-center text-white shadow-xs transition-transform group-hover:scale-105 shrink-0">
                             <GraduationCap className="w-5 h-5" />
                         </div>
-                        <div className="flex flex-col">
-                            <div className="flex items-center space-x-2">
+                        <div className="flex flex-col min-w-0">
+                            <div className="flex items-center space-x-1.5 sm:space-x-2">
                                 <span className="text-base font-bold text-slate-900 tracking-tight leading-none">
                                     Edu<span className="text-[#4085b3]">Bridge</span>
                                 </span>
@@ -574,21 +590,21 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
                                     EMIS
                                 </span>
                             </div>
-                            <span className="text-[10px] font-medium text-slate-500 tracking-normal mt-0.5">
+                            <span className="text-[10px] font-medium text-slate-500 tracking-normal mt-0.5 truncate hidden sm:block">
                                 National Education Management Information System
                             </span>
                         </div>
                     </Link>
                 </div>
 
-                <div className="flex items-center space-x-4">
+                <div className="flex items-center space-x-2 sm:space-x-4">
                     {/* Teacher-specific search */}
                     {isTeacherRoute && (
-                        <div className="relative">
+                        <div className="relative hidden lg:block">
                             <input 
                                 type="text" 
                                 placeholder="Search (students, classes, assignments...)" 
-                                className="bg-slate-50 border border-slate-200 text-xs rounded-md pl-8 pr-3 py-1.5 focus:bg-white focus:border-[#4085b3] focus:ring-1 focus:ring-[#4085b3] outline-none w-64 text-slate-800 placeholder-slate-400 transition-colors"
+                                className="bg-slate-50 border border-slate-200 text-xs rounded-md pl-8 pr-3 py-1.5 focus:bg-white focus:border-[#4085b3] focus:ring-1 focus:ring-[#4085b3] outline-none w-48 xl:w-64 text-slate-800 placeholder-slate-400 transition-colors"
                             />
                             <Search className="absolute left-2.5 top-2 h-3.5 w-3.5 text-slate-400" />
                         </div>
@@ -615,7 +631,7 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
                         {/* Notifications Dropdown */}
                         {showNotificationsDropdown && (
                             <div 
-                                className="absolute right-0 mt-3 w-80 sm:w-96 bg-white rounded-2xl shadow-xl border border-gray-100 py-3 z-50 text-xs text-gray-700 animate-in fade-in slide-in-from-top-2 duration-150"
+                                className="absolute right-0 mt-3 w-80 sm:w-96 max-w-[calc(100vw-1.5rem)] bg-white rounded-2xl shadow-xl border border-gray-100 py-3 z-50 text-xs text-gray-700 animate-in fade-in slide-in-from-top-2 duration-150"
                                 onMouseLeave={() => setShowNotificationsDropdown(false)}
                             >
                                 <div className="flex items-center justify-between px-4 pb-2.5 border-b border-gray-100">
@@ -767,7 +783,7 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
                         {/* Dropdown Menu Popup */}
                         {showProfileDropdown && (
                             <div 
-                                className="absolute right-0 mt-3 w-60 bg-white rounded-lg shadow-lg border border-slate-200 py-2 z-50 text-xs font-medium text-slate-700 animate-in fade-in slide-in-from-top-2 duration-150"
+                                className="absolute right-0 mt-3 w-60 max-w-[calc(100vw-1.5rem)] bg-white rounded-lg shadow-lg border border-slate-200 py-2 z-50 text-xs font-medium text-slate-700 animate-in fade-in slide-in-from-top-2 duration-150"
                                 onMouseLeave={() => setShowProfileDropdown(false)}
                             >
                                 {/* Header info */}
@@ -828,8 +844,70 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
                 </div>
             </header>
 
+            {/* Mobile Navigation Drawer Overlay & Panel */}
+            {mobileNavOpen && (
+                <div className="fixed inset-0 z-40 md:hidden flex">
+                    {/* Backdrop */}
+                    <div
+                        className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs transition-opacity animate-in fade-in"
+                        onClick={() => setMobileNavOpen(false)}
+                    />
+
+                    {/* Drawer Content */}
+                    <div className="relative flex flex-col w-72 max-w-[85vw] h-full bg-[#f8fafc] border-r border-slate-200 shadow-2xl z-50 animate-in slide-in-from-left duration-200 overflow-hidden">
+                        <div className="p-3 border-b border-slate-200 flex items-center justify-between bg-white shrink-0">
+                            <span className="font-bold text-xs text-slate-900 tracking-wider uppercase">
+                                Navigation Menu
+                            </span>
+                            <button
+                                type="button"
+                                onClick={() => setMobileNavOpen(false)}
+                                className="p-1 text-slate-500 hover:text-slate-800 rounded-md hover:bg-slate-100 transition-colors cursor-pointer"
+                                aria-label="Close navigation"
+                            >
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+
+                        <div className="flex-1 overflow-y-auto">
+                            {isAdministrativeRoute || isFederalScope || isHierarchyAdminAccess(primaryAccess) ? (
+                                <AdministrativeNavigation
+                                    sidebarCollapsed={false}
+                                    className="flex w-full border-r-0"
+                                    onToggleCollapse={() => setMobileNavOpen(false)}
+                                />
+                            ) : isTeacherRoute ? (
+                                <TeacherNavigation
+                                    sidebarCollapsed={false}
+                                    className="flex w-full border-r-0"
+                                    onToggleCollapse={() => setMobileNavOpen(false)}
+                                />
+                            ) : isStudentRoute ? (
+                                <StudentNavigation
+                                    collapsed={false}
+                                    className="flex w-full border-r-0"
+                                    onToggleCollapse={() => setMobileNavOpen(false)}
+                                />
+                            ) : isParentRoute ? (
+                                <ParentNavigation
+                                    collapsed={false}
+                                    className="flex w-full border-r-0"
+                                    onToggleCollapse={() => setMobileNavOpen(false)}
+                                />
+                            ) : (
+                                <SchoolAdminNavigation
+                                    sidebarCollapsed={false}
+                                    className="flex w-full border-r-0"
+                                    onToggleCollapse={() => setMobileNavOpen(false)}
+                                />
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
+
             <div className="flex flex-1 overflow-hidden min-h-0">
-                {/* Sidebar */}
+                {/* Desktop Sidebar */}
                 {isAdministrativeRoute || isFederalScope || isHierarchyAdminAccess(primaryAccess) ? (
                     <AdministrativeNavigation
                         sidebarCollapsed={sidebarCollapsed}
@@ -855,7 +933,7 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
                 <main className="flex-1 flex flex-col overflow-y-auto min-h-0 bg-[#f4f5f7]">
                     
                     {/* Page Content Padding */}
-                    <div className={isTeacherRoute ? "p-4 md:p-6" : "p-6 md:p-8"}>
+                    <div className={isTeacherRoute ? "p-3 sm:p-4 md:p-6" : "p-3 sm:p-6 md:p-8"}>
                         {isTeacherRoute && (
                             <TeacherBreadcrumbs pathname={pathname} currentTab={currentTab} currentType={currentType} currentChannel={currentChannel} />
                         )}

@@ -117,9 +117,11 @@ const collaborationGroups: ParentNavGroup[] = [
 function ParentNavigationContent({
     collapsed,
     onToggleCollapse,
+    className = "",
 }: {
     collapsed: boolean;
     onToggleCollapse: () => void;
+    className?: string;
 }) {
     const pathname = usePathname();
     const searchParams = useSearchParams();
@@ -251,7 +253,7 @@ function ParentNavigationContent({
 
     return (
         <aside
-            className={`h-full bg-[#f8fafc] border-r border-slate-200 flex flex-col hidden md:flex overflow-y-auto scrollbar-hide text-slate-700 font-sans shrink-0 transition-all duration-200 ease-in-out ${
+            className={`h-full bg-[#f8fafc] border-r border-slate-200 flex flex-col ${className || "hidden md:flex"} overflow-y-auto scrollbar-hide text-slate-700 font-sans shrink-0 transition-all duration-200 ease-in-out ${
                 collapsed ? "w-16" : "w-64"
             }`}
         >
@@ -369,12 +371,13 @@ function ParentNavigationContent({
 export default function ParentNavigation(props: {
     collapsed: boolean;
     onToggleCollapse: () => void;
+    className?: string;
 }) {
     return (
         <Suspense
             fallback={
                 <aside
-                    className={`h-full bg-[#f8fafc] border-r border-slate-200 flex flex-col hidden md:flex shrink-0 ${
+                    className={`h-full bg-[#f8fafc] border-r border-slate-200 flex flex-col ${props.className || "hidden md:flex"} shrink-0 ${
                         props.collapsed ? "w-16" : "w-64"
                     }`}
                 />

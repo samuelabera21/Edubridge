@@ -121,7 +121,7 @@ const communityToolsGroups: StudentNavGroup[] = [
     },
 ];
 
-export default function StudentNavigation({ collapsed, onToggleCollapse }: { collapsed: boolean; onToggleCollapse: () => void }) {
+export default function StudentNavigation({ collapsed, onToggleCollapse, className = "" }: { collapsed: boolean; onToggleCollapse: () => void; className?: string }) {
     const pathname = usePathname();
     const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
         profile: pathname.startsWith("/dashboard/student/profile"),
@@ -159,7 +159,7 @@ export default function StudentNavigation({ collapsed, onToggleCollapse }: { col
 
     return (
         <aside
-            className={`h-full bg-[#f8fafc] border-r border-slate-200 flex flex-col hidden md:flex overflow-y-auto scrollbar-hide text-slate-700 font-sans shrink-0 transition-all duration-200 ease-in-out ${
+            className={`h-full bg-[#f8fafc] border-r border-slate-200 flex flex-col ${className || "hidden md:flex"} overflow-y-auto scrollbar-hide text-slate-700 font-sans shrink-0 transition-all duration-200 ease-in-out ${
                 collapsed ? "w-16" : "w-64"
             }`}
         >

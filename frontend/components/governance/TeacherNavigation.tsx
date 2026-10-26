@@ -47,9 +47,11 @@ interface NavGroup {
 export default function TeacherNavigation({
     sidebarCollapsed = false,
     onToggleCollapse,
+    className = "",
 }: {
     sidebarCollapsed?: boolean;
     onToggleCollapse?: () => void;
+    className?: string;
 }) {
     const pathname = usePathname();
     const searchParams = useSearchParams();
@@ -257,7 +259,7 @@ export default function TeacherNavigation({
 
     return (
         <aside
-            className={`h-full bg-[#f8fafc] border-r border-slate-200 flex flex-col hidden md:flex overflow-y-auto scrollbar-hide text-slate-700 font-sans shrink-0 transition-all duration-200 ease-in-out ${
+            className={`h-full bg-[#f8fafc] border-r border-slate-200 flex flex-col ${className || "hidden md:flex"} overflow-y-auto scrollbar-hide text-slate-700 font-sans shrink-0 transition-all duration-200 ease-in-out ${
                 sidebarCollapsed ? "w-16" : "w-64"
             }`}
         >

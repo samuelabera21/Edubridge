@@ -37,14 +37,14 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
             </div>
 
             {/* Right Side: Auth Forms */}
-            <div className="flex-1 flex flex-col justify-center items-center p-8 sm:p-12 lg:p-24 relative">
-                {/* Mobile Header */}
-                <div className="lg:hidden absolute top-8 left-8">
-                    <Link href="/" className="flex items-center space-x-3">
+            <div className="flex-1 flex flex-col justify-center items-center px-4 py-8 sm:px-8 sm:py-12 lg:p-24 relative min-h-screen">
+                {/* Mobile Header (in normal flow to prevent overlapping) */}
+                <div className="lg:hidden w-full max-w-md mb-6 flex items-center justify-between">
+                    <Link href="/" className="flex items-center space-x-2.5">
                         <div className="bg-[#4085b3] p-1.5 rounded-full">
-                            <BookOpen className="h-6 w-6 text-white" />
+                            <BookOpen className="h-5 w-5 text-white" />
                         </div>
-                        <span className="text-2xl font-bold text-gray-900 tracking-tight">EduBridge</span>
+                        <span className="text-xl font-bold text-gray-900 tracking-tight">EduBridge</span>
                     </Link>
                 </div>
 
