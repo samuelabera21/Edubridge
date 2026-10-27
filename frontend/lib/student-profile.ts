@@ -1,3 +1,18 @@
+export type StudentDocumentItem = {
+  id: string;
+  studentId?: string | null;
+  enrollmentId?: string | null;
+  documentType: string;
+  title: string;
+  fileUrl: string;
+  fileSize?: number | null;
+  mimeType?: string | null;
+  verificationStatus: "PENDING" | "VERIFIED" | "REJECTED" | string;
+  verificationNotes?: string | null;
+  verifiedAt?: string | Date | null;
+  createdAt?: string | Date | null;
+};
+
 export type StudentProfileApiData = {
   id?: string | null;
   studentId?: string | null;
@@ -21,6 +36,7 @@ export type StudentProfileApiData = {
   emergencyContactName?: string | null;
   emergencyContactRelation?: string | null;
   emergencyContactPhone?: string | null;
+  studentDocuments?: StudentDocumentItem[] | null;
   enrollments?: Array<{
     id?: string | null;
     status?: string | null;
@@ -36,6 +52,7 @@ export type StudentProfileApiData = {
         contactEmail?: string | null;
       } | null;
     } | null;
+    documents?: StudentDocumentItem[] | null;
   }> | null;
 };
 
@@ -72,10 +89,38 @@ export type StudentProfileView = {
   schoolAddress: string;
   schoolPhone: string;
   schoolEmail: string;
+  documents: StudentDocumentItem[];
   isReadOnly: true;
 };
 
-function formatDate(dateValue: string | Date | null | undefined) {
+export function formatFileSize(bytes?: number | null): string {
+  if (!bytes || Number.isNaN(bytes)) return "Standard size";
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+export function formatDocumentType(type: string): string {
+  switch (type?.toUpperCase()) {
+    case "BIRTH_CERTIFICATE":
+      return "Birth Certificate";
+    case "PREVIOUS_TRANSCRIPT":
+      return "Previous School Transcript";
+    case "PARENT_ID":
+    case "GUARDIAN_ID":
+      return "Parent / Guardian ID";
+    case "TRANSFER_CLEARANCE":
+      return "Transfer Clearance";
+    case "NATIONAL_ID":
+      return "National ID";
+    case "IMMUNIZATION_RECORD":
+      return "Immunization Record";
+    default:
+      return type ? type.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase()) : "Official Document";
+  }
+}
+
+export function formatDate(dateValue: string | Date | null | undefined): string {
   if (!dateValue) return "Not provided";
 
   const date = dateValue instanceof Date ? dateValue : new Date(dateValue);
@@ -106,6 +151,31 @@ export function buildStudentProfileView(profile: StudentProfileApiData): Student
   const schoolProfile = school?.schoolProfile ?? null;
 
   const fullName = [profile?.firstName, profile?.lastName].filter(Boolean).join(" ") || "Student";
+
+  // Collect documents from studentDocuments and all enrollment documents without duplicates
+  const documentMap = new Map<string, StudentDocumentItem>();
+
+  if (Array.isArray(profile?.studentDocuments)) {
+    for (const doc of profile.studentDocuments) {
+      if (doc?.id) {
+        documentMap.set(doc.id, doc);
+      }
+    }
+  }
+
+  if (Array.isArray(profile?.enrollments)) {
+    for (const enr of profile.enrollments) {
+      if (Array.isArray(enr?.documents)) {
+        for (const doc of enr.documents) {
+          if (doc?.id && !documentMap.has(doc.id)) {
+            documentMap.set(doc.id, doc);
+          }
+        }
+      }
+    }
+  }
+
+  const documents = Array.from(documentMap.values());
 
   return {
     id: profile?.id ?? null,
@@ -140,6 +210,7 @@ export function buildStudentProfileView(profile: StudentProfileApiData): Student
     schoolAddress: schoolProfile?.address ?? "Not provided",
     schoolPhone: schoolProfile?.phoneNumber ?? "Not provided",
     schoolEmail: schoolProfile?.contactEmail ?? "Not provided",
+    documents,
     isReadOnly: true,
   };
 }

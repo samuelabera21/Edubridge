@@ -225,7 +225,7 @@ export default function StudentCommunicationPage() {
                                 return (
                                     <div
                                         key={item.id}
-                                        className={`bg-white rounded-2xl border p-5 shadow-xs transition-all space-y-3.5 ${
+                                        className={`group bg-white rounded-2xl border p-5 shadow-xs transition-all duration-300 space-y-3.5 hover:border-[#4085b3] hover:shadow-md ${
                                             !isConfirmed 
                                                 ? "border-emerald-300 ring-1 ring-emerald-500/20" 
                                                 : "border-slate-200"
@@ -254,7 +254,7 @@ export default function StudentCommunicationPage() {
 
                                         {/* Announcement Title & Content */}
                                         <div>
-                                            <h2 className="text-base font-bold text-slate-900">{item.title}</h2>
+                                            <h2 className="text-base font-bold text-slate-900 group-hover:text-[#4085b3] transition-colors">{item.title}</h2>
                                             {item.content && (
                                                 <p className="text-sm text-slate-600 whitespace-pre-line leading-relaxed mt-1">
                                                     {item.content}
@@ -368,8 +368,8 @@ export default function StudentCommunicationPage() {
                             <div
                                 key={n.id}
                                 onClick={() => !n.isRead && handleMarkNotificationRead(n.id)}
-                                className={`p-4 flex items-start justify-between gap-3 transition-colors cursor-pointer ${
-                                    !n.isRead ? "bg-emerald-50/40 hover:bg-emerald-50/70" : "hover:bg-slate-50"
+                                className={`group p-4 flex items-start justify-between gap-3 transition-colors cursor-pointer ${
+                                    !n.isRead ? "bg-emerald-50/40 hover:bg-emerald-50/70" : "hover:bg-blue-50/30"
                                 }`}
                             >
                                 <div className="flex items-start gap-3">
@@ -380,7 +380,7 @@ export default function StudentCommunicationPage() {
                                     </div>
                                     <div>
                                         <div className="flex items-center gap-2">
-                                            <h4 className="text-xs font-bold text-slate-900">{n.title}</h4>
+                                            <h4 className="text-xs font-bold text-slate-900 group-hover:text-[#4085b3] transition-colors">{n.title}</h4>
                                             {!n.isRead && (
                                                 <span className="w-2 h-2 rounded-full bg-emerald-500" />
                                             )}
