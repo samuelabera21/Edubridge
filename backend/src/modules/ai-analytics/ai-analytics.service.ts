@@ -242,11 +242,13 @@ export class AiAnalyticsService {
     ): Promise<string> {
         const scopeContext = scope.currentOrganizationType === "FEDERAL"
             ? `SCOPE: FEDERAL (National). You may query all organization units and schools across the entire nation.`
-            : `SCOPE: ${scope.currentOrganizationType} (Name: "${scope.currentOrganization.name}", ID: "${scope.currentOrganization.id}").
-CRITICAL SCOPE RESTRICTION: The user is only authorized to access data within their assigned organization tree.
+            : `SCOPE: ${scope.currentOrganizationType} (Jurisdiction: "${scope.currentOrganization.name}", ID: "${scope.currentOrganization.id}").
+CRITICAL SCOPE RESTRICTION & CROSS-SCOPE REFUSAL:
+1. The user is strictly authorized to access records ONLY within their assigned jurisdiction ("${scope.currentOrganization.name}") and its descendants.
 - Allowed descendant school IDs: ${JSON.stringify(scope.descendantSchoolIds.slice(0, 100))}
 - Allowed organization IDs: ${JSON.stringify(scope.accessibleOrganizationIds.slice(0, 100))}
-You MUST filter records so they only include organization units or schools belonging to this scope (e.g. using IN (...) or joining with authorized parent units).`;
+2. You MUST filter records so they only include organization units or schools belonging to this scope (e.g. using IN (...) or joining with authorized parent units).
+3. If the user explicitly requests data belonging to a DIFFERENT territory outside their jurisdiction (for example, asking for another region, zone, or woreda), return a query that yields zero rows (e.g. SELECT NULL WHERE FALSE) to prevent any unauthorized data leakage.`;
 
         const targetedSchemas = this.getRelevantSchemas(question);
 
@@ -294,9 +296,13 @@ User Question: "${question}"
 Executed SQL: ${sql}
 Live Database Result (JSON): ${safeData}
 
+CROSS-SCOPE SECURITY POLICY:
+If the user's jurisdiction is not FEDERAL and their question was attempting to query data belonging to a territory outside "${scope.currentOrganization.name}", clearly advise in the summary:
+"Access Restricted: Your governance jurisdiction is restricted to ${scope.currentOrganization.name}. Cross-regional and external territorial intelligence is reserved for Federal Ministry of Education administrators."
+
 Synthesize a professional, concise, executive answer based strictly on the query result.
 If the result is a list/table (e.g. schools, regions, or counts), extract up to 10 rows for a structured table display.
-Provide 3 relevant follow-up questions the administrator might want to ask next.
+Provide 3 relevant follow-up questions the administrator might want to ask next within their authorized jurisdiction.
 
 Return ONLY a valid JSON object matching this TypeScript structure (NO markdown code fences, NO extra text):
 {
