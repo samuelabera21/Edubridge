@@ -146,10 +146,10 @@ export default function AssignmentsCard() {
                   type="button"
                   key={item.id}
                   onClick={() => setSelectedId(item.id)}
-                  className={`w-full rounded-2xl border p-4 text-left transition cursor-pointer ${
+                  className={`w-full rounded-2xl border p-4 text-left transition-all duration-200 cursor-pointer ${
                     activeItem?.id === item.id
                       ? "border-[#184973] bg-blue-50/50 shadow-sm"
-                      : "border-slate-200 bg-slate-50/60 hover:border-slate-300"
+                      : "border-slate-200 bg-slate-50/60 hover:border-[#4085b3] hover:bg-white hover:shadow-2xs"
                   }`}
                 >
                   <div className="flex items-start justify-between gap-3">

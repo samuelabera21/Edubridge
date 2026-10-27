@@ -286,7 +286,7 @@ export class GradeSubmissionService {
             : fileBuffer;
 
         const workbook = new ExcelJS.Workbook();
-        await workbook.xlsx.load(buffer);
+        await workbook.xlsx.load(buffer as any);
 
         const worksheet = workbook.worksheets[0];
         if (!worksheet) {

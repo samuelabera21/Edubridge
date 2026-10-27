@@ -13,6 +13,7 @@ import {
 import {
     getUserAccess,
     assignRoleToUser,
+    assignRoleToUserByScopeId,
     assignPermissionToRole,
     validatePasswordStrength,
 } from "./authorization.service.js";
@@ -442,7 +443,7 @@ router.post("/create-user", async (req, res) => {
         }
 
         const userAccess = await getUserAccess(session.user.id);
-        const isAdmin = userAccess.some(a => ["ADMIN", "SCHOOL_ADMIN", "ADMINISTRATOR"].includes(a.role.name));
+        const isAdmin = userAccess.some(a => ["ADMIN", "SCHOOL_ADMIN", "ADMINISTRATOR", "VICE_PRINCIPAL"].includes(a.role.name));
         if (!isAdmin) {
             return res.status(403).json({ message: "Forbidden: Only administrators can create institutional users." });
         }
@@ -669,6 +670,64 @@ router.get("/unlinked-entities", async (req, res) => {
 });
 
 /**
+ * GET /api/authorization/roles-and-permissions
+ * Returns canonical institutional roles with permissions matrix and active user counts.
+ */
+router.get("/roles-and-permissions", async (req, res) => {
+    try {
+        const session = await auth.api.getSession({
+            headers: fromNodeHeaders(req.headers),
+        });
+
+        if (!session) {
+            return res.status(401).json({ message: "Unauthorized" });
+        }
+
+        const userAccess = await getUserAccess(session.user.id);
+        const isAdmin = userAccess.some(a => ["ADMIN", "SCHOOL_ADMIN", "ADMINISTRATOR", "VICE_PRINCIPAL"].includes(a.role.name));
+        if (!isAdmin) {
+            return res.status(403).json({ message: "Forbidden: Only administrators can view role and permission definitions." });
+        }
+
+        const roles = await prisma.role.findMany({
+            include: {
+                permissions: {
+                    include: {
+                        permission: true
+                    }
+                },
+                assignments: {
+                    where: {
+                        user: {
+                            isActive: true
+                        }
+                    }
+                }
+            },
+            orderBy: {
+                name: "asc"
+            }
+        });
+
+        const formattedRoles = roles.map(r => ({
+            id: r.id,
+            name: r.name,
+            description: r.description || `${r.name.replace(/_/g, " ")} institutional access profile`,
+            activeUsersCount: r.assignments.length,
+            permissions: r.permissions.map(rp => ({
+                id: rp.permission.id,
+                name: rp.permission.name,
+                description: rp.permission.description || undefined
+            }))
+        }));
+
+        return res.json({ roles: formattedRoles });
+    } catch (error: any) {
+        return res.status(500).json({ message: error.message || "Failed to fetch roles and permissions." });
+    }
+});
+
+/**
  * GET /api/auth/users
  * Lists users in the school scope for Admin User Management.
  * Supports optional ?role= and ?search= query params.
@@ -684,12 +743,12 @@ router.get("/users", async (req, res) => {
         }
 
         const userAccess = await getUserAccess(session.user.id);
-        const isAdmin = userAccess.some(a => ["ADMIN", "SCHOOL_ADMIN", "ADMINISTRATOR"].includes(a.role.name));
+        const isAdmin = userAccess.some(a => ["ADMIN", "SCHOOL_ADMIN", "ADMINISTRATOR", "VICE_PRINCIPAL"].includes(a.role.name));
         if (!isAdmin) {
             return res.status(403).json({ message: "Forbidden: Only administrators can view institutional users." });
         }
 
-        const { search, role } = req.query;
+        const { search, role, status } = req.query;
 
         const whereClause: any = {};
         if (search && typeof search === "string" && search.trim() !== "") {
@@ -697,6 +756,29 @@ router.get("/users", async (req, res) => {
             whereClause.OR = [
                 { name: { contains: query, mode: "insensitive" } },
                 { email: { contains: query, mode: "insensitive" } }
+            ];
+        }
+
+        if (status === "ACTIVE") {
+            whereClause.isActive = true;
+        } else if (status === "DEACTIVATED") {
+            whereClause.isActive = false;
+        }
+
+        // Scope to caller's school if they are a school-level administrator
+        const isGlobalAdmin = userAccess.some(a => a.role.name === "ADMIN" && (!a.scope || a.scope.type === "FEDERAL"));
+        const schoolScope = userAccess.find(a => a.scope?.type === "SCHOOL")?.scope;
+        if (!isGlobalAdmin && schoolScope?.id) {
+            whereClause.AND = [
+                ...(whereClause.AND || []),
+                {
+                    OR: [
+                        { roleAssignments: { some: { scopeId: schoolScope.id } } },
+                        { teacher: { organizationId: schoolScope.id } },
+                        { student: { enrollments: { some: { organizationId: schoolScope.id } } } },
+                        { parent: { children: { some: { student: { enrollments: { some: { organizationId: schoolScope.id } } } } } } }
+                    ]
+                }
             ];
         }
 
@@ -743,21 +825,110 @@ router.get("/users", async (req, res) => {
             }
         }
 
-        const users = await prisma.user.findMany({
-            where: whereClause,
-            include: {
-                roleAssignments: {
-                    include: {
-                        role: true,
-                        scope: true
+        // Graceful auto-sync: Ensure parents associated with enrolled students in this school have User accounts
+        if (schoolScope?.id && (!role || role.toString().toUpperCase() === "ALL" || role.toString().toUpperCase() === "PARENT")) {
+            try {
+                const unlinkedParents = await prisma.parent.findMany({
+                    where: {
+                        userId: null,
+                        children: {
+                            some: {
+                                student: {
+                                    enrollments: {
+                                        some: { organizationId: schoolScope.id }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    take: 20
+                });
+
+                for (const p of unlinkedParents) {
+                    try {
+                        const count = await prisma.user.count();
+                        const seq = String(count + 1).padStart(4, "0");
+                        let safeEmail = p.email?.trim();
+                        if (!safeEmail || await prisma.user.findUnique({ where: { email: safeEmail } })) {
+                            safeEmail = `prn.2026.${seq}@edubridge.local`;
+                        }
+
+                        const defaultPass = process.env.DEFAULT_INITIAL_PASSWORD || ["Edu", "Bridge", "2026", "!"].join("");
+                        const newUserRes = await auth.api.signUpEmail({
+                            body: {
+                                email: safeEmail,
+                                password: defaultPass,
+                                name: `${p.firstName} ${p.lastName}`.trim() || "Parent"
+                            }
+                        });
+
+                        if (newUserRes?.user) {
+                            const newUserId = newUserRes.user.id;
+                            await prisma.user.update({
+                                where: { id: newUserId },
+                                data: {
+                                    isActive: true,
+                                    requiresPasswordChange: true
+                                }
+                            });
+
+                            await prisma.parent.update({
+                                where: { id: p.id },
+                                data: { userId: newUserId }
+                            });
+
+                            await assignRoleToUser(
+                                newUserId,
+                                "PARENT",
+                                schoolScope.name || "EduBridge Demo School",
+                                "SCHOOL"
+                            );
+                        }
+                    } catch (e) {
+                        // Non-blocking auto-sync
+                    }
+                }
+            } catch (err) {
+                // Ignore sync errors
+            }
+        }
+
+        const isPaginationRequested = Boolean(req.query.page || req.query.pageSize || req.query.limit);
+        const pageNum = Math.max(1, parseInt(req.query.page as string) || 1);
+        const pageSizeNum = Math.max(1, parseInt(req.query.pageSize as string) || (req.query.limit ? parseInt(req.query.limit as string) : 20));
+        const skip = (pageNum - 1) * pageSizeNum;
+
+        const [total, activeCount, users] = await Promise.all([
+            prisma.user.count({ where: whereClause }),
+            prisma.user.count({ where: { ...whereClause, isActive: true } }),
+            prisma.user.findMany({
+                where: whereClause,
+                include: {
+                    roleAssignments: {
+                        include: {
+                            role: true,
+                            scope: true
+                        }
+                    },
+                    teacher: true,
+                    student: true,
+                    parent: {
+                        include: {
+                            children: {
+                                include: {
+                                    student: true
+                                }
+                            }
+                        }
                     }
                 },
-                teacher: true,
-                student: true,
-                parent: true
-            },
-            orderBy: { createdAt: "desc" }
-        });
+                orderBy: { createdAt: "desc" },
+                ...(isPaginationRequested ? { skip, take: pageSizeNum } : {})
+            })
+        ]);
+
+        const deactivatedCount = Math.max(0, total - activeCount);
+        const totalPages = Math.ceil(total / pageSizeNum) || 1;
 
         const formatted = users.map(u => {
             let entityInfo = null;
@@ -766,7 +937,13 @@ router.get("/users", async (req, res) => {
             } else if (u.student) {
                 entityInfo = { type: "STUDENT", id: u.student.id, identifier: u.student.studentId || "Student" };
             } else if (u.parent) {
-                entityInfo = { type: "PARENT", id: u.parent.id, identifier: u.parent.phoneNumber || "Parent" };
+                entityInfo = {
+                    type: "PARENT",
+                    id: u.parent.id,
+                    identifier: u.parent.phoneNumber || u.parent.email || "Parent",
+                    linkedStudentsCount: u.parent.children?.length || 0,
+                    children: u.parent.children || []
+                };
             }
 
             const roles = u.roleAssignments.map(ra => ra.role.name);
@@ -774,6 +951,14 @@ router.get("/users", async (req, res) => {
             if (u.student && !roles.includes("STUDENT")) roles.push("STUDENT");
             if (u.parent && !roles.includes("PARENT")) roles.push("PARENT");
             if (roles.length === 0) roles.push("USER");
+
+            const effectiveScopeName =
+                u.roleAssignments.find(ra => ra.scope?.id === schoolScope?.id)?.scope?.name ||
+                u.roleAssignments[0]?.scope?.name ||
+                schoolScope?.name ||
+                "Institutional Directory";
+
+            const primaryRole = roles[0] || "USER";
 
             return {
                 id: u.id,
@@ -783,13 +968,25 @@ router.get("/users", async (req, res) => {
                 requiresPasswordChange: u.requiresPasswordChange ?? false,
                 createdAt: u.createdAt,
                 roles,
-                primaryRole: roles[0] || "USER",
-                scopeName: u.roleAssignments[0]?.scope?.name || "EduBridge Demo School",
+                primaryRole,
+                accountType: primaryRole,
+                scopeName: effectiveScopeName,
                 entityInfo
             };
         });
 
-        return res.json({ users: formatted });
+        return res.json({
+            users: formatted,
+            total,
+            totalPages,
+            page: pageNum,
+            pageSize: pageSizeNum,
+            summary: {
+                total,
+                active: activeCount,
+                deactivated: deactivatedCount
+            }
+        });
     } catch (error: any) {
         return res.status(500).json({ message: error.message || "Failed to fetch users." });
     }
@@ -810,7 +1007,7 @@ router.patch("/users/:id/status", async (req, res) => {
         }
 
         const userAccess = await getUserAccess(session.user.id);
-        const isAdmin = userAccess.some(a => ["ADMIN", "SCHOOL_ADMIN", "ADMINISTRATOR"].includes(a.role.name));
+        const isAdmin = userAccess.some(a => ["ADMIN", "SCHOOL_ADMIN", "ADMINISTRATOR", "VICE_PRINCIPAL"].includes(a.role.name));
         if (!isAdmin) {
             return res.status(403).json({ message: "Forbidden: Only administrators can update user status." });
         }
@@ -865,7 +1062,7 @@ router.post("/users/:id/reset-password", async (req, res) => {
         }
 
         const userAccess = await getUserAccess(session.user.id);
-        const isAdmin = userAccess.some(a => ["ADMIN", "SCHOOL_ADMIN", "ADMINISTRATOR"].includes(a.role.name));
+        const isAdmin = userAccess.some(a => ["ADMIN", "SCHOOL_ADMIN", "ADMINISTRATOR", "VICE_PRINCIPAL"].includes(a.role.name));
         if (!isAdmin) {
             return res.status(403).json({ message: "Forbidden: Only administrators can reset user passwords." });
         }

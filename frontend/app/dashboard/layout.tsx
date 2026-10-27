@@ -2,7 +2,7 @@
 
 import { useState, useEffect, Suspense } from "react";
 import { useAuth } from "../../hooks/useAuth";
-import { Loader2, BookOpen, LogOut, LayoutDashboard, Building, Search, Lock, ChevronDown, ChevronRight, Calendar, Users, GraduationCap, ClipboardCheck, FileText, Settings, User, Megaphone, Bell, Package, AlertOctagon, TrendingUp, HeartHandshake, BarChart2, Sparkles, Menu, Brain, Landmark, Layers, UserCheck, Shield } from "lucide-react";
+import { Loader2, BookOpen, LogOut, LayoutDashboard, Building, Search, Lock, ChevronDown, ChevronRight, Calendar, Users, GraduationCap, ClipboardCheck, FileText, Settings, User, Megaphone, Bell, Package, AlertOctagon, TrendingUp, HeartHandshake, BarChart2, Sparkles, Menu, X, Brain, Landmark, Layers, UserCheck, Shield } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { fetchApi } from "../../lib/api";
@@ -225,6 +225,8 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
         operations: pathname.startsWith("/dashboard/operations"),
     });
     const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+    const [mobileNavOpen, setMobileNavOpen] = useState(false);
+    const [studentPhoto, setStudentPhoto] = useState<string | null>(null);
 
     const [showProfileDropdown, setShowProfileDropdown] = useState(false);
     const [showNotificationsDropdown, setShowNotificationsDropdown] = useState(false);
@@ -234,6 +236,21 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
         notifications: 0,
         messages: 0,
     });
+
+    useEffect(() => {
+        setMobileNavOpen(false);
+    }, [pathname]);
+
+    useEffect(() => {
+        if (typeof window !== "undefined") {
+            setStudentPhoto(localStorage.getItem("student_profile_photo"));
+        }
+        const handlePhotoChange = (e: any) => {
+            setStudentPhoto(e.detail || null);
+        };
+        window.addEventListener("studentProfilePhotoChanged", handlePhotoChange);
+        return () => window.removeEventListener("studentProfilePhotoChanged", handlePhotoChange);
+    }, []);
 
     const primaryAccess = getPrimaryAccess(authData?.access);
     const allRoles: string[] = (authData?.access || []).map((a: any) => a.role?.name).filter(Boolean);
@@ -532,14 +549,24 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
             </div>
 
             {/* Top Navigation Bar */}
-            <header className="bg-white border-b border-gray-200 h-14 flex items-center justify-between px-6 z-10 shrink-0">
-                <div className="flex items-center space-x-3">
-                    <Link href="/dashboard" className="flex items-center space-x-3 group">
-                        <div className="w-8 h-8 rounded-md bg-[#4085b3] flex items-center justify-center text-white shadow-xs transition-transform group-hover:scale-105">
+            <header className="bg-white border-b border-gray-200 h-14 flex items-center justify-between px-3 sm:px-6 z-10 shrink-0">
+                <div className="flex items-center space-x-2 sm:space-x-3">
+                    {/* Mobile Menu Hamburger Button */}
+                    <button
+                        type="button"
+                        onClick={() => setMobileNavOpen((prev) => !prev)}
+                        className="md:hidden p-1.5 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors cursor-pointer"
+                        aria-label={mobileNavOpen ? "Close navigation menu" : "Open navigation menu"}
+                    >
+                        {mobileNavOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+                    </button>
+
+                    <Link href="/dashboard" className="flex items-center space-x-2 sm:space-x-3 group">
+                        <div className="w-8 h-8 rounded-md bg-[#4085b3] flex items-center justify-center text-white shadow-xs transition-transform group-hover:scale-105 shrink-0">
                             <GraduationCap className="w-5 h-5" />
                         </div>
                         <div className="flex flex-col">
-                            <div className="flex items-center space-x-2">
+                            <div className="flex items-center space-x-1.5 sm:space-x-2">
                                 <span className="text-base font-bold text-slate-900 tracking-tight leading-none">
                                     Edu<span className="text-[#4085b3]">Bridge</span>
                                 </span>
@@ -547,7 +574,7 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
                                     EMIS
                                 </span>
                             </div>
-                            <span className="text-[10px] font-medium text-slate-500 tracking-normal mt-0.5">
+                            <span className="hidden sm:block text-[10px] font-medium text-slate-500 tracking-normal mt-0.5">
                                 National Education Management Information System
                             </span>
                         </div>
@@ -697,11 +724,19 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
                             onClick={() => setShowProfileDropdown(!showProfileDropdown)}
                             className="flex items-center space-x-2.5 hover:opacity-90 transition-opacity focus:outline-none cursor-pointer"
                         >
-                            <div className="w-8 h-8 rounded-md bg-[#4085b3] border border-slate-200 flex items-center justify-center text-white font-bold text-xs shadow-xs">
-                                {isTeacherRoute 
-                                    ? (authData?.user?.name ? authData.user.name.trim()[0].toUpperCase() : "T")
-                                    : (authData?.user?.name ? authData.user.name.split(' ').map((n: string) => n[0]).join('') : "A")}
-                            </div>
+                            {isStudentRoute && studentPhoto ? (
+                                <img
+                                    src={studentPhoto}
+                                    alt="Student avatar"
+                                    className="w-8 h-8 rounded-md object-cover border border-slate-200 shadow-xs shrink-0"
+                                />
+                            ) : (
+                                <div className="w-8 h-8 rounded-md bg-[#4085b3] border border-slate-200 flex items-center justify-center text-white font-bold text-xs shadow-xs shrink-0">
+                                    {isTeacherRoute 
+                                        ? (authData?.user?.name ? authData.user.name.trim()[0].toUpperCase() : "T")
+                                        : (authData?.user?.name ? authData.user.name.split(' ').map((n: string) => n[0]).join('') : "A")}
+                                </div>
+                            )}
                             <div className="hidden sm:block text-left">
                                 <p className="text-xs font-bold text-slate-800 leading-tight">
                                     {isTeacherRoute 
@@ -722,22 +757,31 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
                                 onMouseLeave={() => setShowProfileDropdown(false)}
                             >
                                 {/* Header info */}
-                                <div className="px-4 py-2.5 border-b border-slate-100 bg-slate-50/70">
-                                    <p className="font-bold text-slate-900 text-xs">
-                                        {isTeacherRoute 
-                                            ? formatTeacherProfileName(authData?.user?.name) 
-                                            : (authData?.user?.name || "Federal Administrator")}
-                                    </p>
-                                    <p className="text-[10px] text-slate-500 truncate mt-0.5">{authData?.user?.email || "admin@moe.gov.et"}</p>
-                                    <div className="mt-1.5 flex items-center gap-1.5">
-                                        <span className="inline-block px-2 py-0.5 bg-slate-100 text-slate-700 border border-slate-200 rounded font-semibold text-[9px] uppercase tracking-wider">
-                                            {isTeacherRoute ? "Teacher" : isStudentRoute ? "Student" : isParentRoute ? "Parent" : isAdministrativeRoute ? "Federal Admin" : roleName}
-                                        </span>
-                                        {isAdministrativeRoute && (
-                                            <span className="text-[10px] text-slate-400">
-                                                MoE Federal Desk
+                                <div className="px-4 py-2.5 border-b border-slate-100 bg-slate-50/70 flex items-center space-x-2.5">
+                                    {isStudentRoute && studentPhoto && (
+                                        <img
+                                            src={studentPhoto}
+                                            alt="Student avatar"
+                                            className="w-9 h-9 rounded-full object-cover border border-slate-200 shrink-0"
+                                        />
+                                    )}
+                                    <div className="min-w-0 flex-1">
+                                        <p className="font-bold text-slate-900 text-xs truncate">
+                                            {isTeacherRoute 
+                                                ? formatTeacherProfileName(authData?.user?.name) 
+                                                : (authData?.user?.name || "Federal Administrator")}
+                                        </p>
+                                        <p className="text-[10px] text-slate-500 truncate mt-0.5">{authData?.user?.email || "admin@moe.gov.et"}</p>
+                                        <div className="mt-1 flex items-center gap-1.5">
+                                            <span className="inline-block px-1.5 py-0.5 bg-slate-100 text-slate-700 border border-slate-200 rounded font-semibold text-[9px] uppercase tracking-wider">
+                                                {isTeacherRoute ? "Teacher" : isStudentRoute ? "Student" : isParentRoute ? "Parent" : isAdministrativeRoute ? "Federal Admin" : roleName}
                                             </span>
-                                        )}
+                                            {isAdministrativeRoute && (
+                                                <span className="text-[10px] text-slate-400 truncate">
+                                                    MoE Federal Desk
+                                                </span>
+                                            )}
+                                        </div>
                                     </div>
                                 </div>
 
@@ -764,8 +808,40 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
                                     </div>
                                 )}
 
+                                {/* Student-specific Links */}
+                                {isStudentRoute && (
+                                    <div className="py-1">
+                                        <Link 
+                                            href="/dashboard/student/profile" 
+                                            onClick={() => setShowProfileDropdown(false)}
+                                            className="flex items-center px-4 py-2 hover:bg-gray-50 text-gray-700 space-x-2 transition-colors"
+                                        >
+                                            <User className="w-4 h-4 text-gray-500" />
+                                            <span>My Profile</span>
+                                        </Link>
+
+                                        <Link 
+                                            href="/dashboard/student/profile/documents" 
+                                            onClick={() => setShowProfileDropdown(false)}
+                                            className="flex items-center px-4 py-2 hover:bg-gray-50 text-gray-700 space-x-2 transition-colors"
+                                        >
+                                            <FileText className="w-4 h-4 text-gray-500" />
+                                            <span>Enrollment Documents</span>
+                                        </Link>
+
+                                        <Link 
+                                            href="/dashboard/student/settings" 
+                                            onClick={() => setShowProfileDropdown(false)}
+                                            className="flex items-center px-4 py-2 hover:bg-gray-50 text-gray-700 space-x-2 transition-colors"
+                                        >
+                                            <Settings className="w-4 h-4 text-gray-500" />
+                                            <span>Account Settings</span>
+                                        </Link>
+                                    </div>
+                                )}
+
                                 {/* Logout button */}
-                                <div className={`${isTeacherRoute ? "border-t border-gray-100 pt-1 mt-1" : "pt-1"}`}>
+                                <div className={`${isTeacherRoute || isStudentRoute ? "border-t border-gray-100 pt-1 mt-1" : "pt-1"}`}>
                                     <button 
                                         onClick={() => {
                                             setShowProfileDropdown(false);
@@ -782,6 +858,72 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
                     </div>
                 </div>
             </header>
+
+            {/* Mobile Navigation Drawer for Small Screens */}
+            {mobileNavOpen && (
+                <div className="fixed inset-0 z-50 md:hidden flex">
+                    {/* Backdrop */}
+                    <div 
+                        className="fixed inset-0 bg-black/60 backdrop-blur-xs transition-opacity animate-in fade-in"
+                        onClick={() => setMobileNavOpen(false)}
+                    />
+
+                    {/* Sliding Drawer Content */}
+                    <div className="relative w-72 max-w-[85vw] bg-white h-full shadow-2xl flex flex-col z-10 border-r border-slate-200 animate-in slide-in-from-left duration-200">
+                        {/* Drawer Header */}
+                        <div className="h-14 px-4 flex items-center justify-between border-b border-slate-200 bg-white shrink-0">
+                            <div className="flex items-center space-x-2">
+                                <div className="w-7 h-7 rounded-md bg-[#4085b3] flex items-center justify-center text-white">
+                                    <GraduationCap className="w-4 h-4" />
+                                </div>
+                                <span className="text-sm font-bold text-slate-900">
+                                    Edu<span className="text-[#4085b3]">Bridge</span>
+                                </span>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => setMobileNavOpen(false)}
+                                className="p-1.5 rounded-lg text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition-colors cursor-pointer"
+                                aria-label="Close navigation menu"
+                            >
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+
+                        {/* Navigation Inside Drawer */}
+                        <div className="flex-1 overflow-y-auto [&>aside]:flex! [&>aside]:w-full! [&>aside]:border-r-0! [&>aside]:h-full!">
+                            {isAdministrativeRoute || isFederalScope || isHierarchyAdminAccess(primaryAccess) ? (
+                                <AdministrativeNavigation
+                                    sidebarCollapsed={false}
+                                    onToggleCollapse={() => {}}
+                                />
+                            ) : isTeacherRoute ? (
+                                <TeacherNavigation
+                                    sidebarCollapsed={false}
+                                    onToggleCollapse={() => {}}
+                                />
+                            ) : isStudentRoute ? (
+                                <StudentNavigation 
+                                    collapsed={false} 
+                                    onToggleCollapse={() => {}} 
+                                    isMobile={true}
+                                    onNavigate={() => setMobileNavOpen(false)}
+                                />
+                            ) : isParentRoute ? (
+                                <ParentNavigation 
+                                    collapsed={false} 
+                                    onToggleCollapse={() => {}} 
+                                />
+                            ) : (
+                                <SchoolAdminNavigation
+                                    sidebarCollapsed={false}
+                                    onToggleCollapse={() => {}}
+                                />
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
 
             <div className="flex flex-1 overflow-hidden min-h-0">
                 {/* Sidebar */}

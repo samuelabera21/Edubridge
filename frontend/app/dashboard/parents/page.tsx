@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useMemo } from "react";
 import { fetchApi } from "@/lib/api";
+import { useAuth } from "@/hooks/useAuth";
 import Link from "next/link";
 import { 
     Users, 
@@ -57,6 +58,10 @@ interface Guardian {
 }
 
 export default function ParentManagementPage() {
+    const { authData } = useAuth();
+    const activeOrgId = authData?.access?.find((a: any) => a.scope?.type === "SCHOOL")?.scope?.id || authData?.access?.[0]?.scope?.id;
+    const authHeaders = useMemo(() => activeOrgId ? { "x-organization-id": activeOrgId } : undefined, [activeOrgId]);
+
     const [activeTab, setActiveTab] = useState<"directory" | "relationships">("directory");
 
     // Directory State
@@ -125,7 +130,7 @@ export default function ParentManagementPage() {
     useEffect(() => {
         async function loadFilters() {
             try {
-                const res = await fetchApi("/parent/admin/filters");
+                const res = await fetchApi("/parent/admin/filters", authHeaders ? { headers: authHeaders } : undefined);
                 if (res.ok) {
                     const data = await res.json();
                     setFilterOptions(data);
@@ -135,7 +140,7 @@ export default function ParentManagementPage() {
             }
         }
         loadFilters();
-    }, []);
+    }, [activeOrgId]);
 
     // Load students for cascading student filter (filtered by grade/section if selected)
     useEffect(() => {
@@ -147,7 +152,10 @@ export default function ParentManagementPage() {
                 if (selectedSectionId) params.set("sectionId", selectedSectionId);
                 params.set("limit", "100");
 
-                const res = await fetchApi(`/parent/admin/students?${params.toString()}`);
+                const res = await fetchApi(
+                    `/parent/admin/students?${params.toString()}`,
+                    authHeaders ? { headers: authHeaders } : undefined
+                );
                 if (res.ok) {
                     const data = await res.json();
                     setFilterStudents(data || []);
@@ -162,12 +170,13 @@ export default function ParentManagementPage() {
             }
         }
         loadFilterStudents();
-    }, [selectedGradeId, selectedSectionId]);
+    }, [selectedGradeId, selectedSectionId, activeOrgId]);
 
     // Load Guardians List (Server-side search, grade/section filtering & pagination)
     const loadGuardians = async () => {
         try {
             setDirectoryLoading(true);
+            setActionError(null);
             const params = new URLSearchParams();
             if (searchQuery.trim()) params.set("search", searchQuery.trim());
             if (selectedGradeId) params.set("schoolGradeId", selectedGradeId);
@@ -176,19 +185,22 @@ export default function ParentManagementPage() {
             params.set("page", String(page));
             params.set("limit", "15");
 
-            const res = await fetchApi(`/parent/admin/guardians?${params.toString()}`);
+            const res = await fetchApi(`/parent/admin/guardians?${params.toString()}`, authHeaders ? { headers: authHeaders } : undefined);
             if (res.ok) {
                 const data = await res.json();
                 setGuardians(data.guardians || []);
                 setTotalPages(data.pagination?.totalPages || 1);
                 setTotalGuardians(data.pagination?.total || 0);
             } else {
+                const errData = await res.json().catch(() => ({}));
+                setActionError(errData.error || errData.message || "Failed to load guardians");
                 setGuardians([]);
                 setTotalPages(1);
                 setTotalGuardians(0);
             }
-        } catch (err) {
+        } catch (err: any) {
             console.error("Failed to load guardians:", err);
+            setActionError(err.message || "Failed to load guardians");
             setGuardians([]);
         } finally {
             setDirectoryLoading(false);
@@ -197,7 +209,7 @@ export default function ParentManagementPage() {
 
     useEffect(() => {
         loadGuardians();
-    }, [page, selectedGradeId, selectedSectionId, selectedStudentId]);
+    }, [page, selectedGradeId, selectedSectionId, selectedStudentId, activeOrgId]);
 
     // Debounced search for guardians
     useEffect(() => {
@@ -221,7 +233,10 @@ export default function ParentManagementPage() {
                 if (selectedGradeId) params.set("schoolGradeId", selectedGradeId);
                 if (selectedSectionId) params.set("sectionId", selectedSectionId);
 
-                const res = await fetchApi(`/parent/admin/students?${params.toString()}`);
+                const res = await fetchApi(
+                    `/parent/admin/students?${params.toString()}`,
+                    authHeaders ? { headers: authHeaders } : undefined
+                );
                 if (res.ok) {
                     const data = await res.json();
                     setStudentsForLinking(data || []);
@@ -232,7 +247,7 @@ export default function ParentManagementPage() {
         }
         const timer = setTimeout(searchStudents, 250);
         return () => clearTimeout(timer);
-    }, [studentSearchInput, selectedGradeId, selectedSectionId, linkModalOpen]);
+    }, [studentSearchInput, selectedGradeId, selectedSectionId, linkModalOpen, activeOrgId]);
 
     // Flatten family relationships for Tab 2 with strict filtering
     const allRelationships = useMemo(() => {
@@ -300,7 +315,7 @@ export default function ParentManagementPage() {
         }
 
         try {
-            const res = await fetchApi(`/parent/admin/guardians/${parentId}`);
+            const res = await fetchApi(`/parent/admin/guardians/${parentId}`, authHeaders ? { headers: authHeaders } : undefined);
             if (res.ok) {
                 const data = await res.json();
                 setSelectedGuardian(data);
@@ -348,6 +363,7 @@ export default function ParentManagementPage() {
             setSubmitting(true);
             const res = await fetchApi("/parent/admin/guardians", {
                 method: "POST",
+                headers: authHeaders,
                 body: JSON.stringify(guardianForm)
             });
 
@@ -376,6 +392,7 @@ export default function ParentManagementPage() {
             setSubmitting(true);
             const res = await fetchApi(`/parent/admin/guardians/${selectedGuardian.id}`, {
                 method: "PUT",
+                headers: authHeaders,
                 body: JSON.stringify(guardianForm)
             });
 
@@ -407,6 +424,7 @@ export default function ParentManagementPage() {
             setSubmitting(true);
             const res = await fetchApi("/parent/admin/link", {
                 method: "POST",
+                headers: authHeaders,
                 body: JSON.stringify(linkForm)
             });
 
@@ -436,6 +454,7 @@ export default function ParentManagementPage() {
             setSubmitting(true);
             const res = await fetchApi(`/parent/admin/link/${targetRelationship.parentId}/${targetRelationship.studentId}`, {
                 method: "PUT",
+                headers: authHeaders,
                 body: JSON.stringify({
                     relationship: targetRelationship.relationship,
                     isPrimary: targetRelationship.isPrimary,
@@ -466,7 +485,8 @@ export default function ParentManagementPage() {
         try {
             setSubmitting(true);
             const res = await fetchApi(`/parent/admin/link/${targetRelationship.parentId}/${targetRelationship.studentId}`, {
-                method: "DELETE"
+                method: "DELETE",
+                headers: authHeaders
             });
 
             if (res.ok) {

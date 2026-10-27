@@ -88,8 +88,14 @@ export default function SchoolAdminNavigation({
             if (pathname.startsWith("/dashboard/communication") || pathname.startsWith("/dashboard/directives") || pathname.startsWith("/dashboard/data-requests")) next["communication"] = true;
             if (pathname.startsWith("/dashboard/improvement")) next["improvement"] = true;
             if (pathname.startsWith("/dashboard/reports")) next["reports"] = true;
-            if (pathname.startsWith("/dashboard/ai-leadership")) next["aiLeadership"] = true;
-            if (pathname.startsWith("/dashboard/users-permissions")) next["usersPermissions"] = true;
+            if (pathname.startsWith("/dashboard/ai-leadership")) {
+                next["aiLeadership"] = true;
+                next["ai-leadership"] = true;
+            }
+            if (pathname.startsWith("/dashboard/users-permissions")) {
+                next["usersPermissions"] = true;
+                next["users-permissions"] = true;
+            }
             if (pathname.startsWith("/dashboard/operations")) next["operations"] = true;
             if (pathname.startsWith("/dashboard/vice-principal/support")) next["vpSupport"] = true;
             return next;

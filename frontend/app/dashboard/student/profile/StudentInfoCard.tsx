@@ -46,7 +46,7 @@ export default function StudentInfoCard() {
         </div>
       </div>
 
-      <div className="mb-5 flex flex-col items-center gap-3 rounded-2xl border border-gray-200 bg-gray-50 p-4 sm:flex-row">
+      <div className="group mb-5 flex flex-col items-center gap-3 rounded-2xl border border-gray-200 bg-gray-50 p-4 sm:flex-row transition-all duration-300 hover:border-[#4085b3] hover:bg-white hover:shadow-xs">
         {photoUrl ? (
           <img src={photoUrl} alt={profile.fullName} className="h-20 w-20 rounded-full border-2 border-white object-cover shadow-sm" />
         ) : (
@@ -56,7 +56,7 @@ export default function StudentInfoCard() {
         )}
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-gray-500">Student</p>
-          <p className="text-xl font-bold text-gray-900">{profile.fullName}</p>
+          <p className="text-xl font-bold text-gray-900 group-hover:text-[#4085b3] transition-colors">{profile.fullName}</p>
           <p className="text-sm text-gray-600">{profile.studentId}</p>
         </div>
       </div>

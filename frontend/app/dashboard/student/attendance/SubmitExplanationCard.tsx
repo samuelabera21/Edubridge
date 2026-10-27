@@ -490,10 +490,10 @@ export default function SubmitExplanationCard() {
                 return (
                   <div
                     key={item.id}
-                    className="rounded-xl border border-slate-200 bg-slate-50/50 p-4 transition hover:bg-slate-50"
+                    className="group rounded-xl border border-slate-200 bg-white p-4 shadow-2xs hover:border-[#4085b3] hover:shadow-xs transition-all duration-300"
                   >
                     <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold text-slate-900">
+                      <span className="text-xs font-bold text-slate-900 group-hover:text-[#4085b3] transition-colors">
                         Absence: {absDate}
                       </span>
                       {isResolved ? (

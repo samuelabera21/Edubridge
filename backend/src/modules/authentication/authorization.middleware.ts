@@ -34,6 +34,21 @@ export function requirePermission(permissionName: string | string[]) {
                 });
             }
 
+            // Leadership roles have administrative oversight
+            const leadershipRole = await prisma.roleAssignment.findFirst({
+                where: {
+                    userId: session.user.id,
+                    role: {
+                        name: { in: ["ADMIN", "SCHOOL_ADMIN", "ADMINISTRATOR", "VICE_PRINCIPAL"] }
+                    }
+                }
+            });
+
+            if (leadershipRole) {
+                (req as any).user = session.user;
+                return next();
+            }
+
             const permissionNames = Array.isArray(permissionName) ? permissionName : [permissionName];
 
             const permission = await prisma.rolePermission.findFirst({
