@@ -93,25 +93,32 @@ export class AiAnalyticsService {
     }
 
     /**
-     * Resilient content generation with multi-model fallback (e.g. gemini-3.8-flash -> gemini-3.5-flash -> gemini-flash-latest)
+     * Resilient content generation with multi-model fallback prioritizing high-speed, available models
      */
     private static async generateContentWithFallback(prompt: string): Promise<string> {
         const ai = this.getClient();
-        const models = ["gemini-3.8-flash", "gemini-3.5-flash", "gemini-flash-latest"];
+        const models = ["gemini-flash-lite-latest", "gemini-3.5-flash-lite", "gemini-flash-latest"];
         let lastError: any = null;
 
         for (const model of models) {
             try {
-                const response = await ai.models.generateContent({
+                // Enforce a strict 15s timeout per model to prevent Next.js proxy timeouts
+                const generatePromise = ai.models.generateContent({
                     model,
                     contents: prompt
                 });
+
+                const timeoutPromise = new Promise<never>((_, reject) =>
+                    setTimeout(() => reject(new Error(`Model ${model} timed out after 15s`)), 15000)
+                );
+
+                const response = await Promise.race([generatePromise, timeoutPromise]);
                 if (response.text) {
                     return response.text;
                 }
             } catch (err: any) {
                 lastError = err;
-                console.warn(`[AiAnalytics] Model ${model} encountered issue (${err.message || err.status}), falling back...`);
+                console.warn(`[AiAnalytics] Model ${model} issue: ${err.message || err.status}, trying fallback...`);
             }
         }
 
