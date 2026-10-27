@@ -199,20 +199,20 @@ export default function EmisAiChatDrawer({
             {/* Slide-over Drawer */}
             <div className="relative w-full sm:max-w-xl md:max-w-2xl bg-white h-full shadow-2xl flex flex-col z-10 animate-in slide-in-from-right duration-300">
                 {/* Header */}
-                <div className="px-5 py-4 border-b border-slate-200 bg-gradient-to-r from-slate-900 via-slate-800 to-[#1e3a5f] text-white flex items-center justify-between shrink-0">
+                <div className="px-5 py-4 border-b border-blue-900/40 bg-gradient-to-r from-[#0f2847] via-[#1d4ed8] to-[#2563eb] text-white flex items-center justify-between shrink-0 shadow-md">
                     <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-[#4085b3] to-cyan-400 flex items-center justify-center shadow-md">
-                            <Sparkles className="w-5 h-5 text-white animate-pulse" />
+                        <div className="w-10 h-10 rounded-xl bg-white/15 backdrop-blur-md border border-white/30 flex items-center justify-center shadow-inner">
+                            <Sparkles className="w-5 h-5 text-cyan-200 animate-pulse" />
                         </div>
                         <div>
                             <div className="flex items-center gap-2">
-                                <h2 className="font-bold text-base tracking-tight text-white">EMIS Executive AI</h2>
-                                <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                                <h2 className="font-bold text-base tracking-tight text-white drop-shadow-xs">EMIS Executive AI</h2>
+                                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-white/20 text-cyan-100 border border-white/30 tracking-wider">
                                     Gemini 2.5 Flash
                                 </span>
                             </div>
-                            <div className="flex items-center gap-2 text-xs text-slate-300 mt-0.5">
-                                <Building2 className="w-3.5 h-3.5 text-cyan-400" />
+                            <div className="flex items-center gap-1.5 text-xs text-blue-100/90 mt-0.5 font-medium">
+                                <Building2 className="w-3.5 h-3.5 text-cyan-300" />
                                 <span>
                                     {scopeInfo ? `${scopeInfo.level} • ${scopeInfo.name}` : "National Hierarchy"}
                                 </span>
@@ -225,7 +225,7 @@ export default function EmisAiChatDrawer({
                             <button
                                 type="button"
                                 onClick={handleClearChat}
-                                className="p-2 text-slate-400 hover:text-white hover:bg-slate-700/60 rounded-lg transition-colors cursor-pointer"
+                                className="p-2 text-blue-100 hover:text-white hover:bg-white/15 rounded-lg transition-colors cursor-pointer"
                                 title="Clear conversation"
                             >
                                 <RefreshCw className="w-4 h-4" />
@@ -234,7 +234,7 @@ export default function EmisAiChatDrawer({
                         <button
                             type="button"
                             onClick={onClose}
-                            className="p-2 text-slate-400 hover:text-white hover:bg-slate-700/60 rounded-lg transition-colors cursor-pointer"
+                            className="p-2 text-blue-100 hover:text-white hover:bg-white/15 rounded-lg transition-colors cursor-pointer"
                             title="Close chat"
                         >
                             <X className="w-5 h-5" />
@@ -260,7 +260,7 @@ export default function EmisAiChatDrawer({
                                 <Bot className="w-8 h-8" />
                             </div>
                             <div>
-                                <h3 className="font-semibold text-slate-900 text-base">Ask EMIS Natural Language AI</h3>
+                                <h3 className="font-semibold text-slate-900 text-base">Edu AI</h3>
                                 <p className="text-xs text-slate-500 mt-1 leading-relaxed">
                                     Ask any question about schools, teachers, students, regional counts, or educational directives. The AI converts your question into live verified database queries.
                                 </p>
@@ -306,11 +306,10 @@ export default function EmisAiChatDrawer({
                             <div className={`max-w-[85%] space-y-2.5 ${msg.role === "user" ? "items-end" : "items-start"}`}>
                                 {/* Bubble */}
                                 <div
-                                    className={`p-3.5 rounded-2xl text-xs sm:text-sm leading-relaxed ${
-                                        msg.role === "user"
-                                            ? "bg-[#4085b3] text-white rounded-tr-none shadow-sm font-medium"
-                                            : "bg-slate-50 border border-slate-200 text-slate-900 rounded-tl-none shadow-sm"
-                                    }`}
+                                    className={`p-3.5 rounded-2xl text-xs sm:text-sm leading-relaxed ${msg.role === "user"
+                                        ? "bg-gradient-to-r from-[#1d4ed8] to-[#2563eb] text-white rounded-tr-none shadow-md font-medium"
+                                        : "bg-slate-50 border border-slate-200 text-slate-900 rounded-tl-none shadow-sm"
+                                        }`}
                                 >
                                     <p className="whitespace-pre-wrap">{msg.content}</p>
 
@@ -482,12 +481,12 @@ export default function EmisAiChatDrawer({
                             placeholder="Ask EMIS AI (e.g. How many schools have below 100 teachers?)..."
                             rows={2}
                             disabled={loading}
-                            className="w-full text-xs sm:text-sm pl-3.5 pr-12 py-2.5 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-[#4085b3] focus:border-transparent resize-none placeholder:text-slate-400 bg-slate-50/50"
+                            className="w-full text-xs sm:text-sm pl-3.5 pr-12 py-2.5 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-[#2563eb] focus:border-transparent resize-none placeholder:text-slate-400 bg-slate-50/50"
                         />
                         <button
                             type="submit"
                             disabled={!input.trim() || loading}
-                            className="absolute right-2.5 bottom-3.5 p-2 rounded-lg bg-[#4085b3] hover:bg-[#32698e] text-white disabled:opacity-40 disabled:hover:bg-[#4085b3] transition-colors cursor-pointer"
+                            className="absolute right-2.5 bottom-3.5 p-2 rounded-lg bg-gradient-to-r from-[#1d4ed8] to-[#2563eb] hover:from-[#1e40af] hover:to-[#1d4ed8] text-white shadow-md hover:shadow-lg hover:scale-105 active:scale-95 disabled:opacity-40 disabled:hover:scale-100 transition-all cursor-pointer"
                             title="Send query"
                         >
                             <Send className="w-4 h-4" />
