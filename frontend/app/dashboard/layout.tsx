@@ -821,6 +821,11 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
                         {children}
                     </div>
                 </main>
+
+                {/* Floating EMIS Executive AI Assistant for Administrative Workspaces */}
+                {!isStudentRoute && !isParentRoute && (
+                    <EmisAiAssistant variant="floating" buttonLabel="Ask EMIS AI" />
+                )}
             </div>
         </div>
     );
