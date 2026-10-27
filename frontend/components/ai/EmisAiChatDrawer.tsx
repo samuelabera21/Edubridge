@@ -10,10 +10,10 @@ import {
     Database,
     RotateCcw,
     CornerDownLeft,
-    Table as TableIcon,
     Check,
     Copy,
-    Building2
+    Maximize2,
+    Minimize2
 } from "lucide-react";
 import { fetchApi } from "../../lib/api";
 
@@ -59,9 +59,11 @@ export default function EmisAiChatDrawer({
     const [scopeInfo, setScopeInfo] = useState<{ level: string; name: string } | null>(null);
     const [expandedSqlId, setExpandedSqlId] = useState<string | null>(null);
     const [copiedSqlId, setCopiedSqlId] = useState<string | null>(null);
+    const [isExpanded, setIsExpanded] = useState(false);
 
+    const cardRef = useRef<HTMLDivElement>(null);
     const chatEndRef = useRef<HTMLDivElement>(null);
-    const inputRef = useRef<HTMLTextAreaElement>(null);
+    const inputRef = useRef<HTMLInputElement>(null);
 
     const scrollToBottom = () => {
         chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -117,103 +119,132 @@ export default function EmisAiChatDrawer({
         }
     }, [initialQuestion, isOpen]);
 
-    const handleSubmit = async (questionText?: string) => {
-        const query = (questionText || input).trim();
-        if (!query || loading) return;
-
-        const userMsgId = `msg-${Date.now()}`;
-        const newMsg: ChatMessage = {
-            id: userMsgId,
-            role: "user",
-            content: query,
-            timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+    // Close on escape key
+    useEffect(() => {
+        if (!isOpen) return;
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === "Escape") {
+                onClose();
+            }
         };
+        window.addEventListener("keydown", handleKeyDown);
+        return () => window.removeEventListener("keydown", handleKeyDown);
+    }, [isOpen, onClose]);
 
-        setMessages(prev => [...prev, newMsg]);
+    const handleSubmit = async (questionText?: string) => {
+        const queryText = (questionText || input).trim();
+        if (!queryText || loading) return;
+
+        const userMsgId = `user-${Date.now()}`;
+        const newMessages: ChatMessage[] = [
+            ...messages,
+            {
+                id: userMsgId,
+                role: "user",
+                content: queryText,
+                timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+            }
+        ];
+
+        setMessages(newMessages);
         setInput("");
         setLoading(true);
 
         try {
             const res = await fetchApi("/ai-analytics/query", {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ question: query })
+                body: JSON.stringify({ question: queryText })
             });
 
-            const json = await res.json();
-            if (!res.ok || !json.success) {
-                throw new Error(json.error || "Unable to complete request.");
+            const data = await res.json();
+
+            if (data.success && data.data) {
+                const assistantMsgId = `assistant-${Date.now()}`;
+                const assistantMsg: ChatMessage = {
+                    id: assistantMsgId,
+                    role: "assistant",
+                    content: data.data.executiveSummary || "Analysis completed successfully.",
+                    metrics: data.data.metrics || [],
+                    table: data.data.table || undefined,
+                    sql: data.data.sql || undefined,
+                    executionTimeMs: data.data.executionTimeMs,
+                    suggestedFollowUps: data.data.suggestedFollowUps || [],
+                    timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+                };
+
+                setMessages([...newMessages, assistantMsg]);
+            } else {
+                setMessages([
+                    ...newMessages,
+                    {
+                        id: `error-${Date.now()}`,
+                        role: "assistant",
+                        content: data.error?.message || "I encountered an issue querying the database. Please try rephrasing your request.",
+                        timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+                    }
+                ]);
             }
-
-            const data = json.data;
-            const assistantMsg: ChatMessage = {
-                id: `ai-${Date.now()}`,
-                role: "assistant",
-                content: data.summary,
-                metrics: data.keyMetrics,
-                table: data.tableData,
-                sql: data.sqlQuery,
-                executionTimeMs: data.executionTimeMs,
-                suggestedFollowUps: data.suggestedFollowUps,
-                timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
-            };
-
-            setMessages(prev => [...prev, assistantMsg]);
-        } catch (error: any) {
-            const errorMsg: ChatMessage = {
-                id: `ai-${Date.now()}`,
-                role: "assistant",
-                content: error.message || "An unexpected error occurred while analyzing records.",
-                timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
-            };
-            setMessages(prev => [...prev, errorMsg]);
+        } catch (err) {
+            console.error("AI query execution failed", err);
+            setMessages([
+                ...newMessages,
+                {
+                    id: `error-${Date.now()}`,
+                    role: "assistant",
+                    content: "Unable to reach EMIS AI services. Please verify your network connection and retry.",
+                    timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+                }
+            ]);
         } finally {
             setLoading(false);
         }
     };
 
-    const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-        if (e.key === "Enter" && !e.shiftKey) {
-            e.preventDefault();
-            handleSubmit();
-        }
-    };
-
-    const handleCopySql = (id: string, sql: string) => {
-        navigator.clipboard.writeText(sql);
-        setCopiedSqlId(id);
-        setTimeout(() => setCopiedSqlId(null), 1800);
+    const handleCopySql = (msgId: string, sqlText: string) => {
+        navigator.clipboard.writeText(sqlText);
+        setCopiedSqlId(msgId);
+        setTimeout(() => setCopiedSqlId(null), 2000);
     };
 
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 z-50 flex justify-end">
-            {/* Backdrop */}
+        <div className="fixed inset-0 z-50 pointer-events-none select-text">
+            {/* Subtle backdrop overlay for mobile screens */}
             <div
-                className="fixed inset-0 bg-slate-900/30 backdrop-blur-xs transition-opacity"
+                className="fixed inset-0 bg-slate-900/10 backdrop-blur-[2px] pointer-events-auto sm:hidden transition-opacity"
                 onClick={onClose}
-                aria-hidden="true"
             />
 
-            {/* Slide-over Drawer Panel */}
-            <div className="relative w-full sm:max-w-xl md:max-w-2xl bg-white h-full shadow-2xl flex flex-col z-10 animate-in slide-in-from-right duration-250 border-l border-slate-200">
-                {/* Clean Modern Minimal Header */}
-                <div className="px-5 py-3.5 border-b border-slate-200/80 bg-white flex items-center justify-between shrink-0">
-                    <div className="flex items-center gap-2.5">
-                        <div className="w-8 h-8 rounded-lg bg-blue-50 border border-blue-100 flex items-center justify-center text-[#2563eb]">
-                            <Sparkles className="w-4 h-4 text-[#2563eb]" />
-                        </div>
-                        <div>
-                            <div className="flex items-center gap-2">
-                                <h2 className="font-semibold text-sm tracking-tight text-slate-900">EMIS Copilot</h2>
-                                {scopeInfo && (
-                                    <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-slate-100 text-slate-600 border border-slate-200">
-                                        {scopeInfo.level === "FEDERAL" ? "National" : scopeInfo.name}
-                                    </span>
-                                )}
-                            </div>
-                        </div>
+            {/* Canva-Style Floating Popover Card */}
+            <div
+                ref={cardRef}
+                className={`fixed pointer-events-auto bg-white transition-all duration-300 ease-out flex flex-col overflow-hidden border border-slate-100 shadow-[0_20px_50px_rgba(15,23,42,0.22),0_0_1px_1px_rgba(15,23,42,0.06)] ${
+                    isExpanded
+                        ? "inset-4 sm:inset-y-6 sm:right-6 sm:left-auto sm:w-[560px] md:w-[620px] rounded-[28px]"
+                        : "bottom-22 right-4 sm:right-6 w-[calc(100vw-2rem)] sm:w-[410px] md:w-[430px] h-[580px] max-h-[82vh] rounded-[28px]"
+                } animate-in fade-in zoom-in-95 duration-200`}
+            >
+                {/* Ethereal Gradient Header matching Canva's pastel ambiance */}
+                <div className="px-5 pt-3.5 pb-2.5 bg-gradient-to-b from-[#e0f2fe]/70 via-[#f0f9ff]/40 to-white flex items-center justify-between shrink-0 select-none">
+                    <div className="flex items-center gap-2">
+                        <button
+                            type="button"
+                            onClick={() => setIsExpanded(!isExpanded)}
+                            className="p-1.5 text-slate-500 hover:text-slate-800 hover:bg-white/80 rounded-lg transition-colors cursor-pointer"
+                            title={isExpanded ? "Collapse to floating card" : "Expand window"}
+                        >
+                            {isExpanded ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+                        </button>
+                        <span className="text-xs font-semibold text-slate-700 tracking-tight flex items-center gap-1.5">
+                            <Sparkles className="w-3.5 h-3.5 text-[#2563eb]" />
+                            <span>EduBridge AI</span>
+                        </span>
+                        {scopeInfo && (
+                            <span className="px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider bg-blue-100/70 text-blue-800">
+                                {scopeInfo.level === "FEDERAL" ? "National" : scopeInfo.name}
+                            </span>
+                        )}
                     </div>
 
                     <div className="flex items-center gap-1">
@@ -221,8 +252,8 @@ export default function EmisAiChatDrawer({
                             <button
                                 type="button"
                                 onClick={() => setMessages([])}
-                                className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-md transition-colors cursor-pointer"
-                                title="Clear chat"
+                                className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-full transition-colors cursor-pointer"
+                                title="Clear conversation"
                             >
                                 <RotateCcw className="w-3.5 h-3.5" />
                             </button>
@@ -230,7 +261,7 @@ export default function EmisAiChatDrawer({
                         <button
                             type="button"
                             onClick={onClose}
-                            className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-md transition-colors cursor-pointer"
+                            className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-full transition-colors cursor-pointer"
                             title="Close"
                         >
                             <X className="w-4 h-4" />
@@ -238,36 +269,41 @@ export default function EmisAiChatDrawer({
                     </div>
                 </div>
 
-                {/* Messages Feed */}
-                <div className="flex-1 overflow-y-auto px-5 py-6 space-y-6">
-                    {/* Clean Empty State */}
+                {/* Content Stream / Empty State */}
+                <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
+                    {/* Canva Style Hero Greeting (Empty State) */}
                     {messages.length === 0 && (
-                        <div className="py-10 max-w-md mx-auto text-center space-y-6">
-                            <div className="w-12 h-12 rounded-2xl bg-blue-50 border border-blue-100 flex items-center justify-center text-[#2563eb] mx-auto shadow-xs">
-                                <Sparkles className="w-6 h-6 text-[#2563eb]" />
-                            </div>
-                            <div className="space-y-1">
-                                <h3 className="font-semibold text-slate-900 text-base">Educational Intelligence</h3>
-                                <p className="text-xs text-slate-500 max-w-sm mx-auto leading-relaxed">
-                                    Ask natural questions about institutions, faculty, student enrollment, and regional administrative metrics.
+                        <div className="h-full flex flex-col justify-center py-6 px-2 text-center space-y-4">
+                            <div className="space-y-1.5">
+                                <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight leading-snug">
+                                    Get{" "}
+                                    <span className="bg-gradient-to-r from-[#2563eb] to-[#0ea5e9] bg-clip-text text-transparent">
+                                        intelligence
+                                    </span>{" "}
+                                    with
+                                    <br />
+                                    anything EduBridge
+                                </h2>
+                                <p className="text-xs text-slate-500 font-medium">
+                                    Fast institutional insights. Powered by Gemini AI.
                                 </p>
                             </div>
 
-                            {/* Clean Starter Prompt Chips */}
+                            {/* Starter prompt cards */}
                             {prompts.length > 0 && (
-                                <div className="pt-2 text-left space-y-2">
-                                    <span className="text-[11px] font-medium uppercase tracking-wider text-slate-400 px-1">
-                                        Suggested inquiries
+                                <div className="pt-2 text-left space-y-2 max-w-sm mx-auto w-full">
+                                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 px-1">
+                                        Suggested questions
                                     </span>
                                     <div className="flex flex-col gap-1.5">
-                                        {prompts.map((p, idx) => (
+                                        {prompts.slice(0, 4).map((p, idx) => (
                                             <button
                                                 key={idx}
                                                 type="button"
                                                 onClick={() => handleSubmit(p)}
-                                                className="text-left text-xs px-3.5 py-2.5 rounded-xl border border-slate-200/90 bg-white hover:bg-blue-50/50 hover:border-blue-300 hover:text-blue-700 text-slate-700 transition-all shadow-2xs flex items-center justify-between group cursor-pointer"
+                                                className="text-left text-xs px-3.5 py-2.5 rounded-2xl border border-slate-200/80 bg-white hover:bg-blue-50/50 hover:border-blue-300 hover:text-blue-700 text-slate-700 transition-all shadow-2xs flex items-center justify-between group cursor-pointer"
                                             >
-                                                <span>{p}</span>
+                                                <span className="line-clamp-1">{p}</span>
                                                 <CornerDownLeft className="w-3 h-3 text-slate-300 group-hover:text-blue-500 shrink-0 ml-2" />
                                             </button>
                                         ))}
@@ -278,13 +314,13 @@ export default function EmisAiChatDrawer({
                     )}
 
                     {/* Messages Flow */}
-                    {messages.map(msg => (
+                    {messages.map((msg) => (
                         <div key={msg.id} className="space-y-2">
-                            {/* USER MESSAGE: Compact, sleek pill on right */}
+                            {/* USER MESSAGE: Compact royal blue bubble */}
                             {msg.role === "user" ? (
                                 <div className="flex justify-end">
-                                    <div className="max-w-[80%]">
-                                        <div className="px-4 py-2.5 rounded-2xl rounded-br-sm bg-[#2563eb] text-white text-xs sm:text-sm font-medium shadow-xs leading-relaxed">
+                                    <div className="max-w-[85%]">
+                                        <div className="px-4 py-2.5 rounded-2xl rounded-br-sm bg-[#2563eb] text-white text-xs sm:text-sm font-medium shadow-2xs leading-relaxed">
                                             {msg.content}
                                         </div>
                                         <span className="block text-[10px] text-slate-400 text-right mt-1 px-1">
@@ -293,11 +329,11 @@ export default function EmisAiChatDrawer({
                                     </div>
                                 </div>
                             ) : (
-                                /* ASSISTANT MESSAGE: Clean, unboxed natural flow */
-                                <div className="space-y-3 pt-1">
+                                /* ASSISTANT MESSAGE: Natural clean flow */
+                                <div className="space-y-2.5 pt-1">
                                     <div className="flex items-center gap-1.5 text-xs text-slate-400">
                                         <Sparkles className="w-3.5 h-3.5 text-[#2563eb]" />
-                                        <span className="font-semibold text-slate-700">Copilot</span>
+                                        <span className="font-semibold text-slate-700">EduBridge AI</span>
                                         <span>•</span>
                                         <span className="text-[10px]">{msg.timestamp}</span>
                                         {msg.executionTimeMs && (
@@ -311,7 +347,7 @@ export default function EmisAiChatDrawer({
                                     </div>
 
                                     {/* Direct Text Output */}
-                                    <div className="text-sm text-slate-800 leading-relaxed pl-5 whitespace-pre-wrap">
+                                    <div className="text-xs sm:text-sm text-slate-800 leading-relaxed pl-5 whitespace-pre-wrap">
                                         {msg.content}
                                     </div>
 
@@ -321,10 +357,10 @@ export default function EmisAiChatDrawer({
                                             {msg.metrics.map((m, idx) => (
                                                 <div
                                                     key={idx}
-                                                    className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-blue-50/70 border border-blue-100 text-xs"
+                                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-50/80 border border-blue-100 text-xs"
                                                 >
                                                     <span className="text-slate-500 font-medium">{m.label}:</span>
-                                                    <span className="font-bold text-[#1d4ed8] text-sm">{m.value}</span>
+                                                    <span className="font-bold text-[#1d4ed8]">{m.value}</span>
                                                 </div>
                                             ))}
                                         </div>
@@ -338,7 +374,7 @@ export default function EmisAiChatDrawer({
                                                     <thead className="bg-slate-50 text-slate-600 font-semibold border-b border-slate-200">
                                                         <tr>
                                                             {msg.table.headers.map((h, hIdx) => (
-                                                                <th key={hIdx} className="px-3.5 py-2 whitespace-nowrap">
+                                                                <th key={hIdx} className="px-3 py-1.5 whitespace-nowrap">
                                                                     {h}
                                                                 </th>
                                                             ))}
@@ -348,7 +384,7 @@ export default function EmisAiChatDrawer({
                                                         {msg.table.rows.map((row, rIdx) => (
                                                             <tr key={rIdx} className="hover:bg-slate-50/60">
                                                                 {row.map((cell, cIdx) => (
-                                                                    <td key={cIdx} className="px-3.5 py-2 text-slate-700 whitespace-nowrap">
+                                                                    <td key={cIdx} className="px-3 py-1.5 text-slate-700 whitespace-nowrap">
                                                                         {cell === null ? "—" : String(cell)}
                                                                     </td>
                                                                 ))}
@@ -360,7 +396,7 @@ export default function EmisAiChatDrawer({
                                         </div>
                                     )}
 
-                                    {/* Delicate Query Details Expander */}
+                                    {/* Query Details Expander */}
                                     {msg.sql && (
                                         <div className="pl-5 pt-0.5">
                                             <button
@@ -374,7 +410,7 @@ export default function EmisAiChatDrawer({
                                             </button>
 
                                             {expandedSqlId === msg.id && (
-                                                <div className="mt-1.5 p-3 rounded-lg bg-slate-900 text-slate-200 font-mono text-[10px] overflow-x-auto relative group">
+                                                <div className="mt-1.5 p-3 rounded-xl bg-slate-900 text-slate-200 font-mono text-[10px] overflow-x-auto relative group">
                                                     <div className="flex justify-between items-center pb-1 mb-1.5 border-b border-slate-800 text-[9px] text-slate-400">
                                                         <span>PostgreSQL Query</span>
                                                         <button
@@ -401,9 +437,9 @@ export default function EmisAiChatDrawer({
                                         </div>
                                     )}
 
-                                    {/* Compact Wrapping Follow-up Tag Chips */}
+                                    {/* Follow-up Question Chips */}
                                     {msg.suggestedFollowUps && msg.suggestedFollowUps.length > 0 && (
-                                        <div className="pl-5 pt-1.5 flex flex-wrap gap-1.5">
+                                        <div className="pl-5 pt-1 flex flex-wrap gap-1.5">
                                             {msg.suggestedFollowUps.map((fu, fIdx) => (
                                                 <button
                                                     key={fIdx}
@@ -421,7 +457,7 @@ export default function EmisAiChatDrawer({
                         </div>
                     ))}
 
-                    {/* Clean Subtle Reasoning / Thinking State */}
+                    {/* Reasoning Indicator */}
                     {loading && (
                         <div className="flex items-center gap-2.5 text-xs text-slate-500 pl-1 py-1">
                             <span className="relative flex h-2 w-2">
@@ -435,42 +471,39 @@ export default function EmisAiChatDrawer({
                     <div ref={chatEndRef} />
                 </div>
 
-                {/* Modern Command Bar Input (Linear Style) */}
-                <div className="p-4 border-t border-slate-200/80 bg-white">
+                {/* Canva Style Floating Rounded Input Bar */}
+                <div className="p-4 pt-2 bg-white border-t border-slate-100 shrink-0">
                     <form
-                        onSubmit={e => {
+                        onSubmit={(e) => {
                             e.preventDefault();
                             handleSubmit();
                         }}
-                        className="relative rounded-2xl border border-slate-200 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-500/15 bg-white transition-all shadow-2xs"
+                        className="relative flex items-center rounded-full border border-slate-200/90 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-100 bg-slate-50/70 hover:bg-white focus-within:bg-white transition-all shadow-2xs px-4 py-1.5"
                     >
-                        <textarea
+                        <input
                             ref={inputRef}
+                            type="text"
                             value={input}
-                            onChange={e => setInput(e.target.value)}
-                            onKeyDown={handleKeyDown}
-                            placeholder="Ask EMIS Copilot (e.g. How many schools have below 100 teachers?)..."
-                            rows={2}
+                            onChange={(e) => setInput(e.target.value)}
+                            placeholder="How can I help?"
                             disabled={loading}
-                            className="w-full text-xs sm:text-sm px-3.5 pt-3 pb-8 rounded-2xl border-0 focus:outline-none focus:ring-0 resize-none placeholder:text-slate-400 bg-transparent text-slate-800"
+                            className="w-full text-xs sm:text-sm bg-transparent border-none outline-none focus:outline-none focus:ring-0 text-slate-800 placeholder:text-slate-400 py-1"
                         />
 
-                        {/* Bottom Action Bar inside the Input Box */}
-                        <div className="absolute left-3.5 right-2.5 bottom-2 flex items-center justify-between">
-                            <span className="text-[10px] text-slate-400 select-none">
-                                ↵ to send • Shift+↵ for new line
-                            </span>
-
-                            <button
-                                type="submit"
-                                disabled={!input.trim() || loading}
-                                className="w-7 h-7 rounded-lg bg-[#2563eb] hover:bg-[#1d4ed8] text-white flex items-center justify-center transition-all disabled:opacity-30 disabled:hover:bg-[#2563eb] cursor-pointer shadow-xs"
-                                title="Send query"
-                            >
-                                <ArrowUp className="w-4 h-4" />
-                            </button>
-                        </div>
+                        <button
+                            type="submit"
+                            disabled={!input.trim() || loading}
+                            className="w-7 h-7 ml-2 rounded-full bg-[#2563eb] hover:bg-[#1d4ed8] text-white flex items-center justify-center transition-all disabled:opacity-30 disabled:hover:bg-[#2563eb] shrink-0 cursor-pointer shadow-xs"
+                            title="Send query"
+                        >
+                            <ArrowUp className="w-3.5 h-3.5" />
+                        </button>
                     </form>
+
+                    {/* Centered Footnote matching Canva */}
+                    <p className="text-[10px] text-slate-400 text-center pt-2 select-none">
+                        AI can make mistakes. Verify institutional figures.
+                    </p>
                 </div>
             </div>
         </div>

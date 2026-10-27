@@ -71,7 +71,7 @@ export default function EmisAiAssistant({
 
     const handleTriggerClick = () => {
         if (variant === "floating") {
-            setIsOpen(true);
+            setIsOpen((prev) => !prev);
         } else {
             // Trigger through global coordinator
             openEmisAiAssistant(initialQuestion);
@@ -80,47 +80,30 @@ export default function EmisAiAssistant({
 
     return (
         <>
-            {/* 1. FLOATING ULTRA-MODERN BLUE BUTTON (Bottom-Right) */}
+            {/* 1. CANVA-STYLE CIRCULAR BLUE BUTTON (Bottom-Right) */}
             {variant === "floating" && (
                 <div className="fixed bottom-6 right-6 z-40 group select-none">
-                    {/* Ambient Glowing Outer Halo Ring (Idle Pulse) */}
-                    <div className="absolute inset-0 rounded-full bg-blue-500/30 blur-xl animate-ai-pulse-ring -z-10 pointer-events-none" />
+                    {/* Ambient Glowing Outer Halo Ring */}
+                    <div className="absolute inset-0 rounded-full bg-blue-500/25 blur-lg animate-ai-pulse-ring -z-10 pointer-events-none" />
 
                     <button
                         type="button"
                         onClick={handleTriggerClick}
-                        className={`relative overflow-hidden flex items-center gap-3 px-5 py-3 rounded-full bg-gradient-to-r from-[#1d4ed8] via-[#2563eb] to-[#4085b3] text-white font-medium shadow-[0_12px_28px_rgba(37,99,235,0.45)] hover:shadow-[0_18px_36px_rgba(37,99,235,0.65)] border border-blue-200/50 hover:border-white/80 hover:scale-105 active:scale-95 transition-all duration-300 animate-ai-float cursor-pointer ${className}`}
-                        title="Open EMIS Executive AI Assistant (Ctrl+K)"
-                        aria-label="Open EMIS Executive AI Assistant (Ctrl+K)"
+                        className={`relative flex items-center justify-center w-13 h-13 sm:w-14 sm:h-14 rounded-full bg-gradient-to-tr from-[#1d4ed8] via-[#2563eb] to-[#38bdf8] text-white shadow-[0_8px_24px_rgba(37,99,235,0.45)] hover:shadow-[0_12px_32px_rgba(37,99,235,0.65)] border border-blue-200/50 hover:border-white hover:scale-110 active:scale-95 transition-all duration-300 animate-ai-float cursor-pointer overflow-hidden ${className}`}
+                        title="Ask EMIS AI (Ctrl+K)"
+                        aria-label="Ask EMIS AI (Ctrl+K)"
                     >
                         {/* Continuous Ambient Light Shimmer Reflection */}
-                        <div className="absolute inset-0 w-1/2 h-full bg-gradient-to-r from-transparent via-white/25 to-transparent pointer-events-none animate-ai-shimmer" />
+                        <div className="absolute inset-0 w-full h-full bg-gradient-to-r from-transparent via-white/25 to-transparent pointer-events-none animate-ai-shimmer" />
 
-                        {/* Animated Icon with Glowing Ping */}
-                        <div className="relative flex items-center justify-center w-8 h-8 rounded-full bg-white/20 backdrop-blur-md shadow-inner shrink-0 group-hover:scale-110 group-hover:rotate-12 transition-transform duration-300">
-                            <Sparkles className="w-4 h-4 text-cyan-200" />
-                            {/* Live Active Beacon (Idle behavior) */}
-                            <span className="absolute -top-0.5 -right-0.5 flex h-2.5 w-2.5">
-                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-300 opacity-80" />
-                                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-cyan-400 border border-white" />
-                            </span>
-                        </div>
+                        {/* Centered Sparkles Icon */}
+                        <Sparkles className="w-6 h-6 text-white drop-shadow-xs group-hover:rotate-12 transition-transform duration-300" />
 
-                        {/* Label & Subtitle Badge */}
-                        <div className="flex flex-col text-left leading-none">
-                            <div className="flex items-center gap-1.5">
-                                <span className="text-sm font-bold tracking-tight text-white drop-shadow-xs">
-                                    {buttonLabel}
-                                </span>
-                                <span className="px-1.5 py-0.5 rounded-full text-[9px] font-extrabold uppercase tracking-wider bg-white/20 text-cyan-100 border border-white/30">
-                                    Flash
-                                </span>
-                            </div>
-                            <span className="text-[10px] text-blue-100/90 font-medium mt-0.5 flex items-center gap-1">
-                                <span>National Intelligence</span>
-                                <ArrowRight className="w-2.5 h-2.5 opacity-0 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all" />
-                            </span>
-                        </div>
+                        {/* Live Active Beacon */}
+                        <span className="absolute top-2.5 right-2.5 flex h-2.5 w-2.5">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-300 opacity-80" />
+                            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-cyan-400 border border-white" />
+                        </span>
                     </button>
                 </div>
             )}
