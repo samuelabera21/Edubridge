@@ -5,13 +5,8 @@ import {
     Sparkles,
     X,
     ArrowUp,
-    ChevronDown,
-    ChevronUp,
-    Database,
     RotateCcw,
     CornerDownLeft,
-    Check,
-    Copy,
     Maximize2,
     Minimize2
 } from "lucide-react";
@@ -57,8 +52,6 @@ export default function EmisAiChatDrawer({
     const [loadingStage, setLoadingStage] = useState("Analyzing institutional data...");
     const [prompts, setPrompts] = useState<string[]>([]);
     const [scopeInfo, setScopeInfo] = useState<{ level: string; name: string } | null>(null);
-    const [expandedSqlId, setExpandedSqlId] = useState<string | null>(null);
-    const [copiedSqlId, setCopiedSqlId] = useState<string | null>(null);
     const [isExpanded, setIsExpanded] = useState(false);
 
     const cardRef = useRef<HTMLDivElement>(null);
@@ -208,12 +201,6 @@ export default function EmisAiChatDrawer({
         } finally {
             setLoading(false);
         }
-    };
-
-    const handleCopySql = (msgId: string, sqlText: string) => {
-        navigator.clipboard.writeText(sqlText);
-        setCopiedSqlId(msgId);
-        setTimeout(() => setCopiedSqlId(null), 2000);
     };
 
     if (!isOpen) return null;
@@ -403,47 +390,6 @@ export default function EmisAiChatDrawer({
                                                     </tbody>
                                                 </table>
                                             </div>
-                                        </div>
-                                    )}
-
-                                    {/* Query Details Expander */}
-                                    {msg.sql && (
-                                        <div className="pl-5 pt-0.5">
-                                            <button
-                                                type="button"
-                                                onClick={() => setExpandedSqlId(expandedSqlId === msg.id ? null : msg.id)}
-                                                className="text-[11px] font-medium text-slate-400 hover:text-slate-600 inline-flex items-center gap-1 transition-colors cursor-pointer"
-                                            >
-                                                <Database className="w-3 h-3 text-slate-400" />
-                                                <span>{expandedSqlId === msg.id ? "Hide query" : "Query details"}</span>
-                                                {expandedSqlId === msg.id ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-                                            </button>
-
-                                            {expandedSqlId === msg.id && (
-                                                <div className="mt-1.5 p-3 rounded-xl bg-slate-900 text-slate-200 font-mono text-[10px] overflow-x-auto relative group">
-                                                    <div className="flex justify-between items-center pb-1 mb-1.5 border-b border-slate-800 text-[9px] text-slate-400">
-                                                        <span>PostgreSQL Query</span>
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => handleCopySql(msg.id, msg.sql!)}
-                                                            className="flex items-center gap-1 text-slate-300 hover:text-white cursor-pointer"
-                                                        >
-                                                            {copiedSqlId === msg.id ? (
-                                                                <>
-                                                                    <Check className="w-3 h-3 text-emerald-400" />
-                                                                    <span className="text-emerald-400">Copied</span>
-                                                                </>
-                                                            ) : (
-                                                                <>
-                                                                    <Copy className="w-3 h-3" />
-                                                                    <span>Copy</span>
-                                                                </>
-                                                            )}
-                                                        </button>
-                                                    </div>
-                                                    <code>{msg.sql}</code>
-                                                </div>
-                                            )}
                                         </div>
                                     )}
 
