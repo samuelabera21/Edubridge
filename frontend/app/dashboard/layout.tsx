@@ -556,9 +556,6 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
                 </div>
 
                 <div className="flex items-center space-x-2.5 sm:space-x-4">
-                    {!isStudentRoute && !isParentRoute && (
-                        <EmisAiAssistant variant="header-pill" buttonLabel="Ask EMIS AI" />
-                    )}
                     {/* In-App Notifications Bell for All Roles */}
                     <div className="relative">
                         <button 

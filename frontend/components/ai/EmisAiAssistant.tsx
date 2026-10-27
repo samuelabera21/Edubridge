@@ -80,29 +80,18 @@ export default function EmisAiAssistant({
 
     return (
         <>
-            {/* 1. CANVA-STYLE CIRCULAR BLUE BUTTON (Bottom-Right) */}
+            {/* 1. CANVA-STYLE CIRCULAR BLUE "?" BUTTON (Bottom-Right) */}
             {variant === "floating" && (
-                <div className="fixed bottom-6 right-6 z-40 group select-none">
-                    {/* Ambient Glowing Outer Halo Ring */}
-                    <div className="absolute inset-0 rounded-full bg-blue-500/25 blur-lg animate-ai-pulse-ring -z-10 pointer-events-none" />
-
+                <div className="fixed bottom-6 right-6 z-40 select-none">
                     <button
                         type="button"
                         onClick={handleTriggerClick}
-                        className={`relative flex items-center justify-center w-13 h-13 sm:w-14 sm:h-14 rounded-full bg-gradient-to-tr from-[#1d4ed8] via-[#2563eb] to-[#38bdf8] text-white shadow-[0_8px_24px_rgba(37,99,235,0.45)] hover:shadow-[0_12px_32px_rgba(37,99,235,0.65)] border border-blue-200/50 hover:border-white hover:scale-110 active:scale-95 transition-all duration-300 animate-ai-float cursor-pointer overflow-hidden ${className}`}
+                        className={`flex items-center justify-center w-12 h-12 sm:w-13 sm:h-13 rounded-full bg-[#2563eb] hover:bg-[#1d4ed8] text-white shadow-[0_8px_20px_rgba(37,99,235,0.35)] hover:shadow-[0_12px_28px_rgba(37,99,235,0.5)] hover:scale-105 active:scale-95 transition-all duration-200 cursor-pointer ${className}`}
                         title="Ask EMIS AI (Ctrl+K)"
                         aria-label="Ask EMIS AI (Ctrl+K)"
                     >
-                        {/* Continuous Ambient Light Shimmer Reflection */}
-                        <div className="absolute inset-0 w-full h-full bg-gradient-to-r from-transparent via-white/25 to-transparent pointer-events-none animate-ai-shimmer" />
-
-                        {/* Centered Sparkles Icon */}
-                        <Sparkles className="w-6 h-6 text-white drop-shadow-xs group-hover:rotate-12 transition-transform duration-300" />
-
-                        {/* Live Active Beacon */}
-                        <span className="absolute top-2.5 right-2.5 flex h-2.5 w-2.5">
-                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-300 opacity-80" />
-                            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-cyan-400 border border-white" />
+                        <span className="text-xl sm:text-2xl font-bold leading-none select-none font-sans">
+                            ?
                         </span>
                     </button>
                 </div>
