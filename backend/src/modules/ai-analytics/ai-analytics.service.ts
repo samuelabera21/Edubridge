@@ -93,6 +93,32 @@ export class AiAnalyticsService {
     }
 
     /**
+     * Resilient content generation with multi-model fallback (e.g. gemini-3.8-flash -> gemini-3.5-flash -> gemini-flash-latest)
+     */
+    private static async generateContentWithFallback(prompt: string): Promise<string> {
+        const ai = this.getClient();
+        const models = ["gemini-3.8-flash", "gemini-3.5-flash", "gemini-flash-latest"];
+        let lastError: any = null;
+
+        for (const model of models) {
+            try {
+                const response = await ai.models.generateContent({
+                    model,
+                    contents: prompt
+                });
+                if (response.text) {
+                    return response.text;
+                }
+            } catch (err: any) {
+                lastError = err;
+                console.warn(`[AiAnalytics] Model ${model} encountered issue (${err.message || err.status}), falling back...`);
+            }
+        }
+
+        throw lastError || new Error("All AI model candidates failed to generate response.");
+    }
+
+    /**
      * Translates a natural language question into PostgreSQL SELECT statement.
      */
     private static async generateSql(
@@ -100,8 +126,6 @@ export class AiAnalyticsService {
         scope: AccessibleOrganizationScope,
         previousError?: string
     ): Promise<string> {
-        const ai = this.getClient();
-
         const scopeContext = scope.currentOrganizationType === "FEDERAL"
             ? `SCOPE: FEDERAL (National). You may query all organization units and schools across the entire nation.`
             : `SCOPE: ${scope.currentOrganizationType} (Name: "${scope.currentOrganization.name}", ID: "${scope.currentOrganization.id}").
@@ -208,12 +232,7 @@ ${previousError ? `\nPREVIOUS ATTEMPT FAILED WITH ERROR: ${previousError}. Pleas
 
 USER QUESTION: "${question}"`;
 
-        const response = await ai.models.generateContent({
-            model: "gemini-2.5-flash",
-            contents: prompt
-        });
-
-        const rawText = response.text || "";
+        const rawText = await this.generateContentWithFallback(prompt);
         return this.validateAndSanitizeSql(rawText);
     }
 
@@ -227,8 +246,6 @@ USER QUESTION: "${question}"`;
         scope: AccessibleOrganizationScope,
         executionTimeMs: number
     ): Promise<AiAnalyticsResponse> {
-        const ai = this.getClient();
-
         // Safely stringify BigInt values from PostgreSQL
         const safeData = JSON.stringify(queryResult, (_, v) => typeof v === "bigint" ? Number(v) : v);
 
@@ -261,10 +278,34 @@ Return ONLY a valid JSON object matching this TypeScript structure (NO markdown 
 }
 If no table is appropriate (e.g., simple single count or total), omit tableData.`;
 
-        const response = await ai.models.generateContent({
-            model: "gemini-2.5-flash",
-            contents: prompt
-        });
+        let jsonText = "";
+        try {
+            jsonText = await this.generateContentWithFallback(prompt);
+        } catch (synthErr) {
+            console.warn("[AiAnalytics] Synthesis model error, falling back to direct data serialization:", synthErr);
+            return {
+                question,
+                summary: `Analysis completed: Retrieved ${queryResult.length} institutional record${queryResult.length === 1 ? "" : "s"} from the national database.`,
+                keyMetrics: queryResult.length > 0 && typeof queryResult[0] === "object"
+                    ? Object.entries(queryResult[0]).slice(0, 3).map(([k, v]) => ({ label: k, value: String(v) }))
+                    : [],
+                tableData: queryResult.length > 0 && typeof queryResult[0] === "object"
+                    ? {
+                        headers: Object.keys(queryResult[0]),
+                        rows: queryResult.slice(0, 10).map(r => Object.values(r))
+                    }
+                    : undefined,
+                suggestedFollowUps: [
+                    "How many schools have below 100 teachers?",
+                    "What is total student enrollment by region?",
+                    "List all active regional administrative units"
+                ],
+                sqlQuery: sql,
+                scopeLevel: scope.currentOrganizationType,
+                scopeName: scope.currentOrganization.name,
+                executionTimeMs
+            };
+        }
 
         let jsonText = (response.text || "").trim();
         jsonText = jsonText.replace(/^```json\s*/i, "").replace(/^```\s*/i, "").replace(/```$/i, "").trim();
