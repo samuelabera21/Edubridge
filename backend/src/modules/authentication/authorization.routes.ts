@@ -13,6 +13,7 @@ import {
 import {
     getUserAccess,
     assignRoleToUser,
+    assignRoleToUserByScopeId,
     assignPermissionToRole,
     validatePasswordStrength,
 } from "./authorization.service.js";

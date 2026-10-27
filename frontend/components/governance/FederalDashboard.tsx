@@ -47,6 +47,7 @@ import HierarchicalReportsView from "./HierarchicalReportsView";
 import DataRequestsListView from "./DataRequestsListView";
 import RegionalAdministratorsView from "./RegionalAdministratorsView";
 import RegionalHierarchyView from "./RegionalHierarchyView";
+import EmisAiAssistant from "../ai/EmisAiAssistant";
 
 export interface RegionAdmin {
     id: string;
@@ -712,6 +713,7 @@ export default function FederalDashboard() {
                     </h1>
 
                     <div className="flex items-center gap-2 self-start sm:self-auto">
+                        <EmisAiAssistant variant="header-pill" buttonLabel="Ask EMIS AI" />
                         <button
                             type="button"
                             onClick={() => {
@@ -1269,6 +1271,9 @@ export default function FederalDashboard() {
                     </div>
                 </div>
             )}
+
+            {/* Floating EMIS Executive AI Assistant */}
+            <EmisAiAssistant variant="floating" buttonLabel="Ask EMIS AI" />
         </div>
     );
 }

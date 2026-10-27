@@ -13,6 +13,7 @@ import ParentNavigation from "./parent/ParentNavigation";
 import AdministrativeNavigation from "../../components/governance/AdministrativeNavigation";
 import SchoolAdminNavigation from "../../components/governance/SchoolAdminNavigation";
 import TeacherNavigation from "../../components/governance/TeacherNavigation";
+import EmisAiAssistant from "../../components/ai/EmisAiAssistant";
 
 
 function TeacherBreadcrumbs({ pathname, currentTab, currentType, currentChannel }: { pathname: string; currentTab: string; currentType: string; currentChannel?: string }) {
@@ -554,7 +555,10 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
                     </Link>
                 </div>
 
-                <div className="flex items-center space-x-4">
+                <div className="flex items-center space-x-2.5 sm:space-x-4">
+                    {!isStudentRoute && !isParentRoute && (
+                        <EmisAiAssistant variant="header-pill" buttonLabel="Ask EMIS AI" />
+                    )}
                     {/* In-App Notifications Bell for All Roles */}
                     <div className="relative">
                         <button 
