@@ -160,6 +160,8 @@ export default function StudentNotificationsPage() {
   };
 
   const unreadCount = useMemo(() => notifications.filter((n) => !n.isRead).length, [notifications]);
+  const academicCount = useMemo(() => notifications.filter((n) => getCategory(n) === "academic").length, [notifications]);
+  const announcementCount = useMemo(() => notifications.filter((n) => getCategory(n) === "announcement").length, [notifications]);
 
   // Filtered Notifications
   const filteredNotifications = useMemo(() => {
@@ -240,6 +242,38 @@ export default function StudentNotificationsPage() {
             <span>Dashboard</span>
           </Link>
         </div>
+      </div>
+
+      {/* Top 4 KPI Summary Cards with Signature Hover */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
+        {[
+          { label: "Total Alerts", value: notifications.length, subtext: "Recorded system notifications", icon: Bell },
+          { label: "Unread & Pending", value: unreadCount, subtext: "Requires acknowledgment", icon: Sparkles },
+          { label: "Tasks & Academics", value: academicCount, subtext: "Assignments & tests", icon: BookOpen },
+          { label: "School Notices", value: announcementCount, subtext: "Official broadcast updates", icon: Megaphone },
+        ].map((stat, i) => {
+          const Icon = stat.icon;
+          return (
+            <div
+              key={i}
+              className="relative overflow-hidden border border-slate-200 bg-white rounded-lg p-4 flex items-center justify-between group cursor-pointer shadow-2xs hover:border-[#4085b3] transition-all duration-300"
+            >
+              <span className="absolute inset-0 bg-[#4085b3] origin-left scale-x-0 group-hover:scale-x-100 transition-transform duration-300 ease-out pointer-events-none" />
+              <div className="relative z-10">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 group-hover:text-blue-100 transition-colors duration-300 block mb-1">
+                  {stat.label}
+                </span>
+                <span className="text-2xl font-bold text-slate-900 group-hover:text-white transition-colors duration-300 tabular-nums">
+                  {stat.value}
+                </span>
+                <p className="text-[11px] text-slate-400 group-hover:text-blue-100 transition-colors duration-300 mt-0.5">
+                  {stat.subtext}
+                </p>
+              </div>
+              <Icon className="relative z-10 w-5 h-5 text-slate-400 group-hover:text-white transition-colors duration-300 shrink-0" />
+            </div>
+          );
+        })}
       </div>
 
       {/* 2. Interactive Filter & Search Controls */}
@@ -360,10 +394,10 @@ export default function StudentNotificationsPage() {
                 <div
                   key={n.id}
                   onClick={() => setSelectedNotification(n)}
-                  className={`group relative flex flex-col gap-3 rounded-2xl border p-4 sm:flex-row sm:items-center sm:justify-between transition cursor-pointer ${
+                  className={`group relative flex flex-col gap-3 rounded-2xl border p-4 sm:flex-row sm:items-center sm:justify-between transition-all duration-300 cursor-pointer shadow-2xs hover:border-[#4085b3] hover:shadow-md ${
                     !n.isRead
-                      ? "border-amber-300/80 bg-gradient-to-r from-amber-50/60 via-white to-amber-50/30 shadow-xs hover:border-amber-400"
-                      : "border-slate-200/80 bg-white hover:border-blue-200 hover:bg-slate-50/50"
+                      ? "border-amber-300/80 bg-gradient-to-r from-amber-50/60 via-white to-amber-50/30"
+                      : "border-slate-200/80 bg-white hover:bg-white"
                   }`}
                 >
                   <div className="flex items-start gap-3.5">
@@ -376,7 +410,7 @@ export default function StudentNotificationsPage() {
 
                     <div className="space-y-1">
                       <div className="flex flex-wrap items-center gap-2">
-                        <span className="font-bold text-slate-900 group-hover:text-[#184973] transition text-sm">
+                        <span className="font-bold text-slate-900 group-hover:text-[#4085b3] transition text-sm">
                           {n.title}
                         </span>
                         {!n.isRead && (

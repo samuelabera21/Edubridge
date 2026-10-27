@@ -70,9 +70,9 @@ export default function ClassScheduleCard() {
           <div className="space-y-3">
             <p className="text-xs font-bold uppercase tracking-wider text-[#184973]">Today&apos;s Classes ({todayName})</p>
             {todayClasses.map((item) => (
-              <div key={item.id} className="rounded-xl border border-gray-100 bg-gray-50 p-3">
+              <div key={item.id} className="rounded-xl border border-gray-100 bg-gray-50 p-3 hover:border-[#4085b3] hover:bg-white hover:shadow-2xs transition-all duration-200 group">
                 <div className="flex items-center justify-between gap-3">
-                  <span className="font-medium text-gray-900">{item.teachingAssignment.subject.name}</span>
+                  <span className="font-medium text-gray-900 group-hover:text-[#4085b3] transition-colors">{item.teachingAssignment.subject.name}</span>
                   <span className="text-xs font-semibold uppercase tracking-wide text-gray-500">
                     {item.classPeriod.startTime} - {item.classPeriod.endTime}
                   </span>
@@ -94,13 +94,13 @@ export default function ClassScheduleCard() {
             {weeklyClasses.length > 0 ? (
               <div className="space-y-2">
                 {weeklyClasses.map((item) => (
-                  <div key={item.id} className="flex items-center justify-between rounded-xl border border-gray-100 bg-gray-50 p-3 text-sm">
+                  <div key={item.id} className="flex items-center justify-between rounded-xl border border-gray-100 bg-gray-50 p-3 text-sm hover:border-[#4085b3] hover:bg-white hover:shadow-2xs transition-all duration-200 group">
                     <div>
                       <div className="flex items-center gap-2">
                         <span className="rounded bg-blue-100 px-2 py-0.5 text-[11px] font-semibold text-[#184973]">
                           {dayNames[item.dayOfWeek] || `Day ${item.dayOfWeek}`}
                         </span>
-                        <span className="font-semibold text-gray-900">{item.teachingAssignment.subject.name}</span>
+                        <span className="font-semibold text-gray-900 group-hover:text-[#4085b3] transition-colors">{item.teachingAssignment.subject.name}</span>
                       </div>
                       <p className="mt-1 text-xs text-gray-500">
                         Teacher: {formatTeacherName(item.teachingAssignment.teacher.firstName, item.teachingAssignment.teacher.lastName)}

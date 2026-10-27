@@ -38,6 +38,8 @@ type TabCategory = "ALL" | "TEACHER" | "STUDENT" | "PARENT";
 export default function MessagesPage() {
     const { authData } = useAuth();
     const currentUserId = authData?.user?.id;
+    const activeOrgId = authData?.access?.find((a: any) => a.scope?.type === "SCHOOL")?.scope?.id || authData?.access?.[0]?.scope?.id;
+    const authHeaders = activeOrgId ? { "x-organization-id": activeOrgId } : undefined;
 
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -91,7 +93,7 @@ export default function MessagesPage() {
 
     useEffect(() => {
         loadInitial();
-    }, []);
+    }, [activeOrgId]);
 
     // Dismiss menu on global click or scroll
     useEffect(() => {
@@ -109,7 +111,10 @@ export default function MessagesPage() {
         if (!selectedUser) return;
         const interval = setInterval(async () => {
             try {
-                const res = await fetchApi(`/communication/messages?otherUserId=${selectedUser.id}`);
+                const res = await fetchApi(
+                    `/communication/messages?otherUserId=${selectedUser.id}`,
+                    authHeaders ? { headers: authHeaders } : undefined
+                );
                 if (res.ok) {
                     const data = await res.json();
                     if (Array.isArray(data)) {
@@ -125,7 +130,7 @@ export default function MessagesPage() {
         }, 4000);
 
         return () => clearInterval(interval);
-    }, [selectedUser?.id]);
+    }, [selectedUser?.id, activeOrgId]);
 
     // Scroll to bottom when conversation updates
     useEffect(() => {
@@ -140,8 +145,8 @@ export default function MessagesPage() {
             setError(null);
 
             const [msgRes, usersRes] = await Promise.all([
-                fetchApi("/communication/messages"),
-                fetchApi("/communication/users")
+                fetchApi("/communication/messages", authHeaders ? { headers: authHeaders } : undefined),
+                fetchApi("/communication/users", authHeaders ? { headers: authHeaders } : undefined)
             ]);
 
             if (!msgRes.ok) throw new Error("Failed to load messages");
@@ -165,7 +170,10 @@ export default function MessagesPage() {
         setReplyingTo(null);
         setIsPartnerTyping(false);
         try {
-            const res = await fetchApi(`/communication/messages?otherUserId=${user.id}`);
+            const res = await fetchApi(
+                `/communication/messages?otherUserId=${user.id}`,
+                authHeaders ? { headers: authHeaders } : undefined
+            );
             if (res.ok) {
                 const data = await res.json();
                 setConversation(Array.isArray(data) ? data : []);
@@ -260,6 +268,7 @@ export default function MessagesPage() {
 
             const res = await fetchApi("/communication/messages", {
                 method: "POST",
+                headers: authHeaders,
                 body: JSON.stringify({
                     receiverId: selectedUser.id,
                     content: outgoingContent,
@@ -382,6 +391,7 @@ export default function MessagesPage() {
         try {
             const res = await fetchApi("/communication/messages", {
                 method: "POST",
+                headers: authHeaders,
                 body: JSON.stringify({
                     receiverId: forwardRecipientId,
                     content: `> Forwarded from ${forwardingMsg.sender.name}:\n${forwardingMsg.content}`,
@@ -615,7 +625,7 @@ export default function MessagesPage() {
                     </div>
 
                     {/* Contacts & Conversations list */}
-                    <div className="flex-1 overflow-y-auto divide-y divide-slate-100 max-h-[62vh]">
+                    <div className="flex-1 overflow-y-auto divide-y divide-slate-100 max-h-[62vh] scrollbar-thin">
                         {filteredContacts.length === 0 ? (
                             <div className="p-8 text-center text-xs text-slate-400">
                                 {searchQuery ? "No matching contacts found." : "No contacts in this category."}
@@ -832,7 +842,7 @@ export default function MessagesPage() {
                             {/* Thread Messages: Telegram / WhatsApp Clean Wallpaper Background */}
                             <div
                                 ref={chatScrollRef}
-                                className="flex-1 overflow-y-auto p-4 space-y-2 bg-[#f8fafc] max-h-[55vh]"
+                                className="flex-1 overflow-y-auto p-4 space-y-2 bg-[#f8fafc] max-h-[55vh] scrollbar-thin"
                             >
                                 {conversation.length === 0 ? (
                                     <div className="text-center py-12 text-xs text-slate-400">

@@ -172,27 +172,27 @@ export default function SupportActivitiesPage({ view }: { view: SupportView }) {
         totalActivities={visibleActivities.length}
       />
 
-      {view === "PROGRESS" ? (
-        <div className="grid gap-3 grid-cols-2 sm:grid-cols-4">
-          <SummaryCard label="Assigned Activities" value={visibleActivities.length} icon={<FileText className="h-4 w-4" />} />
-          <SummaryCard label="Not Started" value={pendingCount} icon={<Clock3 className="h-4 w-4" />} />
-          <SummaryCard label="Awaiting Review" value={inReviewCount} icon={<AlertCircle className="h-4 w-4" />} />
-          <SummaryCard label="Evaluated" value={completeCount} icon={<CheckCircle2 className="h-4 w-4" />} />
-        </div>
-      ) : (
-        <div className="flex items-center justify-between gap-4 border-b border-slate-200 pb-3">
-          <p className="text-xs font-semibold text-slate-500">
-            {view === "RECOMMENDATION"
-              ? "Recommended curriculum guidance from your instructors"
-              : view === "REMEDIAL"
-              ? "Reinforcement activities assigned to strengthen your skills"
-              : "Advanced challenges to broaden your knowledge"}
-          </p>
-          <span className="rounded-full bg-blue-50 text-[#184973] border border-blue-200 px-2.5 py-0.5 text-xs font-bold">
-            {visibleActivities.length} {visibleActivities.length === 1 ? "Program" : "Programs"}
-          </span>
-        </div>
-      )}
+      <div className="grid gap-3 grid-cols-2 sm:grid-cols-4">
+        <SummaryCard label="Assigned Tasks" value={visibleActivities.length} icon={<FileText className="h-4 w-4" />} />
+        <SummaryCard label="Not Started" value={pendingCount} icon={<Clock3 className="h-4 w-4" />} />
+        <SummaryCard label="Awaiting Review" value={inReviewCount} icon={<AlertCircle className="h-4 w-4" />} />
+        <SummaryCard label="Evaluated" value={completeCount} icon={<CheckCircle2 className="h-4 w-4" />} />
+      </div>
+
+      <div className="flex items-center justify-between gap-4 border-b border-slate-200 pb-3">
+        <p className="text-xs font-semibold text-slate-500">
+          {view === "RECOMMENDATION"
+            ? "Recommended curriculum guidance from your instructors"
+            : view === "REMEDIAL"
+            ? "Reinforcement activities assigned to strengthen your skills"
+            : view === "ENRICHMENT"
+            ? "Advanced challenges to broaden your knowledge"
+            : "Comprehensive history of assigned academic support and evaluated outcomes"}
+        </p>
+        <span className="rounded-full bg-blue-50 text-[#184973] border border-blue-200 px-2.5 py-0.5 text-xs font-bold">
+          {visibleActivities.length} {visibleActivities.length === 1 ? "Program" : "Programs"}
+        </span>
+      </div>
 
       {visibleActivities.length === 0 && (view !== "PROGRESS" || !hasProgressRecords) ? (
         <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/70 p-12 text-center">
@@ -229,10 +229,10 @@ export default function SupportActivitiesPage({ view }: { view: SupportView }) {
                           key={activity.id}
                           type="button"
                           onClick={() => setSelectedId(activity.id)}
-                          className={`rounded-xl border p-4 text-left transition cursor-pointer ${
+                          className={`rounded-xl border p-4 text-left transition-all duration-200 cursor-pointer ${
                             selectedActivity?.id === activity.id
                               ? "border-[#184973] bg-blue-50/50 shadow-xs"
-                              : "border-slate-200 bg-slate-50/50 hover:border-slate-300"
+                              : "border-slate-200 bg-slate-50/50 hover:border-[#4085b3] hover:bg-white hover:shadow-2xs"
                           }`}
                         >
                           <div className="flex items-center justify-between">
@@ -265,7 +265,7 @@ export default function SupportActivitiesPage({ view }: { view: SupportView }) {
               </div>
               <div className="grid gap-3 sm:grid-cols-2">
                 {interventionPlans.map((plan) => (
-                  <article key={plan.id} className="rounded-xl border border-slate-200 bg-slate-50/60 p-4">
+                  <article key={plan.id} className="rounded-xl border border-slate-200 bg-slate-50/60 p-4 hover:border-[#4085b3] hover:bg-white hover:shadow-2xs transition-all duration-200">
                     <div className="flex items-start justify-between gap-3">
                       <div>
                         <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Target Goal</p>
@@ -427,12 +427,19 @@ export default function SupportActivitiesPage({ view }: { view: SupportView }) {
 
 function SummaryCard({ label, value, icon }: { label: string; value: number; icon: ReactNode }) {
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-xs">
-      <div className="flex items-center justify-between">
-        <span className="text-xs font-semibold text-slate-500">{label}</span>
-        <div className="rounded-lg bg-blue-50 p-2 text-[#184973]">{icon}</div>
+    <div className="relative overflow-hidden border border-slate-200 bg-white rounded-lg p-4 flex items-center justify-between group cursor-pointer shadow-2xs hover:border-[#4085b3] transition-all duration-300">
+      <span className="absolute inset-0 bg-[#4085b3] origin-left scale-x-0 group-hover:scale-x-100 transition-transform duration-300 ease-out pointer-events-none" />
+      <div className="relative z-10">
+        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 group-hover:text-blue-100 transition-colors duration-300 block mb-1">
+          {label}
+        </span>
+        <span className="text-2xl font-bold text-slate-900 group-hover:text-white transition-colors duration-300 tabular-nums">
+          {value}
+        </span>
       </div>
-      <p className="mt-2 text-2xl font-black text-slate-900">{value}</p>
+      <div className="relative z-10 text-slate-400 group-hover:text-white transition-colors duration-300 shrink-0">
+        {icon}
+      </div>
     </div>
   );
 }

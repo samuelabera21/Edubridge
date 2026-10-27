@@ -232,25 +232,26 @@ export default function AttendanceHistoryCard() {
       {/* 1. Attendance Metrics KPI Grid */}
       <section className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
         {/* Attendance Rate */}
-        <div className="col-span-2 sm:col-span-1 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
+        <div className="col-span-2 sm:col-span-1 relative overflow-hidden rounded-2xl border border-slate-200 bg-white p-4 shadow-sm group cursor-pointer hover:border-[#4085b3] transition-all duration-300">
+          <span className="absolute inset-0 bg-[#4085b3] origin-left scale-x-0 group-hover:scale-x-100 transition-transform duration-300 ease-out pointer-events-none" />
+          <div className="relative z-10 flex items-center justify-between">
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-500 group-hover:text-blue-100 transition-colors duration-300">
               Standing Rate
             </span>
-            <Sparkles className="h-4 w-4 text-indigo-500" />
+            <Sparkles className="h-4 w-4 text-indigo-500 group-hover:text-white transition-colors duration-300" />
           </div>
-          <div className="mt-2 flex items-baseline gap-2">
-            <span className="text-2xl font-black text-slate-900">
+          <div className="relative z-10 mt-2 flex items-baseline gap-2">
+            <span className="text-2xl font-black text-slate-900 group-hover:text-white transition-colors duration-300">
               {metrics.rate !== null ? `${metrics.rate}%` : "--"}
             </span>
-            <span className="text-[11px] font-semibold text-emerald-600">
+            <span className="text-[11px] font-semibold text-emerald-600 group-hover:text-emerald-200 transition-colors duration-300">
               {metrics.rate !== null && metrics.rate >= 85 ? "Optimal" : "Attention"}
             </span>
           </div>
-          <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
+          <div className="relative z-10 mt-2 h-1.5 w-full overflow-hidden rounded-full bg-slate-100 group-hover:bg-white/30 transition-colors duration-300">
             <div
               className={`h-full transition-all duration-500 ${
-                metrics.rate && metrics.rate >= 85 ? "bg-emerald-500" : "bg-amber-500"
+                metrics.rate && metrics.rate >= 85 ? "bg-emerald-500 group-hover:bg-emerald-300" : "bg-amber-500 group-hover:bg-amber-300"
               }`}
               style={{ width: `${metrics.rate || 0}%` }}
             />
@@ -258,62 +259,77 @@ export default function AttendanceHistoryCard() {
         </div>
 
         {/* Total Sessions */}
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-          <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
-            School Days
-          </span>
-          <p className="mt-2 text-2xl font-black text-slate-900">{metrics.total}</p>
-          <p className="text-[11px] text-slate-500 mt-1">Recorded sessions</p>
+        <div className="relative overflow-hidden rounded-2xl border border-slate-200 bg-white p-4 shadow-sm group cursor-pointer hover:border-[#4085b3] transition-all duration-300">
+          <span className="absolute inset-0 bg-[#4085b3] origin-left scale-x-0 group-hover:scale-x-100 transition-transform duration-300 ease-out pointer-events-none" />
+          <div className="relative z-10">
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-500 group-hover:text-blue-100 transition-colors duration-300">
+              School Days
+            </span>
+            <p className="mt-2 text-2xl font-black text-slate-900 group-hover:text-white transition-colors duration-300">{metrics.total}</p>
+            <p className="text-[11px] text-slate-500 group-hover:text-blue-100 transition-colors duration-300 mt-1">Recorded sessions</p>
+          </div>
         </div>
 
         {/* Present */}
-        <div className="rounded-2xl border border-emerald-100 bg-emerald-50/50 p-4 shadow-sm">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold uppercase tracking-wider text-emerald-700">
-              Present
-            </span>
-            <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+        <div className="relative overflow-hidden rounded-2xl border border-emerald-100 bg-emerald-50/50 p-4 shadow-sm group cursor-pointer hover:border-[#4085b3] transition-all duration-300">
+          <span className="absolute inset-0 bg-[#4085b3] origin-left scale-x-0 group-hover:scale-x-100 transition-transform duration-300 ease-out pointer-events-none" />
+          <div className="relative z-10">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold uppercase tracking-wider text-emerald-700 group-hover:text-blue-100 transition-colors duration-300">
+                Present
+              </span>
+              <CheckCircle2 className="h-4 w-4 text-emerald-600 group-hover:text-white transition-colors duration-300" />
+            </div>
+            <p className="mt-2 text-2xl font-black text-emerald-900 group-hover:text-white transition-colors duration-300">{metrics.present}</p>
+            <p className="text-[11px] font-medium text-emerald-700 group-hover:text-blue-100 transition-colors duration-300 mt-1">
+              {metrics.total > 0 ? Math.round((metrics.present / metrics.total) * 100) : 0}% attendance
+            </p>
           </div>
-          <p className="mt-2 text-2xl font-black text-emerald-900">{metrics.present}</p>
-          <p className="text-[11px] font-medium text-emerald-700 mt-1">
-            {metrics.total > 0 ? Math.round((metrics.present / metrics.total) * 100) : 0}% attendance
-          </p>
         </div>
 
         {/* Late */}
-        <div className="rounded-2xl border border-amber-100 bg-amber-50/50 p-4 shadow-sm">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold uppercase tracking-wider text-amber-700">
-              Late
-            </span>
-            <Clock className="h-4 w-4 text-amber-600" />
+        <div className="relative overflow-hidden rounded-2xl border border-amber-100 bg-amber-50/50 p-4 shadow-sm group cursor-pointer hover:border-[#4085b3] transition-all duration-300">
+          <span className="absolute inset-0 bg-[#4085b3] origin-left scale-x-0 group-hover:scale-x-100 transition-transform duration-300 ease-out pointer-events-none" />
+          <div className="relative z-10">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold uppercase tracking-wider text-amber-700 group-hover:text-blue-100 transition-colors duration-300">
+                Late
+              </span>
+              <Clock className="h-4 w-4 text-amber-600 group-hover:text-white transition-colors duration-300" />
+            </div>
+            <p className="mt-2 text-2xl font-black text-amber-900 group-hover:text-white transition-colors duration-300">{metrics.late}</p>
+            <p className="text-[11px] font-medium text-amber-700 group-hover:text-blue-100 transition-colors duration-300 mt-1">Tardy incidents</p>
           </div>
-          <p className="mt-2 text-2xl font-black text-amber-900">{metrics.late}</p>
-          <p className="text-[11px] font-medium text-amber-700 mt-1">Tardy incidents</p>
         </div>
 
         {/* Unexcused Absences */}
-        <div className="rounded-2xl border border-rose-100 bg-rose-50/50 p-4 shadow-sm">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold uppercase tracking-wider text-rose-700">
-              Unexcused
-            </span>
-            <AlertCircle className="h-4 w-4 text-rose-600" />
+        <div className="relative overflow-hidden rounded-2xl border border-rose-100 bg-rose-50/50 p-4 shadow-sm group cursor-pointer hover:border-[#4085b3] transition-all duration-300">
+          <span className="absolute inset-0 bg-[#4085b3] origin-left scale-x-0 group-hover:scale-x-100 transition-transform duration-300 ease-out pointer-events-none" />
+          <div className="relative z-10">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold uppercase tracking-wider text-rose-700 group-hover:text-blue-100 transition-colors duration-300">
+                Unexcused
+              </span>
+              <AlertCircle className="h-4 w-4 text-rose-600 group-hover:text-white transition-colors duration-300" />
+            </div>
+            <p className="mt-2 text-2xl font-black text-rose-900 group-hover:text-white transition-colors duration-300">{metrics.absent}</p>
+            <p className="text-[11px] font-medium text-rose-700 group-hover:text-blue-100 transition-colors duration-300 mt-1">Requires excuse</p>
           </div>
-          <p className="mt-2 text-2xl font-black text-rose-900">{metrics.absent}</p>
-          <p className="text-[11px] font-medium text-rose-700 mt-1">Requires excuse</p>
         </div>
 
         {/* Excused Absences */}
-        <div className="rounded-2xl border border-sky-100 bg-sky-50/50 p-4 shadow-sm">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold uppercase tracking-wider text-sky-700">
-              Excused
-            </span>
-            <ShieldAlert className="h-4 w-4 text-sky-600" />
+        <div className="relative overflow-hidden rounded-2xl border border-sky-100 bg-sky-50/50 p-4 shadow-sm group cursor-pointer hover:border-[#4085b3] transition-all duration-300">
+          <span className="absolute inset-0 bg-[#4085b3] origin-left scale-x-0 group-hover:scale-x-100 transition-transform duration-300 ease-out pointer-events-none" />
+          <div className="relative z-10">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold uppercase tracking-wider text-sky-700 group-hover:text-blue-100 transition-colors duration-300">
+                Excused
+              </span>
+              <ShieldAlert className="h-4 w-4 text-sky-600 group-hover:text-white transition-colors duration-300" />
+            </div>
+            <p className="mt-2 text-2xl font-black text-sky-900 group-hover:text-white transition-colors duration-300">{metrics.excused}</p>
+            <p className="text-[11px] font-medium text-sky-700 group-hover:text-blue-100 transition-colors duration-300 mt-1">Approved notices</p>
           </div>
-          <p className="mt-2 text-2xl font-black text-sky-900">{metrics.excused}</p>
-          <p className="text-[11px] font-medium text-sky-700 mt-1">Approved notices</p>
         </div>
       </section>
 
