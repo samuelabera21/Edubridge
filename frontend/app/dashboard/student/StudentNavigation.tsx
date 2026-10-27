@@ -9,12 +9,10 @@ import {
     BookOpen,
     CalendarDays,
     ClipboardCheck,
-    FileSpreadsheet,
     FileText,
     HeartHandshake,
     LayoutDashboard,
     MessageSquare,
-    Settings,
     Sparkles,
     User,
     ChevronLeft,
@@ -22,7 +20,6 @@ import {
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { fetchApi } from "../../../lib/api";
-import { useStudentLanguage } from "../../../lib/student-i18n";
 import StudentSubNavigation, { type StudentNavGroup } from "./components/StudentSubNavigation";
 
 const coreLearningGroups: StudentNavGroup[] = [
@@ -33,7 +30,6 @@ const coreLearningGroups: StudentNavGroup[] = [
         links: [
             { label: "Student Information", href: "/dashboard/student/profile/information" },
             { label: "School & Enrollment", href: "/dashboard/student/profile/enrollment" },
-            { label: "Enrollment Documents", href: "/dashboard/student/profile/documents" },
         ],
     },
     {
@@ -56,6 +52,26 @@ const progressRecordsGroups: StudentNavGroup[] = [
             { label: "Attendance History", href: "/dashboard/student/attendance" },
             { label: "Absence Records", href: "/dashboard/student/attendance/absence" },
             { label: "Submit Explanation", href: "/dashboard/student/attendance/explanation" },
+        ],
+    },
+    {
+        key: "assessments",
+        label: "My Assessments",
+        icon: BarChart3,
+        links: [
+            { label: "Tests & Quizzes", href: "/dashboard/student/assessments" },
+            { label: "Results & Feedback", href: "/dashboard/student/assessments/results" },
+            { label: "Performance Trends", href: "/dashboard/student/assessments/performance" },
+        ],
+    },
+    {
+        key: "learning",
+        label: "Learning Activities",
+        icon: Activity,
+        links: [
+            { label: "Assignments", href: "/dashboard/student/learning/assignments" },
+            { label: "Practice & Quizzes", href: "/dashboard/student/learning/practice" },
+            { label: "Submitted Work", href: "/dashboard/student/learning/submissions" },
         ],
     },
     {
@@ -97,7 +113,6 @@ const communityToolsGroups: StudentNavGroup[] = [
         key: "assistant",
         label: "AI Study Assistant",
         icon: Sparkles,
-        isSoon: true,
         links: [
             { label: "Explain Concepts", href: "/dashboard/student/assistant?mode=explain" },
             { label: "Guided Practice", href: "/dashboard/student/assistant?mode=practice" },
@@ -106,23 +121,14 @@ const communityToolsGroups: StudentNavGroup[] = [
     },
 ];
 
-export default function StudentNavigation({
-    collapsed,
-    onToggleCollapse,
-    isMobile = false,
-    onNavigate,
-}: {
-    collapsed: boolean;
-    onToggleCollapse: () => void;
-    isMobile?: boolean;
-    onNavigate?: () => void;
-}) {
-    const { t } = useStudentLanguage();
+export default function StudentNavigation({ collapsed, onToggleCollapse }: { collapsed: boolean; onToggleCollapse: () => void }) {
     const pathname = usePathname();
     const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
         profile: pathname.startsWith("/dashboard/student/profile"),
         classes: pathname.startsWith("/dashboard/student/classes"),
         attendance: pathname.startsWith("/dashboard/student/attendance"),
+        assessments: pathname.startsWith("/dashboard/student/assessments"),
+        learning: pathname.startsWith("/dashboard/student/learning"),
         support: pathname.startsWith("/dashboard/student/support"),
         communication: pathname.startsWith("/dashboard/student/communication"),
         resources: pathname.startsWith("/dashboard/student/resources"),
@@ -150,102 +156,89 @@ export default function StudentNavigation({
     }, [pathname]);
 
     const isActive = (href: string) => pathname === href || pathname.startsWith(`${href}/`);
-    const isResultsActive =
-        pathname === "/dashboard/student/results" ||
-        pathname.startsWith("/dashboard/student/results/") ||
-        pathname.startsWith("/dashboard/student/assessments") ||
-        pathname.startsWith("/dashboard/student/learning");
 
     return (
         <aside
-            className={`h-full bg-[#f8fafc] flex flex-col ${
-                isMobile
-                    ? "w-full border-r-0"
-                    : `border-r border-slate-200 hidden md:flex transition-all duration-200 ease-in-out ${
-                          collapsed ? "w-16" : "w-64"
-                      }`
-            } overflow-y-auto scrollbar-hide text-slate-700 font-sans shrink-0`}
+            className={`h-full bg-[#f8fafc] border-r border-slate-200 flex flex-col hidden md:flex overflow-y-auto scrollbar-hide text-slate-700 font-sans shrink-0 transition-all duration-200 ease-in-out ${
+                collapsed ? "w-16" : "w-64"
+            }`}
         >
             {/* Masthead Header */}
             <div className="flex items-center justify-between px-3.5 py-3 border-b border-slate-200 bg-white shrink-0">
-                {(!collapsed || isMobile) && (
+                {!collapsed && (
                     <div className="min-w-0 pr-2">
                         <span className="text-xs font-bold text-slate-900 truncate block">
-                            {t.studentPortal || "Student Portal"}
+                            Student Portal
                         </span>
                         <span className="text-[10px] font-medium text-slate-500 block truncate">
-                            {t.academicInstruction || "Academic & Learning Records"}
+                            Academic & Learning Records
                         </span>
                     </div>
                 )}
-                {!isMobile && (
-                    <button
-                        type="button"
-                        onClick={onToggleCollapse}
-                        title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-                        aria-label={collapsed ? "Expand student sidebar" : "Collapse student sidebar"}
-                        className="w-7 h-7 rounded border border-slate-200 bg-white hover:bg-slate-100 text-slate-600 hover:text-slate-900 transition-colors cursor-pointer ml-auto flex items-center justify-center shrink-0"
-                    >
-                        {collapsed ? (
-                            <ChevronRight className="w-4 h-4" />
-                        ) : (
-                            <ChevronLeft className="w-4 h-4" />
-                        )}
-                    </button>
-                )}
+                <button
+                    type="button"
+                    onClick={onToggleCollapse}
+                    title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+                    aria-label={collapsed ? "Expand student sidebar" : "Collapse student sidebar"}
+                    className="w-7 h-7 rounded border border-slate-200 bg-white hover:bg-slate-100 text-slate-600 hover:text-slate-900 transition-colors cursor-pointer ml-auto flex items-center justify-center shrink-0"
+                >
+                    {collapsed ? (
+                        <ChevronRight className="w-4 h-4" />
+                    ) : (
+                        <ChevronLeft className="w-4 h-4" />
+                    )}
+                </button>
             </div>
 
             {/* Navigation Body */}
             <div className="flex-1 px-2.5 py-3 space-y-4 overflow-y-auto">
                 {/* Core Learning Group */}
                 <div className="space-y-0.5">
-                    {(!collapsed || isMobile) && (
+                    {!collapsed && (
                         <div className="px-2.5 pb-1 pt-1 text-[10px] font-bold uppercase tracking-wider text-slate-400 select-none">
-                            {t.academicsSchedule || "Academics & Schedule"}
+                            Academics & Schedule
                         </div>
                     )}
                     <nav className="space-y-0.5">
                         <Link
                             href="/dashboard/student"
-                            onClick={onNavigate}
-                            title={t.myDashboard || "My Dashboard"}
+                            title="My Dashboard"
                             className={`group flex items-center ${
-                                collapsed && !isMobile ? "justify-center px-2 py-2" : "justify-between px-2.5 py-2"
+                                collapsed ? "justify-center px-2 py-2" : "justify-between px-2.5 py-2"
                             } text-xs transition-all duration-150 cursor-pointer rounded-md ${
                                 pathname === "/dashboard/student"
                                     ? "bg-[#4085b3] text-white font-semibold shadow-xs"
                                     : "text-slate-700 hover:bg-[#4085b3] hover:text-white"
                             }`}
                         >
-                            <div className={`flex items-center ${collapsed && !isMobile ? "" : "space-x-2.5 min-w-0"}`}>
+                            <div className={`flex items-center ${collapsed ? "" : "space-x-2.5 min-w-0"}`}>
                                 <LayoutDashboard
                                     className={`w-4 h-4 shrink-0 transition-colors duration-150 ${
                                         pathname === "/dashboard/student" ? "text-white" : "text-slate-400 group-hover:text-white"
                                     }`}
                                 />
-                                {(!collapsed || isMobile) && <span className="truncate">{t.myDashboard || "My Dashboard"}</span>}
+                                {!collapsed && <span className="truncate">My Dashboard</span>}
                             </div>
                         </Link>
 
                         <Link
                             href="/dashboard/student/timetable"
-                            onClick={onNavigate}
-                            title={t.timetable || "Timetable"}
+                            title="Timetable"
                             className={`group flex items-center ${
-                                collapsed && !isMobile ? "justify-center px-2 py-2" : "justify-between px-2.5 py-2"
+                                collapsed ? "justify-center px-2 py-2" : "justify-between px-2.5 py-2"
                             } text-xs transition-all duration-150 cursor-pointer rounded-md ${
                                 isActive("/dashboard/student/timetable")
                                     ? "bg-[#4085b3] text-white font-semibold shadow-xs"
                                     : "text-slate-700 hover:bg-[#4085b3] hover:text-white"
                             }`}
                         >
-                            <div className={`flex items-center ${collapsed && !isMobile ? "" : "space-x-2.5 min-w-0"}`}>
+                            <div className={`flex items-center ${collapsed ? "" : "space-x-2.5 min-w-0"}`}>
                                 <CalendarDays
                                     className={`w-4 h-4 shrink-0 transition-colors duration-150 ${
                                         isActive("/dashboard/student/timetable") ? "text-white" : "text-slate-400 group-hover:text-white"
                                     }`}
                                 />
-                                {(!collapsed || isMobile) && <span className="truncate">{t.timetable || "Timetable"}</span>}
+                                {!collapsed && <span className="truncate">Timetable</span>}
                             </div>
                         </Link>
 
@@ -255,9 +248,8 @@ export default function StudentNavigation({
                                 group={group}
                                 isOpen={openGroups[group.key]}
                                 pathname={pathname}
-                                collapsed={collapsed && !isMobile}
+                                collapsed={collapsed}
                                 onToggle={toggleGroup}
-                                onNavigate={onNavigate}
                             />
                         ))}
                     </nav>
@@ -265,65 +257,30 @@ export default function StudentNavigation({
 
                 {/* Progress & Records Group */}
                 <div className="space-y-0.5">
-                    {(!collapsed || isMobile) && (
+                    {!collapsed && (
                         <div className="px-2.5 pb-1 pt-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400 select-none">
-                            {t.progressRecords || "Progress & Records"}
+                            Progress & Records
                         </div>
                     )}
                     <nav className="space-y-0.5">
-                        {progressRecordsGroups[0] && (
+                        {progressRecordsGroups.map((group) => (
                             <StudentSubNavigation
-                                key={progressRecordsGroups[0].key}
-                                group={progressRecordsGroups[0]}
-                                isOpen={openGroups[progressRecordsGroups[0].key]}
+                                key={group.key}
+                                group={group}
+                                isOpen={openGroups[group.key]}
                                 pathname={pathname}
-                                collapsed={collapsed && !isMobile}
+                                collapsed={collapsed}
                                 onToggle={toggleGroup}
-                                onNavigate={onNavigate}
                             />
-                        )}
-
-                        <Link
-                            href="/dashboard/student/results"
-                            onClick={onNavigate}
-                            title={t.results || "Results"}
-                            className={`group flex items-center ${
-                                collapsed && !isMobile ? "justify-center px-2 py-2" : "justify-between px-2.5 py-2"
-                            } text-xs transition-all duration-150 cursor-pointer rounded-md ${
-                                isResultsActive
-                                    ? "bg-[#4085b3] text-white font-semibold shadow-xs"
-                                    : "text-slate-700 hover:bg-[#4085b3] hover:text-white"
-                            }`}
-                        >
-                            <div className={`flex items-center ${collapsed && !isMobile ? "" : "space-x-2.5 min-w-0"}`}>
-                                <FileSpreadsheet
-                                    className={`w-4 h-4 shrink-0 transition-colors duration-150 ${
-                                        isResultsActive ? "text-white" : "text-slate-400 group-hover:text-white"
-                                    }`}
-                                />
-                                {(!collapsed || isMobile) && <span className="truncate">{t.results || "Results"}</span>}
-                            </div>
-                        </Link>
-
-                        {progressRecordsGroups[1] && (
-                            <StudentSubNavigation
-                                key={progressRecordsGroups[1].key}
-                                group={progressRecordsGroups[1]}
-                                isOpen={openGroups[progressRecordsGroups[1].key]}
-                                pathname={pathname}
-                                collapsed={collapsed && !isMobile}
-                                onToggle={toggleGroup}
-                                onNavigate={onNavigate}
-                            />
-                        )}
+                        ))}
                     </nav>
                 </div>
 
                 {/* Community & Tools Group */}
                 <div className="space-y-0.5">
-                    {(!collapsed || isMobile) && (
+                    {!collapsed && (
                         <div className="px-2.5 pb-1 pt-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400 select-none">
-                            {t.engagementTools || "Engagement & Tools"}
+                            Engagement & Tools
                         </div>
                     )}
                     <nav className="space-y-0.5">
@@ -333,25 +290,23 @@ export default function StudentNavigation({
                                 group={group}
                                 isOpen={openGroups[group.key]}
                                 pathname={pathname}
-                                collapsed={collapsed && !isMobile}
+                                collapsed={collapsed}
                                 onToggle={toggleGroup}
-                                onNavigate={onNavigate}
                             />
                         ))}
 
                         <Link
                             href="/dashboard/student/notifications"
-                            onClick={onNavigate}
-                            title={t.notifications || "Notifications"}
+                            title="Notifications"
                             className={`group flex items-center ${
-                                collapsed && !isMobile ? "justify-center px-2 py-2" : "justify-between px-2.5 py-2"
+                                collapsed ? "justify-center px-2 py-2" : "justify-between px-2.5 py-2"
                             } text-xs transition-all duration-150 cursor-pointer rounded-md ${
                                 isActive("/dashboard/student/notifications")
                                     ? "bg-[#4085b3] text-white font-semibold shadow-xs"
                                     : "text-slate-700 hover:bg-[#4085b3] hover:text-white"
                             }`}
                         >
-                            <div className={`flex items-center ${collapsed && !isMobile ? "" : "space-x-2.5 min-w-0"}`}>
+                            <div className={`flex items-center ${collapsed ? "" : "space-x-2.5 min-w-0"}`}>
                                 <div className="relative shrink-0">
                                     <Bell
                                         className={`w-4 h-4 shrink-0 transition-colors duration-150 ${
@@ -362,42 +317,20 @@ export default function StudentNavigation({
                                         <span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-[#4085b3] animate-pulse" />
                                     )}
                                 </div>
-                                {(!collapsed || isMobile) && <span className="truncate">{t.notifications || "Notifications"}</span>}
+                                {!collapsed && <span className="truncate">Notifications</span>}
                             </div>
-                            {(!collapsed || isMobile) && unreadCount > 0 && (
+                            {!collapsed && unreadCount > 0 && (
                                 <span className="rounded-full bg-[#4085b3] text-white px-1.5 py-0.5 text-[10px] font-bold">
                                     {unreadCount}
                                 </span>
                             )}
-                        </Link>
-
-                        <Link
-                            href="/dashboard/student/settings"
-                            onClick={onNavigate}
-                            title={t.settings || "Settings"}
-                            className={`group flex items-center ${
-                                collapsed && !isMobile ? "justify-center px-2 py-2" : "justify-between px-2.5 py-2"
-                            } text-xs transition-all duration-150 cursor-pointer rounded-md ${
-                                isActive("/dashboard/student/settings")
-                                    ? "bg-[#4085b3] text-white font-semibold shadow-xs"
-                                    : "text-slate-700 hover:bg-[#4085b3] hover:text-white"
-                            }`}
-                        >
-                            <div className={`flex items-center ${collapsed && !isMobile ? "" : "space-x-2.5 min-w-0"}`}>
-                                <Settings
-                                    className={`w-4 h-4 shrink-0 transition-colors duration-150 ${
-                                        isActive("/dashboard/student/settings") ? "text-white" : "text-slate-400 group-hover:text-white"
-                                    }`}
-                                />
-                                {(!collapsed || isMobile) && <span className="truncate">{t.settings || "Settings"}</span>}
-                            </div>
                         </Link>
                     </nav>
                 </div>
             </div>
 
             {/* Sidebar Utility Footer - System Status */}
-            {(!collapsed || isMobile) ? (
+            {!collapsed ? (
                 <div className="p-3 border-t border-slate-200 bg-white text-[11px] shrink-0">
                     <div className="flex items-center justify-between">
                         <span className="font-semibold text-slate-700">EMIS System</span>

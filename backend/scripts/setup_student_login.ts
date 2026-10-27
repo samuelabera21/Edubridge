@@ -24,7 +24,7 @@ async function main() {
 
     const email = "student@edubridge.local";
     const studentSpecificEmail = `${student.studentId.toLowerCase()}@edubridge.local`;
-    const password = process.env.STUDENT_INITIAL_PASSWORD || ["Edu", "Bridge", "2026", "!"].join("");
+    const password = "EduBridge2026!";
     const fullName = `${student.firstName} ${student.lastName}`.trim();
 
     console.log(`Setting up login for student: ${fullName} (${student.studentId})...`);

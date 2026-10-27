@@ -346,68 +346,52 @@ export default function StudentTimetablePage() {
 
       {/* ─── Metric Overview Cards ──────────────────────────────────── */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 print:hidden">
-        <div className="relative overflow-hidden border border-slate-200 bg-white rounded-lg p-4 flex items-center justify-between group cursor-pointer shadow-2xs hover:border-[#4085b3] transition-all duration-300">
-          <span className="absolute inset-0 bg-[#4085b3] origin-left scale-x-0 group-hover:scale-x-100 transition-transform duration-300 ease-out pointer-events-none" />
-          <div className="relative z-10">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 group-hover:text-blue-100 transition-colors duration-300 block mb-1">
-              Weekly Classes
-            </span>
-            <span className="text-2xl font-bold text-slate-900 group-hover:text-white transition-colors duration-300 tabular-nums">
-              {totalWeeklyClasses}
-            </span>
-            <p className="text-[11px] text-slate-400 group-hover:text-blue-100 transition-colors duration-300 mt-0.5">
-              Total scheduled periods
-            </p>
+        <div className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-xs">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-slate-500">Weekly Classes</span>
+            <div className="rounded-lg bg-blue-50 p-2 text-blue-600">
+              <CalendarDays className="h-4 w-4" />
+            </div>
           </div>
-          <CalendarDays className="relative z-10 w-5 h-5 text-slate-400 group-hover:text-white transition-colors duration-300 shrink-0" />
+          <p className="mt-2 text-2xl font-black text-slate-900">{totalWeeklyClasses}</p>
+          <p className="text-[11px] text-slate-500 mt-0.5">Total scheduled periods</p>
         </div>
 
-        <div className="relative overflow-hidden border border-slate-200 bg-white rounded-lg p-4 flex items-center justify-between group cursor-pointer shadow-2xs hover:border-[#4085b3] transition-all duration-300">
-          <span className="absolute inset-0 bg-[#4085b3] origin-left scale-x-0 group-hover:scale-x-100 transition-transform duration-300 ease-out pointer-events-none" />
-          <div className="relative z-10">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 group-hover:text-blue-100 transition-colors duration-300 block mb-1">
-              Scheduled Subjects
-            </span>
-            <span className="text-2xl font-bold text-slate-900 group-hover:text-white transition-colors duration-300 tabular-nums">
-              {distinctSubjects.length}
-            </span>
-            <p className="text-[11px] text-slate-400 group-hover:text-blue-100 transition-colors duration-300 mt-0.5">
-              Active curriculum courses
-            </p>
+        <div className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-xs">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-slate-500">Scheduled Subjects</span>
+            <div className="rounded-lg bg-emerald-50 p-2 text-emerald-600">
+              <BookOpen className="h-4 w-4" />
+            </div>
           </div>
-          <BookOpen className="relative z-10 w-5 h-5 text-slate-400 group-hover:text-white transition-colors duration-300 shrink-0" />
+          <p className="mt-2 text-2xl font-black text-slate-900">{distinctSubjects.length}</p>
+          <p className="text-[11px] text-slate-500 mt-0.5">Active curriculum courses</p>
         </div>
 
-        <div className="relative overflow-hidden border border-slate-200 bg-white rounded-lg p-4 flex items-center justify-between group cursor-pointer shadow-2xs hover:border-[#4085b3] transition-all duration-300">
-          <span className="absolute inset-0 bg-[#4085b3] origin-left scale-x-0 group-hover:scale-x-100 transition-transform duration-300 ease-out pointer-events-none" />
-          <div className="relative z-10">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 group-hover:text-blue-100 transition-colors duration-300 block mb-1">
-              Daily Periods
-            </span>
-            <span className="text-2xl font-bold text-slate-900 group-hover:text-white transition-colors duration-300 tabular-nums">
-              {periodRows.length}
-            </span>
-            <p className="text-[11px] text-slate-400 group-hover:text-blue-100 transition-colors duration-300 mt-0.5">
-              Periods per academic day
-            </p>
+        <div className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-xs">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-slate-500">Daily Periods</span>
+            <div className="rounded-lg bg-indigo-50 p-2 text-indigo-600">
+              <Clock className="h-4 w-4" />
+            </div>
           </div>
-          <Clock className="relative z-10 w-5 h-5 text-slate-400 group-hover:text-white transition-colors duration-300 shrink-0" />
+          <p className="mt-2 text-2xl font-black text-slate-900">{periodRows.length}</p>
+          <p className="text-[11px] text-slate-500 mt-0.5">Periods per academic day</p>
         </div>
 
-        <div className="relative overflow-hidden border border-slate-200 bg-white rounded-lg p-4 flex items-center justify-between group cursor-pointer shadow-2xs hover:border-[#4085b3] transition-all duration-300">
-          <span className="absolute inset-0 bg-[#4085b3] origin-left scale-x-0 group-hover:scale-x-100 transition-transform duration-300 ease-out pointer-events-none" />
-          <div className="relative z-10">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 group-hover:text-blue-100 transition-colors duration-300 block mb-1">
-              Current Day
-            </span>
-            <span className="text-2xl font-bold text-slate-900 group-hover:text-white transition-colors duration-300 tabular-nums truncate block">
-              {dayNames[currentDayOfWeek]}
-            </span>
-            <p className="text-[11px] text-slate-400 group-hover:text-blue-100 transition-colors duration-300 mt-0.5">
-              {isSchoolDayToday ? "Instructional day" : "Weekend period"}
-            </p>
+        <div className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-xs">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-slate-500">Current Day</span>
+            <div className="rounded-lg bg-amber-50 p-2 text-amber-600">
+              <CheckCircle2 className="h-4 w-4" />
+            </div>
           </div>
-          <CheckCircle2 className="relative z-10 w-5 h-5 text-slate-400 group-hover:text-white transition-colors duration-300 shrink-0" />
+          <p className="mt-2 text-xl font-black text-slate-900 truncate">
+            {dayNames[currentDayOfWeek]}
+          </p>
+          <p className="text-[11px] text-slate-500 mt-0.5">
+            {isSchoolDayToday ? "Instructional day" : "Weekend period"}
+          </p>
         </div>
       </div>
 
@@ -662,7 +646,7 @@ export default function StudentTimetablePage() {
                         className={`group flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-xl border transition-all cursor-pointer ${
                           isInProgress
                             ? "border-emerald-300 bg-emerald-50/70 shadow-xs ring-2 ring-emerald-400/30"
-                            : "border-slate-100 bg-slate-50/60 hover:bg-white hover:border-[#4085b3] hover:shadow-2xs transition-all duration-200"
+                            : "border-slate-100 bg-slate-50/60 hover:bg-blue-50/40 hover:border-blue-200"
                         }`}
                       >
                         <div className="flex items-start gap-3.5">
@@ -792,7 +776,7 @@ export default function StudentTimetablePage() {
                             className={`w-full text-left p-3 rounded-xl border transition-all cursor-pointer ${
                               isInProgress
                                 ? "border-emerald-300 bg-emerald-50/90 shadow-xs ring-2 ring-emerald-400/40"
-                                : "border-slate-200/80 bg-slate-50/70 hover:border-[#4085b3] hover:bg-white hover:shadow-2xs transition-all duration-200"
+                                : "border-slate-200/80 bg-slate-50/70 hover:border-blue-300 hover:bg-blue-50/40 hover:shadow-2xs"
                             }`}
                           >
                             <div className="flex items-center justify-between gap-1 mb-1.5">

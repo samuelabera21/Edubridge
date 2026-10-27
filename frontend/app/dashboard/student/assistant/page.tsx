@@ -611,12 +611,9 @@ function StudentAssistantPageContent() {
               {generatedPlan ? (
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                   {generatedPlan.map((item, idx) => (
-                    <div
-                      key={idx}
-                      className="group rounded-2xl border border-slate-200 bg-white p-5 shadow-xs hover:border-[#4085b3] hover:shadow-md transition-all duration-300 space-y-3"
-                    >
+                    <div key={idx} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs space-y-3">
                       <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
-                        <span className="font-black text-sm text-slate-900 group-hover:text-[#4085b3] transition-colors">{item.day}</span>
+                        <span className="font-black text-sm text-slate-900">{item.day}</span>
                         <span className="text-[10px] font-bold text-[#184973] bg-blue-50 px-2 py-0.5 rounded-full border border-blue-200">
                           {item.duration}
                         </span>

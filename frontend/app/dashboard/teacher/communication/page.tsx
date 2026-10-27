@@ -1823,7 +1823,7 @@ export default function TeacherCommunicationPage() {
                             )}
 
                             {/* Contacts List */}
-                            <div className="flex-1 overflow-y-auto max-h-[460px] divide-y divide-slate-100 scrollbar-thin">
+                            <div className="flex-1 overflow-y-auto max-h-[460px] divide-y divide-slate-100">
                                 {currentCategoryContacts.length === 0 ? (
                                     <div className="p-8 text-center text-slate-400 space-y-2">
                                         <Inbox className="w-8 h-8 mx-auto stroke-1 text-slate-300" />
@@ -2042,7 +2042,7 @@ export default function TeacherCommunicationPage() {
                     </div>
 
                     {/* Messages Thread / History */}
-                    <div className="flex-1 p-4 overflow-y-auto min-h-[300px] max-h-[460px] space-y-3 bg-slate-50/40 scrollbar-thin">
+                    <div className="flex-1 p-4 overflow-y-auto max-h-[260px] space-y-3 bg-slate-50/40">
                         {activeMessages.length === 0 ? (
                             <div className="py-10 text-center text-slate-400 space-y-1">
                                 {activeCategory === "STUDENT" && studentTargetMode === "ALL" ? (

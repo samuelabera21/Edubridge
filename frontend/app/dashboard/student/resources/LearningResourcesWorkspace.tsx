@@ -318,85 +318,6 @@ export default function LearningResourcesWorkspace({ initialSubNav = "all" }: Le
         teacherCount={teacherCount}
       />
 
-      {/* ─── Metric Overview Cards ─── */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <div
-          onClick={() => setActiveTab("all")}
-          className="relative overflow-hidden border border-slate-200 bg-white rounded-lg p-4 flex items-center justify-between group cursor-pointer shadow-2xs hover:border-[#4085b3] transition-all duration-300"
-        >
-          <span className="absolute inset-0 bg-[#4085b3] origin-left scale-x-0 group-hover:scale-x-100 transition-transform duration-300 ease-out pointer-events-none" />
-          <div className="relative z-10">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 group-hover:text-blue-100 transition-colors duration-300 block mb-1">
-              Total Materials
-            </span>
-            <span className="text-2xl font-bold text-slate-900 group-hover:text-white transition-colors duration-300 tabular-nums">
-              {resources.length}
-            </span>
-            <p className="text-[11px] text-slate-400 group-hover:text-blue-100 transition-colors duration-300 mt-0.5">
-              In repository
-            </p>
-          </div>
-          <BookOpen className="relative z-10 w-5 h-5 text-slate-400 group-hover:text-white transition-colors duration-300 shrink-0" />
-        </div>
-
-        <div
-          onClick={() => setActiveTab("textbooks")}
-          className="relative overflow-hidden border border-slate-200 bg-white rounded-lg p-4 flex items-center justify-between group cursor-pointer shadow-2xs hover:border-[#4085b3] transition-all duration-300"
-        >
-          <span className="absolute inset-0 bg-[#4085b3] origin-left scale-x-0 group-hover:scale-x-100 transition-transform duration-300 ease-out pointer-events-none" />
-          <div className="relative z-10">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 group-hover:text-blue-100 transition-colors duration-300 block mb-1">
-              Textbooks
-            </span>
-            <span className="text-2xl font-bold text-slate-900 group-hover:text-white transition-colors duration-300 tabular-nums">
-              {tabCounts.textbooks}
-            </span>
-            <p className="text-[11px] text-slate-400 group-hover:text-blue-100 transition-colors duration-300 mt-0.5">
-              Official curriculum
-            </p>
-          </div>
-          <School className="relative z-10 w-5 h-5 text-slate-400 group-hover:text-white transition-colors duration-300 shrink-0" />
-        </div>
-
-        <div
-          onClick={() => setActiveTab("all")}
-          className="relative overflow-hidden border border-slate-200 bg-white rounded-lg p-4 flex items-center justify-between group cursor-pointer shadow-2xs hover:border-[#4085b3] transition-all duration-300"
-        >
-          <span className="absolute inset-0 bg-[#4085b3] origin-left scale-x-0 group-hover:scale-x-100 transition-transform duration-300 ease-out pointer-events-none" />
-          <div className="relative z-10">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 group-hover:text-blue-100 transition-colors duration-300 block mb-1">
-              Teacher Uploads
-            </span>
-            <span className="text-2xl font-bold text-slate-900 group-hover:text-white transition-colors duration-300 tabular-nums">
-              {teacherCount}
-            </span>
-            <p className="text-[11px] text-slate-400 group-hover:text-blue-100 transition-colors duration-300 mt-0.5">
-              Slides &amp; notes
-            </p>
-          </div>
-          <GraduationCap className="relative z-10 w-5 h-5 text-slate-400 group-hover:text-white transition-colors duration-300 shrink-0" />
-        </div>
-
-        <div
-          onClick={() => setActiveTab("all")}
-          className="relative overflow-hidden border border-slate-200 bg-white rounded-lg p-4 flex items-center justify-between group cursor-pointer shadow-2xs hover:border-[#4085b3] transition-all duration-300"
-        >
-          <span className="absolute inset-0 bg-[#4085b3] origin-left scale-x-0 group-hover:scale-x-100 transition-transform duration-300 ease-out pointer-events-none" />
-          <div className="relative z-10">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 group-hover:text-blue-100 transition-colors duration-300 block mb-1">
-              Recommended
-            </span>
-            <span className="text-2xl font-bold text-slate-900 group-hover:text-white transition-colors duration-300 tabular-nums">
-              {recommendedCount}
-            </span>
-            <p className="text-[11px] text-slate-400 group-hover:text-blue-100 transition-colors duration-300 mt-0.5">
-              Curated for your section
-            </p>
-          </div>
-          <Sparkles className="relative z-10 w-5 h-5 text-slate-400 group-hover:text-white transition-colors duration-300 shrink-0" />
-        </div>
-      </div>
-
       {/* Sub-Nav Description Banner */}
       <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
         <div className="flex flex-col gap-4 border-b border-slate-100 pb-5">
@@ -575,7 +496,7 @@ export default function LearningResourcesWorkspace({ initialSubNav = "all" }: Le
                 <div
                   key={res.id}
                   onClick={() => setSelectedResource(res)}
-                  className="group relative flex flex-col justify-between rounded-2xl border border-slate-200 bg-white p-5 shadow-xs hover:border-[#4085b3] hover:shadow-md transition-all duration-300 cursor-pointer"
+                  className="group relative flex flex-col justify-between rounded-2xl border border-slate-200 bg-white p-5 shadow-sm hover:border-emerald-300 hover:shadow-md transition cursor-pointer"
                 >
                   <div>
                     <div className="flex items-center justify-between gap-2">
@@ -588,7 +509,7 @@ export default function LearningResourcesWorkspace({ initialSubNav = "all" }: Le
                       )}
                     </div>
 
-                    <h3 className="mt-3 text-sm font-bold text-slate-900 group-hover:text-[#4085b3] transition-colors line-clamp-2">
+                    <h3 className="mt-3 text-sm font-bold text-slate-900 group-hover:text-emerald-700 transition line-clamp-2">
                       {res.title}
                     </h3>
 

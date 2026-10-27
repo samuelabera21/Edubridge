@@ -469,7 +469,7 @@ export class StudentService {
                 }
             }
 
-            const tempPassword = process.env.DEFAULT_INITIAL_PASSWORD || ["Edu", "Bridge", "2026", "!"].join("");
+            const tempPassword = process.env.DEFAULT_INITIAL_PASSWORD || "EduBridge2026!";
 
             // 3. Check if User already exists with this email or phone
             const userOrConditions: any[] = [
@@ -1046,8 +1046,7 @@ export class StudentService {
                         schoolGrade: {
                             include: { grade: true }
                         },
-                        section: true,
-                        documents: true
+                        section: true
                     },
                     orderBy: { createdAt: "desc" }
                 },
@@ -1247,17 +1246,11 @@ export class StudentService {
                     include: {
                         schoolGrade: { include: { grade: true } },
                         section: true,
-                        organization: {
-                            include: {
-                                schoolProfile: true
-                            }
-                        },
-                        academicYear: true,
-                        documents: true
+                        organization: true,
+                        academicYear: true
                     },
                     orderBy: { createdAt: "desc" }
                 },
-                studentDocuments: true,
                 user: { select: { id: true, name: true, email: true } },
                 parents: {
                     include: {

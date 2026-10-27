@@ -280,7 +280,7 @@ export default function AccountDirectory({
       setIsProvisionModalOpen(false);
       setCreatedCredentials({
         username: data.user.email,
-        tempPass: data.temporaryPassword || data.credentials?.tempPassword || ["Edu", "Bridge", "2026", "!"].join("")
+        tempPass: data.temporaryPassword || data.credentials?.tempPassword || "EduBridge2026!"
       });
       setSuccessMsg(`Account for ${data.user.name} created successfully.`);
       loadUsers();

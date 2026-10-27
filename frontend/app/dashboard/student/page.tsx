@@ -7,17 +7,14 @@ import {
     CalendarDays,
     CheckCircle2,
     Clock,
-    FileSpreadsheet,
     FileText,
     GraduationCap,
     Megaphone,
-    Settings,
     TriangleAlert,
     UserRound,
 } from "lucide-react";
 import { useAuth } from "../../../hooks/useAuth";
 import { fetchApi } from "../../../lib/api";
-import { useStudentLanguage } from "../../../lib/student-i18n";
 
 type DashboardData = {
     student: { studentId: string; name: string };
@@ -82,23 +79,10 @@ function formatTeacherName(firstName?: string, lastName?: string) {
 }
 
 export default function StudentDashboard() {
-    const { t } = useStudentLanguage();
     const { authData } = useAuth();
     const [dashboard, setDashboard] = useState<DashboardData | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
-    const [profilePhoto, setProfilePhoto] = useState<string | null>(null);
-
-    useEffect(() => {
-        if (typeof window !== "undefined") {
-            setProfilePhoto(localStorage.getItem("student_profile_photo"));
-        }
-        const handlePhotoChange = (e: any) => {
-            setProfilePhoto(e.detail || null);
-        };
-        window.addEventListener("studentProfilePhotoChanged", handlePhotoChange);
-        return () => window.removeEventListener("studentProfilePhotoChanged", handlePhotoChange);
-    }, []);
 
     useEffect(() => {
         async function loadDashboard() {
@@ -117,142 +101,115 @@ export default function StudentDashboard() {
     }, []);
 
     if (loading) {
-        return (
-            <div className="mx-auto w-full max-w-6xl p-4 animate-pulse text-slate-500 font-sans text-sm">
-                Loading your dashboard...
-            </div>
-        );
+        return <div className="mx-auto w-full max-w-6xl animate-pulse text-gray-500">Loading your dashboard...</div>;
     }
 
     if (error || !dashboard) {
-        return (
-            <div className="mx-auto w-full max-w-6xl p-4">
-                <div className="rounded-2xl border border-red-200 bg-red-50 p-6 text-red-700 text-sm">
-                    {error || "Student dashboard data not found."}
-                </div>
-            </div>
-        );
+        return <div className="mx-auto w-full max-w-6xl rounded-xl border border-red-100 bg-red-50 p-6 text-red-700">{error || "Student dashboard data not found."}</div>;
     }
 
     const firstName = authData?.user?.name?.split(" ")[0] || dashboard.student.name.split(" ")[0];
     const attendanceLabel = dashboard.attendance.rate === null ? "No records" : `${dashboard.attendance.rate}%`;
     const hour = new Date().getHours();
-    const greeting = hour < 12 ? t.goodMorning : hour < 18 ? t.goodAfternoon : t.goodEvening;
+    const greeting = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
     const gradeName = dashboard.enrollment.schoolGrade?.grade?.name || "Grade";
     const sectionName = dashboard.enrollment.section?.name ? `Section ${dashboard.enrollment.section.name}` : "Section not assigned";
     const academicYear = dashboard.enrollment.academicYear?.name || "Current academic year";
     const todayName = WEEKDAY_NAMES[new Date().getDay()];
 
     return (
-        <div className="mx-auto w-full max-w-6xl space-y-5 sm:space-y-6 p-2 sm:p-4 font-sans text-slate-800">
-            {/* ─── GREETING SECTION (Clean White, No Color, Responsive) ─── */}
-            <section className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-6 shadow-xs text-slate-800">
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                    <div className="flex items-center space-x-3.5 sm:space-x-4">
-                        {profilePhoto ? (
-                            <img
-                                src={profilePhoto}
-                                alt="Student avatar"
-                                className="w-12 h-12 sm:w-14 sm:h-14 rounded-full object-cover border-2 border-slate-200 shadow-xs shrink-0"
-                            />
-                        ) : (
-                            <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-700 font-bold text-lg shrink-0">
-                                {firstName ? firstName[0].toUpperCase() : "S"}
-                            </div>
-                        )}
-                        <div>
-                            <p className="mb-0.5 text-[11px] font-bold uppercase tracking-wider text-slate-400">{t.studentPortal || "Student Portal"}</p>
-                            <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">{greeting}, {firstName}!</h1>
-                            <p className="text-xs sm:text-sm text-slate-500 mt-0.5">{gradeName} · {sectionName} · {academicYear}</p>
-                        </div>
+        <div className="mx-auto w-full max-w-6xl space-y-6">
+            <section className="relative overflow-hidden rounded-2xl bg-[#184973] p-8 text-white shadow-lg">
+                <div className="relative z-10 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+                    <div>
+                        <p className="mb-2 text-sm font-medium uppercase tracking-wide text-blue-100">Student dashboard</p>
+                        <h1 className="mb-2 text-3xl font-bold">{greeting}, {firstName}!</h1>
+                        <p className="text-lg text-blue-100">{gradeName} · {sectionName} · {academicYear}</p>
                     </div>
 
-                    <div className="flex items-center gap-2 flex-wrap">
-                        <div className="rounded-xl border border-slate-200 bg-slate-50/80 px-3 py-2 text-left">
-                            <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400">Student ID</p>
-                            <p className="text-xs font-bold text-slate-800 tabular-nums">{dashboard.student.studentId}</p>
+                    <div className="grid gap-2 sm:grid-cols-2">
+                        <div className="rounded-xl border border-white/20 bg-white/10 px-3 py-2 backdrop-blur-sm">
+                            <p className="text-[10px] uppercase tracking-wide text-blue-100">Student ID</p>
+                            <p className="text-sm font-bold text-white">{dashboard.student.studentId}</p>
                         </div>
-                        <div className="rounded-xl border border-slate-200 bg-slate-50/80 px-3 py-2 text-left">
-                            <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400">Academic Year</p>
-                            <p className="text-xs font-bold text-slate-800">{academicYear}</p>
+                        <div className="rounded-xl border border-white/20 bg-white/10 px-3 py-2 backdrop-blur-sm">
+                            <p className="text-[10px] uppercase tracking-wide text-blue-100">Academic year</p>
+                            <p className="text-sm font-bold text-white">{academicYear}</p>
                         </div>
                     </div>
                 </div>
+                <GraduationCap className="absolute -bottom-10 -right-10 h-64 w-64 -rotate-12 text-white opacity-10" />
             </section>
 
-            {/* ─── METRIC STAT CARDS (Clean White Style, No Blue Hover Fill) ─── */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
-                <StatCard icon={<GraduationCap className="h-4 w-4 sm:h-5 sm:w-5" />} label="Student ID" value={dashboard.student.studentId} href="/dashboard/student/profile" />
-                <StatCard icon={<BookOpen className="h-4 w-4 sm:h-5 sm:w-5" />} label={t.assignedSubjects || "Assigned Subjects"} value={String(dashboard.subjects?.length ?? 0)} href="/dashboard/student/results" />
-                <StatCard icon={<CheckCircle2 className="h-4 w-4 sm:h-5 sm:w-5" />} label="Attendance" value={attendanceLabel} href="/dashboard/student/attendance" />
-                <StatCard icon={<FileSpreadsheet className="h-4 w-4 sm:h-5 sm:w-5" />} label={t.academicResults || "Academic Results"} value="View Marks" href="/dashboard/student/results" />
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                <StatCard icon={<GraduationCap className="h-6 w-6" />} label="Student ID" value={dashboard.student.studentId} color="blue" />
+                <StatCard icon={<BookOpen className="h-6 w-6" />} label="Enrolled subjects" value={String(dashboard.subjects?.length ?? 0)} color="blue" />
+                <StatCard icon={<CheckCircle2 className="h-6 w-6" />} label="Attendance" value={attendanceLabel} color="green" />
+                <StatCard icon={<Clock className="h-6 w-6" />} label="Pending activities" value={String(dashboard.upcomingActivities.length)} color="amber" />
             </div>
 
-            <div className="grid grid-cols-1 gap-5 sm:gap-6 lg:grid-cols-3">
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
                 {/* Left Column (2 cols) */}
-                <div className="space-y-5 sm:space-y-6 lg:col-span-2">
-                    
+                <div className="space-y-6 lg:col-span-2">
                     {/* Class Schedule Section */}
-                    <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xs">
-                        <div className="flex items-center justify-between border-b border-slate-100 px-4 sm:px-6 py-3.5 sm:py-4">
+                    <section className="overflow-hidden rounded-xl border border-gray-100 bg-white shadow-sm">
+                        <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4">
                             <div className="flex items-center gap-2">
-                                <CalendarDays className="h-4 w-4 text-slate-700" />
-                                <h2 className="text-sm sm:text-base font-bold text-slate-900">Today&apos;s Schedule</h2>
+                                <CalendarDays className="h-5 w-5 text-[#184973]" />
+                                <h2 className="font-semibold text-gray-900">Today&apos;s classes &amp; schedule</h2>
                             </div>
-                            <Link href="/dashboard/student/timetable" className="text-xs font-semibold text-slate-600 hover:text-slate-900 hover:underline">
-                                Full timetable →
+                            <Link href="/dashboard/student/timetable" className="text-sm font-medium text-[#184973] hover:underline">
+                                View full timetable →
                             </Link>
                         </div>
-                        <div className="p-4 sm:p-6">
+                        <div className="p-6">
                             {dashboard.todayClasses.length > 0 ? (
-                                <div className="space-y-2.5 sm:space-y-3">
+                                <div className="space-y-3">
                                     {dashboard.todayClasses.map((item) => (
-                                        <div key={item.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 rounded-xl border border-slate-200 bg-white p-3.5 hover:border-slate-300 hover:shadow-xs transition-all duration-150">
-                                            <div className="flex items-center gap-3">
-                                                <div className="w-8 h-8 rounded-lg bg-slate-100 text-slate-700 flex items-center justify-center font-bold text-xs shrink-0">
-                                                    {item.teachingAssignment.subject.name.charAt(0)}
-                                                </div>
-                                                <div className="min-w-0">
-                                                    <p className="font-bold text-xs sm:text-sm text-slate-900 truncate">{item.teachingAssignment.subject.name}</p>
-                                                    <p className="text-[11px] text-slate-500 truncate">
-                                                        {formatTeacherName(item.teachingAssignment.teacher.firstName, item.teachingAssignment.teacher.lastName)}
-                                                        {item.room?.name ? ` · Room ${item.room.name}` : ""}
-                                                    </p>
-                                                </div>
-                                            </div>
-                                            <div className="text-xs font-semibold text-slate-700 bg-slate-50 px-2.5 py-1 rounded-lg border border-slate-200 self-start sm:self-auto">
+                                        <div key={item.id} className="flex items-start gap-4 rounded-xl border border-gray-100 bg-gray-50/50 p-4 transition hover:bg-gray-50">
+                                            <div className="w-28 flex-shrink-0 text-sm font-semibold text-[#184973]">
                                                 {item.classPeriod.startTime} {item.classPeriod.endTime ? `- ${item.classPeriod.endTime}` : ""}
+                                            </div>
+                                            <div>
+                                                <p className="font-semibold text-gray-900">{item.teachingAssignment.subject.name}</p>
+                                                <p className="mt-1 text-sm text-gray-500">
+                                                    {formatTeacherName(item.teachingAssignment.teacher.firstName, item.teachingAssignment.teacher.lastName)} · {item.classPeriod.name}
+                                                    {item.room?.name ? ` · Room ${item.room.name}` : ""}
+                                                </p>
                                             </div>
                                         </div>
                                     ))}
                                 </div>
                             ) : (
                                 <div className="space-y-4">
-                                    <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-3.5 sm:p-4 text-xs text-slate-700">
-                                        <p className="font-bold text-slate-900">No classes scheduled for today ({todayName}).</p>
-                                        <p className="mt-0.5 text-slate-500 text-[11px]">
-                                            Check your weekly schedule preview below or open the full timetable.
+                                    <div className="rounded-xl border border-emerald-100 bg-emerald-50/70 p-4 text-sm text-emerald-900">
+                                        <p className="font-semibold">No classes scheduled for today ({todayName}).</p>
+                                        <p className="mt-1 text-xs text-emerald-700">
+                                            Below is your weekly schedule preview. You can also view the full timetable.
                                         </p>
                                     </div>
 
                                     {dashboard.weeklyClasses && dashboard.weeklyClasses.length > 0 ? (
                                         <div className="space-y-2">
-                                            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Weekly schedule preview</p>
-                                            <div className="grid gap-2.5 sm:grid-cols-2">
-                                                {dashboard.weeklyClasses.slice(0, 4).map((item) => (
-                                                    <div key={item.id} className="rounded-xl border border-slate-200 bg-white p-3 hover:border-slate-300 hover:shadow-xs transition-all duration-150">
+                                            <p className="text-xs font-bold uppercase tracking-wider text-gray-400">Weekly schedule preview</p>
+                                            <div className="grid gap-3 sm:grid-cols-2">
+                                                {dashboard.weeklyClasses.map((item) => (
+                                                    <div key={item.id} className="rounded-xl border border-gray-100 bg-gray-50/70 p-3.5 hover:border-gray-200 transition">
                                                         <div className="flex items-center justify-between gap-2">
-                                                            <span className="rounded bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-700">
+                                                            <span className="rounded bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-800">
                                                                 {WEEKDAY_NAMES[item.dayOfWeek] || `Day ${item.dayOfWeek}`}
                                                             </span>
-                                                            <span className="text-[11px] text-slate-500 font-medium">
-                                                                {item.classPeriod.startTime}
+                                                            <span className="text-xs font-medium text-gray-500">
+                                                                {item.classPeriod.name} ({item.classPeriod.startTime}{item.classPeriod.endTime ? ` - ${item.classPeriod.endTime}` : ""})
                                                             </span>
                                                         </div>
-                                                        <p className="mt-1.5 text-xs font-bold text-slate-900 truncate">{item.teachingAssignment.subject.name}</p>
-                                                        <p className="text-[11px] text-slate-500 truncate">
-                                                            {formatTeacherName(item.teachingAssignment.teacher.firstName, item.teachingAssignment.teacher.lastName)}
+                                                        <p className="mt-2 text-sm font-semibold text-gray-900">{item.teachingAssignment.subject.name}</p>
+                                                        <p className="mt-0.5 text-xs text-gray-600">
+                                                            Teacher: {formatTeacherName(item.teachingAssignment.teacher.firstName, item.teachingAssignment.teacher.lastName)}
                                                         </p>
+                                                        {item.room?.name && (
+                                                            <p className="mt-1 text-[11px] text-gray-400">Room: {item.room.name}</p>
+                                                        )}
                                                     </div>
                                                 ))}
                                             </div>
@@ -265,58 +222,53 @@ export default function StudentDashboard() {
                         </div>
                     </section>
 
-                    {/* Enrolled Subjects & Teachers Section (Functional & Clickable to Results) */}
-                    <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xs">
-                        <div className="flex items-center justify-between border-b border-slate-100 px-4 sm:px-6 py-3.5 sm:py-4">
+                    {/* Enrolled Subjects & Teachers Section */}
+                    <section className="overflow-hidden rounded-xl border border-gray-100 bg-white shadow-sm">
+                        <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4">
                             <div className="flex items-center gap-2">
-                                <BookOpen className="h-4 w-4 text-slate-700" />
-                                <h2 className="text-sm sm:text-base font-bold text-slate-900">Enrolled Subjects &amp; Teachers</h2>
+                                <BookOpen className="h-5 w-5 text-[#184973]" />
+                                <h2 className="font-semibold text-gray-900">Enrolled subjects &amp; teachers</h2>
                             </div>
-                            <Link href="/dashboard/student/results" className="text-xs font-semibold text-slate-600 hover:text-slate-900 hover:underline">
-                                View marks →
+                            <Link href="/dashboard/student/classes/subjects" className="text-sm font-medium text-[#184973] hover:underline">
+                                View all →
                             </Link>
                         </div>
-                        <div className="p-4 sm:p-6">
+                        <div className="p-6">
                             {!dashboard.subjects || dashboard.subjects.length === 0 ? (
                                 <Empty text="No subjects or teachers have been assigned to your section yet." />
                             ) : (
-                                <div className="grid gap-2.5 sm:gap-3.5 sm:grid-cols-2">
+                                <div className="grid gap-4 sm:grid-cols-2">
                                     {dashboard.subjects.map((item) => (
-                                        <Link
-                                            key={item.id}
-                                            href={`/dashboard/student/results?subject=${encodeURIComponent(item.subject.name)}`}
-                                            className="block rounded-xl border border-slate-200 bg-white p-3.5 hover:border-slate-300 hover:shadow-xs transition-all duration-150 group"
-                                            title={`Click to view results for ${item.subject.name}`}
-                                        >
+                                        <div key={item.id} className="rounded-xl border border-gray-100 bg-white p-4 shadow-sm hover:border-emerald-200 transition">
                                             <div className="flex items-start justify-between gap-2">
-                                                <div className="min-w-0">
-                                                    <h3 className="font-bold text-xs sm:text-sm text-slate-900 group-hover:text-slate-950 transition-colors truncate">
-                                                        {item.subject.name}
-                                                    </h3>
+                                                <div>
+                                                    <h3 className="font-semibold text-gray-900">{item.subject.name}</h3>
                                                     {item.subject.code && (
-                                                        <span className="mt-0.5 inline-block rounded bg-slate-100 px-1.5 py-0.2 text-[10px] font-semibold text-slate-600">
+                                                        <span className="mt-0.5 inline-block rounded bg-gray-100 px-2 py-0.5 text-[11px] font-medium text-gray-600">
                                                             {item.subject.code}
                                                         </span>
                                                     )}
                                                 </div>
-                                                <span className="text-[10px] font-bold text-slate-500 bg-slate-50 border border-slate-200 rounded-md px-1.5 py-0.5 shrink-0">
-                                                    {item.periodsPerWeek ? `${item.periodsPerWeek}p/wk` : "Enrolled"}
-                                                </span>
+                                                {item.periodsPerWeek ? (
+                                                    <span className="rounded-full bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-700">
+                                                        {item.periodsPerWeek} periods/wk
+                                                    </span>
+                                                ) : null}
                                             </div>
-                                            <div className="mt-3 flex items-center gap-2.5 border-t border-slate-100 pt-2.5">
-                                                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-slate-100 text-slate-700 font-bold text-xs">
-                                                    {item.teacher.firstName ? item.teacher.firstName.charAt(0).toUpperCase() : <UserRound className="h-3.5 w-3.5" />}
+                                            <div className="mt-4 flex items-center gap-3 border-t border-gray-50 pt-3">
+                                                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-800 font-bold text-sm">
+                                                    {item.teacher.firstName ? item.teacher.firstName.charAt(0).toUpperCase() : <UserRound className="h-4 w-4" />}
                                                 </div>
                                                 <div className="min-w-0 flex-1">
-                                                    <p className="text-xs font-semibold text-slate-800 truncate">
+                                                    <p className="text-sm font-medium text-gray-900 truncate">
                                                         {formatTeacherName(item.teacher.firstName, item.teacher.lastName)}
                                                     </p>
-                                                    <p className="text-[10px] text-slate-400 truncate">
-                                                        Click to view subject marks →
+                                                    <p className="text-xs text-gray-500 truncate">
+                                                        {item.teacher.email || item.teacher.phoneNumber || "Assigned Teacher"}
                                                     </p>
                                                 </div>
                                             </div>
-                                        </Link>
+                                        </div>
                                     ))}
                                 </div>
                             )}
@@ -324,35 +276,23 @@ export default function StudentDashboard() {
                     </section>
 
                     {/* Recent results */}
-                    <section className="rounded-2xl border border-slate-200 bg-white shadow-xs overflow-hidden">
-                        <div className="flex items-center justify-between border-b border-slate-100 px-4 sm:px-6 py-3.5 sm:py-4">
-                            <div className="flex items-center gap-2">
-                                <FileSpreadsheet className="h-4 w-4 text-slate-700" />
-                                <h2 className="text-sm sm:text-base font-bold text-slate-900">Recent Results</h2>
-                            </div>
-                            <Link href="/dashboard/student/results" className="text-xs font-semibold text-slate-600 hover:text-slate-900 hover:underline">
-                                View all marks →
-                            </Link>
+                    <section className="rounded-xl border border-gray-100 bg-white shadow-sm">
+                        <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4">
+                            <h2 className="font-semibold text-gray-900">Recent results</h2>
+                            <FileText className="h-5 w-5 text-gray-400" />
                         </div>
-                        <div className="divide-y divide-slate-100">
+                        <div className="divide-y divide-gray-100">
                             {dashboard.recentResults.length === 0 ? (
                                 <div className="p-6"><Empty text="No published results yet." /></div>
                             ) : (
                                 dashboard.recentResults.map((result) => (
-                                    <Link
-                                        key={result.id}
-                                        href="/dashboard/student/results"
-                                        className="flex items-center justify-between gap-3 px-4 sm:px-6 py-3.5 hover:bg-slate-50 transition-colors group block"
-                                    >
-                                        <div className="min-w-0">
-                                            <p className="font-bold text-xs sm:text-sm text-slate-900 truncate">{result.title}</p>
-                                            <p className="text-xs text-slate-500 truncate">{result.subject}</p>
+                                    <div key={result.id} className="flex items-center justify-between gap-4 px-6 py-4">
+                                        <div>
+                                            <p className="font-medium text-gray-900">{result.title}</p>
+                                            <p className="text-sm text-gray-500">{result.subject}</p>
                                         </div>
-                                        <div className="text-right shrink-0">
-                                            <p className="font-bold text-sm text-slate-900 tabular-nums">{result.percentage}%</p>
-                                            <span className="text-[10px] text-slate-400">Recorded</span>
-                                        </div>
-                                    </Link>
+                                        <p className="font-semibold text-[#184973]">{result.percentage}%</p>
+                                    </div>
                                 ))
                             )}
                         </div>
@@ -360,29 +300,51 @@ export default function StudentDashboard() {
                 </div>
 
                 {/* Right Column (1 col) */}
-                <div className="space-y-5 sm:space-y-6">
+                <div className="space-y-6">
+                    {/* Upcoming activities */}
+                    <section className="overflow-hidden rounded-xl border border-gray-100 bg-white shadow-sm">
+                        <div className="border-b border-gray-100 px-6 py-4">
+                            <h2 className="font-semibold text-gray-900">Upcoming activities</h2>
+                        </div>
+                        <div className="space-y-3 p-6">
+                            {dashboard.upcomingActivities.length === 0 ? (
+                                <Empty text="No upcoming activities." />
+                            ) : (
+                                dashboard.upcomingActivities.map((activity) => (
+                                    <div key={activity.id} className="rounded-lg bg-orange-50 p-3 text-sm text-orange-900">
+                                        <p className="font-semibold">{activity.title}</p>
+                                        <p className="mt-1">
+                                            {activity.teachingAssignment.subject.name} ·{" "}
+                                            {activity.dueDate ? new Date(activity.dueDate).toLocaleDateString() : "No due date"}
+                                        </p>
+                                    </div>
+                                ))
+                            )}
+                        </div>
+                    </section>
+
                     {/* Announcements */}
-                    <section className="rounded-2xl border border-slate-200 bg-white shadow-xs overflow-hidden">
-                        <div className="flex items-center justify-between border-b border-slate-100 px-4 sm:px-6 py-3.5 sm:py-4">
-                            <h2 className="flex items-center gap-2 font-bold text-sm sm:text-base text-slate-900">
-                                <Megaphone className="h-4 w-4 text-slate-700" /> Announcements
+                    <section className="rounded-xl border border-gray-100 bg-white shadow-sm">
+                        <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4">
+                            <h2 className="flex items-center gap-2 font-semibold text-gray-900">
+                                <Megaphone className="h-4 w-4 text-[#184973]" /> Announcements
                             </h2>
-                            <Link href="/dashboard/student/communication/announcements" className="text-xs font-semibold text-slate-600 hover:text-slate-900 hover:underline">
+                            <Link href="/dashboard/student/communication" className="text-xs font-semibold text-[#184973] hover:underline">
                                 View all
                             </Link>
                         </div>
-                        <div className="space-y-2 p-3 sm:p-4">
+                        <div className="space-y-3 p-6">
                             {dashboard.announcements.length === 0 ? (
                                 <Empty text="No announcements." />
                             ) : (
                                 dashboard.announcements.slice(0, 3).map((item) => (
                                     <Link
                                         key={item.id}
-                                        href="/dashboard/student/communication/announcements"
-                                        className="block rounded-xl p-3 transition-colors hover:bg-slate-50 border border-slate-100 hover:border-slate-200 group"
+                                        href="/dashboard/student/communication"
+                                        className="block rounded-lg p-2 transition-colors hover:bg-slate-50"
                                     >
-                                        <p className="text-xs sm:text-sm font-bold text-slate-900 truncate">{item.title}</p>
-                                        <p className="mt-1 line-clamp-2 text-xs text-slate-500 leading-relaxed">{item.content}</p>
+                                        <p className="text-sm font-medium text-gray-900">{item.title}</p>
+                                        <p className="mt-0.5 line-clamp-2 text-xs text-gray-500">{item.content}</p>
                                     </Link>
                                 ))
                             )}
@@ -391,7 +353,7 @@ export default function StudentDashboard() {
 
                     {/* Needs attention / Early Warning Flags */}
                     {dashboard.supportFlags.length > 0 && (
-                        <div className="space-y-2.5">
+                        <div className="space-y-3">
                             {dashboard.supportFlags.map((flag) => {
                                 const isRed = flag.description.includes("[RED]");
                                 const titleLine = flag.description.split("\n")[0].replace(/^\[(RED|YELLOW)\]\s*/, "");
@@ -400,18 +362,18 @@ export default function StudentDashboard() {
                                 return (
                                     <div 
                                         key={flag.id} 
-                                        className={`rounded-xl border p-3.5 text-xs ${
+                                        className={`rounded-xl border p-4 text-xs ${
                                             isRed 
                                                 ? "border-rose-200 bg-rose-50 text-rose-950" 
                                                 : "border-amber-200 bg-amber-50 text-amber-950"
                                         }`}
                                     >
-                                        <div className="flex items-center gap-2 font-bold text-xs sm:text-sm">
+                                        <div className="flex items-center gap-2 font-bold text-sm">
                                             <TriangleAlert className={`h-4 w-4 ${isRed ? "text-rose-600" : "text-amber-600"}`} />
                                             <span>{titleLine || "የክትትል ማሳሰቢያ (Academic & Attendance Alert)"}</span>
                                         </div>
                                         {detailLines && (
-                                            <p className="mt-1 whitespace-pre-line text-slate-700 leading-relaxed text-[11px]">
+                                            <p className="mt-1.5 whitespace-pre-line text-gray-700 leading-relaxed">
                                                 {detailLines}
                                             </p>
                                         )}
@@ -427,30 +389,18 @@ export default function StudentDashboard() {
 }
 
 function Empty({ text }: { text: string }) {
-    return <p className="text-xs text-slate-400 py-2">{text}</p>;
+    return <p className="text-sm text-gray-500">{text}</p>;
 }
 
-function StatCard({ icon, label, value, href }: { icon: React.ReactNode; label: string; value: string; href?: string }) {
-    const cardContent = (
-        <div className="border border-slate-200 bg-white rounded-xl p-3 sm:p-4 flex flex-col justify-between shadow-2xs hover:border-slate-300 hover:shadow-xs transition-all duration-200 group">
-            <div className="flex items-start justify-between gap-1.5">
-                <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1 truncate">
-                    {label}
-                </span>
-                <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-lg bg-slate-50 border border-slate-100 flex items-center justify-center text-slate-500 shrink-0">
-                    {icon}
-                </div>
-            </div>
+function StatCard({ icon, label, value, color }: { icon: React.ReactNode; label: string; value: string; color: "blue" | "green" | "amber" }) {
+    const colors = { blue: "bg-blue-50 text-[#184973]", green: "bg-green-50 text-green-600", amber: "bg-amber-50 text-amber-600" };
+    return (
+        <div className="flex items-center space-x-4 rounded-xl border border-gray-100 bg-white p-6 shadow-sm">
+            <div className={`rounded-lg p-3 ${colors[color]}`}>{icon}</div>
             <div>
-                <span className="text-lg sm:text-2xl font-bold text-slate-900 tabular-nums truncate block">
-                    {value}
-                </span>
+                <p className="text-sm font-medium text-gray-500">{label}</p>
+                <p className="text-xl font-bold text-gray-900">{value}</p>
             </div>
         </div>
     );
-
-    if (href) {
-        return <Link href={href} className="block">{cardContent}</Link>;
-    }
-    return cardContent;
 }

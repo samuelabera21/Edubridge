@@ -267,79 +267,50 @@ export default function StudentSubjectsPage() {
 
       {/* ─── Metric Overview Cards ──────────────────────────────────── */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <div
-          onClick={() => setFilterTab("subjects")}
-          className="relative overflow-hidden border border-slate-200 bg-white rounded-lg p-4 flex items-center justify-between group cursor-pointer shadow-2xs hover:border-[#4085b3] transition-all duration-300"
-        >
-          <span className="absolute inset-0 bg-[#4085b3] origin-left scale-x-0 group-hover:scale-x-100 transition-transform duration-300 ease-out pointer-events-none" />
-          <div className="relative z-10">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 group-hover:text-blue-100 transition-colors duration-300 block mb-1">
-              Total Subjects
-            </span>
-            <span className="text-2xl font-bold text-slate-900 group-hover:text-white transition-colors duration-300 tabular-nums">
-              {subjects.length}
-            </span>
-            <p className="text-[11px] text-slate-400 group-hover:text-blue-100 transition-colors duration-300 mt-0.5">
-              Enrolled courses
-            </p>
+        <div className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-xs">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-slate-500">Total Subjects</span>
+            <div className="rounded-lg bg-blue-50 p-2 text-blue-600">
+              <BookOpen className="h-4 w-4" />
+            </div>
           </div>
-          <BookOpen className="relative z-10 w-5 h-5 text-slate-400 group-hover:text-white transition-colors duration-300 shrink-0" />
+          <p className="mt-2 text-2xl font-black text-slate-900">{subjects.length}</p>
+          <p className="text-[11px] text-slate-500 mt-0.5">Enrolled courses</p>
         </div>
 
-        <div
-          onClick={() => setFilterTab("teachers")}
-          className="relative overflow-hidden border border-slate-200 bg-white rounded-lg p-4 flex items-center justify-between group cursor-pointer shadow-2xs hover:border-[#4085b3] transition-all duration-300"
-        >
-          <span className="absolute inset-0 bg-[#4085b3] origin-left scale-x-0 group-hover:scale-x-100 transition-transform duration-300 ease-out pointer-events-none" />
-          <div className="relative z-10">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 group-hover:text-blue-100 transition-colors duration-300 block mb-1">
-              Instructors
-            </span>
-            <span className="text-2xl font-bold text-slate-900 group-hover:text-white transition-colors duration-300 tabular-nums">
-              {groupedTeachers.length}
-            </span>
-            <p className="text-[11px] text-slate-400 group-hover:text-blue-100 transition-colors duration-300 mt-0.5">
-              Assigned teachers
-            </p>
+        <div className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-xs">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-slate-500">Instructors</span>
+            <div className="rounded-lg bg-emerald-50 p-2 text-emerald-600">
+              <Users className="h-4 w-4" />
+            </div>
           </div>
-          <Users className="relative z-10 w-5 h-5 text-slate-400 group-hover:text-white transition-colors duration-300 shrink-0" />
+          <p className="mt-2 text-2xl font-black text-slate-900">{groupedTeachers.length}</p>
+          <p className="text-[11px] text-slate-500 mt-0.5">Assigned teachers</p>
         </div>
 
-        <div
-          className="relative overflow-hidden border border-slate-200 bg-white rounded-lg p-4 flex items-center justify-between group cursor-pointer shadow-2xs hover:border-[#4085b3] transition-all duration-300"
-        >
-          <span className="absolute inset-0 bg-[#4085b3] origin-left scale-x-0 group-hover:scale-x-100 transition-transform duration-300 ease-out pointer-events-none" />
-          <div className="relative z-10">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 group-hover:text-blue-100 transition-colors duration-300 block mb-1">
-              Weekly Periods
-            </span>
-            <span className="text-2xl font-bold text-slate-900 group-hover:text-white transition-colors duration-300 tabular-nums">
-              {totalWeeklyPeriods}
-            </span>
-            <p className="text-[11px] text-slate-400 group-hover:text-blue-100 transition-colors duration-300 mt-0.5">
-              Periods per week
-            </p>
+        <div className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-xs">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-slate-500">Weekly Periods</span>
+            <div className="rounded-lg bg-indigo-50 p-2 text-indigo-600">
+              <Clock className="h-4 w-4" />
+            </div>
           </div>
-          <Clock className="relative z-10 w-5 h-5 text-slate-400 group-hover:text-white transition-colors duration-300 shrink-0" />
+          <p className="mt-2 text-2xl font-black text-slate-900">{totalWeeklyPeriods}</p>
+          <p className="text-[11px] text-slate-500 mt-0.5">Periods per week</p>
         </div>
 
-        <div
-          onClick={() => setFilterTab("all")}
-          className="relative overflow-hidden border border-slate-200 bg-white rounded-lg p-4 flex items-center justify-between group cursor-pointer shadow-2xs hover:border-[#4085b3] transition-all duration-300"
-        >
-          <span className="absolute inset-0 bg-[#4085b3] origin-left scale-x-0 group-hover:scale-x-100 transition-transform duration-300 ease-out pointer-events-none" />
-          <div className="relative z-10">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 group-hover:text-blue-100 transition-colors duration-300 block mb-1">
-              Assigned Section
-            </span>
-            <span className="text-2xl font-bold text-slate-900 group-hover:text-white transition-colors duration-300 tabular-nums">
-              {activeSection || "Standard"}
-            </span>
-            <p className="text-[11px] text-slate-400 group-hover:text-blue-100 transition-colors duration-300 mt-0.5">
-              Academic cohort
-            </p>
+        <div className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-xs">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-slate-500">Assigned Section</span>
+            <div className="rounded-lg bg-amber-50 p-2 text-amber-600">
+              <GraduationCap className="h-4 w-4" />
+            </div>
           </div>
-          <GraduationCap className="relative z-10 w-5 h-5 text-slate-400 group-hover:text-white transition-colors duration-300 shrink-0" />
+          <p className="mt-2 text-2xl font-black text-slate-900">
+            {activeSection || "Standard"}
+          </p>
+          <p className="text-[11px] text-slate-500 mt-0.5">Academic cohort</p>
         </div>
       </div>
 
@@ -558,7 +529,7 @@ export default function StudentSubjectsPage() {
           {filteredTeachers.map((teacher) => (
             <article
               key={teacher.id}
-              className="flex flex-col justify-between rounded-2xl border border-slate-200/90 bg-white p-5 shadow-xs hover:border-[#4085b3] hover:shadow-md transition-all duration-300 group"
+              className="flex flex-col justify-between rounded-2xl border border-slate-200/90 bg-white p-5 shadow-xs hover:border-emerald-300 hover:shadow-md transition-all group"
             >
               <div>
                 {/* Teacher Header */}
@@ -572,7 +543,7 @@ export default function StudentSubjectsPage() {
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
-                      <h3 className="text-base font-bold text-slate-900 group-hover:text-[#4085b3] transition-colors truncate">
+                      <h3 className="text-base font-bold text-slate-900 group-hover:text-emerald-700 transition-colors truncate">
                         {teacher.fullName}
                       </h3>
                       <UserCheck className="h-4 w-4 text-emerald-500 shrink-0" />
@@ -689,12 +660,12 @@ export default function StudentSubjectsPage() {
           {filteredSubjects.map((item) => (
             <article
               key={item.id || item.subject.name}
-              className="flex flex-col justify-between rounded-2xl border border-slate-200/90 bg-white p-5 shadow-xs hover:border-[#4085b3] hover:shadow-md transition-all duration-300 group"
+              className="flex flex-col justify-between rounded-2xl border border-slate-200/90 bg-white p-5 shadow-xs hover:border-blue-300 hover:shadow-md transition-all group"
             >
               <div>
                 <div className="flex items-start justify-between gap-2">
                   <div>
-                    <h3 className="text-base font-bold text-slate-900 group-hover:text-[#4085b3] transition-colors">
+                    <h3 className="text-base font-bold text-slate-900 group-hover:text-blue-600 transition-colors">
                       {item.subject.name}
                     </h3>
                     {item.section?.name && (

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ArrowLeft, GraduationCap, School, User, FileText } from "lucide-react";
+import { ArrowLeft, GraduationCap, School, User } from "lucide-react";
 
 interface ProfileHeaderProps {
   title?: string;
@@ -27,12 +27,6 @@ export default function ProfileHeader({
       href: "/dashboard/student/profile/enrollment",
       icon: School,
       active: pathname === "/dashboard/student/profile/enrollment",
-    },
-    {
-      label: "Enrollment Documents",
-      href: "/dashboard/student/profile/documents",
-      icon: FileText,
-      active: pathname === "/dashboard/student/profile/documents",
     },
   ];
 

@@ -271,71 +271,109 @@ export default function StudentAssessmentPerformancePage() {
           {/* ─── Metric Highlights ─── */}
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {/* Average Performance */}
-            <div className="relative overflow-hidden border border-slate-200 bg-white rounded-lg p-4 flex items-center justify-between group cursor-pointer shadow-2xs hover:border-[#4085b3] transition-all duration-300">
-              <span className="absolute inset-0 bg-[#4085b3] origin-left scale-x-0 group-hover:scale-x-100 transition-transform duration-300 ease-out pointer-events-none" />
-              <div className="relative z-10">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 group-hover:text-blue-100 transition-colors duration-300 block mb-1">
+            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs flex items-center justify-between">
+              <div>
+                <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
                   Selected Average
                 </span>
-                <span className="text-2xl font-bold text-slate-900 group-hover:text-white transition-colors duration-300 tabular-nums">
-                  {averageScore}%
-                </span>
-                <p className="text-[11px] text-slate-400 group-hover:text-blue-100 transition-colors duration-300 mt-0.5">
-                  Range: {lowestScore}% to {highestScore}%
+                <div className="flex items-baseline gap-2 mt-1">
+                  <span className="text-3xl font-black text-slate-900">{averageScore}%</span>
+                  <span className="text-xs font-semibold text-slate-500">
+                    ({visibleAssessments.length} evaluated)
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-500 mt-1">
+                  Range: {lowestScore}% low to {highestScore}% high
                 </p>
               </div>
-              <Target className="relative z-10 w-5 h-5 text-slate-400 group-hover:text-white transition-colors duration-300 shrink-0" />
+              <div className="rounded-2xl bg-blue-50 p-3 text-[#184973]">
+                <Target className="h-6 w-6" />
+              </div>
             </div>
 
             {/* Growth Change */}
-            <div className="relative overflow-hidden border border-slate-200 bg-white rounded-lg p-4 flex items-center justify-between group cursor-pointer shadow-2xs hover:border-[#4085b3] transition-all duration-300">
-              <span className="absolute inset-0 bg-[#4085b3] origin-left scale-x-0 group-hover:scale-x-100 transition-transform duration-300 ease-out pointer-events-none" />
-              <div className="relative z-10">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 group-hover:text-blue-100 transition-colors duration-300 block mb-1">
+            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs flex items-center justify-between">
+              <div>
+                <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
                   Academic Trajectory
                 </span>
-                <span className="text-2xl font-bold text-slate-900 group-hover:text-white transition-colors duration-300 tabular-nums">
-                  {growthChange >= 0 ? `+${growthChange}%` : `${growthChange}%`}
-                </span>
-                <p className="text-[11px] text-slate-400 group-hover:text-blue-100 transition-colors duration-300 mt-0.5">
-                  {growthChange >= 0 ? "Improving mastery" : "Needs review"}
+                <div className="flex items-baseline gap-2 mt-1">
+                  <span
+                    className={`text-3xl font-black ${
+                      growthChange >= 0 ? "text-emerald-600" : "text-rose-600"
+                    }`}
+                  >
+                    {growthChange >= 0 ? `+${growthChange}%` : `${growthChange}%`}
+                  </span>
+                  <span
+                    className={`inline-flex items-center text-xs font-bold px-2 py-0.5 rounded-full border ${
+                      growthChange >= 0
+                        ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                        : "bg-rose-50 text-rose-700 border-rose-200"
+                    }`}
+                  >
+                    {growthChange >= 0 ? "Improving" : "Needs Review"}
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-500 mt-1">
+                  From {firstScore}% initial to {latestScore}% latest
                 </p>
               </div>
-              <TrendingUp className="relative z-10 w-5 h-5 text-slate-400 group-hover:text-white transition-colors duration-300 shrink-0" />
+              <div
+                className={`rounded-2xl p-3 ${
+                  growthChange >= 0 ? "bg-emerald-50 text-emerald-600" : "bg-rose-50 text-rose-600"
+                }`}
+              >
+                {growthChange >= 0 ? (
+                  <TrendingUp className="h-6 w-6" />
+                ) : (
+                  <TrendingDown className="h-6 w-6" />
+                )}
+              </div>
             </div>
 
             {/* Highest Mark */}
-            <div className="relative overflow-hidden border border-slate-200 bg-white rounded-lg p-4 flex items-center justify-between group cursor-pointer shadow-2xs hover:border-[#4085b3] transition-all duration-300">
-              <span className="absolute inset-0 bg-[#4085b3] origin-left scale-x-0 group-hover:scale-x-100 transition-transform duration-300 ease-out pointer-events-none" />
-              <div className="relative z-10">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 group-hover:text-blue-100 transition-colors duration-300 block mb-1">
+            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs flex items-center justify-between">
+              <div>
+                <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
                   Peak Evaluation
                 </span>
-                <span className="text-2xl font-bold text-slate-900 group-hover:text-white transition-colors duration-300 tabular-nums">
-                  {highestScore}%
-                </span>
-                <p className="text-[11px] text-slate-400 group-hover:text-blue-100 transition-colors duration-300 mt-0.5">
-                  Personal best
+                <div className="flex items-baseline gap-2 mt-1">
+                  <span className="text-3xl font-black text-amber-600">{highestScore}%</span>
+                  <span className="text-xs font-bold px-2 py-0.5 rounded-full border bg-amber-50 text-amber-800 border-amber-200">
+                    Personal Best
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-500 mt-1">
+                  Across all curriculum checkpoints
                 </p>
               </div>
-              <Flame className="relative z-10 w-5 h-5 text-slate-400 group-hover:text-white transition-colors duration-300 shrink-0" />
+              <div className="rounded-2xl bg-amber-50 p-3 text-amber-600">
+                <Flame className="h-6 w-6" />
+              </div>
             </div>
 
             {/* Mastery Level */}
-            <div className="relative overflow-hidden border border-slate-200 bg-white rounded-lg p-4 flex items-center justify-between group cursor-pointer shadow-2xs hover:border-[#4085b3] transition-all duration-300">
-              <span className="absolute inset-0 bg-[#4085b3] origin-left scale-x-0 group-hover:scale-x-100 transition-transform duration-300 ease-out pointer-events-none" />
-              <div className="relative z-10">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 group-hover:text-blue-100 transition-colors duration-300 block mb-1">
+            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-xs flex items-center justify-between">
+              <div>
+                <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
                   Advanced Mastery
                 </span>
-                <span className="text-2xl font-bold text-slate-900 group-hover:text-white transition-colors duration-300 tabular-nums">
-                  {masteryTiers.advanced + masteryTiers.proficient}
-                </span>
-                <p className="text-[11px] text-slate-400 group-hover:text-blue-100 transition-colors duration-300 mt-0.5">
-                  of {masteryTiers.total} tests (&ge;80%)
+                <div className="flex items-baseline gap-2 mt-1">
+                  <span className="text-3xl font-black text-[#184973]">
+                    {masteryTiers.advanced + masteryTiers.proficient}
+                  </span>
+                  <span className="text-xs font-semibold text-slate-500">
+                    of {masteryTiers.total} tests
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-500 mt-1">
+                  Scored 80% or higher (Grade A/B)
                 </p>
               </div>
-              <Award className="relative z-10 w-5 h-5 text-slate-400 group-hover:text-white transition-colors duration-300 shrink-0" />
+              <div className="rounded-2xl bg-blue-50 p-3 text-[#184973]">
+                <Award className="h-6 w-6" />
+              </div>
             </div>
           </div>
 

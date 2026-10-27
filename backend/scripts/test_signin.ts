@@ -4,7 +4,7 @@ import { hashPassword } from "better-auth/crypto";
 
 async function testSignIn() {
     console.log("=== Testing Newly Registered Teacher Sign In ===");
-    for (const pwd of [["Change", "Me", "123", "!"].join(""), ["Edu", "Bridge", "2026", "!"].join("")]) {
+    for (const pwd of ["ChangeMe123!", "EduBridge2026!"]) {
         try {
             const res = await auth.api.signInEmail({
                 body: { email: "asamnagiz2@gmail.com", password: pwd },

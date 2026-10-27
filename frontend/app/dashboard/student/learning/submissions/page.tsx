@@ -87,52 +87,37 @@ export default function StudentLearningSubmissionsPage() {
 
       {/* Summary Cards */}
       <div className="grid gap-3 grid-cols-1 sm:grid-cols-3">
-        <div className="relative overflow-hidden border border-slate-200 bg-white rounded-lg p-4 flex items-center justify-between group cursor-pointer shadow-2xs hover:border-[#4085b3] transition-all duration-300">
-          <span className="absolute inset-0 bg-[#4085b3] origin-left scale-x-0 group-hover:scale-x-100 transition-transform duration-300 ease-out pointer-events-none" />
-          <div className="relative z-10">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 group-hover:text-blue-100 transition-colors duration-300 block mb-1">
-              Total Submissions
-            </span>
-            <span className="text-2xl font-bold text-slate-900 group-hover:text-white transition-colors duration-300 tabular-nums">
-              {summary.total}
-            </span>
-            <p className="text-[11px] text-slate-400 group-hover:text-blue-100 transition-colors duration-300 mt-0.5">
-              Activities recorded
-            </p>
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-xs">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-slate-500">Total Submissions</span>
+            <div className="rounded-lg bg-blue-50 p-2 text-[#184973]">
+              <FileText className="h-4 w-4" />
+            </div>
           </div>
-          <FileText className="relative z-10 w-5 h-5 text-slate-400 group-hover:text-white transition-colors duration-300 shrink-0" />
+          <p className="mt-2 text-2xl font-black text-slate-900">{summary.total}</p>
+          <p className="text-[11px] text-slate-500 mt-0.5">Activities recorded</p>
         </div>
 
-        <div className="relative overflow-hidden border border-slate-200 bg-white rounded-lg p-4 flex items-center justify-between group cursor-pointer shadow-2xs hover:border-[#4085b3] transition-all duration-300">
-          <span className="absolute inset-0 bg-[#4085b3] origin-left scale-x-0 group-hover:scale-x-100 transition-transform duration-300 ease-out pointer-events-none" />
-          <div className="relative z-10">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 group-hover:text-blue-100 transition-colors duration-300 block mb-1">
-              Awaiting Feedback
-            </span>
-            <span className="text-2xl font-bold text-slate-900 group-hover:text-white transition-colors duration-300 tabular-nums">
-              {summary.submitted}
-            </span>
-            <p className="text-[11px] text-slate-400 group-hover:text-blue-100 transition-colors duration-300 mt-0.5">
-              Submitted to teacher
-            </p>
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-xs">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-slate-500">Awaiting Feedback</span>
+            <div className="rounded-lg bg-amber-50 p-2 text-amber-700">
+              <Clock3 className="h-4 w-4" />
+            </div>
           </div>
-          <Clock3 className="relative z-10 w-5 h-5 text-slate-400 group-hover:text-white transition-colors duration-300 shrink-0" />
+          <p className="mt-2 text-2xl font-black text-slate-900">{summary.submitted}</p>
+          <p className="text-[11px] text-slate-500 mt-0.5">Submitted to teacher</p>
         </div>
 
-        <div className="relative overflow-hidden border border-slate-200 bg-white rounded-lg p-4 flex items-center justify-between group cursor-pointer shadow-2xs hover:border-[#4085b3] transition-all duration-300">
-          <span className="absolute inset-0 bg-[#4085b3] origin-left scale-x-0 group-hover:scale-x-100 transition-transform duration-300 ease-out pointer-events-none" />
-          <div className="relative z-10">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 group-hover:text-blue-100 transition-colors duration-300 block mb-1">
-              Graded & Reviewed
-            </span>
-            <span className="text-2xl font-bold text-slate-900 group-hover:text-white transition-colors duration-300 tabular-nums">
-              {summary.graded}
-            </span>
-            <p className="text-[11px] text-slate-400 group-hover:text-blue-100 transition-colors duration-300 mt-0.5">
-              With final feedback
-            </p>
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-xs">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-slate-500">Graded & Reviewed</span>
+            <div className="rounded-lg bg-emerald-50 p-2 text-emerald-700">
+              <CheckCircle2 className="h-4 w-4" />
+            </div>
           </div>
-          <CheckCircle2 className="relative z-10 w-5 h-5 text-slate-400 group-hover:text-white transition-colors duration-300 shrink-0" />
+          <p className="mt-2 text-2xl font-black text-slate-900">{summary.graded}</p>
+          <p className="text-[11px] text-slate-500 mt-0.5">With final feedback</p>
         </div>
       </div>
 
@@ -172,10 +157,10 @@ export default function StudentLearningSubmissionsPage() {
                   key={item.id}
                   type="button"
                   onClick={() => setSelectedId(item.id)}
-                  className={`w-full rounded-2xl border p-4 text-left transition-all duration-200 cursor-pointer ${
+                  className={`w-full rounded-2xl border p-4 text-left transition ${
                     activeItem?.id === item.id
                       ? "border-[#184973] bg-blue-50/50 shadow-sm"
-                      : "border-slate-200 bg-white hover:border-[#4085b3] hover:shadow-2xs"
+                      : "border-slate-200 bg-white hover:border-slate-300"
                   }`}
                 >
                   <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">

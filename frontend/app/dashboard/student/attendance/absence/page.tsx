@@ -148,7 +148,7 @@ export default function StudentAbsencePage() {
           </div>
 
           {/* Policy Gauge Box */}
-          <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-4 min-w-[240px] hover:border-[#4085b3] hover:shadow-xs transition-all duration-300">
+          <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-4 min-w-[240px]">
             <div className="flex justify-between text-xs font-semibold text-slate-700">
               <span>Unexcused Allowance</span>
               <span>
@@ -205,7 +205,7 @@ export default function StudentAbsencePage() {
               return (
                 <div
                   key={`pending-${rec.id}`}
-                  className="group flex flex-col justify-between rounded-xl border border-rose-200/90 bg-white p-4 shadow-sm hover:shadow-md hover:border-[#4085b3] transition-all duration-300"
+                  className="flex flex-col justify-between rounded-xl border border-rose-200/90 bg-white p-4 shadow-sm hover:shadow-md transition"
                 >
                   <div>
                     <div className="flex items-center justify-between">
@@ -217,7 +217,7 @@ export default function StudentAbsencePage() {
                       </span>
                     </div>
 
-                    <h3 className="mt-2 font-bold text-slate-900 group-hover:text-[#4085b3] transition-colors">{formattedDate}</h3>
+                    <h3 className="mt-2 font-bold text-slate-900">{formattedDate}</h3>
                     <p className="text-xs text-slate-600 mt-1 line-clamp-2">
                       {rec.remarks ? rec.remarks : "Unreported absence recorded by school."}
                     </p>
