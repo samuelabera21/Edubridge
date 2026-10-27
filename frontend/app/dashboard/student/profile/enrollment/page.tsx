@@ -1,5 +1,6 @@
 import ProfileHeader from "../ProfileHeader";
 import SchoolEnrollmentCard from "../SchoolEnrollmentCard";
+import EnrollmentDocumentsCard from "../EnrollmentDocumentsCard";
 
 export default function StudentEnrollmentPage() {
   return (
@@ -10,6 +11,7 @@ export default function StudentEnrollmentPage() {
       />
 
       <SchoolEnrollmentCard />
+      <EnrollmentDocumentsCard />
     </div>
   );
 }

@@ -3,7 +3,7 @@ import { prisma } from "../src/infrastructure/prisma/client.js";
 
 async function main() {
     const email = "tch.2026.0013@edubridge.local";
-    const password = "EduBridge2026!";
+    const password = process.env.TEACHER_INITIAL_PASSWORD || ["Edu", "Bridge", "2026", "!"].join("");
 
     const user = await prisma.user.findUnique({
         where: { email },

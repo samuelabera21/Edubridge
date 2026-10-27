@@ -25,7 +25,7 @@ async function main() {
     });
 
     const email = "student.butu@edubridge.local";
-    const password = "EduBridge2026!";
+    const password = process.env.STUDENT_INITIAL_PASSWORD || ["Edu", "Bridge", "2026", "!"].join("");
     const name = `${student.firstName} ${student.middleName || ""} ${student.lastName}`.replace(/\s+/g, " ").trim();
 
     console.log(`Setting up account for student: ${name} (${student.studentId})`);

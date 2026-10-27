@@ -13,6 +13,7 @@ export type StudentNavGroup = {
     label: string;
     icon: React.ComponentType<{ className?: string }>;
     links: StudentNavLink[];
+    isSoon?: boolean;
 };
 
 type StudentSubNavigationProps = {
@@ -21,16 +22,41 @@ type StudentSubNavigationProps = {
     pathname: string;
     collapsed: boolean;
     onToggle: (key: string) => void;
+    onNavigate?: () => void;
 };
 
-export default function StudentSubNavigation({ group, isOpen, pathname, collapsed, onToggle }: StudentSubNavigationProps) {
+export default function StudentSubNavigation({ group, isOpen, pathname, collapsed, onToggle, onNavigate }: StudentSubNavigationProps) {
     const Icon = group.icon;
-    const isGroupActive = group.links.some((l) => pathname === l.href.split("?")[0] || pathname.startsWith(`${l.href.split("?")[0]}/`));
+    const isGroupActive =
+        (group.key === "profile" && pathname.startsWith("/dashboard/student/profile")) ||
+        group.links.some((l) => pathname === l.href.split("?")[0] || pathname.startsWith(`${l.href.split("?")[0]}/`));
+
+    if (group.isSoon) {
+        return (
+            <div
+                title="Feature under development"
+                className={`flex items-center ${
+                    collapsed ? "justify-center px-2 py-2" : "justify-between px-2.5 py-2"
+                } text-xs text-slate-400 cursor-not-allowed select-none rounded-md`}
+            >
+                <div className={`flex items-center ${collapsed ? "" : "space-x-2.5 min-w-0"}`}>
+                    <Icon className="w-4 h-4 shrink-0 text-slate-400" />
+                    {!collapsed && <span className="truncate">{group.label}</span>}
+                </div>
+                {!collapsed && (
+                    <span className="text-[9px] font-bold px-1.5 py-0.5 bg-slate-100 text-slate-500 rounded uppercase tracking-wider">
+                        Soon
+                    </span>
+                )}
+            </div>
+        );
+    }
 
     if (collapsed) {
         return (
             <Link
                 href={group.links[0]?.href || "#"}
+                onClick={onNavigate}
                 title={group.label}
                 className={`group flex items-center justify-center px-2 py-2 text-xs transition-all duration-150 cursor-pointer rounded-md ${
                     isGroupActive
@@ -81,11 +107,14 @@ export default function StudentSubNavigation({ group, isOpen, pathname, collapse
             {isOpen && (
                 <div className="pl-6 pr-1 py-1 space-y-0.5 border-l-2 border-slate-200 ml-3.5 my-0.5">
                     {group.links.map((link) => {
-                        const active = pathname === link.href;
+                        const active =
+                            pathname === link.href ||
+                            (link.href === "/dashboard/student/profile/information" && pathname === "/dashboard/student/profile");
                         return (
                             <Link
                                 key={`${group.key}-${link.label}`}
                                 href={link.href}
+                                onClick={onNavigate}
                                 title={link.label}
                                 className={`block px-2.5 py-1.5 rounded-md text-xs transition-all duration-150 truncate cursor-pointer ${
                                     active
