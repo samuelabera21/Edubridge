@@ -68,10 +68,10 @@ export default function LearningResourcesCard() {
             {activities.map((activity) => (
               <div
                 key={activity.id}
-                className="rounded-xl border border-blue-100 bg-blue-50/50 p-3.5 text-xs text-slate-800 space-y-1 hover:border-blue-200 transition"
+                className="rounded-xl border border-blue-100 bg-blue-50/50 p-3.5 text-xs text-slate-800 space-y-1 hover:border-[#4085b3] hover:bg-white hover:shadow-2xs transition-all duration-200 group"
               >
                 <div className="flex items-center justify-between gap-2">
-                  <span className="font-bold text-slate-900 truncate">{activity.title}</span>
+                  <span className="font-bold text-slate-900 group-hover:text-[#4085b3] transition-colors truncate">{activity.title}</span>
                   <span className="bg-blue-100 text-[#184973] px-2 py-0.5 rounded text-[10px] font-bold shrink-0">
                     {activity.teachingAssignment.subject.name}
                   </span>
