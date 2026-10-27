@@ -4,22 +4,16 @@ import React, { useState, useEffect, useRef } from "react";
 import {
     Sparkles,
     X,
-    Send,
-    Bot,
-    User,
+    ArrowUp,
     ChevronDown,
     ChevronUp,
     Database,
-    Zap,
-    RefreshCw,
+    RotateCcw,
     CornerDownLeft,
-    Lightbulb,
     Table as TableIcon,
-    BarChart3,
     Check,
     Copy,
-    Building2,
-    Shield
+    Building2
 } from "lucide-react";
 import { fetchApi } from "../../lib/api";
 
@@ -60,6 +54,7 @@ export default function EmisAiChatDrawer({
     const [messages, setMessages] = useState<ChatMessage[]>([]);
     const [input, setInput] = useState("");
     const [loading, setLoading] = useState(false);
+    const [loadingStage, setLoadingStage] = useState("Analyzing institutional data...");
     const [prompts, setPrompts] = useState<string[]>([]);
     const [scopeInfo, setScopeInfo] = useState<{ level: string; name: string } | null>(null);
     const [expandedSqlId, setExpandedSqlId] = useState<string | null>(null);
@@ -68,7 +63,6 @@ export default function EmisAiChatDrawer({
     const chatEndRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLTextAreaElement>(null);
 
-    // Scroll to bottom on new message
     const scrollToBottom = () => {
         chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
     };
@@ -76,11 +70,21 @@ export default function EmisAiChatDrawer({
     useEffect(() => {
         if (isOpen) {
             scrollToBottom();
-            setTimeout(() => inputRef.current?.focus(), 150);
+            setTimeout(() => inputRef.current?.focus(), 120);
         }
-    }, [isOpen, messages]);
+    }, [isOpen, messages, loading]);
 
-    // Fetch suggested starter prompts when opened
+    // Cycling reasoning stages while loading
+    useEffect(() => {
+        if (!loading) return;
+        setLoadingStage("Analyzing institutional records...");
+        const timer = setTimeout(() => {
+            setLoadingStage("Synthesizing executive insights...");
+        }, 1800);
+        return () => clearTimeout(timer);
+    }, [loading]);
+
+    // Fetch suggested starter prompts
     useEffect(() => {
         if (!isOpen) return;
 
@@ -106,7 +110,7 @@ export default function EmisAiChatDrawer({
         };
     }, [isOpen]);
 
-    // Handle initial question if passed from external trigger
+    // Initial question trigger
     useEffect(() => {
         if (initialQuestion && isOpen && messages.length === 0) {
             handleSubmit(initialQuestion);
@@ -138,7 +142,7 @@ export default function EmisAiChatDrawer({
 
             const json = await res.json();
             if (!res.ok || !json.success) {
-                throw new Error(json.error || "Failed to process question");
+                throw new Error(json.error || "Unable to complete request.");
             }
 
             const data = json.data;
@@ -159,7 +163,7 @@ export default function EmisAiChatDrawer({
             const errorMsg: ChatMessage = {
                 id: `ai-${Date.now()}`,
                 role: "assistant",
-                content: `⚠️ ${error.message || "An unexpected error occurred while querying the database."}`,
+                content: error.message || "An unexpected error occurred while analyzing records.",
                 timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
             };
             setMessages(prev => [...prev, errorMsg]);
@@ -178,11 +182,7 @@ export default function EmisAiChatDrawer({
     const handleCopySql = (id: string, sql: string) => {
         navigator.clipboard.writeText(sql);
         setCopiedSqlId(id);
-        setTimeout(() => setCopiedSqlId(null), 2000);
-    };
-
-    const handleClearChat = () => {
-        setMessages([]);
+        setTimeout(() => setCopiedSqlId(null), 1800);
     };
 
     if (!isOpen) return null;
@@ -191,98 +191,84 @@ export default function EmisAiChatDrawer({
         <div className="fixed inset-0 z-50 flex justify-end">
             {/* Backdrop */}
             <div
-                className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm transition-opacity"
+                className="fixed inset-0 bg-slate-900/30 backdrop-blur-xs transition-opacity"
                 onClick={onClose}
                 aria-hidden="true"
             />
 
-            {/* Slide-over Drawer */}
-            <div className="relative w-full sm:max-w-xl md:max-w-2xl bg-white h-full shadow-2xl flex flex-col z-10 animate-in slide-in-from-right duration-300">
-                {/* Header */}
-                <div className="px-5 py-4 border-b border-blue-900/40 bg-gradient-to-r from-[#0f2847] via-[#1d4ed8] to-[#2563eb] text-white flex items-center justify-between shrink-0 shadow-md">
-                    <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-white/15 backdrop-blur-md border border-white/30 flex items-center justify-center shadow-inner">
-                            <Sparkles className="w-5 h-5 text-cyan-200 animate-pulse" />
+            {/* Slide-over Drawer Panel */}
+            <div className="relative w-full sm:max-w-xl md:max-w-2xl bg-white h-full shadow-2xl flex flex-col z-10 animate-in slide-in-from-right duration-250 border-l border-slate-200">
+                {/* Clean Modern Minimal Header */}
+                <div className="px-5 py-3.5 border-b border-slate-200/80 bg-white flex items-center justify-between shrink-0">
+                    <div className="flex items-center gap-2.5">
+                        <div className="w-8 h-8 rounded-lg bg-blue-50 border border-blue-100 flex items-center justify-center text-[#2563eb]">
+                            <Sparkles className="w-4 h-4 text-[#2563eb]" />
                         </div>
                         <div>
                             <div className="flex items-center gap-2">
-                                <h2 className="font-bold text-base tracking-tight text-white drop-shadow-xs">EMIS Executive AI</h2>
-                                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-white/20 text-cyan-100 border border-white/30 tracking-wider">
-                                    Gemini 2.5 Flash
-                                </span>
-                            </div>
-                            <div className="flex items-center gap-1.5 text-xs text-blue-100/90 mt-0.5 font-medium">
-                                <Building2 className="w-3.5 h-3.5 text-cyan-300" />
-                                <span>
-                                    {scopeInfo ? `${scopeInfo.level} • ${scopeInfo.name}` : "National Hierarchy"}
-                                </span>
+                                <h2 className="font-semibold text-sm tracking-tight text-slate-900">EMIS Copilot</h2>
+                                {scopeInfo && (
+                                    <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-slate-100 text-slate-600 border border-slate-200">
+                                        {scopeInfo.level === "FEDERAL" ? "National" : scopeInfo.name}
+                                    </span>
+                                )}
                             </div>
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-1.5">
+                    <div className="flex items-center gap-1">
                         {messages.length > 0 && (
                             <button
                                 type="button"
-                                onClick={handleClearChat}
-                                className="p-2 text-blue-100 hover:text-white hover:bg-white/15 rounded-lg transition-colors cursor-pointer"
-                                title="Clear conversation"
+                                onClick={() => setMessages([])}
+                                className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-md transition-colors cursor-pointer"
+                                title="Clear chat"
                             >
-                                <RefreshCw className="w-4 h-4" />
+                                <RotateCcw className="w-3.5 h-3.5" />
                             </button>
                         )}
                         <button
                             type="button"
                             onClick={onClose}
-                            className="p-2 text-blue-100 hover:text-white hover:bg-white/15 rounded-lg transition-colors cursor-pointer"
-                            title="Close chat"
+                            className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-md transition-colors cursor-pointer"
+                            title="Close"
                         >
-                            <X className="w-5 h-5" />
+                            <X className="w-4 h-4" />
                         </button>
                     </div>
                 </div>
 
-                {/* Scope Notice Bar */}
-                <div className="px-5 py-2 bg-slate-50 border-b border-slate-200 text-[11px] text-slate-600 flex items-center justify-between">
-                    <span className="flex items-center gap-1.5">
-                        <Shield className="w-3.5 h-3.5 text-[#4085b3]" />
-                        <span>Read-only natural language queries strictly scoped to your administrative tier.</span>
-                    </span>
-                    <span className="font-medium text-slate-500">Live PostgreSQL Engine</span>
-                </div>
-
-                {/* Messages Container */}
-                <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-5">
-                    {/* Empty State */}
+                {/* Messages Feed */}
+                <div className="flex-1 overflow-y-auto px-5 py-6 space-y-6">
+                    {/* Clean Empty State */}
                     {messages.length === 0 && (
-                        <div className="py-6 flex flex-col items-center text-center max-w-md mx-auto space-y-4">
-                            <div className="w-14 h-14 rounded-2xl bg-blue-50 border border-blue-100 flex items-center justify-center text-[#4085b3]">
-                                <Bot className="w-8 h-8" />
+                        <div className="py-10 max-w-md mx-auto text-center space-y-6">
+                            <div className="w-12 h-12 rounded-2xl bg-blue-50 border border-blue-100 flex items-center justify-center text-[#2563eb] mx-auto shadow-xs">
+                                <Sparkles className="w-6 h-6 text-[#2563eb]" />
                             </div>
-                            <div>
-                                <h3 className="font-semibold text-slate-900 text-base">Edu AI</h3>
-                                <p className="text-xs text-slate-500 mt-1 leading-relaxed">
-                                    Ask any question about schools, teachers, students, regional counts, or educational directives. The AI converts your question into live verified database queries.
+                            <div className="space-y-1">
+                                <h3 className="font-semibold text-slate-900 text-base">Educational Intelligence</h3>
+                                <p className="text-xs text-slate-500 max-w-sm mx-auto leading-relaxed">
+                                    Ask natural questions about institutions, faculty, student enrollment, and regional administrative metrics.
                                 </p>
                             </div>
 
-                            {/* Suggested Prompts */}
+                            {/* Clean Starter Prompt Chips */}
                             {prompts.length > 0 && (
-                                <div className="w-full pt-2 text-left">
-                                    <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-700 mb-2.5">
-                                        <Lightbulb className="w-3.5 h-3.5 text-amber-500" />
-                                        <span>Suggested questions to get started:</span>
-                                    </div>
-                                    <div className="flex flex-col gap-2">
+                                <div className="pt-2 text-left space-y-2">
+                                    <span className="text-[11px] font-medium uppercase tracking-wider text-slate-400 px-1">
+                                        Suggested inquiries
+                                    </span>
+                                    <div className="flex flex-col gap-1.5">
                                         {prompts.map((p, idx) => (
                                             <button
                                                 key={idx}
                                                 type="button"
                                                 onClick={() => handleSubmit(p)}
-                                                className="text-left text-xs p-3 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 hover:border-[#4085b3] text-slate-800 transition-all shadow-sm flex items-center justify-between group cursor-pointer"
+                                                className="text-left text-xs px-3.5 py-2.5 rounded-xl border border-slate-200/90 bg-white hover:bg-blue-50/50 hover:border-blue-300 hover:text-blue-700 text-slate-700 transition-all shadow-2xs flex items-center justify-between group cursor-pointer"
                                             >
                                                 <span>{p}</span>
-                                                <CornerDownLeft className="w-3.5 h-3.5 text-slate-400 group-hover:text-[#4085b3] shrink-0 ml-2" />
+                                                <CornerDownLeft className="w-3 h-3 text-slate-300 group-hover:text-blue-500 shrink-0 ml-2" />
                                             </button>
                                         ))}
                                     </div>
@@ -291,60 +277,68 @@ export default function EmisAiChatDrawer({
                         </div>
                     )}
 
-                    {/* Chat Messages */}
+                    {/* Messages Flow */}
                     {messages.map(msg => (
-                        <div
-                            key={msg.id}
-                            className={`flex gap-3 ${msg.role === "user" ? "justify-end" : "justify-start"}`}
-                        >
-                            {msg.role === "assistant" && (
-                                <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-[#4085b3] to-cyan-500 flex items-center justify-center text-white shrink-0 shadow-sm mt-0.5">
-                                    <Bot className="w-4 h-4" />
+                        <div key={msg.id} className="space-y-2">
+                            {/* USER MESSAGE: Compact, sleek pill on right */}
+                            {msg.role === "user" ? (
+                                <div className="flex justify-end">
+                                    <div className="max-w-[80%]">
+                                        <div className="px-4 py-2.5 rounded-2xl rounded-br-sm bg-[#2563eb] text-white text-xs sm:text-sm font-medium shadow-xs leading-relaxed">
+                                            {msg.content}
+                                        </div>
+                                        <span className="block text-[10px] text-slate-400 text-right mt-1 px-1">
+                                            {msg.timestamp}
+                                        </span>
+                                    </div>
                                 </div>
-                            )}
+                            ) : (
+                                /* ASSISTANT MESSAGE: Clean, unboxed natural flow */
+                                <div className="space-y-3 pt-1">
+                                    <div className="flex items-center gap-1.5 text-xs text-slate-400">
+                                        <Sparkles className="w-3.5 h-3.5 text-[#2563eb]" />
+                                        <span className="font-semibold text-slate-700">Copilot</span>
+                                        <span>•</span>
+                                        <span className="text-[10px]">{msg.timestamp}</span>
+                                        {msg.executionTimeMs && (
+                                            <>
+                                                <span>•</span>
+                                                <span className="text-[10px] text-slate-400">
+                                                    {(msg.executionTimeMs / 1000).toFixed(1)}s
+                                                </span>
+                                            </>
+                                        )}
+                                    </div>
 
-                            <div className={`max-w-[85%] space-y-2.5 ${msg.role === "user" ? "items-end" : "items-start"}`}>
-                                {/* Bubble */}
-                                <div
-                                    className={`p-3.5 rounded-2xl text-xs sm:text-sm leading-relaxed ${msg.role === "user"
-                                        ? "bg-gradient-to-r from-[#1d4ed8] to-[#2563eb] text-white rounded-tr-none shadow-md font-medium"
-                                        : "bg-slate-50 border border-slate-200 text-slate-900 rounded-tl-none shadow-sm"
-                                        }`}
-                                >
-                                    <p className="whitespace-pre-wrap">{msg.content}</p>
+                                    {/* Direct Text Output */}
+                                    <div className="text-sm text-slate-800 leading-relaxed pl-5 whitespace-pre-wrap">
+                                        {msg.content}
+                                    </div>
 
-                                    {/* Key Metric Badges */}
+                                    {/* Minimalist Key Metric Chips */}
                                     {msg.metrics && msg.metrics.length > 0 && (
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-3 pt-3 border-t border-slate-200/80">
+                                        <div className="pl-5 flex flex-wrap gap-2 pt-1">
                                             {msg.metrics.map((m, idx) => (
                                                 <div
                                                     key={idx}
-                                                    className="p-2.5 rounded-lg bg-white border border-slate-200 shadow-xs flex flex-col"
+                                                    className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-blue-50/70 border border-blue-100 text-xs"
                                                 >
-                                                    <span className="text-[10px] uppercase font-semibold text-slate-500 tracking-wider">
-                                                        {m.label}
-                                                    </span>
-                                                    <span className="text-lg font-bold text-[#4085b3] mt-0.5">
-                                                        {m.value}
-                                                    </span>
+                                                    <span className="text-slate-500 font-medium">{m.label}:</span>
+                                                    <span className="font-bold text-[#1d4ed8] text-sm">{m.value}</span>
                                                 </div>
                                             ))}
                                         </div>
                                     )}
 
-                                    {/* Table Data View */}
+                                    {/* Tabular Data View */}
                                     {msg.table && msg.table.headers.length > 0 && (
-                                        <div className="mt-3 pt-3 border-t border-slate-200">
-                                            <div className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-700 mb-2">
-                                                <TableIcon className="w-3.5 h-3.5 text-[#4085b3]" />
-                                                <span>Tabular Breakdown ({msg.table.rows.length} records)</span>
-                                            </div>
-                                            <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
-                                                <table className="w-full text-left text-[11px]">
-                                                    <thead className="bg-slate-100 text-slate-700 uppercase font-semibold border-b border-slate-200">
+                                        <div className="pl-5 pt-1">
+                                            <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-2xs">
+                                                <table className="w-full text-left text-xs">
+                                                    <thead className="bg-slate-50 text-slate-600 font-semibold border-b border-slate-200">
                                                         <tr>
                                                             {msg.table.headers.map((h, hIdx) => (
-                                                                <th key={hIdx} className="px-3 py-2 whitespace-nowrap">
+                                                                <th key={hIdx} className="px-3.5 py-2 whitespace-nowrap">
                                                                     {h}
                                                                 </th>
                                                             ))}
@@ -352,9 +346,9 @@ export default function EmisAiChatDrawer({
                                                     </thead>
                                                     <tbody className="divide-y divide-slate-100">
                                                         {msg.table.rows.map((row, rIdx) => (
-                                                            <tr key={rIdx} className="hover:bg-slate-50/80">
+                                                            <tr key={rIdx} className="hover:bg-slate-50/60">
                                                                 {row.map((cell, cIdx) => (
-                                                                    <td key={cIdx} className="px-3 py-2 text-slate-800 whitespace-nowrap">
+                                                                    <td key={cIdx} className="px-3.5 py-2 text-slate-700 whitespace-nowrap">
                                                                         {cell === null ? "—" : String(cell)}
                                                                     </td>
                                                                 ))}
@@ -366,27 +360,27 @@ export default function EmisAiChatDrawer({
                                         </div>
                                     )}
 
-                                    {/* Executed SQL Toggle */}
+                                    {/* Delicate Query Details Expander */}
                                     {msg.sql && (
-                                        <div className="mt-2.5 pt-2 border-t border-slate-200/60">
+                                        <div className="pl-5 pt-0.5">
                                             <button
                                                 type="button"
                                                 onClick={() => setExpandedSqlId(expandedSqlId === msg.id ? null : msg.id)}
-                                                className="text-[11px] font-medium text-slate-600 hover:text-[#4085b3] inline-flex items-center gap-1 transition-colors cursor-pointer"
+                                                className="text-[11px] font-medium text-slate-400 hover:text-slate-600 inline-flex items-center gap-1 transition-colors cursor-pointer"
                                             >
-                                                <Database className="w-3 h-3 text-slate-500" />
-                                                <span>{expandedSqlId === msg.id ? "Hide SQL Query" : "View Executed SQL"}</span>
+                                                <Database className="w-3 h-3 text-slate-400" />
+                                                <span>{expandedSqlId === msg.id ? "Hide query" : "Query details"}</span>
                                                 {expandedSqlId === msg.id ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
                                             </button>
 
                                             {expandedSqlId === msg.id && (
-                                                <div className="mt-2 p-2.5 rounded bg-slate-900 text-cyan-300 font-mono text-[10px] overflow-x-auto relative group">
-                                                    <div className="flex justify-between items-center pb-1 mb-1 border-b border-slate-800 text-[9px] text-slate-400">
-                                                        <span>PostgreSQL Dialect</span>
+                                                <div className="mt-1.5 p-3 rounded-lg bg-slate-900 text-slate-200 font-mono text-[10px] overflow-x-auto relative group">
+                                                    <div className="flex justify-between items-center pb-1 mb-1.5 border-b border-slate-800 text-[9px] text-slate-400">
+                                                        <span>PostgreSQL Query</span>
                                                         <button
                                                             type="button"
                                                             onClick={() => handleCopySql(msg.id, msg.sql!)}
-                                                            className="flex items-center gap-1 text-slate-300 hover:text-white"
+                                                            className="flex items-center gap-1 text-slate-300 hover:text-white cursor-pointer"
                                                         >
                                                             {copiedSqlId === msg.id ? (
                                                                 <>
@@ -406,96 +400,77 @@ export default function EmisAiChatDrawer({
                                             )}
                                         </div>
                                     )}
-                                </div>
 
-                                {/* Message Footer Info */}
-                                <div className="flex items-center gap-2 px-1 text-[10px] text-slate-400">
-                                    <span>{msg.timestamp}</span>
-                                    {msg.executionTimeMs && (
-                                        <span className="inline-flex items-center gap-0.5 text-emerald-600 font-medium">
-                                            <Zap className="w-2.5 h-2.5" />
-                                            <span>{(msg.executionTimeMs / 1000).toFixed(2)}s</span>
-                                        </span>
+                                    {/* Compact Wrapping Follow-up Tag Chips */}
+                                    {msg.suggestedFollowUps && msg.suggestedFollowUps.length > 0 && (
+                                        <div className="pl-5 pt-1.5 flex flex-wrap gap-1.5">
+                                            {msg.suggestedFollowUps.map((fu, fIdx) => (
+                                                <button
+                                                    key={fIdx}
+                                                    type="button"
+                                                    onClick={() => handleSubmit(fu)}
+                                                    className="text-[11px] px-3 py-1 rounded-full bg-slate-100/80 hover:bg-blue-50 hover:text-blue-700 hover:border-blue-200 border border-slate-200/60 text-slate-600 transition-all cursor-pointer"
+                                                >
+                                                    {fu}
+                                                </button>
+                                            ))}
+                                        </div>
                                     )}
-                                </div>
-
-                                {/* Suggested Follow-ups */}
-                                {msg.suggestedFollowUps && msg.suggestedFollowUps.length > 0 && (
-                                    <div className="pt-1 flex flex-wrap gap-1.5">
-                                        {msg.suggestedFollowUps.map((fu, fIdx) => (
-                                            <button
-                                                key={fIdx}
-                                                type="button"
-                                                onClick={() => handleSubmit(fu)}
-                                                className="text-[11px] px-2.5 py-1 rounded-full bg-slate-100 hover:bg-blue-50 hover:text-[#4085b3] border border-slate-200 text-slate-600 transition-colors cursor-pointer"
-                                            >
-                                                {fu}
-                                            </button>
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
-
-                            {msg.role === "user" && (
-                                <div className="w-8 h-8 rounded-lg bg-slate-200 text-slate-700 flex items-center justify-center shrink-0 mt-0.5">
-                                    <User className="w-4 h-4" />
                                 </div>
                             )}
                         </div>
                     ))}
 
-                    {/* Loading State */}
+                    {/* Clean Subtle Reasoning / Thinking State */}
                     {loading && (
-                        <div className="flex gap-3 justify-start">
-                            <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-[#4085b3] to-cyan-500 flex items-center justify-center text-white shrink-0 shadow-sm mt-0.5">
-                                <Bot className="w-4 h-4" />
-                            </div>
-                            <div className="bg-slate-50 border border-slate-200 rounded-2xl rounded-tl-none p-3.5 shadow-sm text-xs text-slate-600 flex items-center gap-2.5">
-                                <div className="flex space-x-1">
-                                    <div className="w-2 h-2 rounded-full bg-[#4085b3] animate-bounce" style={{ animationDelay: "0ms" }}></div>
-                                    <div className="w-2 h-2 rounded-full bg-[#4085b3] animate-bounce" style={{ animationDelay: "150ms" }}></div>
-                                    <div className="w-2 h-2 rounded-full bg-[#4085b3] animate-bounce" style={{ animationDelay: "300ms" }}></div>
-                                </div>
-                                <span className="font-medium text-slate-700">Translating to SQL and querying database...</span>
-                            </div>
+                        <div className="flex items-center gap-2.5 text-xs text-slate-500 pl-1 py-1">
+                            <span className="relative flex h-2 w-2">
+                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75" />
+                                <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-600" />
+                            </span>
+                            <span className="font-medium animate-pulse">{loadingStage}</span>
                         </div>
                     )}
 
                     <div ref={chatEndRef} />
                 </div>
 
-                {/* Footer Input Area */}
-                <div className="p-4 border-t border-slate-200 bg-white">
+                {/* Modern Command Bar Input (Linear Style) */}
+                <div className="p-4 border-t border-slate-200/80 bg-white">
                     <form
                         onSubmit={e => {
                             e.preventDefault();
                             handleSubmit();
                         }}
-                        className="relative"
+                        className="relative rounded-2xl border border-slate-200 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-500/15 bg-white transition-all shadow-2xs"
                     >
                         <textarea
                             ref={inputRef}
                             value={input}
                             onChange={e => setInput(e.target.value)}
                             onKeyDown={handleKeyDown}
-                            placeholder="Ask EMIS AI (e.g. How many schools have below 100 teachers?)..."
+                            placeholder="Ask EMIS Copilot (e.g. How many schools have below 100 teachers?)..."
                             rows={2}
                             disabled={loading}
-                            className="w-full text-xs sm:text-sm pl-3.5 pr-12 py-2.5 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-[#2563eb] focus:border-transparent resize-none placeholder:text-slate-400 bg-slate-50/50"
+                            className="w-full text-xs sm:text-sm px-3.5 pt-3 pb-8 rounded-2xl border-0 focus:outline-none focus:ring-0 resize-none placeholder:text-slate-400 bg-transparent text-slate-800"
                         />
-                        <button
-                            type="submit"
-                            disabled={!input.trim() || loading}
-                            className="absolute right-2.5 bottom-3.5 p-2 rounded-lg bg-gradient-to-r from-[#1d4ed8] to-[#2563eb] hover:from-[#1e40af] hover:to-[#1d4ed8] text-white shadow-md hover:shadow-lg hover:scale-105 active:scale-95 disabled:opacity-40 disabled:hover:scale-100 transition-all cursor-pointer"
-                            title="Send query"
-                        >
-                            <Send className="w-4 h-4" />
-                        </button>
+
+                        {/* Bottom Action Bar inside the Input Box */}
+                        <div className="absolute left-3.5 right-2.5 bottom-2 flex items-center justify-between">
+                            <span className="text-[10px] text-slate-400 select-none">
+                                ↵ to send • Shift+↵ for new line
+                            </span>
+
+                            <button
+                                type="submit"
+                                disabled={!input.trim() || loading}
+                                className="w-7 h-7 rounded-lg bg-[#2563eb] hover:bg-[#1d4ed8] text-white flex items-center justify-center transition-all disabled:opacity-30 disabled:hover:bg-[#2563eb] cursor-pointer shadow-xs"
+                                title="Send query"
+                            >
+                                <ArrowUp className="w-4 h-4" />
+                            </button>
+                        </div>
                     </form>
-                    <div className="mt-1.5 flex items-center justify-between text-[10px] text-slate-400 px-1">
-                        <span>Press Enter to send, Shift+Enter for new line</span>
-                        <span>Powered by Gemini 2.5 Flash</span>
-                    </div>
                 </div>
             </div>
         </div>
