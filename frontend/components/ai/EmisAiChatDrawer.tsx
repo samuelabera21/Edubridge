@@ -156,17 +156,23 @@ export default function EmisAiChatDrawer({
                 body: JSON.stringify({ question: queryText })
             });
 
-            const data = await res.json();
+            let data: any = null;
+            const textResponse = await res.text();
+            try {
+                data = JSON.parse(textResponse);
+            } catch {
+                throw new Error(textResponse || `Server returned ${res.status}`);
+            }
 
             if (data.success && data.data) {
                 const assistantMsgId = `assistant-${Date.now()}`;
                 const assistantMsg: ChatMessage = {
                     id: assistantMsgId,
                     role: "assistant",
-                    content: data.data.executiveSummary || "Analysis completed successfully.",
-                    metrics: data.data.metrics || [],
-                    table: data.data.table || undefined,
-                    sql: data.data.sql || undefined,
+                    content: data.data.summary || data.data.executiveSummary || "Analysis completed successfully.",
+                    metrics: data.data.keyMetrics || data.data.metrics || [],
+                    table: data.data.tableData || data.data.table || undefined,
+                    sql: data.data.sqlQuery || data.data.sql || undefined,
                     executionTimeMs: data.data.executionTimeMs,
                     suggestedFollowUps: data.data.suggestedFollowUps || [],
                     timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
@@ -174,12 +180,16 @@ export default function EmisAiChatDrawer({
 
                 setMessages([...newMessages, assistantMsg]);
             } else {
+                const errMessage = typeof data.error === "string" 
+                    ? data.error 
+                    : data.error?.message || "I encountered an issue querying the database. Please try rephrasing your request.";
+
                 setMessages([
                     ...newMessages,
                     {
                         id: `error-${Date.now()}`,
                         role: "assistant",
-                        content: data.error?.message || "I encountered an issue querying the database. Please try rephrasing your request.",
+                        content: errMessage,
                         timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
                     }
                 ]);

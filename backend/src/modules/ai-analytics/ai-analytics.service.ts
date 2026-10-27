@@ -307,7 +307,6 @@ If no table is appropriate (e.g., simple single count or total), omit tableData.
             };
         }
 
-        let jsonText = (response.text || "").trim();
         jsonText = jsonText.replace(/^```json\s*/i, "").replace(/^```\s*/i, "").replace(/```$/i, "").trim();
 
         let parsed: any = {};
