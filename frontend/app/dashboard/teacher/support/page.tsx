@@ -85,7 +85,7 @@ export default function StudentSupportPage() {
     if (loading) {
         return (
             <div className="w-full max-w-7xl mx-auto p-12 text-center text-gray-500 min-h-[400px] flex flex-col justify-center items-center">
-                <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600 mb-4"></div>
+                <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#4085b3] mb-4"></div>
                 <p className="text-sm font-semibold text-gray-600">Loading student support & intervention flags...</p>
             </div>
         );
@@ -94,27 +94,74 @@ export default function StudentSupportPage() {
     return (
         <div className="w-full max-w-7xl mx-auto space-y-6 text-gray-800">
             {/* Header */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div>
-                    <h1 className="text-2xl font-extrabold tracking-tight text-gray-900">Student Support & Interventions</h1>
-                    <p className="text-xs font-medium text-gray-500 mt-0.5">
-                        Identify at-risk students, flag academic or attendance hurdles, and document support outcomes.
-                    </p>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200/80 pb-4">
+                <div className="flex items-center gap-2.5">
+                    <div className="w-9 h-9 rounded-lg bg-blue-50 text-[#4085b3] flex items-center justify-center shrink-0">
+                        <HeartHandshake className="w-5 h-5" />
+                    </div>
+                    <div>
+                        <h1 className="text-base font-bold text-slate-900 leading-tight">Student Support & Interventions</h1>
+                    </div>
                 </div>
 
                 <button
                     onClick={() => setShowModal(true)}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-xl text-xs font-bold hover:bg-blue-700 transition-colors flex items-center space-x-2 shadow-2xs self-start md:self-auto"
+                    className="px-3.5 py-2 bg-[#4085b3] text-white rounded-lg text-xs font-semibold hover:bg-[#32698e] transition-colors flex items-center space-x-1.5 shadow-2xs self-start sm:self-auto cursor-pointer"
                 >
                     <Plus className="w-4 h-4" />
                     <span>Raise Support Flag</span>
                 </button>
             </div>
 
+            {/* Top 3 KPI Cards: Left-to-right clean blue hover fill */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                {/* 1. Total Monitored */}
+                <div className="relative overflow-hidden border border-slate-200 bg-white rounded-lg p-4 flex items-center justify-between group cursor-pointer shadow-2xs hover:border-[#4085b3] transition-all duration-300">
+                    <span className="absolute inset-0 bg-[#4085b3] origin-left scale-x-0 group-hover:scale-x-100 transition-transform duration-300 ease-out pointer-events-none" />
+                    <div className="relative z-10">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 group-hover:text-blue-100 transition-colors duration-300 block mb-1">
+                            Total Monitored
+                        </span>
+                        <span className="text-2xl font-bold text-slate-900 group-hover:text-white transition-colors duration-300 tabular-nums">
+                            {students.length}
+                        </span>
+                    </div>
+                    <HeartHandshake className="relative z-10 w-5 h-5 text-slate-400 group-hover:text-white transition-colors duration-300 shrink-0" />
+                </div>
+
+                {/* 2. Active Flags */}
+                <div className="relative overflow-hidden border border-slate-200 bg-white rounded-lg p-4 flex items-center justify-between group cursor-pointer shadow-2xs hover:border-[#4085b3] transition-all duration-300">
+                    <span className="absolute inset-0 bg-[#4085b3] origin-left scale-x-0 group-hover:scale-x-100 transition-transform duration-300 ease-out pointer-events-none" />
+                    <div className="relative z-10">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 group-hover:text-blue-100 transition-colors duration-300 block mb-1">
+                            Active Flags
+                        </span>
+                        <span className="text-2xl font-bold text-slate-900 group-hover:text-white transition-colors duration-300 tabular-nums">
+                            {supportFlags.filter(f => !f.resolvedAt).length}
+                        </span>
+                    </div>
+                    <AlertCircle className="relative z-10 w-5 h-5 text-slate-400 group-hover:text-white transition-colors duration-300 shrink-0" />
+                </div>
+
+                {/* 3. Resolved Flags */}
+                <div className="relative overflow-hidden border border-slate-200 bg-white rounded-lg p-4 flex items-center justify-between group cursor-pointer shadow-2xs hover:border-[#4085b3] transition-all duration-300">
+                    <span className="absolute inset-0 bg-[#4085b3] origin-left scale-x-0 group-hover:scale-x-100 transition-transform duration-300 ease-out pointer-events-none" />
+                    <div className="relative z-10">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 group-hover:text-blue-100 transition-colors duration-300 block mb-1">
+                            Resolved
+                        </span>
+                        <span className="text-2xl font-bold text-slate-900 group-hover:text-white transition-colors duration-300 tabular-nums">
+                            {supportFlags.filter(f => Boolean(f.resolvedAt)).length}
+                        </span>
+                    </div>
+                    <CheckCircle2 className="relative z-10 w-5 h-5 text-slate-400 group-hover:text-white transition-colors duration-300 shrink-0" />
+                </div>
+            </div>
+
             <Card>
                 <CardHeader>
                     <CardTitle className="flex items-center space-x-2 text-base font-bold text-gray-900">
-                        <HeartHandshake className="w-5 h-5 text-blue-600" />
+                        <HeartHandshake className="w-5 h-5 text-[#4085b3]" />
                         <span>Active & Resolved Support Flags</span>
                     </CardTitle>
                 </CardHeader>
@@ -207,7 +254,7 @@ export default function StudentSupportPage() {
                             </div>
                             <div className="flex space-x-2 pt-2">
                                 <button type="button" onClick={() => setShowModal(false)} className="flex-1 py-2.5 bg-gray-100 text-gray-700 font-bold rounded-xl">Cancel</button>
-                                <button type="submit" className="flex-1 py-2.5 bg-blue-600 text-white font-bold rounded-xl">Raise Flag</button>
+                                <button type="submit" className="flex-1 py-2.5 bg-[#4085b3] text-white font-bold rounded-xl">Raise Flag</button>
                             </div>
                         </form>
                     </div>

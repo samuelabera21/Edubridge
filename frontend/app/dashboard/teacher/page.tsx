@@ -134,25 +134,28 @@ export default function TeacherDashboard() {
         }
     }
 
-    const teacherName = summary?.profile?.firstName 
-        ? `Mr. ${summary.profile.firstName} ${summary.profile.lastName || ''}`.trim() 
-        : authData?.user?.name || "Mr. Teacher";
+    const teacherFirstName = summary?.profile?.firstName?.trim()
+        || (authData?.user?.name ? authData.user.name.trim().split(/\s+/)[0] : "Teacher");
+    const capitalizedFirstName = teacherFirstName.charAt(0).toUpperCase() + teacherFirstName.slice(1);
+
+    const currentHour = new Date().getHours();
+    const timeGreeting = currentHour < 12 
+        ? "Good morning" 
+        : currentHour < 17 
+            ? "Good afternoon" 
+            : "Good evening";
 
     const todayClasses = summary?.todayClasses || [];
     const totalStudents = summary?.totalStudents ?? 0;
     const attendancePendingCount = summary?.attendancePendingCount ?? 0;
-    const pendingAssessmentsCount = summary?.pendingAssessmentsCount ?? 0;
-    const pendingSubmissionsCount = summary?.pendingSubmissionsCount ?? 0;
     const studentsNeedAttentionCount = summary?.studentsNeedAttentionCount ?? 0;
     const attentionStudents = summary?.studentsRequiringAttention || [];
     const recentAnnouncements = summary?.recentAnnouncements || [];
     const pendingAnnouncementsCount = summary?.pendingAnnouncementsCount || 0;
 
-    // Demographic and subject breakdown from real database
+    // Demographic breakdown from real database
     const studentsByGrade = summary?.studentsByGrade || [];
     const genderDist = summary?.genderDistribution || { male: 0, female: 0, malePercentage: 0, femalePercentage: 0 };
-    const assessmentsBySubject = summary?.assessmentsBySubject || [];
-    const assignmentsBySubject = summary?.assignmentsBySubject || [];
 
     // Attendance stats
     const completedClassesToday = todayClasses.filter((c: any) => c.status === "Completed" || c.action === "Completed").length;
@@ -169,90 +172,82 @@ export default function TeacherDashboard() {
         return (
             <div className="w-full max-w-7xl mx-auto p-12 text-center text-gray-500 min-h-[600px] flex flex-col justify-center items-center">
                 <div className="relative">
-                    <div className="w-12 h-12 rounded-full border-4 border-[#1F5380]/20 border-t-[#1F5380] animate-spin"></div>
+                    <div className="w-12 h-12 rounded-full border-4 border-[#4085b3]/20 border-t-[#4085b3] animate-spin"></div>
                 </div>
                 <p className="text-sm font-bold text-gray-800 mt-4">Loading Teacher Dashboard...</p>
-                <p className="text-xs text-gray-400 mt-1">Fetching live classes, roster statistics & assessments</p>
+                <p className="text-xs text-gray-400 mt-1">Fetching live classes and roster statistics</p>
             </div>
         );
     }
 
     // Gradient blue shades for student donut chart
-    const gradeColors = ["#1F5380", "#2c6ea6", "#4589c3", "#6ea5d8", "#9bc1eb", "#c5dcf4"];
+    const gradeColors = ["#4085b3", "#2c6ea6", "#4589c3", "#6ea5d8", "#9bc1eb", "#c5dcf4"];
 
     return (
         <div className="w-full max-w-[1400px] mx-auto space-y-5 text-gray-800 font-sans pb-12">
             
-            {/* Top Bar: Greeting & Academic Term Info */}
+            {/* Top Bar: Greeting */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
                 <div>
-                    <h1 className="text-2xl font-black text-gray-900 tracking-tight">
-                        Good morning, {teacherName}
+                    <h1 className="text-lg sm:text-xl font-bold text-gray-900 tracking-tight">
+                        {timeGreeting}, {capitalizedFirstName}
                     </h1>
-                    <p className="text-xs text-gray-500 font-medium mt-0.5">
-                        Here's what's happening in your classes today.
-                    </p>
-                </div>
-
-                <div className="flex items-center space-x-3 self-start sm:self-auto">
-                    {/* AI Assistant Quick Trigger */}
-                    <button
-                        onClick={() => setShowAiModal(true)}
-                        className="px-3.5 py-1.5 bg-[#1F5380] hover:bg-[#18446b] text-white rounded-xl transition-all cursor-pointer shadow-xs flex items-center space-x-1.5 text-xs font-bold"
-                        title="AI Lesson Assistant"
-                    >
-                        <Sparkles className="w-4 h-4 text-white" />
-                        <span>AI Assistant</span>
-                    </button>
                 </div>
             </div>
 
-            {/* Top 3 KPI Cards Row */}
+            {/* Top 3 KPI Cards Row: Left-to-right clean blue hover fill matching results page */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 
                 {/* 1. Total Students */}
-                <div className="bg-white border border-gray-200/90 rounded-2xl p-5 shadow-2xs flex items-center justify-between transition-all hover:shadow-xs">
-                    <div className="space-y-1">
-                        <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Total Students</span>
-                        <p className="text-3xl font-black text-gray-900">{totalStudents}</p>
-                        <p className="text-[11px] font-bold text-[#1F5380] flex items-center gap-0.5">
-                            <span>Active in your sections</span>
-                        </p>
+                <Link
+                    href="/dashboard/teacher/students"
+                    className="relative overflow-hidden border border-slate-200 bg-white rounded-lg p-4 flex items-center justify-between group cursor-pointer shadow-2xs hover:border-[#4085b3] transition-all duration-300"
+                >
+                    <span className="absolute inset-0 bg-[#4085b3] origin-left scale-x-0 group-hover:scale-x-100 transition-transform duration-300 ease-out pointer-events-none" />
+                    <div className="relative z-10">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 group-hover:text-blue-100 transition-colors duration-300 block mb-1">
+                            Total Students
+                        </span>
+                        <span className="text-2xl font-bold text-slate-900 group-hover:text-white transition-colors duration-300 tabular-nums">
+                            {totalStudents}
+                        </span>
                     </div>
-                    <div className="w-14 h-14 rounded-2xl bg-[#1F5380]/10 text-[#1F5380] flex items-center justify-center shadow-xs">
-                        <Users className="w-7 h-7" />
-                    </div>
-                </div>
+                    <Users className="relative z-10 w-5 h-5 text-slate-400 group-hover:text-white transition-colors duration-300 shrink-0" />
+                </Link>
 
                 {/* 2. Today's Classes */}
-                <div className="bg-white border border-gray-200/90 rounded-2xl p-5 shadow-2xs flex items-center justify-between transition-all hover:shadow-xs">
-                    <div className="space-y-1">
-                        <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Today's Classes</span>
-                        <p className="text-3xl font-black text-gray-900">{todayClasses.length}</p>
-                        <p className="text-[11px] font-semibold text-gray-600 flex items-center gap-1.5">
-                            <span className="w-2 h-2 rounded-full bg-[#1F5380]"></span>
-                            <span>{completedClassesToday} completed • {upcomingClassesToday} upcoming</span>
-                        </p>
+                <Link
+                    href="/dashboard/teacher/my-classes"
+                    className="relative overflow-hidden border border-slate-200 bg-white rounded-lg p-4 flex items-center justify-between group cursor-pointer shadow-2xs hover:border-[#4085b3] transition-all duration-300"
+                >
+                    <span className="absolute inset-0 bg-[#4085b3] origin-left scale-x-0 group-hover:scale-x-100 transition-transform duration-300 ease-out pointer-events-none" />
+                    <div className="relative z-10">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 group-hover:text-blue-100 transition-colors duration-300 block mb-1">
+                            Today's Classes
+                        </span>
+                        <span className="text-2xl font-bold text-slate-900 group-hover:text-white transition-colors duration-300 tabular-nums">
+                            {todayClasses.length}
+                        </span>
                     </div>
-                    <div className="w-14 h-14 rounded-2xl bg-[#1F5380]/10 text-[#1F5380] flex items-center justify-center shadow-xs">
-                        <MonitorPlay className="w-7 h-7" />
-                    </div>
-                </div>
+                    <MonitorPlay className="relative z-10 w-5 h-5 text-slate-400 group-hover:text-white transition-colors duration-300 shrink-0" />
+                </Link>
 
                 {/* 3. Students Needing Attention */}
-                <div className="bg-white border border-gray-200/90 rounded-2xl p-5 shadow-2xs flex items-center justify-between transition-all hover:shadow-xs">
-                    <div className="space-y-1">
-                        <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Needs Attention</span>
-                        <p className="text-3xl font-black text-gray-900">{studentsNeedAttentionCount}</p>
-                        <a href="#students-attention" className="text-[11px] font-bold text-[#1F5380] hover:underline flex items-center gap-0.5">
-                            <span>View intervention details</span>
-                            <span>→</span>
-                        </a>
+                <a
+                    href="#students-attention"
+                    className="relative overflow-hidden border border-slate-200 bg-white rounded-lg p-4 flex items-center justify-between group cursor-pointer shadow-2xs hover:border-[#4085b3] transition-all duration-300"
+                >
+                    <span className="absolute inset-0 bg-[#4085b3] origin-left scale-x-0 group-hover:scale-x-100 transition-transform duration-300 ease-out pointer-events-none" />
+                    <div className="relative z-10">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 group-hover:text-blue-100 transition-colors duration-300 block mb-1">
+                            Needs Attention
+                        </span>
+                        <span className="text-2xl font-bold text-slate-900 group-hover:text-white transition-colors duration-300 tabular-nums">
+                            {studentsNeedAttentionCount}
+                        </span>
                     </div>
-                    <div className="w-14 h-14 rounded-2xl bg-[#1F5380]/10 text-[#1F5380] flex items-center justify-center shadow-xs">
-                        <AlertCircle className="w-7 h-7" />
-                    </div>
-                </div>
+                    <AlertCircle className="relative z-10 w-5 h-5 text-slate-400 group-hover:text-white transition-colors duration-300 shrink-0" />
+                </a>
 
             </div>
 
@@ -260,14 +255,14 @@ export default function TeacherDashboard() {
             <div className="bg-white border border-gray-200/90 rounded-2xl p-5 shadow-2xs">
                 <div className="flex items-center justify-between pb-3 border-b border-gray-100">
                     <div className="flex items-center space-x-2.5">
-                        <div className="w-8 h-8 rounded-xl bg-[#1F5380]/10 text-[#1F5380] flex items-center justify-center shrink-0">
+                        <div className="w-8 h-8 rounded-xl bg-[#4085b3]/10 text-[#4085b3] flex items-center justify-center shrink-0">
                             <Megaphone className="w-4 h-4" />
                         </div>
                         <div>
                             <div className="flex items-center space-x-2">
                                 <h3 className="font-extrabold text-sm text-gray-900">School Announcements</h3>
                                 {pendingAnnouncementsCount > 0 && (
-                                    <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-[#1F5380]/10 text-[#1F5380]">
+                                    <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-[#4085b3]/10 text-[#4085b3]">
                                         {pendingAnnouncementsCount} action required
                                     </span>
                                 )}
@@ -277,7 +272,7 @@ export default function TeacherDashboard() {
                     </div>
                     <Link 
                         href="/dashboard/teacher/announcements" 
-                        className="text-xs font-bold text-[#1F5380] hover:text-[#18446b] flex items-center gap-1 transition-colors"
+                        className="text-xs font-bold text-[#4085b3] hover:text-[#32698e] flex items-center gap-1 transition-colors"
                     >
                         <span>View all notices</span>
                         <span>→</span>
@@ -286,7 +281,7 @@ export default function TeacherDashboard() {
 
                 {recentAnnouncements.length === 0 ? (
                     <div className="py-6 text-center text-gray-400 space-y-1">
-                        <CheckCircle2 className="w-6 h-6 mx-auto text-[#1F5380]/60" />
+                        <CheckCircle2 className="w-6 h-6 mx-auto text-[#4085b3]/60" />
                         <p className="text-xs font-bold text-gray-700">All Notices Up to Date</p>
                         <p className="text-[11px] text-gray-400">There are no pending school-wide announcements requiring your attention.</p>
                     </div>
@@ -324,11 +319,11 @@ export default function TeacherDashboard() {
                                                 href={item.attachmentUrl || "#"} 
                                                 target="_blank" 
                                                 rel="noreferrer"
-                                                className="inline-flex items-center space-x-1.5 text-[11px] font-bold text-[#1F5380] hover:text-[#18446b] bg-[#1F5380]/5 hover:bg-[#1F5380]/10 px-2.5 py-1 rounded-lg border border-[#1F5380]/20 transition-colors pt-0.5 mt-1"
+                                                className="inline-flex items-center space-x-1.5 text-[11px] font-bold text-[#4085b3] hover:text-[#32698e] bg-[#4085b3]/5 hover:bg-[#4085b3]/10 px-2.5 py-1 rounded-lg border border-[#4085b3]/20 transition-colors pt-0.5 mt-1"
                                             >
-                                                <Paperclip className="w-3 h-3 text-[#1F5380]" />
+                                                <Paperclip className="w-3 h-3 text-[#4085b3]" />
                                                 <span className="truncate max-w-[200px]">{item.attachmentName || "View Attachment"}</span>
-                                                <ExternalLink className="w-2.5 h-2.5 text-[#1F5380]" />
+                                                <ExternalLink className="w-2.5 h-2.5 text-[#4085b3]" />
                                             </a>
                                         )}
                                     </div>
@@ -344,7 +339,7 @@ export default function TeacherDashboard() {
                                                 <button
                                                     onClick={() => handleAcknowledgeAnnouncement(item.id)}
                                                     disabled={acknowledgingAnnouncementId === item.id}
-                                                    className="px-3 py-1.5 bg-[#1F5380] hover:bg-[#18446b] text-white font-bold rounded-lg text-xs transition-colors shadow-2xs cursor-pointer disabled:opacity-60 flex items-center space-x-1"
+                                                    className="px-3 py-1.5 bg-[#4085b3] hover:bg-[#32698e] text-white font-bold rounded-lg text-xs transition-colors shadow-2xs cursor-pointer disabled:opacity-60 flex items-center space-x-1"
                                                 >
                                                     {acknowledgingAnnouncementId === item.id ? (
                                                         <span>Confirming...</span>
@@ -356,7 +351,7 @@ export default function TeacherDashboard() {
                                         ) : (
                                             <Link
                                                 href="/dashboard/teacher/announcements"
-                                                className="text-xs font-bold text-[#1F5380] hover:underline"
+                                                className="text-xs font-bold text-[#4085b3] hover:underline"
                                             >
                                                 View Notice →
                                             </Link>
@@ -373,13 +368,13 @@ export default function TeacherDashboard() {
             <div className="bg-white border border-gray-200/90 rounded-2xl p-5 shadow-2xs">
                 <div className="flex items-center justify-between pb-4 border-b border-gray-100">
                     <div className="flex items-center space-x-2.5">
-                        <Clock className="w-5 h-5 text-[#1F5380]" />
+                        <Clock className="w-5 h-5 text-[#4085b3]" />
                         <div>
                             <h3 className="font-extrabold text-sm text-gray-900">Today's Timetable</h3>
                             <p className="text-[11px] text-gray-400 font-medium">{formattedDate}</p>
                         </div>
                     </div>
-                    <Link href="/dashboard/teacher/my-classes" className="text-xs font-bold text-[#1F5380] hover:text-[#18446b] flex items-center gap-1 transition-colors">
+                    <Link href="/dashboard/teacher/my-classes" className="text-xs font-bold text-[#4085b3] hover:text-[#32698e] flex items-center gap-1 transition-colors">
                         <span>View all classes</span>
                         <span>→</span>
                     </Link>
@@ -400,7 +395,7 @@ export default function TeacherDashboard() {
                             return (
                                 <div key={cls.id || idx} className="py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-gray-50/60 px-3 rounded-xl transition-colors">
                                     <div className="flex items-center space-x-3.5">
-                                        <div className="w-10 h-10 rounded-xl bg-[#1F5380]/10 text-[#1F5380] flex items-center justify-center shrink-0 font-bold">
+                                        <div className="w-10 h-10 rounded-xl bg-[#4085b3]/10 text-[#4085b3] flex items-center justify-center shrink-0 font-bold">
                                             <BookOpen className="w-5 h-5" />
                                         </div>
                                         <div>
@@ -413,7 +408,7 @@ export default function TeacherDashboard() {
                                             </div>
                                             <div className="flex items-center space-x-2 text-[11px] text-gray-400 mt-0.5">
                                                 <span className="flex items-center gap-1">
-                                                    <Clock className="w-3 h-3 text-[#1F5380]" />
+                                                    <Clock className="w-3 h-3 text-[#4085b3]" />
                                                     {cls.time}
                                                 </span>
                                                 <span>•</span>
@@ -427,14 +422,14 @@ export default function TeacherDashboard() {
                                             isDone 
                                                 ? "bg-slate-100 text-slate-700" 
                                                 : isFirst 
-                                                    ? "bg-[#1F5380]/10 text-[#1F5380]" 
+                                                    ? "bg-[#4085b3]/10 text-[#4085b3]" 
                                                     : "bg-gray-100 text-gray-600"
                                         }`}>
                                             {isDone ? "Completed" : isFirst ? "In Progress" : "Upcoming"}
                                         </span>
                                         <button
                                             onClick={() => setSelectedClass(cls)}
-                                            className="px-3 py-1.5 bg-[#1F5380] hover:bg-[#18446b] text-white font-bold rounded-lg text-xs transition-colors shadow-2xs cursor-pointer"
+                                            className="px-3 py-1.5 bg-[#4085b3] hover:bg-[#32698e] text-white font-bold rounded-lg text-xs transition-colors shadow-2xs cursor-pointer"
                                         >
                                             {isDone ? "Review" : "Take Attendance"}
                                         </button>
@@ -454,10 +449,10 @@ export default function TeacherDashboard() {
                     <div className="space-y-3">
                         <div className="flex items-center justify-between pb-3 border-b border-gray-100">
                             <div className="flex items-center space-x-2">
-                                <CheckCircle2 className="w-4 h-4 text-[#1F5380]" />
+                                <CheckCircle2 className="w-4 h-4 text-[#4085b3]" />
                                 <h3 className="font-extrabold text-sm text-gray-900">Attendance Tasks</h3>
                             </div>
-                            <Link href="/dashboard/teacher/attendance" className="text-xs font-bold text-[#1F5380] hover:text-[#18446b] flex items-center gap-0.5">
+                            <Link href="/dashboard/teacher/attendance" className="text-xs font-bold text-[#4085b3] hover:text-[#32698e] flex items-center gap-0.5">
                                 <span>View all</span>
                                 <span>→</span>
                             </Link>
@@ -478,7 +473,7 @@ export default function TeacherDashboard() {
                                                     cy="18"
                                                     r="14"
                                                     fill="none"
-                                                    stroke="#1F5380"
+                                                    stroke="#4085b3"
                                                     strokeWidth="3.5"
                                                     strokeDasharray={`${pct} ${100 - pct}`}
                                                 />
@@ -494,7 +489,7 @@ export default function TeacherDashboard() {
 
                             <div className="space-y-1.5 text-xs">
                                 <div className="flex items-center space-x-2">
-                                    <span className="w-2.5 h-2.5 rounded-full bg-[#1F5380]"></span>
+                                    <span className="w-2.5 h-2.5 rounded-full bg-[#4085b3]"></span>
                                     <span className="text-gray-600">Completed:</span>
                                     <span className="font-extrabold text-gray-900">{completedClassesToday}</span>
                                 </div>
@@ -504,7 +499,7 @@ export default function TeacherDashboard() {
                                     <span className="font-extrabold text-gray-900">{attendancePendingCount}</span>
                                 </div>
                                 <div className="flex items-center space-x-2">
-                                    <span className="w-2.5 h-2.5 rounded-full bg-[#1F5380]/40"></span>
+                                    <span className="w-2.5 h-2.5 rounded-full bg-[#4085b3]/40"></span>
                                     <span className="text-gray-600">Total:</span>
                                     <span className="font-extrabold text-gray-900">{todayClasses.length}</span>
                                 </div>
@@ -514,14 +509,14 @@ export default function TeacherDashboard() {
                         {/* Horizontal Progress Bar */}
                         <div className="w-full bg-gray-100 rounded-full h-2 overflow-hidden mt-3">
                             <div 
-                                className="bg-[#1F5380] h-full rounded-full transition-all" 
+                                className="bg-[#4085b3] h-full rounded-full transition-all" 
                                 style={{ width: `${Math.round((completedClassesToday / (todayClasses.length || 1)) * 100)}%` }}
                             ></div>
                         </div>
                     </div>
 
                     <div className="mt-3 p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs flex items-center space-x-2 text-slate-800">
-                        <CheckCircle2 className="w-4 h-4 text-[#1F5380] shrink-0" />
+                        <CheckCircle2 className="w-4 h-4 text-[#4085b3] shrink-0" />
                         <span className="text-[11px] font-medium leading-tight">
                             {attendancePendingCount === 0 ? "All attendance tasks for today are logged." : `${attendancePendingCount} period(s) pending attendance log.`}
                         </span>
@@ -534,10 +529,10 @@ export default function TeacherDashboard() {
                     <div className="space-y-3">
                         <div className="flex items-center justify-between pb-3 border-b border-gray-100">
                             <div className="flex items-center space-x-2">
-                                <AlertCircle className="w-4 h-4 text-[#1F5380]" />
+                                <AlertCircle className="w-4 h-4 text-[#4085b3]" />
                                 <h3 className="font-extrabold text-sm text-gray-900">Students Requiring Attention</h3>
                             </div>
-                            <Link href="/dashboard/teacher/students" className="text-xs font-bold text-[#1F5380] hover:text-[#18446b] flex items-center gap-0.5">
+                            <Link href="/dashboard/teacher/students" className="text-xs font-bold text-[#4085b3] hover:text-[#32698e] flex items-center gap-0.5">
                                 <span>View all</span>
                                 <span>→</span>
                             </Link>
@@ -545,7 +540,7 @@ export default function TeacherDashboard() {
 
                         {/* Alert Pill Banner */}
                         <div className="p-2.5 bg-slate-50 border border-slate-200 rounded-xl flex items-center space-x-2.5 text-slate-800">
-                            <AlertCircle className="w-5 h-5 text-[#1F5380] shrink-0" />
+                            <AlertCircle className="w-5 h-5 text-[#4085b3] shrink-0" />
                             <div className="text-[11px] leading-tight">
                                 <p className="font-extrabold text-gray-900">{attentionStudents.length} student{attentionStudents.length === 1 ? '' : 's'} need your attention</p>
                                 <p className="text-[10px] text-gray-500 mt-0.5">Click on a student to view details.</p>
@@ -555,7 +550,7 @@ export default function TeacherDashboard() {
                         {/* Attention List from Real Database */}
                         {attentionStudents.length === 0 ? (
                             <div className="py-8 text-center text-gray-400 space-y-1">
-                                <CheckCircle2 className="w-7 h-7 mx-auto text-[#1F5380]" />
+                                <CheckCircle2 className="w-7 h-7 mx-auto text-[#4085b3]" />
                                 <p className="text-xs font-bold text-gray-700">All Students On Track</p>
                                 <p className="text-[11px] text-gray-400">No active intervention flags found.</p>
                             </div>
@@ -569,7 +564,7 @@ export default function TeacherDashboard() {
                                             className="flex items-center justify-between text-xs py-1.5 px-1 hover:bg-gray-50 rounded-lg transition-colors border-b border-gray-50 last:border-none"
                                         >
                                             <div className="flex items-center space-x-2">
-                                                <span className="w-2 h-2 rounded-full bg-[#1F5380] shrink-0"></span>
+                                                <span className="w-2 h-2 rounded-full bg-[#4085b3] shrink-0"></span>
                                                 <div>
                                                     <p className="font-bold text-gray-900 text-[11px] leading-tight">{st.studentName}</p>
                                                     <span className="text-[10px] text-gray-400 font-medium">{st.section}</span>
@@ -588,7 +583,7 @@ export default function TeacherDashboard() {
                     <div className="pt-3 border-t border-gray-100">
                         <Link 
                             href="/dashboard/teacher/support"
-                            className="w-full py-2 bg-[#1F5380] hover:bg-[#18446b] text-white font-bold rounded-xl text-xs transition-colors flex items-center justify-center space-x-1 shadow-2xs"
+                            className="w-full py-2 bg-[#4085b3] hover:bg-[#32698e] text-white font-bold rounded-xl text-xs transition-colors flex items-center justify-center space-x-1 shadow-2xs"
                         >
                             <span>Open Support Flags</span>
                             <ChevronRight className="w-3.5 h-3.5" />
@@ -652,7 +647,7 @@ export default function TeacherDashboard() {
                             <button
                                 type="submit"
                                 disabled={submittingAttendance}
-                                className="w-full py-2.5 bg-[#1F5380] text-white text-xs font-bold rounded-xl hover:bg-[#18446b] transition-colors shadow-xs cursor-pointer"
+                                className="w-full py-2.5 bg-[#4085b3] text-white text-xs font-bold rounded-xl hover:bg-[#32698e] transition-colors shadow-xs cursor-pointer"
                             >
                                 {submittingAttendance ? "Saving Attendance..." : "Save Class Attendance"}
                             </button>
@@ -667,7 +662,7 @@ export default function TeacherDashboard() {
                     <div className="bg-white rounded-2xl max-w-lg w-full p-6 space-y-4 shadow-xl border border-gray-100">
                         <div className="flex justify-between items-center border-b border-gray-100 pb-3">
                             <h3 className="font-bold text-gray-900 flex items-center space-x-2">
-                                <Sparkles className="w-5 h-5 text-[#1F5380]" />
+                                <Sparkles className="w-5 h-5 text-[#4085b3]" />
                                 <span>AI Teacher Assistant</span>
                             </h3>
                             <button onClick={() => setShowAiModal(false)} className="text-gray-400 hover:text-gray-600 cursor-pointer">
@@ -704,7 +699,7 @@ export default function TeacherDashboard() {
                             <button
                                 type="submit"
                                 disabled={loadingAi}
-                                className="w-full py-2.5 bg-[#1F5380] text-white text-xs font-bold rounded-xl hover:bg-[#18446b] transition-colors flex items-center justify-center space-x-2 shadow-xs cursor-pointer"
+                                className="w-full py-2.5 bg-[#4085b3] text-white text-xs font-bold rounded-xl hover:bg-[#32698e] transition-colors flex items-center justify-center space-x-2 shadow-xs cursor-pointer"
                             >
                                 {loadingAi ? <span>Generating AI Insight...</span> : <><Send className="w-4 h-4" /><span>Generate Insight</span></>}
                             </button>

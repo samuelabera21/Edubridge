@@ -725,7 +725,7 @@ export default function StudentSubjectsPage() {
 
                 <div className="flex items-center gap-1.5">
                   <Link
-                    href="/dashboard/student/classes/resources"
+                    href="/dashboard/student/resources/school"
                     className="rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-700 px-2.5 py-1.5 text-xs font-semibold transition"
                   >
                     Resources

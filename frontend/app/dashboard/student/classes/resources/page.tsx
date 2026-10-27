@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
   BookOpen,
@@ -49,6 +50,12 @@ type ViewMode = "grid" | "list";
 
 
 export default function StudentResourcesPage() {
+  const router = useRouter();
+
+  useEffect(() => {
+    router.replace("/dashboard/student/resources/school");
+  }, [router]);
+
   const [resources, setResources] = useState<DigitalResourceItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);

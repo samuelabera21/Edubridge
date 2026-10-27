@@ -13,6 +13,26 @@ const nextConfig: NextConfig = {
                 destination: "/dashboard/teacher/:path*",
                 permanent: false,
             },
+            {
+                source: "/dashboard/teacher/assessment",
+                destination: "/dashboard/teacher",
+                permanent: false,
+            },
+            {
+                source: "/dashboard/teacher/assessment/:path*",
+                destination: "/dashboard/teacher",
+                permanent: false,
+            },
+            {
+                source: "/dashboard/teacher/pd",
+                destination: "/dashboard/teacher",
+                permanent: false,
+            },
+            {
+                source: "/dashboard/teacher/pd/:path*",
+                destination: "/dashboard/teacher",
+                permanent: false,
+            },
         ];
     },
     async rewrites() {

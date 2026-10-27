@@ -1,5 +1,4 @@
 "use client";
-
 import { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import { fetchApi } from "@/lib/api";
 import { useAuth } from "@/hooks/useAuth";
@@ -7,7 +6,7 @@ import {
     MessageSquare, Send, X, ChevronLeft, Trash2, Copy, Check,
     Reply, Edit3, Paperclip, Download, ExternalLink, FileText,
     CheckCheck, Lock, RefreshCw, ChevronDown, Clock, Search,
-    UserCheck, Users
+    UserCheck, Users, Eye
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { LoadingState } from "@/components/ui/LoadingState";
@@ -81,10 +80,11 @@ export default function ActorDirectMessagingView({
     // Simulated real-time typing indicator
     const [isPartnerTyping, setIsPartnerTyping] = useState(false);
 
-    // Attachment state
+    // Attachment & Document Preview state
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [attachedFile, setAttachedFile] = useState<{ file: File; name: string; size: number; type: string } | null>(null);
     const [uploadingAttachment, setUploadingAttachment] = useState(false);
+    const [previewDoc, setPreviewDoc] = useState<{ url: string; name: string; type?: string } | null>(null);
 
     // Toast notification
     const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -470,7 +470,7 @@ export default function ActorDirectMessagingView({
         return (
             <div className="text-center py-12">
                 <p className="text-rose-600 text-xs sm:text-sm font-semibold">{error}</p>
-                <Button onClick={loadInitial} className="mt-4 text-xs bg-blue-600 hover:bg-blue-700 text-white">Retry</Button>
+                <Button onClick={loadInitial} className="mt-4 text-xs bg-[#4085b3] hover:bg-[#32698e] text-white">Retry</Button>
             </div>
         );
     }
@@ -481,7 +481,7 @@ export default function ActorDirectMessagingView({
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pb-1">
                 <div>
                     <h1 className="text-xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 border border-blue-200/60 flex items-center justify-center">
+                        <div className="w-8 h-8 rounded-lg bg-[#4085b3]/15 text-[#4085b3] border border-[#4085b3]/30 flex items-center justify-center">
                             <MessageSquare className="w-4 h-4" />
                         </div>
                         {portalTitle}
@@ -525,11 +525,11 @@ export default function ActorDirectMessagingView({
                                     type="button"
                                     onClick={() => setActiveTab(tab.id)}
                                     className={`py-2 text-center border-b-2 transition-colors cursor-pointer flex items-center justify-center gap-1 ${
-                                        isCurrent ? "border-blue-600 text-blue-600 bg-white font-bold" : "border-transparent hover:text-slate-900"
+                                        isCurrent ? "border-[#4085b3] text-[#4085b3] bg-white font-bold" : "border-transparent hover:text-slate-900"
                                     }`}
                                 >
                                     <span className="truncate">{tab.label}</span>
-                                    <span className={`text-[10px] px-1.5 py-0.2 rounded-full ${isCurrent ? "bg-blue-100 text-blue-700" : "bg-slate-200 text-slate-600"}`}>
+                                    <span className={`text-[10px] px-1.5 py-0.2 rounded-full ${isCurrent ? "bg-[#4085b3]/15 text-[#4085b3]" : "bg-slate-200 text-slate-600"}`}>
                                         {count}
                                     </span>
                                 </button>
@@ -546,7 +546,7 @@ export default function ActorDirectMessagingView({
                                 placeholder="Search contacts..."
                                 value={searchQuery}
                                 onChange={e => setSearchQuery(e.target.value)}
-                                className="w-full pl-8 pr-3 py-1.5 text-xs rounded-lg border border-slate-200 focus:outline-hidden focus:ring-1 focus:ring-blue-600 focus:border-blue-600 bg-slate-50/50"
+                                className="w-full pl-8 pr-3 py-1.5 text-xs rounded-lg border border-slate-200 focus:outline-hidden focus:ring-1 focus:ring-[#4085b3] focus:border-[#4085b3] bg-slate-50/50"
                             />
                         </div>
                     </div>
@@ -570,13 +570,13 @@ export default function ActorDirectMessagingView({
                                         onClick={() => openConversationWith(u)}
                                         className={`w-full px-3 py-2.5 text-left transition-colors flex items-start gap-2.5 cursor-pointer ${
                                             isSelected
-                                                ? "bg-blue-50/70 border-l-4 border-l-blue-600"
+                                                ? "bg-[#4085b3]/10 border-l-4 border-l-[#4085b3]"
                                                 : "hover:bg-slate-50"
                                         }`}
                                     >
                                         {/* Avatar with status indicator */}
                                         <div className="relative shrink-0 mt-0.5">
-                                            <div className="w-9 h-9 rounded-full bg-blue-100 text-blue-700 border border-blue-200 flex items-center justify-center font-bold text-xs">
+                                            <div className="w-9 h-9 rounded-full bg-[#4085b3]/15 text-[#4085b3] border border-[#4085b3]/30 flex items-center justify-center font-bold text-xs">
                                                 {u.name ? u.name.slice(0, 2).toUpperCase() : "U"}
                                             </div>
                                             <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 border-2 border-white absolute bottom-0 right-0"></span>
@@ -590,7 +590,7 @@ export default function ActorDirectMessagingView({
                                                         {u.lastMessageTime}
                                                     </span>
                                                 ) : (
-                                                    <span className="text-[9px] text-blue-600 font-medium shrink-0 bg-blue-50 px-1.5 py-0.2 rounded-sm border border-blue-100">
+                                                    <span className="text-[9px] text-[#4085b3] font-medium shrink-0 bg-[#4085b3]/10 px-1.5 py-0.2 rounded-sm border border-[#4085b3]/25">
                                                         New
                                                     </span>
                                                 )}

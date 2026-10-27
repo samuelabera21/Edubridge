@@ -339,6 +339,7 @@ export const importResultSheet = async (req: Request, res: Response) => {
 
         return res.status(201).json(sheet);
     } catch (error: any) {
+        console.error("[AssessmentController] importResultSheet error:", error);
         return res.status(400).json({ error: error.message || "Failed to import result sheet" });
     }
 };

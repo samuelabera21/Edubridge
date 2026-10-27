@@ -2,13 +2,15 @@
 
 import HierarchicalReportsView from "../../../components/governance/HierarchicalReportsView";
 import { useAuth } from "../../../hooks/useAuth";
+import { getPrimaryAccess } from "../../../lib/auth-access";
 
 export default function ReportsPage() {
     const { authData, loading } = useAuth();
 
-    const activeScope = authData?.access?.[0]?.scope;
+    const primaryAccess = getPrimaryAccess(authData?.access);
+    const activeScope = primaryAccess?.scope;
     const unitName = activeScope?.name || "Institution";
-    const unitType = (activeScope?.type || "FEDERAL") as "FEDERAL" | "REGION" | "ZONE" | "WOREDA" | "SCHOOL";
+    const unitType = (activeScope?.type || "SCHOOL") as "FEDERAL" | "REGION" | "ZONE" | "WOREDA" | "SCHOOL";
 
     if (loading) {
         return (

@@ -199,7 +199,7 @@ function ParentAttendanceContent() {
                         <div className="text-xs text-gray-500 font-semibold mb-1.5 flex items-center justify-between">
                             <span>Active Student</span>
                             {children.length > 1 && (
-                                <span className="text-[11px] text-[#184973] font-medium">
+                                <span className="text-[11px] text-[#4085b3] font-medium">
                                     {selectedChildIndex + 1} of {children.length}
                                 </span>
                             )}
@@ -207,10 +207,10 @@ function ParentAttendanceContent() {
                         <button
                             type="button"
                             onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                            className="w-full sm:w-auto min-w-[240px] flex items-center justify-between gap-3 px-4 py-2.5 bg-white border border-gray-300 hover:border-[#184973] rounded-xl shadow-sm hover:shadow transition-all text-left focus:outline-none focus:ring-2 focus:ring-[#184973]/20"
+                            className="w-full sm:w-auto min-w-[240px] flex items-center justify-between gap-3 px-4 py-2.5 bg-white border border-gray-300 hover:border-[#4085b3] rounded-xl shadow-sm hover:shadow transition-all text-left focus:outline-none focus:ring-2 focus:ring-[#4085b3]/20"
                         >
                             <div className="flex items-center gap-3">
-                                <div className="w-9 h-9 rounded-full bg-[#184973] text-white flex items-center justify-center text-sm font-bold shadow-sm">
+                                <div className="w-9 h-9 rounded-full bg-[#4085b3] text-white flex items-center justify-center text-sm font-bold shadow-sm">
                                     {currentStudent.firstName?.charAt(0) || "S"}
                                 </div>
                                 <div className="leading-tight">
@@ -248,12 +248,12 @@ function ParentAttendanceContent() {
                                                     setIsDropdownOpen(false);
                                                 }}
                                                 className={`w-full flex items-center justify-between px-3.5 py-2.5 text-left transition-colors ${
-                                                    isSelected ? "bg-blue-50/70 text-[#184973]" : "hover:bg-gray-50 text-gray-800"
+                                                    isSelected ? "bg-blue-50/70 text-[#4085b3]" : "hover:bg-gray-50 text-gray-800"
                                                 }`}
                                             >
                                                 <div className="flex items-center gap-3">
                                                     <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${
-                                                        isSelected ? "bg-[#184973] text-white" : "bg-gray-100 text-gray-700"
+                                                        isSelected ? "bg-[#4085b3] text-white" : "bg-gray-100 text-gray-700"
                                                     }`}>
                                                         {ch?.firstName?.charAt(0) || "S"}
                                                     </div>
@@ -267,7 +267,7 @@ function ParentAttendanceContent() {
                                                     </div>
                                                 </div>
                                                 {isSelected && (
-                                                    <Check className="w-4 h-4 text-[#184973] flex-shrink-0" />
+                                                    <Check className="w-4 h-4 text-[#4085b3] flex-shrink-0" />
                                                 )}
                                             </button>
                                         );
@@ -357,7 +357,7 @@ function ParentAttendanceContent() {
                     onClick={() => setTab("overview")}
                     className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                         currentTab === "overview"
-                            ? "bg-[#184973] text-white shadow-sm"
+                            ? "bg-[#4085b3] text-white shadow-sm"
                             : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
                     }`}
                 >
@@ -369,7 +369,7 @@ function ParentAttendanceContent() {
                     onClick={() => setTab("records")}
                     className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                         currentTab === "records"
-                            ? "bg-[#184973] text-white shadow-sm"
+                            ? "bg-[#4085b3] text-white shadow-sm"
                             : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
                     }`}
                 >
@@ -381,7 +381,7 @@ function ParentAttendanceContent() {
                     onClick={() => setTab("alerts")}
                     className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                         currentTab === "alerts"
-                            ? "bg-[#184973] text-white shadow-sm"
+                            ? "bg-[#4085b3] text-white shadow-sm"
                             : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
                     }`}
                 >
@@ -397,7 +397,7 @@ function ParentAttendanceContent() {
                     <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm space-y-4">
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-gray-100 pb-3">
                             <h3 className="font-bold text-sm text-gray-900 flex items-center gap-2">
-                                <CalendarDays className="w-4 h-4 text-[#184973]" />
+                                <CalendarDays className="w-4 h-4 text-[#4085b3]" />
                                 <span>Semester Attendance Progress</span>
                             </h3>
                             <span className="text-xs text-gray-500 font-medium">
@@ -425,7 +425,7 @@ function ParentAttendanceContent() {
 
                         {/* Ministry Guideline Note */}
                         <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl text-xs text-gray-600 leading-relaxed flex items-start gap-2.5">
-                            <Info className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
+                            <Info className="w-4 h-4 text-[#4085b3] shrink-0 mt-0.5" />
                             <span>
                                 <strong>MoE Attendance Regulation:</strong> According to Ministry of Education regulations, students must maintain at least 80% classroom attendance throughout the semester to be eligible for semester examinations. All absences must be formally reported with valid documentation.
                             </span>
@@ -436,7 +436,7 @@ function ParentAttendanceContent() {
                     <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm space-y-4">
                         <div className="flex items-center justify-between border-b border-gray-100 pb-3">
                             <h3 className="font-bold text-sm text-gray-900 flex items-center gap-2">
-                                <Clock className="w-4 h-4 text-[#184973]" />
+                                <Clock className="w-4 h-4 text-[#4085b3]" />
                                 <span>Recent Attendance Log</span>
                             </h3>
                             <span className="text-xs text-gray-500">{records.length} records</span>

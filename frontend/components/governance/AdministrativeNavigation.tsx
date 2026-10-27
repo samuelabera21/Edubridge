@@ -330,8 +330,10 @@ export default function AdministrativeNavigation({
             style={{ scrollbarWidth: "none", msOverflowStyle: "none" } as React.CSSProperties}
         >
             {/* Sidebar Department Masthead */}
-            <div className="flex items-center justify-between px-3.5 py-3 border-b border-slate-200 bg-white">
-                {!sidebarCollapsed ? (
+            <div className={`flex items-center border-b border-slate-200 bg-white shrink-0 ${
+                sidebarCollapsed ? "justify-center py-3 px-2" : "justify-between px-3.5 py-3"
+            }`}>
+                {!sidebarCollapsed && (
                     <div className="min-w-0 pr-2">
                         <p className="text-xs font-bold text-slate-900 truncate">
                             {tierTitle}
@@ -340,38 +342,25 @@ export default function AdministrativeNavigation({
                             {tierSubtitle}
                         </span>
                     </div>
-                ) : (
-                    <div className="mx-auto" title={`${tierTitle} (${currentTier})`}>
-                        <div className="w-7 h-7 rounded bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-700 font-bold text-[11px]">
-                            {currentTier[0]}
-                        </div>
-                    </div>
                 )}
                 {onToggleCollapse && (
                     <button
+                        type="button"
                         onClick={onToggleCollapse}
                         title={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
-                        className={`flex items-center justify-center w-7 h-7 rounded border border-slate-200 bg-white hover:bg-slate-100 text-slate-600 hover:text-slate-900 transition-colors cursor-pointer ${
-                            sidebarCollapsed ? "hidden" : "ml-auto"
+                        aria-label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+                        className={`flex items-center justify-center w-7 h-7 rounded border border-slate-200 bg-white hover:bg-slate-100 text-slate-600 hover:text-slate-900 transition-colors cursor-pointer shrink-0 ${
+                            sidebarCollapsed ? "" : "ml-auto"
                         }`}
                     >
-                        <ChevronLeft className="w-4 h-4" />
+                        {sidebarCollapsed ? (
+                            <ChevronRight className="w-4 h-4" />
+                        ) : (
+                            <ChevronLeft className="w-4 h-4" />
+                        )}
                     </button>
                 )}
             </div>
-
-            {/* Sidebar Expand button for collapsed mode */}
-            {sidebarCollapsed && onToggleCollapse && (
-                <div className="p-2 border-b border-slate-200 bg-white flex justify-center">
-                    <button
-                        onClick={onToggleCollapse}
-                        title="Expand sidebar"
-                        className="flex items-center justify-center w-7 h-7 rounded border border-slate-200 bg-white hover:bg-slate-100 text-slate-600 hover:text-slate-900 transition-colors cursor-pointer"
-                    >
-                        <ChevronRight className="w-4 h-4" />
-                    </button>
-                </div>
-            )}
 
             {/* Grouped Navigation Links */}
             <div className="p-2.5 flex-1 space-y-4">

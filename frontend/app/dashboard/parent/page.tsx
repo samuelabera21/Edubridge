@@ -134,7 +134,7 @@ export default function ParentDashboard() {
         return (
             <div className="flex items-center justify-center min-h-[420px]">
                 <div className="flex flex-col items-center gap-3">
-                    <div className="w-10 h-10 border-4 border-[#184973] border-t-transparent rounded-full animate-spin" />
+                    <div className="w-10 h-10 border-4 border-[#4085b3] border-t-transparent rounded-full animate-spin" />
                     <span className="text-gray-500 font-medium text-sm">Loading parent dashboard...</span>
                 </div>
             </div>
@@ -237,7 +237,7 @@ export default function ParentDashboard() {
                         <div className="text-xs text-gray-500 font-semibold mb-1.5 flex items-center justify-between">
                             <span>Active Student</span>
                             {children.length > 1 && (
-                                <span className="text-[11px] text-[#184973] font-medium">
+                                <span className="text-[11px] text-[#4085b3] font-medium">
                                     {selectedChildIndex + 1} of {children.length}
                                 </span>
                             )}
@@ -245,10 +245,10 @@ export default function ParentDashboard() {
                         <button
                             type="button"
                             onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                            className="w-full sm:w-auto min-w-[240px] flex items-center justify-between gap-3 px-4 py-2.5 bg-white border border-gray-300 hover:border-[#184973] rounded-xl shadow-sm hover:shadow transition-all text-left focus:outline-none focus:ring-2 focus:ring-[#184973]/20"
+                            className="w-full sm:w-auto min-w-[240px] flex items-center justify-between gap-3 px-4 py-2.5 bg-white border border-gray-300 hover:border-[#4085b3] rounded-xl shadow-sm hover:shadow transition-all text-left focus:outline-none focus:ring-2 focus:ring-[#4085b3]/20"
                         >
                             <div className="flex items-center gap-3">
-                                <div className="w-9 h-9 rounded-full bg-[#184973] text-white flex items-center justify-center text-sm font-bold shadow-sm">
+                                <div className="w-9 h-9 rounded-full bg-[#4085b3] text-white flex items-center justify-center text-sm font-bold shadow-sm">
                                     {currentChild?.firstName?.charAt(0) || "S"}
                                 </div>
                                 <div className="leading-tight">
@@ -286,12 +286,12 @@ export default function ParentDashboard() {
                                                     setIsDropdownOpen(false);
                                                 }}
                                                 className={`w-full flex items-center justify-between px-3.5 py-2.5 text-left transition-colors ${
-                                                    isSelected ? "bg-blue-50/70 text-[#184973]" : "hover:bg-gray-50 text-gray-800"
+                                                    isSelected ? "bg-blue-50/70 text-[#4085b3]" : "hover:bg-gray-50 text-gray-800"
                                                 }`}
                                             >
                                                 <div className="flex items-center gap-3">
                                                     <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${
-                                                        isSelected ? "bg-[#184973] text-white" : "bg-gray-100 text-gray-700"
+                                                        isSelected ? "bg-[#4085b3] text-white" : "bg-gray-100 text-gray-700"
                                                     }`}>
                                                         {st?.firstName?.charAt(0) || "S"}
                                                     </div>
@@ -305,7 +305,7 @@ export default function ParentDashboard() {
                                                     </div>
                                                 </div>
                                                 {isSelected && (
-                                                    <Check className="w-4 h-4 text-[#184973] flex-shrink-0" />
+                                                    <Check className="w-4 h-4 text-[#4085b3] flex-shrink-0" />
                                                 )}
                                             </button>
                                         );
@@ -337,7 +337,7 @@ export default function ParentDashboard() {
                     <section className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-gray-100 gap-3">
                             <div className="flex items-center gap-2.5">
-                                <div className="p-2 bg-blue-50 text-[#184973] rounded-lg">
+                                <div className="p-2 bg-blue-50 text-[#4085b3] rounded-lg">
                                     <Users className="w-5 h-5" />
                                 </div>
                                 <div>
@@ -347,7 +347,7 @@ export default function ParentDashboard() {
                             </div>
                             <Link 
                                 href="/dashboard/parent/profile" 
-                                className="inline-flex items-center gap-1.5 text-xs font-bold text-[#184973] hover:underline"
+                                className="inline-flex items-center gap-1.5 text-xs font-bold text-[#4085b3] hover:underline"
                             >
                                 View Full Profile <ArrowRight className="w-3.5 h-3.5" />
                             </Link>
@@ -356,7 +356,7 @@ export default function ParentDashboard() {
                         <div className="mt-5 grid grid-cols-1 md:grid-cols-3 gap-5">
                             {/* Student Identity Card */}
                             <div className="p-4 bg-slate-50 rounded-xl border border-gray-100 flex items-start gap-3.5">
-                                <div className="w-12 h-12 rounded-xl bg-[#184973] text-white flex items-center justify-center font-bold text-lg flex-shrink-0 shadow-sm">
+                                <div className="w-12 h-12 rounded-xl bg-[#4085b3] text-white flex items-center justify-center font-bold text-lg flex-shrink-0 shadow-sm">
                                     {currentChild?.firstName?.charAt(0) || "S"}
                                 </div>
                                 <div className="min-w-0 flex-1">
@@ -372,7 +372,7 @@ export default function ParentDashboard() {
 
                             {/* Academic Enrolment Card */}
                             <div className="p-4 bg-slate-50 rounded-xl border border-gray-100 flex items-start gap-3.5">
-                                <div className="w-12 h-12 rounded-xl bg-blue-100 text-[#184973] flex items-center justify-center font-bold flex-shrink-0">
+                                <div className="w-12 h-12 rounded-xl bg-blue-100 text-[#4085b3] flex items-center justify-center font-bold flex-shrink-0">
                                     <GraduationCap className="w-6 h-6" />
                                 </div>
                                 <div className="min-w-0 flex-1">
@@ -418,7 +418,7 @@ export default function ParentDashboard() {
                             </div>
                             <Link 
                                 href="/dashboard/parent/attendance" 
-                                className="inline-flex items-center gap-1.5 text-xs font-bold text-[#184973] hover:underline"
+                                className="inline-flex items-center gap-1.5 text-xs font-bold text-[#4085b3] hover:underline"
                             >
                                 View Attendance History <ArrowRight className="w-3.5 h-3.5" />
                             </Link>
@@ -496,7 +496,7 @@ export default function ParentDashboard() {
                             </div>
                             <Link 
                                 href="/dashboard/parent/academics" 
-                                className="inline-flex items-center gap-1.5 text-xs font-bold text-[#184973] hover:underline"
+                                className="inline-flex items-center gap-1.5 text-xs font-bold text-[#4085b3] hover:underline"
                             >
                                 View Academic Results & Trends <ArrowRight className="w-3.5 h-3.5" />
                             </Link>
@@ -598,7 +598,7 @@ export default function ParentDashboard() {
                     <section className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-gray-100 gap-3">
                             <div className="flex items-center gap-2.5">
-                                <div className="p-2 bg-blue-50 text-[#184973] rounded-lg">
+                                <div className="p-2 bg-blue-50 text-[#4085b3] rounded-lg">
                                     <BookOpen className="w-5 h-5" />
                                 </div>
                                 <div>
@@ -629,11 +629,11 @@ export default function ParentDashboard() {
                                         return (
                                             <div 
                                                 key={activity.id} 
-                                                className="p-4 rounded-xl border border-gray-200 bg-white hover:border-[#184973]/40 transition-all shadow-sm"
+                                                className="p-4 rounded-xl border border-gray-200 bg-white hover:border-[#4085b3]/40 transition-all shadow-sm"
                                             >
                                                 <div className="flex items-start justify-between gap-3">
                                                     <div className="min-w-0">
-                                                        <span className="text-[11px] font-bold text-[#184973] uppercase tracking-wider block">
+                                                        <span className="text-[11px] font-bold text-[#4085b3] uppercase tracking-wider block">
                                                             {activity.subject}
                                                         </span>
                                                         <h4 className="text-sm font-bold text-gray-900 mt-0.5 truncate">
@@ -711,7 +711,7 @@ export default function ParentDashboard() {
                                                 <div className={`p-2.5 rounded-lg flex-shrink-0 ${
                                                     isCritical ? "bg-rose-200 text-rose-800" :
                                                     isWarning ? "bg-amber-200 text-amber-800" :
-                                                    "bg-blue-200 text-[#184973]"
+                                                    "bg-blue-200 text-[#4085b3]"
                                                 }`}>
                                                     {alert.type === "ACADEMIC" ? (
                                                         <TrendingDown className="w-5 h-5" />
@@ -727,7 +727,7 @@ export default function ParentDashboard() {
                                                         <span className={`text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-full font-bold ${
                                                             isCritical ? "bg-rose-600 text-white" :
                                                             isWarning ? "bg-amber-600 text-white" :
-                                                            "bg-[#184973] text-white"
+                                                            "bg-[#4085b3] text-white"
                                                         }`}>
                                                             {alert.severity}
                                                         </span>

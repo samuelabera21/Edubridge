@@ -39,7 +39,6 @@ const coreLearningGroups: StudentNavGroup[] = [
         links: [
             { label: "Subjects & Teachers", href: "/dashboard/student/classes/subjects" },
             { label: "Class Schedule", href: "/dashboard/student/classes/schedule" },
-            { label: "Learning Resources", href: "/dashboard/student/classes/resources" },
         ],
     },
 ];
@@ -104,6 +103,7 @@ const communityToolsGroups: StudentNavGroup[] = [
         label: "Learning Resources",
         icon: FileText,
         links: [
+            { label: "Teacher Resources", href: "/dashboard/student/resources/teacher" },
             { label: "Recommended Resources", href: "/dashboard/student/resources/recommended" },
             { label: "School Resources", href: "/dashboard/student/resources/school" },
             { label: "Approved External Links", href: "/dashboard/student/resources/links" },
@@ -164,7 +164,9 @@ export default function StudentNavigation({ collapsed, onToggleCollapse, classNa
             }`}
         >
             {/* Masthead Header */}
-            <div className="flex items-center justify-between px-3.5 py-3 border-b border-slate-200 bg-white shrink-0">
+            <div className={`flex items-center border-b border-slate-200 bg-white shrink-0 ${
+                collapsed ? "justify-center py-3 px-2" : "justify-between px-3.5 py-3"
+            }`}>
                 {!collapsed && (
                     <div className="min-w-0 pr-2">
                         <span className="text-xs font-bold text-slate-900 truncate block">
@@ -180,7 +182,9 @@ export default function StudentNavigation({ collapsed, onToggleCollapse, classNa
                     onClick={onToggleCollapse}
                     title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
                     aria-label={collapsed ? "Expand student sidebar" : "Collapse student sidebar"}
-                    className="w-7 h-7 rounded border border-slate-200 bg-white hover:bg-slate-100 text-slate-600 hover:text-slate-900 transition-colors cursor-pointer ml-auto flex items-center justify-center shrink-0"
+                    className={`w-7 h-7 rounded border border-slate-200 bg-white hover:bg-slate-100 text-slate-600 hover:text-slate-900 transition-colors cursor-pointer flex items-center justify-center shrink-0 ${
+                        collapsed ? "" : "ml-auto"
+                    }`}
                 >
                     {collapsed ? (
                         <ChevronRight className="w-4 h-4" />

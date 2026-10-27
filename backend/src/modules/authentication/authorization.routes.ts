@@ -14,6 +14,7 @@ import {
 import {
     getUserAccess,
     assignRoleToUser,
+    assignRoleToUserByScopeId,
     assignPermissionToRole,
     validatePasswordStrength,
 } from "./authorization.service.js";
@@ -237,7 +238,33 @@ router.get(
             });
         }
 
-        const access = await getUserAccess(session.user.id);
+        let access = await getUserAccess(session.user.id);
+
+        // Self-healing: if access is empty, check if user is linked to a teacher profile or has teacher email
+        if (access.length === 0) {
+            try {
+                const teacher = await prisma.teacher.findFirst({
+                    where: {
+                        OR: [
+                            { userId: session.user.id },
+                            { email: { equals: session.user.email, mode: "insensitive" } }
+                        ]
+                    }
+                });
+                if (teacher && teacher.organizationId) {
+                    await assignRoleToUserByScopeId(session.user.id, "TEACHER", teacher.organizationId);
+                    if (!teacher.userId) {
+                        await prisma.teacher.update({
+                            where: { id: teacher.id },
+                            data: { userId: session.user.id }
+                        });
+                    }
+                    access = await getUserAccess(session.user.id);
+                }
+            } catch (healErr) {
+                console.error("Auto-assign teacher role error:", healErr);
+            }
+        }
 
         return res.json({
             user: {

@@ -2024,6 +2024,9 @@ export class CommunicationService {
         subject?: string;
         content: string;
         priority?: "NORMAL" | "HIGH" | "URGENT";
+        attachmentUrl?: string;
+        attachmentName?: string;
+        attachmentType?: string;
     }) {
         if (!data.content?.trim()) {
             throw new Error("Message content is required");
@@ -2053,7 +2056,41 @@ export class CommunicationService {
         const targetStudentNames: string[] = [];
 
         if (data.targetType === "SPECIFIC_STUDENT") {
-            let studentUserId = data.receiverId;
+            let studentUserId: string | null = null;
+
+            // 1. Check if receiverId is an existing User id
+            if (data.receiverId) {
+                const userObj = await prisma.user.findUnique({
+                    where: { id: data.receiverId },
+                    select: { id: true }
+                });
+                if (userObj) {
+                    studentUserId = userObj.id;
+                }
+            }
+
+            // 2. If receiverId was not a valid User id, resolve via Student record
+            if (!studentUserId) {
+                const searchId = data.studentId || data.receiverId;
+                if (searchId) {
+                    const student = await prisma.student.findFirst({
+                        where: {
+                            OR: [
+                                { id: searchId },
+                                { studentId: searchId },
+                                { userId: searchId }
+                            ]
+                        },
+                        select: { id: true, userId: true, firstName: true, lastName: true }
+                    });
+                    if (student?.userId) {
+                        studentUserId = student.userId;
+                        targetStudentNames.push(`${student.firstName} ${student.lastName}`);
+                    }
+                }
+            }
+
+            // 3. Check enrollment fallback
             if (!studentUserId && data.studentId) {
                 const enrollment = await prisma.studentEnrollment.findFirst({
                     where: {
@@ -2073,8 +2110,9 @@ export class CommunicationService {
                     targetStudentNames.push(`${enrollment.student.firstName} ${enrollment.student.lastName}`);
                 }
             }
+
             if (!studentUserId) {
-                throw new Error("Student portal user account not found or not specified");
+                throw new Error("This student does not have an active portal account yet. Please ensure the student account is activated.");
             }
             targetUserIds.push(studentUserId);
         } else if (data.targetType === "SPECIFIC_SECTION") {
@@ -2128,7 +2166,7 @@ export class CommunicationService {
             throw new Error("No active student portal accounts found for this target selection");
         }
 
-        const fullContent = data.subject ? `[${data.subject}]\n\n${data.content}` : data.content;
+        const fullContent = data.content;
 
         // 3. Dispatch messages & notifications
         let sentCount = 0;
@@ -2141,7 +2179,10 @@ export class CommunicationService {
                     organizationId: data.organizationId,
                     senderId: data.teacherUserId,
                     receiverId: recipientUserId,
-                    content: fullContent
+                    content: fullContent,
+                    attachmentUrl: data.attachmentUrl,
+                    attachmentName: data.attachmentName,
+                    attachmentType: data.attachmentType
                 }
             });
 
@@ -2202,6 +2243,9 @@ export class CommunicationService {
         subject?: string;
         content: string;
         priority?: "NORMAL" | "HIGH" | "URGENT";
+        attachmentUrl?: string;
+        attachmentName?: string;
+        attachmentType?: string;
     }) {
         if (!data.content?.trim()) {
             throw new Error("Message content is required");
@@ -2360,7 +2404,10 @@ export class CommunicationService {
                 organizationId: data.organizationId,
                 senderId: data.teacherUserId,
                 receiverId: pUserId,
-                content: data.content
+                content: data.content,
+                attachmentUrl: data.attachmentUrl,
+                attachmentName: data.attachmentName,
+                attachmentType: data.attachmentType
             });
             sentMessages.push(msg);
 

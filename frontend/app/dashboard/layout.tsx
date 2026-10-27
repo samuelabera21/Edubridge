@@ -13,6 +13,7 @@ import ParentNavigation from "./parent/ParentNavigation";
 import AdministrativeNavigation from "../../components/governance/AdministrativeNavigation";
 import SchoolAdminNavigation from "../../components/governance/SchoolAdminNavigation";
 import TeacherNavigation from "../../components/governance/TeacherNavigation";
+import EmisAiAssistant from "../../components/ai/EmisAiAssistant";
 
 
 function TeacherBreadcrumbs({ pathname, currentTab, currentType, currentChannel }: { pathname: string; currentTab: string; currentType: string; currentChannel?: string }) {
@@ -31,17 +32,17 @@ function TeacherBreadcrumbs({ pathname, currentTab, currentType, currentChannel 
     let subItemTitle = "";
 
     if (pathname.startsWith("/dashboard/teacher/my-classes")) {
-        parentTitle = "My Teaching Assignments";
+        parentTitle = "Teaching Assignments";
         parentHref = "/dashboard/teacher/my-classes";
         const tabMap: Record<string, string> = {
-            overview: "Class Overview",
-            details: "Class Details",
-            weekly: "Weekly Schedule",
-            workload: "Teaching Workload",
-            materials: "Course Materials"
+            classes: "Classes",
+            schedule: "Timetable",
+            timetable: "Timetable"
         };
         if (currentTab && tabMap[currentTab]) {
             subItemTitle = tabMap[currentTab];
+        } else {
+            subItemTitle = "Classes";
         }
     } else if (pathname.startsWith("/dashboard/teacher/operations")) {
         parentTitle = "Daily Operations";
@@ -70,7 +71,7 @@ function TeacherBreadcrumbs({ pathname, currentTab, currentType, currentChannel 
             subItemTitle = tabMap[currentTab];
         }
     } else if (pathname.startsWith("/dashboard/teacher/curriculum")) {
-        parentTitle = "Lesson & Curriculum";
+        parentTitle = "Learning Resources";
         parentHref = "/dashboard/teacher/curriculum";
         const tabMap: Record<string, string> = {
             view: "View Curriculum",
@@ -87,50 +88,25 @@ function TeacherBreadcrumbs({ pathname, currentTab, currentType, currentChannel 
         parentTitle = "Results";
         parentHref = "/dashboard/teacher/results";
         subItemTitle = "Student Results";
-    } else if (pathname.startsWith("/dashboard/teacher/learning") || pathname.startsWith("/dashboard/teacher/activities")) {
-        parentTitle = "Learning Activities";
-        parentHref = "/dashboard/teacher/learning";
-        const typeMap: Record<string, string> = {
-            HOMEWORK: "Create Assignment",
-            QUIZ: "Create Quiz",
-            CLASS_WORK: "Create Class Activity"
-        };
-        const tabMap: Record<string, string> = {
-            create: "Set Deadline",
-            submissions: "Review Submissions",
-            completion: "Mark Completion",
-            feedback: "Give Feedback"
-        };
-        if (currentType && typeMap[currentType]) {
-            subItemTitle = typeMap[currentType];
-        } else if (currentTab && tabMap[currentTab]) {
-            subItemTitle = tabMap[currentTab];
-        }
     } else if (pathname.startsWith("/dashboard/teacher/support")) {
-        parentTitle = "Student Support & Advisory";
+        parentTitle = "Student Support";
         parentHref = "/dashboard/teacher/support";
-        const tabMap: Record<string, string> = {
-            flag: "Flag At-Risk Student",
-            interventions: "Monitor Interventions",
-            referrals: "Counseling Referrals",
-            homeroom: "Homeroom Advisory",
-            "progress-reviews": "Periodic Reviews"
-        };
-        if (currentTab && tabMap[currentTab]) {
-            subItemTitle = tabMap[currentTab];
-        }
+        subItemTitle = "Support Flags";
     } else if (pathname.startsWith("/dashboard/teacher/communication")) {
         parentTitle = "Communication";
         parentHref = "/dashboard/teacher/communication";
         const target = (currentChannel || currentTab || "").toUpperCase();
         const tabMap: Record<string, string> = {
-            STUDENT: "Student Communication",
+            DIRECTIVES: "Policies & Directives",
+            PROGRAMS: "Programs & Initiatives",
             PARENT: "Parent Communication",
-            DEPARTMENT: "Department Communication",
-            STAFF: "School Communication"
+            DEPARTMENT: "Department",
+            STAFF: "School Staff"
         };
         if (target && tabMap[target]) {
             subItemTitle = tabMap[target];
+        } else {
+            subItemTitle = "Direct Messages";
         }
     } else if (pathname.startsWith("/dashboard/teacher/announcements")) {
         parentTitle = "Announcements";
@@ -151,19 +127,6 @@ function TeacherBreadcrumbs({ pathname, currentTab, currentType, currentChannel 
             goals: "Annual Goals",
             portfolio: "Teaching Portfolio",
             certifications: "Certificates & Badges"
-        };
-        if (currentTab && tabMap[currentTab]) {
-            subItemTitle = tabMap[currentTab];
-        }
-    } else if (pathname.startsWith("/dashboard/teacher/reports")) {
-        parentTitle = "Teacher Reports";
-        parentHref = "/dashboard/teacher/reports";
-        const tabMap: Record<string, string> = {
-            "attendance-report": "Attendance Summary",
-            "academic-report": "Academic Performance",
-            "curriculum-report": "Curriculum Progress",
-            "term-closing": "Term Closing Checklist",
-            "export-center": "Report Export Center"
         };
         if (currentTab && tabMap[currentTab]) {
             subItemTitle = tabMap[currentTab];
@@ -250,7 +213,6 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
         teacherAttendance: pathname.startsWith("/dashboard/teacher/attendance"),
         teacherCurriculum: pathname.startsWith("/dashboard/teacher/curriculum"),
         teacherAssessment: pathname.startsWith("/dashboard/teacher/assessment"),
-        teacherActivities: pathname.startsWith("/dashboard/teacher/learning"),
         teacherSupport: pathname.startsWith("/dashboard/teacher/support"),
         teacherComm: pathname.startsWith("/dashboard/teacher/communication"),
         teacherAnnounce: pathname.startsWith("/dashboard/teacher/announcements"),
@@ -281,15 +243,25 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
     });
 
     const primaryAccess = getPrimaryAccess(authData?.access);
-    const roleName = primaryAccess?.role?.name || "Unassigned";
+    const allRoles: string[] = (authData?.access || []).map((a: any) => a.role?.name).filter(Boolean);
+    const roleName = primaryAccess?.role?.name || (allRoles.includes("TEACHER") ? "TEACHER" : "Unassigned");
     const scopeType = primaryAccess?.scope?.type || "";
-    const isAdminRole = ["ADMIN", "SCHOOL_ADMIN", "ADMINISTRATOR", "PRINCIPAL", "FEDERAL_ADMIN", "REGION_ADMIN", "ZONE_ADMIN", "ZONAL_ADMIN", "WOREDA_ADMIN"].includes(roleName);
+    const isAdminRole = ["ADMIN", "SCHOOL_ADMIN", "ADMINISTRATOR", "PRINCIPAL", "FEDERAL_ADMIN", "REGION_ADMIN", "ZONE_ADMIN", "ZONAL_ADMIN", "WOREDA_ADMIN"].includes(roleName) || allRoles.some(r => ["ADMIN", "SCHOOL_ADMIN", "ADMINISTRATOR", "PRINCIPAL"].includes(r));
     const isSchoolAdmin = scopeType === "SCHOOL" && isAdminRole;
     const isFederalScope = scopeType === "FEDERAL";
     const isAdministrativeRoute = pathname.startsWith("/dashboard/federal") || pathname.startsWith("/dashboard/region") || pathname.startsWith("/dashboard/zone") || pathname.startsWith("/dashboard/woreda");
-    const isTeacherRoute = (pathname === "/dashboard/teacher" || pathname.startsWith("/dashboard/teacher/")) && roleName === "TEACHER";
-    const isStudentRoute = (pathname === "/dashboard/student" || pathname.startsWith("/dashboard/student/")) || roleName === "STUDENT";
-    const isParentRoute = (pathname === "/dashboard/parent" || pathname.startsWith("/dashboard/parent/")) || roleName === "PARENT";
+    const isTeacherRoute = (pathname === "/dashboard/teacher" || pathname.startsWith("/dashboard/teacher/")) && (roleName === "TEACHER" || allRoles.includes("TEACHER"));
+    const isStudentRoute = (pathname === "/dashboard/student" || pathname.startsWith("/dashboard/student/")) || roleName === "STUDENT" || allRoles.includes("STUDENT");
+    const isParentRoute = (pathname === "/dashboard/parent" || pathname.startsWith("/dashboard/parent/")) || roleName === "PARENT" || allRoles.includes("PARENT");
+
+    const formatTeacherProfileName = (fullName?: string | null) => {
+        if (!fullName) return "Teacher";
+        const parts = fullName.trim().split(/\s+/).filter(Boolean);
+        if (parts.length === 0) return "Teacher";
+        const firstInitial = `${parts[0][0].toUpperCase()}.`;
+        const fatherName = parts[1];
+        return fatherName ? `${firstInitial} ${fatherName}` : firstInitial;
+    };
 
     const getActiveDeskOrgId = () => {
         if (!authData?.access?.length) return undefined;
@@ -461,7 +433,7 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
 
         // 2. /dashboard/teacher (singular) is strictly reserved for the TEACHER actor workspace
         if (pathname === "/dashboard/teacher" || pathname.startsWith("/dashboard/teacher/")) {
-            return roleName === "TEACHER";
+            return roleName === "TEACHER" || allRoles.includes("TEACHER");
         }
 
         // 3. Admin routes (/dashboard/admin, /dashboard/academics, /dashboard/school) are strictly for SCHOOL-scoped ADMIN roles
@@ -509,7 +481,9 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
                 case "STUDENT": return "/dashboard/student";
                 case "PARENT": return "/dashboard/parent";
                 case "VICE_PRINCIPAL": return "/dashboard/vice-principal";
-                default: return "/dashboard";
+                default:
+                    if (allRoles.includes("TEACHER")) return "/dashboard/teacher";
+                    return "/dashboard";
             }
         };
 
@@ -597,19 +571,7 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
                     </Link>
                 </div>
 
-                <div className="flex items-center space-x-2 sm:space-x-4">
-                    {/* Teacher-specific search */}
-                    {isTeacherRoute && (
-                        <div className="relative hidden lg:block">
-                            <input 
-                                type="text" 
-                                placeholder="Search (students, classes, assignments...)" 
-                                className="bg-slate-50 border border-slate-200 text-xs rounded-md pl-8 pr-3 py-1.5 focus:bg-white focus:border-[#4085b3] focus:ring-1 focus:ring-[#4085b3] outline-none w-48 xl:w-64 text-slate-800 placeholder-slate-400 transition-colors"
-                            />
-                            <Search className="absolute left-2.5 top-2 h-3.5 w-3.5 text-slate-400" />
-                        </div>
-                    )}
-
+                <div className="flex items-center space-x-2.5 sm:space-x-4">
                     {/* In-App Notifications Bell for All Roles */}
                     <div className="relative">
                         <button 
@@ -744,23 +706,7 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
                         )}
                     </div>
 
-                    {/* Teacher specific message badge */}
-                    {isTeacherRoute && (
-                        <div className="flex items-center space-x-3">
-                            <button 
-                                onClick={() => router.push("/dashboard/teacher/communication?tab=messages")}
-                                className="relative p-2 rounded-full hover:bg-gray-100 text-gray-600 transition-colors cursor-pointer" 
-                                title="Messages & Channels"
-                            >
-                                <MessageSquare className="w-5 h-5 text-gray-600" />
-                                {headerCounts.messages > 0 && (
-                                    <span className="absolute top-1 right-1 px-1 min-w-4 h-4 bg-[#4085b3] text-white text-[10px] font-bold rounded-full flex items-center justify-center border-2 border-white">
-                                        {headerCounts.messages}
-                                    </span>
-                                )}
-                            </button>
-                        </div>
-                    )}
+
 
                     {/* User Profile Info & Interactive Dropdown Menu */}
                     <div className="relative border-l pl-4 border-gray-200">
@@ -769,10 +715,16 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
                             className="flex items-center space-x-2.5 hover:opacity-90 transition-opacity focus:outline-none cursor-pointer"
                         >
                             <div className="w-8 h-8 rounded-md bg-[#4085b3] border border-slate-200 flex items-center justify-center text-white font-bold text-xs shadow-xs">
-                                {authData?.user?.name ? authData.user.name.split(' ').map((n: string) => n[0]).join('') : "A"}
+                                {isTeacherRoute 
+                                    ? (authData?.user?.name ? authData.user.name.trim()[0].toUpperCase() : "T")
+                                    : (authData?.user?.name ? authData.user.name.split(' ').map((n: string) => n[0]).join('') : "A")}
                             </div>
                             <div className="hidden sm:block text-left">
-                                <p className="text-xs font-bold text-slate-800 leading-tight">{authData?.user?.name || (isAdministrativeRoute ? "Federal Administrator" : "User")}</p>
+                                <p className="text-xs font-bold text-slate-800 leading-tight">
+                                    {isTeacherRoute 
+                                        ? formatTeacherProfileName(authData?.user?.name) 
+                                        : (authData?.user?.name || (isAdministrativeRoute ? "Federal Administrator" : "User"))}
+                                </p>
                                 <p className="text-[10px] text-slate-500 font-medium leading-tight">
                                     {isTeacherRoute ? "Teacher" : isStudentRoute ? "Student" : isParentRoute ? "Parent" : isAdministrativeRoute ? "Federal Admin" : roleName}
                                 </p>
@@ -788,7 +740,11 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
                             >
                                 {/* Header info */}
                                 <div className="px-4 py-2.5 border-b border-slate-100 bg-slate-50/70">
-                                    <p className="font-bold text-slate-900 text-xs">{authData?.user?.name || "Federal Administrator"}</p>
+                                    <p className="font-bold text-slate-900 text-xs">
+                                        {isTeacherRoute 
+                                            ? formatTeacherProfileName(authData?.user?.name) 
+                                            : (authData?.user?.name || "Federal Administrator")}
+                                    </p>
                                     <p className="text-[10px] text-slate-500 truncate mt-0.5">{authData?.user?.email || "admin@moe.gov.et"}</p>
                                     <div className="mt-1.5 flex items-center gap-1.5">
                                         <span className="inline-block px-2 py-0.5 bg-slate-100 text-slate-700 border border-slate-200 rounded font-semibold text-[9px] uppercase tracking-wider">
@@ -940,6 +896,11 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
                         {children}
                     </div>
                 </main>
+
+                {/* Floating EMIS Executive AI Assistant for Administrative Workspaces */}
+                {!isStudentRoute && !isParentRoute && (
+                    <EmisAiAssistant variant="floating" buttonLabel="Ask EMIS AI" />
+                )}
             </div>
         </div>
     );

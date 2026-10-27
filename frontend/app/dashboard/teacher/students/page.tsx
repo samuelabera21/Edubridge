@@ -204,7 +204,7 @@ function StudentsContent() {
     if (loading) {
         return (
             <div className="w-full max-w-7xl mx-auto p-12 text-center text-gray-500 min-h-[400px] flex flex-col justify-center items-center">
-                <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#247297] mb-4"></div>
+                <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#4085b3] mb-4"></div>
                 <p className="text-sm font-semibold text-gray-600">Loading student rosters from database...</p>
             </div>
         );
@@ -213,9 +213,14 @@ function StudentsContent() {
     return (
         <div className="w-full max-w-7xl mx-auto space-y-6 text-gray-800">
             {/* Header */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-gray-200 pb-5">
-                <div>
-                    <h1 className="text-2xl font-extrabold tracking-tight text-gray-900">Student Management</h1>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200/80 pb-4">
+                <div className="flex items-center gap-2.5">
+                    <div className="w-9 h-9 rounded-lg bg-blue-50 text-[#4085b3] flex items-center justify-center shrink-0">
+                        <Users className="w-5 h-5" />
+                    </div>
+                    <div>
+                        <h1 className="text-base font-bold text-slate-900 leading-tight">Student Management</h1>
+                    </div>
                 </div>
 
                 {/* View Switcher Tabs */}
@@ -226,11 +231,11 @@ function StudentsContent() {
                         }}
                         className={`flex items-center space-x-2 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
                             viewMode === "hierarchy" 
-                                ? "bg-white text-[#247297] shadow-2xs border border-gray-200/60" 
+                                ? "bg-white text-[#4085b3] shadow-2xs border border-gray-200/60" 
                                 : "text-gray-600 hover:text-gray-900"
                         }`}
                     >
-                        <Layers className="w-3.5 h-3.5 text-[#247297]" />
+                        <Layers className="w-3.5 h-3.5 text-[#4085b3]" />
                         <span>By Grade & Section</span>
                     </button>
                     <button
@@ -239,56 +244,59 @@ function StudentsContent() {
                         }}
                         className={`flex items-center space-x-2 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
                             viewMode === "all" 
-                                ? "bg-white text-[#247297] shadow-2xs border border-gray-200/60" 
+                                ? "bg-white text-[#4085b3] shadow-2xs border border-gray-200/60" 
                                 : "text-gray-600 hover:text-gray-900"
                         }`}
                     >
-                        <Users className="w-3.5 h-3.5 text-[#247297]" />
+                        <Users className="w-3.5 h-3.5 text-[#4085b3]" />
                         <span>All Students Directory</span>
                     </button>
                 </div>
             </div>
 
-            {/* Metric Summary Cards */}
+            {/* Top 3 KPI Cards: Left-to-right clean blue hover fill matching results page */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <Card className="border border-[#247297]/20 bg-gradient-to-br from-[#247297]/5 to-white">
-                    <CardContent className="p-4 flex items-center justify-between">
-                        <div>
-                            <p className="text-xs font-bold text-[#247297] uppercase tracking-wider">Total Assigned Students</p>
-                            <h3 className="text-2xl font-black text-[#247297] mt-1">{metrics.total}</h3>
-                            <p className="text-[11px] text-gray-500 font-semibold mt-0.5">Enrolled across your sections</p>
-                        </div>
-                        <div className="w-12 h-12 rounded-2xl bg-[#247297] text-white flex items-center justify-center shadow-md">
-                            <Users className="w-6 h-6" />
-                        </div>
-                    </CardContent>
-                </Card>
+                {/* 1. Total Students */}
+                <div className="relative overflow-hidden border border-slate-200 bg-white rounded-lg p-4 flex items-center justify-between group cursor-pointer shadow-2xs hover:border-[#4085b3] transition-all duration-300">
+                    <span className="absolute inset-0 bg-[#4085b3] origin-left scale-x-0 group-hover:scale-x-100 transition-transform duration-300 ease-out pointer-events-none" />
+                    <div className="relative z-10">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 group-hover:text-blue-100 transition-colors duration-300 block mb-1">
+                            Total Students
+                        </span>
+                        <span className="text-2xl font-bold text-slate-900 group-hover:text-white transition-colors duration-300 tabular-nums">
+                            {metrics.total}
+                        </span>
+                    </div>
+                    <Users className="relative z-10 w-5 h-5 text-slate-400 group-hover:text-white transition-colors duration-300 shrink-0" />
+                </div>
 
-                <Card className="border border-emerald-100 bg-gradient-to-br from-emerald-50/50 to-white">
-                    <CardContent className="p-4 flex items-center justify-between">
-                        <div>
-                            <p className="text-xs font-bold text-emerald-600 uppercase tracking-wider">Good Standing</p>
-                            <h3 className="text-2xl font-black text-emerald-950 mt-1">{metrics.goodStanding}</h3>
-                            <p className="text-[11px] text-gray-500 font-semibold mt-0.5">Regular attendance & scores</p>
-                        </div>
-                        <div className="w-12 h-12 rounded-2xl bg-emerald-600 text-white flex items-center justify-center shadow-md">
-                            <CheckCircle2 className="w-6 h-6" />
-                        </div>
-                    </CardContent>
-                </Card>
+                {/* 2. Good Standing */}
+                <div className="relative overflow-hidden border border-slate-200 bg-white rounded-lg p-4 flex items-center justify-between group cursor-pointer shadow-2xs hover:border-[#4085b3] transition-all duration-300">
+                    <span className="absolute inset-0 bg-[#4085b3] origin-left scale-x-0 group-hover:scale-x-100 transition-transform duration-300 ease-out pointer-events-none" />
+                    <div className="relative z-10">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 group-hover:text-blue-100 transition-colors duration-300 block mb-1">
+                            Good Standing
+                        </span>
+                        <span className="text-2xl font-bold text-slate-900 group-hover:text-white transition-colors duration-300 tabular-nums">
+                            {metrics.goodStanding}
+                        </span>
+                    </div>
+                    <CheckCircle2 className="relative z-10 w-5 h-5 text-slate-400 group-hover:text-white transition-colors duration-300 shrink-0" />
+                </div>
 
-                <Card className="border border-amber-100 bg-gradient-to-br from-amber-50/50 to-white">
-                    <CardContent className="p-4 flex items-center justify-between">
-                        <div>
-                            <p className="text-xs font-bold text-amber-600 uppercase tracking-wider">Requires Support</p>
-                            <h3 className="text-2xl font-black text-amber-950 mt-1">{metrics.needsAttention}</h3>
-                            <p className="text-[11px] text-gray-500 font-semibold mt-0.5">Flagged or low attendance</p>
-                        </div>
-                        <div className="w-12 h-12 rounded-2xl bg-amber-500 text-white flex items-center justify-center shadow-md">
-                            <AlertCircle className="w-6 h-6" />
-                        </div>
-                    </CardContent>
-                </Card>
+                {/* 3. Requires Support */}
+                <div className="relative overflow-hidden border border-slate-200 bg-white rounded-lg p-4 flex items-center justify-between group cursor-pointer shadow-2xs hover:border-[#4085b3] transition-all duration-300">
+                    <span className="absolute inset-0 bg-[#4085b3] origin-left scale-x-0 group-hover:scale-x-100 transition-transform duration-300 ease-out pointer-events-none" />
+                    <div className="relative z-10">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 group-hover:text-blue-100 transition-colors duration-300 block mb-1">
+                            Requires Support
+                        </span>
+                        <span className="text-2xl font-bold text-slate-900 group-hover:text-white transition-colors duration-300 tabular-nums">
+                            {metrics.needsAttention}
+                        </span>
+                    </div>
+                    <AlertCircle className="relative z-10 w-5 h-5 text-slate-400 group-hover:text-white transition-colors duration-300 shrink-0" />
+                </div>
             </div>
 
             {/* ======================================================== */}
@@ -303,7 +311,7 @@ function StudentsContent() {
                                 setSelectedGrade(null);
                                 setSelectedSection(null);
                             }}
-                            className={`hover:underline transition-colors ${!selectedGrade ? "text-[#247297] font-bold" : "text-gray-600 hover:text-gray-900"}`}
+                            className={`hover:underline transition-colors ${!selectedGrade ? "text-[#4085b3] font-bold" : "text-gray-600 hover:text-gray-900"}`}
                         >
                             All Assigned Grades
                         </button>
@@ -313,7 +321,7 @@ function StudentsContent() {
                                 <ChevronRight className="w-4 h-4 text-gray-400 shrink-0" />
                                 <button
                                     onClick={() => setSelectedSection(null)}
-                                    className={`hover:underline transition-colors ${selectedGrade && !selectedSection ? "text-[#247297] font-bold" : "text-gray-600 hover:text-gray-900"}`}
+                                    className={`hover:underline transition-colors ${selectedGrade && !selectedSection ? "text-[#4085b3] font-bold" : "text-gray-600 hover:text-gray-900"}`}
                                 >
                                     {selectedGrade}
                                 </button>
@@ -323,7 +331,7 @@ function StudentsContent() {
                         {selectedSection && (
                             <>
                                 <ChevronRight className="w-4 h-4 text-gray-400 shrink-0" />
-                                <span className="text-[#247297] font-bold bg-[#247297]/10 px-2.5 py-0.5 rounded-md border border-[#247297]/20">
+                                <span className="text-[#4085b3] font-bold bg-[#4085b3]/10 px-2.5 py-0.5 rounded-md border border-[#4085b3]/20">
                                     Section {selectedSection}
                                 </span>
                             </>
@@ -334,11 +342,10 @@ function StudentsContent() {
                     {!selectedGrade && (
                         <div>
                             <div className="mb-4">
-                                <h2 className="text-lg font-bold text-gray-900 flex items-center space-x-2">
-                                    <GraduationCap className="w-5 h-5 text-[#247297]" />
+                                <h2 className="text-sm font-bold text-gray-900 flex items-center space-x-2">
+                                    <GraduationCap className="w-4 h-4 text-[#4085b3]" />
                                     <span>Select a Grade Level</span>
                                 </h2>
-                                <p className="text-xs text-gray-500 mt-0.5">Click a grade to view its assigned sections and student rosters.</p>
                             </div>
 
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
@@ -350,10 +357,10 @@ function StudentsContent() {
                                     });
 
                                     return (
-                                        <Card key={g.gradeName} className="border border-gray-200 hover:border-[#247297] hover:shadow-md transition-all">
+                                        <Card key={g.gradeName} className="border border-gray-200 hover:border-[#4085b3] hover:shadow-md transition-all">
                                             <CardHeader className="pb-3 border-b border-gray-100 flex flex-row items-center justify-between">
                                                 <div className="flex items-center space-x-3">
-                                                    <div className="w-10 h-10 rounded-xl bg-[#247297]/10 border border-[#247297]/20 flex items-center justify-center text-[#247297] font-black">
+                                                    <div className="w-10 h-10 rounded-xl bg-[#4085b3]/10 border border-[#4085b3]/20 flex items-center justify-center text-[#4085b3] font-black">
                                                         {g.gradeLevel || "G"}
                                                     </div>
                                                     <div>
@@ -370,7 +377,7 @@ function StudentsContent() {
                                                     <p className="text-gray-500 font-semibold">Sections Taught:</p>
                                                     <div className="flex flex-wrap gap-1.5">
                                                         {sectionKeys.map((sec: string) => (
-                                                            <span key={sec} className="px-2 py-0.5 bg-[#247297]/10 text-[#247297] text-[11px] font-bold rounded-md border border-[#247297]/20">
+                                                            <span key={sec} className="px-2 py-0.5 bg-[#4085b3]/10 text-[#4085b3] text-[11px] font-bold rounded-md border border-[#4085b3]/20">
                                                                 Section {sec} ({g.sections[sec].length})
                                                             </span>
                                                         ))}
@@ -378,7 +385,7 @@ function StudentsContent() {
                                                 </div>
                                                 <button
                                                     onClick={() => setSelectedGrade(g.gradeName)}
-                                                    className="w-full py-2.5 px-4 bg-[#247297] text-white text-xs font-bold rounded-xl hover:bg-[#1b5875] transition-colors shadow-2xs flex items-center justify-center space-x-2 mt-2"
+                                                    className="w-full py-2.5 px-4 bg-[#4085b3] text-white text-xs font-bold rounded-xl hover:bg-[#32698e] transition-colors shadow-2xs flex items-center justify-center space-x-2 mt-2"
                                                 >
                                                     <span>Explore Sections</span>
                                                     <ChevronRight className="w-4 h-4" />
@@ -396,15 +403,14 @@ function StudentsContent() {
                         <div>
                             <div className="flex items-center justify-between mb-4">
                                 <div>
-                                    <h2 className="text-lg font-bold text-gray-900 flex items-center space-x-2">
-                                        <BookOpenCheck className="w-5 h-5 text-[#247297]" />
+                                    <h2 className="text-base font-bold text-gray-900 flex items-center space-x-2">
+                                        <BookOpenCheck className="w-4 h-4 text-[#4085b3]" />
                                         <span>Sections in {selectedGrade}</span>
                                     </h2>
-                                    <p className="text-xs text-gray-500 mt-0.5">Select a section to open its enrolled student roster table.</p>
                                 </div>
                                 <button
                                     onClick={() => setSelectedGrade(null)}
-                                    className="text-xs font-semibold text-gray-600 hover:text-[#247297] flex items-center space-x-1"
+                                    className="text-xs font-semibold text-gray-600 hover:text-[#4085b3] flex items-center space-x-1"
                                 >
                                     <ArrowLeft className="w-3.5 h-3.5" />
                                     <span>Back to All Grades</span>
@@ -418,15 +424,15 @@ function StudentsContent() {
                                     const subjectName = firstStudent.subject?.name || firstStudent.teachingAssignment?.subject?.name || "General Class";
 
                                     return (
-                                        <Card key={secName} className="border border-gray-200 hover:border-[#247297] hover:shadow-md transition-all">
+                                        <Card key={secName} className="border border-gray-200 hover:border-[#4085b3] hover:shadow-md transition-all">
                                             <CardHeader className="pb-3 border-b border-gray-100 flex flex-row items-center justify-between">
                                                 <div>
                                                     <CardTitle className="text-base font-extrabold text-gray-900">
                                                         Section {secName}
                                                     </CardTitle>
-                                                    <p className="text-xs text-[#247297] font-bold mt-0.5">{subjectName}</p>
+                                                    <p className="text-xs text-[#4085b3] font-bold mt-0.5">{subjectName}</p>
                                                 </div>
-                                                <span className="px-3 py-1 bg-[#247297]/10 text-[#247297] text-xs font-extrabold rounded-lg border border-[#247297]/20">
+                                                <span className="px-3 py-1 bg-[#4085b3]/10 text-[#4085b3] text-xs font-extrabold rounded-lg border border-[#4085b3]/20">
                                                     {secStudents.length} Students
                                                 </span>
                                             </CardHeader>
@@ -443,7 +449,7 @@ function StudentsContent() {
                                                 </div>
                                                 <button
                                                     onClick={() => setSelectedSection(secName)}
-                                                    className="w-full py-2.5 px-4 bg-[#247297] text-white text-xs font-bold rounded-xl hover:bg-[#1b5875] transition-colors shadow-2xs flex items-center justify-center space-x-2"
+                                                    className="w-full py-2.5 px-4 bg-[#4085b3] text-white text-xs font-bold rounded-xl hover:bg-[#32698e] transition-colors shadow-2xs flex items-center justify-center space-x-2"
                                                 >
                                                     <span>View Student Roster</span>
                                                     <ChevronRight className="w-4 h-4" />
@@ -465,7 +471,7 @@ function StudentsContent() {
                 <div className="space-y-4">
                     {/* Header Banner for Selected Section */}
                     {viewMode === "hierarchy" && selectedGrade && selectedSection && (
-                        <div className="bg-gradient-to-r from-[#247297] via-[#1d5c7a] to-[#144259] p-4 rounded-2xl text-white flex flex-col sm:flex-row items-center justify-between gap-3 shadow-sm">
+                        <div className="bg-gradient-to-r from-[#4085b3] via-[#32698e] to-[#245f8b] p-4 rounded-2xl text-white flex flex-col sm:flex-row items-center justify-between gap-3 shadow-sm">
                             <div className="flex items-center space-x-3">
                                 <div className="w-10 h-10 rounded-xl bg-white/10 border border-white/20 flex items-center justify-center font-black text-white">
                                     {selectedSection}
@@ -494,7 +500,7 @@ function StudentsContent() {
                                 placeholder="Search student name or ID..."
                                 value={search}
                                 onChange={(e) => setSearch(e.target.value)}
-                                className="w-full bg-gray-50 border border-gray-200 text-xs rounded-xl pl-9 pr-4 py-2.5 outline-none focus:ring-2 focus:ring-[#247297] focus:bg-white font-medium"
+                                className="w-full bg-gray-50 border border-gray-200 text-xs rounded-xl pl-9 pr-4 py-2.5 outline-none focus:ring-2 focus:ring-[#4085b3] focus:bg-white font-medium"
                             />
                         </div>
 
@@ -567,11 +573,11 @@ function StudentsContent() {
                                             const rowKey = item.id || st.id || idx;
 
                                             return (
-                                                <tr key={rowKey} className="hover:bg-[#247297]/5 transition-colors">
+                                                <tr key={rowKey} className="hover:bg-[#4085b3]/5 transition-colors">
                                                     <td className="py-3.5 px-4 text-gray-400 font-mono font-bold">{idx + 1}</td>
                                                     <td className="py-3.5 px-4 font-extrabold text-gray-900">
                                                         <div className="flex items-center space-x-2.5">
-                                                            <div className="w-7 h-7 rounded-full bg-[#247297]/10 text-[#247297] flex items-center justify-center font-bold text-xs">
+                                                            <div className="w-7 h-7 rounded-full bg-[#4085b3]/10 text-[#4085b3] flex items-center justify-center font-bold text-xs">
                                                                 {(st.firstName || 'S')[0]}
                                                             </div>
                                                             <div>
@@ -580,7 +586,7 @@ function StudentsContent() {
                                                             </div>
                                                         </div>
                                                     </td>
-                                                    <td className="py-3.5 px-4 font-mono font-bold text-[#247297]">{st.studentId || 'N/A'}</td>
+                                                    <td className="py-3.5 px-4 font-mono font-bold text-[#4085b3]">{st.studentId || 'N/A'}</td>
                                                     <td className="py-3.5 px-4 font-semibold text-gray-700">
                                                         <span className="px-2 py-0.5 bg-gray-100 text-gray-800 rounded-md font-bold text-[11px]">
                                                             {secLabel || 'General'}
@@ -590,7 +596,7 @@ function StudentsContent() {
                                                     <td className="py-3.5 px-4 text-center">
                                                         <span className={`px-2.5 py-0.5 rounded-full font-bold text-[11px] ${
                                                             (item.attendanceRate ?? 100) >= 90 ? "bg-emerald-100 text-emerald-800" :
-                                                            (item.attendanceRate ?? 100) >= 80 ? "bg-[#247297]/10 text-[#247297]" : "bg-amber-100 text-amber-800"
+                                                            (item.attendanceRate ?? 100) >= 80 ? "bg-[#4085b3]/10 text-[#4085b3]" : "bg-amber-100 text-amber-800"
                                                         }`}>
                                                             {item.attendanceRate ?? 95}%
                                                         </span>
@@ -624,9 +630,9 @@ function StudentsContent() {
                                                                         setOpenMenuId(null);
                                                                         handleViewStudentDetail(item, "profile");
                                                                     }}
-                                                                    className="w-full px-3 py-2 text-xs font-semibold text-gray-700 hover:bg-[#247297]/10 hover:text-[#247297] flex items-center space-x-2"
+                                                                    className="w-full px-3 py-2 text-xs font-semibold text-gray-700 hover:bg-[#4085b3]/10 hover:text-[#4085b3] flex items-center space-x-2"
                                                                 >
-                                                                    <User className="w-3.5 h-3.5 text-[#247297]" />
+                                                                    <User className="w-3.5 h-3.5 text-[#4085b3]" />
                                                                     <span>View Profile</span>
                                                                 </button>
                                                                 <button
@@ -634,7 +640,7 @@ function StudentsContent() {
                                                                         setOpenMenuId(null);
                                                                         handleViewStudentDetail(item, "attendance");
                                                                     }}
-                                                                    className="w-full px-3 py-2 text-xs font-semibold text-gray-700 hover:bg-[#247297]/10 hover:text-[#247297] flex items-center space-x-2"
+                                                                    className="w-full px-3 py-2 text-xs font-semibold text-gray-700 hover:bg-[#4085b3]/10 hover:text-[#4085b3] flex items-center space-x-2"
                                                                 >
                                                                     <Calendar className="w-3.5 h-3.5 text-emerald-500" />
                                                                     <span>Attendance History</span>
@@ -642,19 +648,9 @@ function StudentsContent() {
                                                                 <button
                                                                     onClick={() => {
                                                                         setOpenMenuId(null);
-                                                                        handleViewStudentDetail(item, "performance");
-                                                                    }}
-                                                                    className="w-full px-3 py-2 text-xs font-semibold text-gray-700 hover:bg-[#247297]/10 hover:text-[#247297] flex items-center space-x-2"
-                                                                >
-                                                                    <BarChart3 className="w-3.5 h-3.5 text-[#247297]" />
-                                                                    <span>Academic Performance</span>
-                                                                </button>
-                                                                <button
-                                                                    onClick={() => {
-                                                                        setOpenMenuId(null);
                                                                         handleViewStudentDetail(item, "history");
                                                                     }}
-                                                                    className="w-full px-3 py-2 text-xs font-semibold text-gray-700 hover:bg-[#247297]/10 hover:text-[#247297] flex items-center space-x-2"
+                                                                    className="w-full px-3 py-2 text-xs font-semibold text-gray-700 hover:bg-[#4085b3]/10 hover:text-[#4085b3] flex items-center space-x-2"
                                                                 >
                                                                     <TrendingUp className="w-3.5 h-3.5 text-purple-500" />
                                                                     <span>Learning History</span>
@@ -689,7 +685,7 @@ function StudentsContent() {
                 <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
                     <div className="bg-white w-full max-w-4xl rounded-2xl shadow-2xl border border-gray-200 overflow-hidden max-h-[90vh] flex flex-col">
                         {/* Drawer Header */}
-                        <div className="p-5 bg-gradient-to-r from-[#247297] via-[#1d5c7a] to-[#144259] text-white flex items-center justify-between shrink-0">
+                        <div className="p-5 bg-gradient-to-r from-[#4085b3] via-[#32698e] to-[#245f8b] text-white flex items-center justify-between shrink-0">
                             <div className="flex items-center space-x-3">
                                 <div className="w-12 h-12 rounded-xl bg-white/10 border border-white/20 flex items-center justify-center text-lg font-black">
                                     {((selectedStudent.student?.firstName || selectedStudent.firstName || 'S')[0])}
@@ -719,38 +715,29 @@ function StudentsContent() {
                             <button
                                 onClick={() => setActiveTab("profile")}
                                 className={`pb-3 px-1 border-b-2 flex items-center space-x-1.5 transition-colors ${
-                                    activeTab === "profile" ? "border-[#247297] text-[#247297]" : "border-transparent text-gray-500 hover:text-gray-800"
+                                    activeTab === "profile" ? "border-[#4085b3] text-[#4085b3]" : "border-transparent text-gray-500 hover:text-gray-800"
                                 }`}
                             >
-                                <User className="w-4 h-4 text-[#247297]" />
+                                <User className="w-4 h-4 text-[#4085b3]" />
                                 <span>1. Student Profile</span>
                             </button>
                             <button
                                 onClick={() => setActiveTab("attendance")}
                                 className={`pb-3 px-1 border-b-2 flex items-center space-x-1.5 transition-colors ${
-                                    activeTab === "attendance" ? "border-[#247297] text-[#247297]" : "border-transparent text-gray-500 hover:text-gray-800"
+                                    activeTab === "attendance" ? "border-[#4085b3] text-[#4085b3]" : "border-transparent text-gray-500 hover:text-gray-800"
                                 }`}
                             >
                                 <Calendar className="w-4 h-4 text-emerald-600" />
                                 <span>2. Attendance</span>
                             </button>
                             <button
-                                onClick={() => setActiveTab("performance")}
-                                className={`pb-3 px-1 border-b-2 flex items-center space-x-1.5 transition-colors ${
-                                    activeTab === "performance" ? "border-[#247297] text-[#247297]" : "border-transparent text-gray-500 hover:text-gray-800"
-                                }`}
-                            >
-                                <Award className="w-4 h-4 text-[#247297]" />
-                                <span>3. Performance</span>
-                            </button>
-                            <button
                                 onClick={() => setActiveTab("history")}
                                 className={`pb-3 px-1 border-b-2 flex items-center space-x-1.5 transition-colors ${
-                                    activeTab === "history" ? "border-[#247297] text-[#247297]" : "border-transparent text-gray-500 hover:text-gray-800"
+                                    activeTab === "history" ? "border-[#4085b3] text-[#4085b3]" : "border-transparent text-gray-500 hover:text-gray-800"
                                 }`}
                             >
                                 <TrendingUp className="w-4 h-4 text-purple-600" />
-                                <span>4. Learning History</span>
+                                <span>3. Support & History</span>
                             </button>
                         </div>
 
@@ -758,7 +745,7 @@ function StudentsContent() {
                         <div className="p-6 overflow-y-auto space-y-6 text-xs flex-1">
                             {loadingDetail ? (
                                 <div className="py-12 text-center text-gray-500 space-y-2">
-                                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#247297] mx-auto"></div>
+                                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#4085b3] mx-auto"></div>
                                     <p className="font-semibold">Loading student record details...</p>
                                 </div>
                             ) : (
@@ -770,7 +757,7 @@ function StudentsContent() {
                                                 <Card className="border border-gray-200">
                                                     <CardHeader className="pb-2 border-b border-gray-100">
                                                         <CardTitle className="text-xs font-bold text-gray-800 flex items-center space-x-2">
-                                                            <User className="w-4 h-4 text-[#247297]" />
+                                                            <User className="w-4 h-4 text-[#4085b3]" />
                                                             <span>Personal Information</span>
                                                         </CardTitle>
                                                     </CardHeader>
@@ -808,7 +795,7 @@ function StudentsContent() {
                                                         </div>
                                                         <div className="flex justify-between py-1 border-b border-gray-50">
                                                             <span className="text-gray-500 font-medium">Emergency Phone</span>
-                                                            <span className="font-bold text-[#247297] font-mono">{studentDetail?.emergencyContactPhone || '+251 911 123 456'}</span>
+                                                            <span className="font-bold text-[#4085b3] font-mono">{studentDetail?.emergencyContactPhone || '+251 911 123 456'}</span>
                                                         </div>
                                                     </CardContent>
                                                 </Card>
@@ -824,9 +811,9 @@ function StudentsContent() {
                                                     <span className="text-[10px] font-bold uppercase text-emerald-700 block">Present Rate</span>
                                                     <span className="text-xl font-black text-emerald-900">{presentRate}%</span>
                                                 </div>
-                                                <div className="bg-[#247297]/10 border border-[#247297]/20 p-3 rounded-xl">
-                                                    <span className="text-[10px] font-bold uppercase text-[#247297] block">Days Present</span>
-                                                    <span className="text-xl font-black text-[#247297]">{presentAtt}</span>
+                                                <div className="bg-[#4085b3]/10 border border-[#4085b3]/20 p-3 rounded-xl">
+                                                    <span className="text-[10px] font-bold uppercase text-[#4085b3] block">Days Present</span>
+                                                    <span className="text-xl font-black text-[#4085b3]">{presentAtt}</span>
                                                 </div>
                                                 <div className="bg-amber-50 border border-amber-200 p-3 rounded-xl">
                                                     <span className="text-[10px] font-bold uppercase text-amber-700 block">Days Late</span>
@@ -877,48 +864,6 @@ function StudentsContent() {
                                         </div>
                                     )}
 
-                                    {/* TAB 3: PERFORMANCE */}
-                                    {activeTab === "performance" && (
-                                        <div className="space-y-4">
-                                            <div className="bg-[#247297]/10 border border-[#247297]/20 p-4 rounded-xl flex items-center justify-between">
-                                                <div>
-                                                    <span className="text-xs font-bold text-[#247297] uppercase">Cumulative Academic Average</span>
-                                                    <h3 className="text-2xl font-black text-[#247297] mt-0.5">{avgScore !== null ? `${avgScore}%` : 'N/A'}</h3>
-                                                </div>
-                                                <Award className="w-10 h-10 text-[#247297]" />
-                                            </div>
-
-                                            <Card className="border border-gray-200">
-                                                <CardHeader className="pb-2 border-b border-gray-100">
-                                                    <CardTitle className="text-xs font-bold text-gray-800">Assessment Scores & Exam Results</CardTitle>
-                                                </CardHeader>
-                                                <CardContent className="p-0">
-                                                    {results.length === 0 ? (
-                                                        <p className="p-4 text-gray-500 italic">No exam or quiz results recorded for this student yet.</p>
-                                                    ) : (
-                                                        <table className="w-full text-left text-xs">
-                                                            <thead className="bg-gray-50 border-b border-gray-200 text-gray-500 font-bold">
-                                                                <tr>
-                                                                    <th className="py-2.5 px-4">Assessment Title</th>
-                                                                    <th className="py-2.5 px-4">Score</th>
-                                                                    <th className="py-2.5 px-4">Feedback</th>
-                                                                </tr>
-                                                            </thead>
-                                                            <tbody className="divide-y divide-gray-100 font-medium">
-                                                                {results.map((r: any, i: number) => (
-                                                                    <tr key={i}>
-                                                                        <td className="py-2.5 px-4 font-bold text-gray-900">{r.assessment?.title || 'Mid-Term Exam'}</td>
-                                                                        <td className="py-2.5 px-4 font-mono font-bold text-[#247297]">{r.score}%</td>
-                                                                        <td className="py-2.5 px-4 text-gray-600">{r.feedback || 'Good work'}</td>
-                                                                    </tr>
-                                                                ))}
-                                                            </tbody>
-                                                        </table>
-                                                    )}
-                                                </CardContent>
-                                            </Card>
-                                        </div>
-                                    )}
 
                                     {/* TAB 4: LEARNING HISTORY */}
                                     {activeTab === "history" && (

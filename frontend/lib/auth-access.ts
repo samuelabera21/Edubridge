@@ -46,6 +46,18 @@ export function getPrimaryAccess(access?: UserAccess[] | null): UserAccess | und
     return hierarchyAccess[0] || access[0];
 }
 
+export function getAccessForScope(
+    access?: UserAccess[] | null,
+    targetScopeType?: "FEDERAL" | "REGION" | "ZONE" | "WOREDA" | "SCHOOL" | null
+): UserAccess | undefined {
+    if (!access?.length) return undefined;
+    if (targetScopeType) {
+        const matched = access.find((a) => a.scope?.type === targetScopeType);
+        if (matched) return matched;
+    }
+    return getPrimaryAccess(access);
+}
+
 export function getDashboardPath(meData: any): string {
     if (meData?.requiresPasswordChange || meData?.user?.requiresPasswordChange) {
         return "/change-password";

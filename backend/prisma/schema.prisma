@@ -62,6 +62,7 @@ model User {
   createdDataRequests           DataRequest[]          @relation("CreatedDataRequests")
   submittedDataRequests         DataRequestSubmission[] @relation("SubmittedDataRequests")
   reviewedDataRequests          DataRequestSubmission[] @relation("ReviewedDataRequests")
+  approvedGradeSubmissions      GradeSubmissionBatch[]  @relation("ApprovedGradeSubmissions")
 
   @@unique([email])
   @@map("user")
@@ -293,6 +294,7 @@ model AcademicYear {
   learningActivities  LearningActivity[]
   timetableConfigs    TimetableConfig[]
   attendanceCorrections AttendanceCorrection[]
+  gradeSubmissions    GradeSubmissionBatch[]
 
   @@unique([organizationId, name])
   @@map("academic_year")
@@ -633,6 +635,7 @@ model StudentEnrollment {
   resourceRecommendations ResourceRecommendation[]
   supportFlags  SupportFlag[]
   attendanceCorrections AttendanceCorrection[]
+  studentMarks  StudentMark[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -942,6 +945,7 @@ model TeachingAssignment {
   timetables         Timetable[]
   assessments        Assessment[]
   learningActivities LearningActivity[]
+  gradeSubmissions   GradeSubmissionBatch[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1206,6 +1210,73 @@ model StudentResult {
 
   @@unique([assessmentId, enrollmentId])
   @@map("student_result")
+}
+
+// ============================================================
+// GRADE SUBMISSION & MARK SHEET DOMAIN
+// ============================================================
+
+enum GradeSubmissionStatus {
+  DRAFT
+  SUBMITTED
+  APPROVED
+  REJECTED
+}
+
+enum SemesterTerm {
+  SEMESTER_1
+  SEMESTER_2
+}
+
+model GradeSubmissionBatch {
+  id                   String                @id @default(cuid())
+  teachingAssignmentId String
+  academicYearId       String
+  semester             SemesterTerm          @default(SEMESTER_1)
+  status               GradeSubmissionStatus @default(DRAFT)
+  submittedAt          DateTime?
+  approvedById         String?
+  approvedAt           DateTime?
+  rejectionReason      String?
+  excelFileUrl         String?
+
+  teachingAssignment TeachingAssignment @relation(fields: [teachingAssignmentId], references: [id], onDelete: Cascade)
+  academicYear       AcademicYear       @relation(fields: [academicYearId], references: [id], onDelete: Cascade)
+  approvedBy         User?              @relation("ApprovedGradeSubmissions", fields: [approvedById], references: [id], onDelete: SetNull)
+  studentMarks       StudentMark[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([teachingAssignmentId, semester])
+  @@index([teachingAssignmentId])
+  @@index([academicYearId])
+  @@index([status])
+  @@map("grade_submission_batch")
+}
+
+model StudentMark {
+  id                   String  @id @default(cuid())
+  submissionBatchId    String
+  enrollmentId         String
+  continuousAssessment Float?  @default(0)
+  midExam              Float?  @default(0)
+  finalExam            Float?  @default(0)
+  totalScore           Float   @default(0)
+  letterGrade          String?
+  rank                 Int?
+  remarks              String?
+
+  submissionBatch GradeSubmissionBatch @relation(fields: [submissionBatchId], references: [id], onDelete: Cascade)
+  enrollment      StudentEnrollment    @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([submissionBatchId, enrollmentId])
+  @@index([submissionBatchId])
+  @@index([enrollmentId])
+  @@map("student_mark")
 }
 
 // ============================================================
@@ -2320,5 +2391,34 @@ model DataRequestSubmission {
   @@index([status])
   @@map("data_request_submission")
 }
+
+model LearningMaterial {
+  id                   String    @id @default(cuid())
+  organizationId       String
+  teacherId            String?
+  teachingAssignmentId String?
+  title                String
+  description          String?   @db.Text
+  materialType         String    @default("DOCUMENT") // DOCUMENT, VIDEO
+  fileType             String?   // PDF, WORD, POWERPOINT, VIDEO, OTHER
+  fileUrl              String    @db.Text
+  fileName             String
+  fileSize             Int?
+  videoUrl             String?   @db.Text
+  unitName             String?
+  subjectName          String?
+  gradeName            String?
+  sectionName          String?
+
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  @@index([organizationId])
+  @@index([teacherId])
+  @@index([teachingAssignmentId])
+  @@index([materialType])
+  @@map("learning_material")
+}
+
 
 
