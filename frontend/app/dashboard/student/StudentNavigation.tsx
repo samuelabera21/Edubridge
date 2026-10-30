@@ -96,7 +96,6 @@ const communityToolsGroups: StudentNavGroup[] = [
         key: "assistant",
         label: "AI Study Assistant",
         icon: Sparkles,
-        isSoon: true,
         links: [
             { label: "Explain Concepts", href: "/dashboard/student/assistant?mode=explain" },
             { label: "Guided Practice", href: "/dashboard/student/assistant?mode=practice" },
