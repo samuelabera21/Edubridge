@@ -14,6 +14,7 @@ import AdministrativeNavigation from "../../components/governance/Administrative
 import SchoolAdminNavigation from "../../components/governance/SchoolAdminNavigation";
 import TeacherNavigation from "../../components/governance/TeacherNavigation";
 import EmisAiAssistant from "../../components/ai/EmisAiAssistant";
+import StudentAiAssistant from "../../components/ai/StudentAiAssistant";
 
 
 function TeacherBreadcrumbs({ pathname, currentTab, currentType, currentChannel }: { pathname: string; currentTab: string; currentType: string; currentChannel?: string }) {
@@ -900,6 +901,11 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
                 {/* Floating EMIS Executive AI Assistant for Administrative Workspaces */}
                 {!isStudentRoute && !isParentRoute && (
                     <EmisAiAssistant variant="floating" buttonLabel="Ask EMIS AI" />
+                )}
+
+                {/* Floating EduBridge AI Tutor for Student Workspaces (Option 3 Hybrid Drawer) */}
+                {isStudentRoute && pathname !== "/dashboard/student/assistant" && (
+                    <StudentAiAssistant />
                 )}
             </div>
         </div>

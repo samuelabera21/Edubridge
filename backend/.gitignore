@@ -13,4 +13,5 @@ swagger_dump.json
 .windsurf/
 scripts/register_students_12ab.ts
 *register*student*12ab*
+storage/
 

@@ -178,7 +178,7 @@ export default function StudentDashboard() {
                 </div>
             </section>
 
-            {/* ─── METRIC STAT CARDS (Clean White Style, No Blue Hover Fill) ─── */}
+            {/* ─── METRIC STAT CARDS (Interactive Blue Hover Expansion) ─── */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
                 <StatCard icon={<GraduationCap className="h-4 w-4 sm:h-5 sm:w-5" />} label="Student ID" value={dashboard.student.studentId} href="/dashboard/student/profile" />
                 <StatCard icon={<BookOpen className="h-4 w-4 sm:h-5 sm:w-5" />} label="Assigned Subjects" value={String(dashboard.subjects?.length ?? 0)} href="/dashboard/student/results" />
@@ -205,7 +205,7 @@ export default function StudentDashboard() {
                             {dashboard.todayClasses.length > 0 ? (
                                 <div className="space-y-2.5 sm:space-y-3">
                                     {dashboard.todayClasses.map((item) => (
-                                        <div key={item.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 rounded-xl border border-slate-200 bg-white p-3.5 hover:border-slate-300 hover:shadow-xs transition-all duration-150">
+                                        <div key={item.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 rounded-xl border border-slate-200 bg-white p-3.5 hover:border-[#4085b3] hover:shadow-xs hover:bg-blue-50/15 transition-all duration-150">
                                             <div className="flex items-center gap-3">
                                                 <div className="w-8 h-8 rounded-lg bg-slate-100 text-slate-700 flex items-center justify-center font-bold text-xs shrink-0">
                                                     {item.teachingAssignment.subject.name.charAt(0)}
@@ -238,7 +238,7 @@ export default function StudentDashboard() {
                                             <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Weekly schedule preview</p>
                                             <div className="grid gap-2.5 sm:grid-cols-2">
                                                 {dashboard.weeklyClasses.slice(0, 4).map((item) => (
-                                                    <div key={item.id} className="rounded-xl border border-slate-200 bg-white p-3 hover:border-slate-300 hover:shadow-xs transition-all duration-150">
+                                                    <div key={item.id} className="rounded-xl border border-slate-200 bg-white p-3 hover:border-[#4085b3] hover:shadow-xs hover:bg-blue-50/15 transition-all duration-150 cursor-pointer">
                                                         <div className="flex items-center justify-between gap-2">
                                                             <span className="rounded bg-slate-100 px-2 py-0.5 text-[10px] font-bold text-slate-700">
                                                                 {WEEKDAY_NAMES[item.dayOfWeek] || `Day ${item.dayOfWeek}`}
@@ -283,12 +283,12 @@ export default function StudentDashboard() {
                                         <Link
                                             key={item.id}
                                             href={`/dashboard/student/results?subject=${encodeURIComponent(item.subject.name)}`}
-                                            className="block rounded-xl border border-slate-200 bg-white p-3.5 hover:border-slate-300 hover:shadow-xs transition-all duration-150 group"
+                                            className="block rounded-xl border border-slate-200 bg-white p-3.5 hover:border-[#4085b3] hover:shadow-xs hover:bg-blue-50/15 transition-all duration-150 group cursor-pointer"
                                             title={`Click to view results for ${item.subject.name}`}
                                         >
                                             <div className="flex items-start justify-between gap-2">
                                                 <div className="min-w-0">
-                                                    <h3 className="font-bold text-xs sm:text-sm text-slate-900 group-hover:text-slate-950 transition-colors truncate">
+                                                    <h3 className="font-bold text-xs sm:text-sm text-slate-900 group-hover:text-[#184973] transition-colors truncate">
                                                         {item.subject.name}
                                                     </h3>
                                                     {item.subject.code && (
@@ -340,10 +340,10 @@ export default function StudentDashboard() {
                                     <Link
                                         key={result.id}
                                         href="/dashboard/student/results"
-                                        className="flex items-center justify-between gap-3 px-4 sm:px-6 py-3.5 hover:bg-slate-50 transition-colors group block"
+                                        className="flex items-center justify-between gap-3 px-4 sm:px-6 py-3.5 hover:bg-blue-50/25 hover:border-l-4 hover:border-l-[#4085b3] transition-all group block"
                                     >
                                         <div className="min-w-0">
-                                            <p className="font-bold text-xs sm:text-sm text-slate-900 truncate">{result.title}</p>
+                                            <p className="font-bold text-xs sm:text-sm text-slate-900 group-hover:text-[#184973] transition-colors truncate">{result.title}</p>
                                             <p className="text-xs text-slate-500 truncate">{result.subject}</p>
                                         </div>
                                         <div className="text-right shrink-0">
@@ -377,9 +377,9 @@ export default function StudentDashboard() {
                                     <Link
                                         key={item.id}
                                         href="/dashboard/student/communication/announcements"
-                                        className="block rounded-xl p-3 transition-colors hover:bg-slate-50 border border-slate-100 hover:border-slate-200 group"
+                                        className="block rounded-xl p-3 transition-all hover:bg-blue-50/20 border border-slate-100 hover:border-[#4085b3]/60 hover:shadow-2xs group"
                                     >
-                                        <p className="text-xs sm:text-sm font-bold text-slate-900 truncate">{item.title}</p>
+                                        <p className="text-xs sm:text-sm font-bold text-slate-900 group-hover:text-[#184973] transition-colors truncate">{item.title}</p>
                                         <p className="mt-1 line-clamp-2 text-xs text-slate-500 leading-relaxed">{item.content}</p>
                                     </Link>
                                 ))
@@ -430,17 +430,18 @@ function Empty({ text }: { text: string }) {
 
 function StatCard({ icon, label, value, href }: { icon: React.ReactNode; label: string; value: string; href?: string }) {
     const cardContent = (
-        <div className="border border-slate-200 bg-white rounded-xl p-3 sm:p-4 flex flex-col justify-between shadow-2xs hover:border-slate-300 hover:shadow-xs transition-all duration-200 group">
-            <div className="flex items-start justify-between gap-1.5">
-                <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1 truncate">
+        <div className="relative overflow-hidden border border-slate-200 bg-white rounded-xl p-3 sm:p-4 flex flex-col justify-between shadow-2xs hover:border-[#4085b3] group cursor-pointer transition-all duration-300">
+            <span className="absolute inset-0 bg-[#4085b3] origin-left scale-x-0 group-hover:scale-x-100 transition-transform duration-300 ease-out pointer-events-none" />
+            <div className="relative z-10 flex items-start justify-between gap-1.5">
+                <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-slate-400 group-hover:text-blue-100 transition-colors duration-300 block mb-1 truncate">
                     {label}
                 </span>
-                <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-lg bg-slate-50 border border-slate-100 flex items-center justify-center text-slate-500 shrink-0">
+                <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-lg bg-slate-50 border border-slate-100 flex items-center justify-center text-slate-500 group-hover:bg-white/20 group-hover:text-white group-hover:border-transparent transition-colors duration-300 shrink-0">
                     {icon}
                 </div>
             </div>
-            <div>
-                <span className="text-lg sm:text-2xl font-bold text-slate-900 tabular-nums truncate block">
+            <div className="relative z-10">
+                <span className="text-lg sm:text-2xl font-bold text-slate-900 group-hover:text-white transition-colors duration-300 tabular-nums truncate block">
                     {value}
                 </span>
             </div>

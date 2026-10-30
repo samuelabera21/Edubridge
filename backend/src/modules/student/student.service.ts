@@ -469,7 +469,8 @@ export class StudentService {
                 }
             }
 
-            const tempPassword = process.env.DEFAULT_INITIAL_PASSWORD || ["Edu", "Bridge", "2026", "!"].join("");
+            // Use configured initial password or generate a random secure temporary token
+            const tempPassword = process.env.DEFAULT_INITIAL_PASSWORD || `Edu#${Math.random().toString(36).slice(-6)}!9`;
 
             // 3. Check if User already exists with this email or phone
             const userOrConditions: any[] = [
