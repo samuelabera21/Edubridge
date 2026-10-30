@@ -72,9 +72,9 @@ export class StudentAiService {
 
     private static getClient(): GoogleGenAI {
         if (!this.genAI) {
-            const apiKey = process.env.GEMINI_API_KEY;
+            const apiKey = process.env.STUDENT_GEMINI_API_KEY || process.env.GEMINI_API_KEY;
             if (!apiKey) {
-                throw new Error("GEMINI_API_KEY is not configured in backend/.env");
+                throw new Error("STUDENT_GEMINI_API_KEY or GEMINI_API_KEY is not configured in backend/.env");
             }
             this.genAI = new GoogleGenAI({ apiKey });
         }
@@ -1274,3 +1274,5 @@ Return ONLY a valid JSON object matching this schema (no markdown formatting, no
         );
     }
 }
+
+
