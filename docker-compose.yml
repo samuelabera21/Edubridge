@@ -19,7 +19,7 @@ services:
     command: server /data --console-address ":9001"
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:-edubridge_minio}
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-EduBridge@MinIO2024!}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minio_dev_password_change_me}
       # Allow direct browser uploads from all local frontend origins
       MINIO_API_CORS_ALLOW_ORIGIN: "http://localhost:3000,http://localhost:3001,http://localhost:5173,http://localhost:5001"
     ports:
@@ -59,7 +59,7 @@ services:
       - MINIO_PORT=9000
       - MINIO_USE_SSL=false
       - MINIO_ROOT_USER=${MINIO_ROOT_USER:-edubridge_minio}
-      - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD:-EduBridge@MinIO2024!}
+      - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD:-minio_dev_password_change_me}
       - MINIO_BUCKET=${MINIO_BUCKET:-edubridge-documents}
       - MINIO_PUBLIC_URL=${MINIO_PUBLIC_URL:-http://localhost:9000}
     volumes:

@@ -1677,7 +1677,7 @@ export function RegistrationForm() {
                                     onClick={() => {
                                         const cred = successResult.parentCredentials?.[0];
                                         const origin = typeof window !== "undefined" ? window.location.origin : "";
-                                        const clipText = `EduBridge Parent Portal Access Pass\nStudent: ${successResult.student?.firstName} ${successResult.student?.fatherName} (ID: ${successResult.student?.studentId})\nParent: ${cred?.parentName || formData.guardianName}\nUsername / Phone: ${cred?.loginId || formData.guardianPhone}\nPassword: ${cred?.initialPassword || ["Edu", "Bridge", "2026", "!"].join("")}\nLogin Link: ${origin}/login`;
+                                        const clipText = `EduBridge Parent Portal Access Pass\nStudent: ${successResult.student?.firstName} ${successResult.student?.fatherName} (ID: ${successResult.student?.studentId})\nParent: ${cred?.parentName || formData.guardianName}\nUsername / Phone: ${cred?.loginId || formData.guardianPhone}\nPassword: ${cred?.initialPassword || "(Contact school administration for password)"}\nLogin Link: ${origin}/login`;
                                         navigator.clipboard.writeText(clipText);
                                         setCopiedKey("all-creds");
                                         setTimeout(() => setCopiedKey(null), 2000);
