@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowLeft, BrainCircuit, CalendarCheck, Lightbulb, Sparkles } from "lucide-react";
+import { ArrowLeft, Bot, BrainCircuit, CalendarCheck, Sparkles } from "lucide-react";
 
 interface AssistantHeaderProps {
   activeMode?: "explain" | "practice" | "plan";
@@ -17,8 +17,8 @@ export default function AssistantHeader({
   const tabs = [
     {
       key: "explain" as const,
-      label: "Explain Concepts",
-      icon: Lightbulb,
+      label: "AI Tutor Chatbot",
+      icon: Bot,
     },
     {
       key: "practice" as const,
@@ -43,14 +43,14 @@ export default function AssistantHeader({
           <div>
             <div className="flex items-center gap-2">
               <span className="text-[11px] font-bold uppercase tracking-widest text-[#184973] bg-blue-50 px-2 py-0.5 rounded-full border border-blue-200">
-                AI Learning Assistant
+                EduBridge AI
               </span>
               <span className="text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
                 Curriculum Aligned
               </span>
             </div>
             <h1 className="text-2xl font-black tracking-tight text-slate-900 sm:text-3xl">
-              AI Study Assistant
+              EduBridge AI Study Assistant
             </h1>
             <p className="text-xs text-slate-500 mt-0.5">
               Personalized concept explanations, curriculum-aligned practice questions, and structured revision plans.
