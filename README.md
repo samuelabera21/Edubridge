@@ -1,112 +1,129 @@
 # 🎓 EduBridge — Multi-Level Education Management & Learning Platform
 
-[![Live Application](https://img.shields.io/badge/Live_Demo-edubridge--online.vercel.app-2563eb?style=for-the-badge&logo=vercel)](https://edubridge-online.vercel.app)
-[![Backend API](https://img.shields.io/badge/Backend_API-Render_Cloud-46E3B7?style=for-the-badge&logo=render)](https://edubridge-online.vercel.app)
+[![Live Application](https://img.shields.io/badge/Live_Demo-edubridge--olive.vercel.app-2563eb?style=for-the-badge&logo=vercel)](https://edubridge-olive.vercel.app)
+[![Backend API](https://img.shields.io/badge/Backend_API-Render_Cloud-46E3B7?style=for-the-badge&logo=render)](https://edubridge-olive.vercel.app)
 [![Database](https://img.shields.io/badge/Database-PostgreSQL_(Supabase)-3ECF8E?style=for-the-badge&logo=supabase)](https://supabase.com)
 [![Next.js 16](https://img.shields.io/badge/Frontend-Next.js_16_Turbopack-black?style=for-the-badge&logo=next.js)](https://nextjs.org)
 [![Express v5](https://img.shields.io/badge/Backend-Express_v5_TypeScript-007acc?style=for-the-badge&logo=typescript)](https://expressjs.com)
 
-> **EduBridge** is a comprehensive, school-centered education management and hierarchical governance platform designed for the Ethiopian education ecosystem. It digitizes daily school operations — from attendance and batch grade verification to curriculum material delivery and AI study tutoring — while enabling automated bottom-up data aggregation and top-down policy dissemination across **Federal, Regional, Zone, Woreda, and School** administrative tiers.
+> **EduBridge** is an enterprise-grade, school-centered education management and hierarchical governance platform designed for the Ethiopian national educational ecosystem. It digitizes daily school operations — from period attendance and batch mark-sheet verification to curriculum distribution and AI study tutoring — while enabling automated bottom-up data aggregation and top-down policy dissemination across **Federal, Regional, Zone, Woreda, and School** administrative tiers.
 
 ---
 
 ## 🚀 Live Evaluation & Instant Demo Access
 
-Evaluators and mentors can test the live application directly in the browser without local setup:
+Evaluators and mentors can test the live application directly in the browser:
 
-🔗 **Live Application URL**: [https://edubridge-online.vercel.app](https://edubridge-online.vercel.app)  
+🔗 **Live Application URL**: [https://edubridge-olive.vercel.app](https://edubridge-olive.vercel.app)  
 🔐 **GitHub Collaborator Access**: Granted to `@eyobed101`
 
-### 🔑 Pre-Seeded Test Credentials
+### 🔑 Master Seeded Credential (Always Active)
 
-Use these verified accounts to evaluate different roles and administrative tiers:
+To ensure strict institutional authority and territorial data isolation, EduBridge uses a single pre-seeded apex administrator. All lower-tier offices, schools, and users are provisioned hierarchically:
 
-| Role / Tier | Email Address | Password | Accessible Portals & Features |
+| Role / Tier | Master Email Address | Password | Jurisdiction & Scope |
 | :--- | :--- | :--- | :--- |
-| **Federal System Administrator** | `federal.admin@edubridge.gov.et` | `Federal@2026!` | **Full National Scope**: National EMIS Dashboard, Regional drill-downs, National Directives, EMIS AI Analytics. |
-| **School Administrator / Principal** | `school.admin@edubridge.local` | `AdminPass123!` | **School-Wide Scope**: School setup, academic years, student admission & placement, staff allocation, timetable, grade batch approval. |
-| **Teaching Faculty** | `tch.2026.0013@edubridge.local` | `EduBridge2026!` | **Classroom Scope**: My classes, daily student attendance, mark sheets & grade submission, Curriculum Hub file uploads. |
-| **Enrolled Student** | `student@edubridge.local` | `EduBridge2026!` | **Student Portal**: Today's classes, Results Hub, timetable, and the interactive **EduBridge AI Study Tutor & Quiz Generator**. |
-
-> 💡 **Quick Tip for Evaluators**: Log in with the **Federal Admin** account first to explore the national governance hierarchy and the Canva-style EMIS AI Assistant (`?` button at the bottom-right). Then log in as a **Student** to experience the AI Study Tutor and interactive practice quizzes!
+| **Federal System Administrator** | `federal.admin@edubridge.gov.et` | `Federal@2026!` | **Apex National Governance**: National EMIS Dashboard, Regional drill-downs, National Directives, and Canva-style EMIS AI Analytics. |
 
 ---
 
-## 🏛️ System Architecture & Multi-Tier Hierarchy
+## 🏛️ How the System Works: Top-Down Provisioning Walkthrough
 
-EduBridge mirrors the official Ethiopian education administrative governance structure:
+EduBridge is engineered around **sovereign institutional hierarchy and role-based authority**. To experience the complete end-to-end platform, follow this modern operational walkthrough:
 
 ```
-                  ┌──────────────────────────────────────────────┐
-                  │        FEDERAL MINISTRY OF EDUCATION         │
-                  │   National Directives, Programs & EMIS AI    │
-                  └──────────────────────┬───────────────────────┘
-                                         │  Top-Down Policies
-                                         ▼  Bottom-Up Aggregations
-                  ┌──────────────────────────────────────────────┐
-                  │          REGIONAL EDUCATION BUREAU           │
-                  │       Regional Audits & Zone Monitoring      │
-                  └──────────────────────┬───────────────────────┘
-                                         ▼
-                  ┌──────────────────────────────────────────────┐
-                  │           ZONE EDUCATION DEPARTMENT          │
-                  │       Woreda Supervisions & Inspections      │
-                  └──────────────────────┬───────────────────────┘
-                                         ▼
-                  ┌──────────────────────────────────────────────┐
-                  │            WOREDA EDUCATION OFFICE           │
-                  │     School Operational Oversight & Surveys   │
-                  └──────────────────────┬───────────────────────┘
-                                         ▼
-                  ┌──────────────────────────────────────────────┐
-                  │              SCHOOL ENVIRONMENT              │
-                  │ (Primary Source-of-Truth Operational Domain) │
-                  └──────┬───────────────┼───────────────┬───────┘
-                         ▼               ▼               ▼
-                   [Principal]    [Vice Principal]  [Teachers]
-                         │               │               │
-                         └───────────────┼───────────────┘
-                                         ▼
-                             [ Students & Parents ]
+[ Federal Admin ] ──(Creates & Invites)──> [ Regional Admin ]
+                                                    │
+                                                    ▼ (Creates & Invites)
+                                           [ Zonal Admin ]
+                                                    │
+                                                    ▼ (Creates & Invites)
+                                           [ Woreda Admin ]
+                                                    │
+                                                    ▼ (Creates School & Principal)
+                                           [ School Administrator ]
+                                                    │
+                         ┌──────────────────────────┼──────────────────────────┐
+                         ▼                          ▼                          ▼
+                   [ Teachers ]                [ Students ]                [ Parents ]
+               (Attendance & Marks)      (AI Tutor & Timetable)      (Progress & Alerts)
 ```
 
 ---
 
-## 🌟 Key Features by Portal
+### Step 1: Log In as the Federal Administrator
+1. Go to the login page: [https://edubridge-olive.vercel.app/login](https://edubridge-olive.vercel.app/login)
+2. Enter the official seed credentials:
+   * **Email**: `federal.admin@edubridge.gov.et`
+   * **Password**: `Federal@2026!`
+3. You will arrive at the **National Federal Dashboard** (`/dashboard/federal`), where you can:
+   * Monitor national metrics across all regions, zones, woredas, schools, students, and teachers.
+   * Test the **EMIS AI Analytics Assistant** by clicking the blue circular `?` button in the bottom-right corner (try asking: *"What is our overall institutional structure?"*).
+   * Issue national directives with real-time acknowledgment tracking.
 
-### 1. 🏛️ National & Regional Governance Dashboards (`/dashboard/federal`, `/region`, `/zone`, `/woreda`)
-* **Territorial Drill-Down**: Interactive geographic navigation from the national overview down to individual schools, sections, and subjects.
-* **EMIS AI Analytics**: Natural-language data intelligence for education leaders — ask plain-English questions (*"Which schools have the lowest attendance this month?"*) and receive structured, synthesized answers.
-* **National Directives Engine**: Distribute policies and instructions with real-time acknowledgment receipts across lower administrative levels.
+---
 
-### 2. 🏫 School Leadership (`/dashboard/admin` & `/dashboard/vice-principal`)
-* **School Principal**: Full institutional setup, academic calendars, student registration, bulk classroom placement, teacher assignments, and school improvement plans.
-* **Vice Principal / Academic Leader**: Academic organization management, instructional staffing oversight, teacher workload balance, and attendance/assessment anomaly detection.
+### Step 2: Provision Regional, Zonal & Woreda Hierarchy
+From the Federal Dashboard:
+1. Click **"+ Add Region"** to create a Regional Education Bureau (e.g., *Addis Ababa, Oromia, Amhara, Sidama*).
+2. Click **"Assign Admin"** to invite the Regional Administrator with their official email and temporary credentials.
+3. **Drill Down or Log In as Regional Admin**:
+   * Regional Administrators create **Zones** and assign Zonal Admins.
+   * Zonal Administrators create **Woredas** and assign Woreda Admins.
+   * Woreda Administrators create **Schools** in their territory and provision the **School Administrator / Principal**.
+   *(Note: As the Federal Admin, you can also use the interactive **Territorial Drill-Down** to inspect any existing Region, Zone, Woreda, or School already registered in the system!)*
 
-### 3. 👨‍🏫 Teaching Faculty Portal (`/dashboard/teacher`)
-* **Classroom Command Center**: Daily timetable schedule, active rosters, and subject assignments.
-* **Attendance Register**: Period-level attendance recording with student-initiated correction request workflows.
-* **Grade Submission & Mark Sheets**: Enter marks with instant validation, average calculation, and administrative sign-off before publishing.
-* **Curriculum Hub**: Upload syllabi, PDFs, PowerPoint slides, and tutorial video links directly to assigned classes.
+---
 
-### 4. 🎒 Student Portal & AI Study Tutor (`/dashboard/student`)
-* **Results Hub**: Detailed breakdown of continuous assessment scores, semester grades, and class standings.
-* **Daily Timetable & Attendance**: Live class schedule and absence tracking.
-* **EduBridge AI Study Assistant**:
-  * 💡 **Concept Explainer**: Breaks down complex topics with intuition, worked examples, and mental hooks.
-  * 📝 **Practice Quiz Generator**: Generates dynamic curriculum-aligned multiple-choice questions (Easy, Medium, Hard).
-  * 🤖 **Conversational AI Tutor**: Multi-turn chat assistant with session history and follow-up suggestion chips.
-  * 📅 **Personalized Study Planner**: Generates weekly revision routines customized to student availability.
+### Step 3: School Operational Setup (Principal / School Admin)
+When a School Administrator logs into their school portal:
+1. **Academic Configuration**: Set up the current **Academic Year**, active **Grades**, classroom **Sections** (e.g. Grade 9A, 10B), and **Subject Catalogs**.
+2. **Instructional Timetable**: Create periods and allocate teachers to avoid schedule conflicts.
 
-### 5. 👨‍👩‍👧 Parent & Guardian Portal (`/dashboard/parent`)
-* **Multi-Child Dashboard**: Switch between enrolled siblings to review attendance percentages and report cards.
-* **Direct Communication**: Secure messaging with subject teachers and parent-teacher meeting scheduling.
+---
+
+### Step 4: Provision Teachers, Students & Parents
+Inside the School Portal, navigate to **Users & Permissions** (`/dashboard/users-permissions`):
+* 👨‍🏫 **Register Teachers**:
+  * Create teacher accounts and assign them to specific subjects, grades, and sections.
+  * Teachers can immediately log in to record classroom attendance, upload curriculum resources, and submit mark sheets.
+* 🎒 **Register & Enroll Students**:
+  * Register new student profiles with auto-generated student IDs.
+  * Enroll students into active sections.
+  * Students can immediately log in to access their **Results Hub**, **Live Timetable**, and the **EduBridge AI Study Tutor**.
+* 👨‍👩‍👧 **Link Parents / Guardians**:
+  * Create parent accounts and link them to their enrolled children for attendance tracking and teacher messaging.
+
+---
+
+### Step 5: Test the Actor Portals
+
+Once created by the School Administrator:
+
+#### 1. 👨‍🏫 Teacher Portal Experience (`/dashboard/teacher`)
+* View today's teaching schedule and assigned classes.
+* Record period-level student attendance with absence categorization.
+* Upload lesson notes, PDFs, and video links to the **Curriculum Hub**.
+* Enter assessment mark sheets and submit batches for administrative verification.
+
+#### 2. 🎒 Student Portal & AI Tutor (`/dashboard/student`)
+* Check daily class schedules and attendance summaries.
+* Open the **Results Hub** to view continuous assessment grades and class standing.
+* Launch the **EduBridge AI Study Assistant** (`/dashboard/student/assistant` or the floating `?` button):
+  * 💡 **Concept Explainer**: Request step-by-step breakdowns of complex subjects.
+  * 📝 **Practice Quiz Generator**: Take dynamically generated multiple-choice quizzes (Easy, Medium, Hard).
+  * 🤖 **AI Tutor Chat**: Ask homework questions with conversation history.
+  * 📅 **Weekly Study Planner**: Generate structured revision timetables.
+
+#### 3. 👨‍👩‍👧 Parent Portal (`/dashboard/parent`)
+* Switch between children to review attendance percentages and report cards.
+* Directly message subject teachers and schedule conferences.
 
 ---
 
 ## 🧠 Dual-Tier AI Quota & Security Architecture
 
-EduBridge implements a **dual-key isolation architecture** to protect executive decision-making:
+EduBridge implements an isolated **dual-key architecture** to protect executive decision-making:
 
 ```
                               ┌────────────────────────────────────────┐
@@ -122,9 +139,9 @@ EduBridge implements a **dual-key isolation architecture** to protect executive 
                        └─────────────────────────┘  └─────────────────────────┘
 ```
 
-1. **EMIS Governance AI**: Uses `GEMINI_API_KEY` with a **20-minute in-memory cache** and a **3-second PostgreSQL statement timeout guardrail** to prevent slow queries from locking the database.
-2. **Student AI Tutor**: Uses a dedicated `STUDENT_GEMINI_API_KEY` (with graceful fallback) so high-frequency student learning traffic **never exhausts the quota** of regional directors and school principals.
-3. **Strict Scope Refusal**: Administrative SQL generation automatically refuses out-of-scope inquiries at the API middleware level.
+1. **EMIS Governance AI**: Uses `GEMINI_API_KEY` with a **20-minute in-memory cache** and a **3-second PostgreSQL statement timeout guardrail** to protect live database performance.
+2. **Student AI Tutor**: Uses a dedicated `STUDENT_GEMINI_API_KEY` (with automatic fallback) so high-frequency student learning traffic **never exhausts the quota** of regional directors and school leaders.
+3. **Strict Scope Isolation**: Cross-scope queries and non-student role requests are automatically refused at the middleware level with `403 Forbidden` / `401 Unauthorized`.
 
 ---
 
@@ -159,8 +176,7 @@ cd Edubridge
 
 ### 2. Configure Environment Variables
 
-#### Backend Configuration:
-Create `backend/.env` (or copy from `backend/.env.example`):
+#### Backend (`backend/.env`):
 ```env
 # Database Connection (Supabase or local PostgreSQL)
 DATABASE_URL="postgresql://user:password@localhost:5432/edubridge?schema=public"
@@ -180,13 +196,12 @@ STUDENT_GEMINI_API_KEY="your-student-gemini-key"
 DEFAULT_INITIAL_PASSWORD="Admin@1234"
 ```
 
-#### Frontend Configuration:
-Create `frontend/.env.local`:
+#### Frontend (`frontend/.env.local`):
 ```env
 NEXT_PUBLIC_API_URL="http://localhost:5000"
 ```
 
-### 3. Install Dependencies & Seed Database
+### 3. Install Dependencies & Seed Master Account
 ```bash
 # Backend setup
 cd backend
@@ -210,7 +225,7 @@ cd frontend
 npm run dev
 ```
 
-Visit **`http://localhost:3000`** in your browser and log in with the seed credentials above.
+Visit **`http://localhost:3000`** in your browser and sign in using the Master Federal Administrator credentials.
 
 ---
 
