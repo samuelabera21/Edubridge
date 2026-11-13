@@ -301,20 +301,6 @@ export default function LandingPage() {
                                 <li><a href="#" className="hover:text-white transition-colors">Contact Support</a></li>
                             </ul>
                         </div>
-
-                        {/* Blue Return to Top Button placed at bottom right as requested */}
-                        <div className="pt-6 sm:pt-4 flex items-center justify-start sm:justify-end">
-                            <button
-                                type="button"
-                                onClick={scrollToTop}
-                                className="inline-flex items-center gap-2 px-4 py-2 bg-[#4085b3] hover:bg-[#32698e] text-white text-xs font-semibold rounded-lg shadow-md hover:shadow-lg transition-all cursor-pointer group"
-                                title="Return to top"
-                                aria-label="Return to top"
-                            >
-                                <span>Back to top</span>
-                                <ArrowUp className="w-4 h-4 transition-transform group-hover:-translate-y-0.5" />
-                            </button>
-                        </div>
                     </div>
                 </div>
 

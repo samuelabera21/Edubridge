@@ -842,8 +842,9 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
                             ) : isStudentRoute ? (
                                 <StudentNavigation
                                     collapsed={false}
-                                    className="flex w-full border-r-0"
+                                    isMobile={true}
                                     onToggleCollapse={() => setMobileNavOpen(false)}
+                                    onNavigate={() => setMobileNavOpen(false)}
                                 />
                             ) : isParentRoute ? (
                                 <ParentNavigation

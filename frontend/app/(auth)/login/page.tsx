@@ -333,9 +333,21 @@ export default function LoginPage() {
 
     if (pageChecking) {
         return (
-            <div className="w-full flex flex-col items-center justify-center py-16 text-slate-500">
-                <Loader2 className="w-8 h-8 animate-spin text-[#4085b3] mb-3" />
-                <p className="text-sm">Verifying session...</p>
+            <div className="w-full flex flex-col items-center justify-center py-24 select-none">
+                <div className="w-56 sm:w-64 space-y-3">
+                    <div className="flex items-center justify-between text-xs font-medium">
+                        <span className="flex items-center gap-2 text-[#4085b3] font-semibold text-xs tracking-wide">
+                            <span className="relative flex h-2 w-2">
+                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#4085b3] opacity-75"></span>
+                                <span className="relative inline-flex rounded-full h-2 w-2 bg-[#4085b3]"></span>
+                            </span>
+                            Starting...
+                        </span>
+                    </div>
+                    <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden relative">
+                        <div className="absolute top-0 bottom-0 bg-[#4085b3] rounded-full animate-progress"></div>
+                    </div>
+                </div>
             </div>
         );
     }
@@ -356,14 +368,14 @@ export default function LoginPage() {
             <form onSubmit={handleLogin} className="space-y-4">
                 <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Email, Phone Number, or Username
+                        Email or Username
                     </label>
                     <input
                         type="text"
                         value={username}
                         onChange={(e) => setUsername(e.target.value)}
                         className="w-full border border-gray-300 rounded-lg p-2.5 focus:ring-2 focus:ring-[#4085b3] focus:border-[#4085b3] transition-colors text-sm"
-                        placeholder="e.g. 0911223344, parent@email.com or username"
+                        placeholder="Enter your email or username"
                         required
                         disabled={loading || googleLoading}
                     />

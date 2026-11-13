@@ -4,6 +4,7 @@
   --animate-fade-in: fade-in 0.6s ease-out forwards;
   --animate-fade-in-up: fade-in-up 0.8s ease-out forwards;
   --animate-slide-in-right: slide-in-right 0.8s ease-out forwards;
+  --animate-progress: progress-indeterminate 1.4s ease-in-out infinite;
 
   @keyframes fade-in {
     from { opacity: 0; }
@@ -16,6 +17,11 @@
   @keyframes slide-in-right {
     from { opacity: 0; transform: translateX(30px); }
     to { opacity: 1; transform: translateX(0); }
+  }
+  @keyframes progress-indeterminate {
+    0% { left: -35%; width: 35%; }
+    50% { left: 30%; width: 50%; }
+    100% { left: 100%; width: 35%; }
   }
 }
 
